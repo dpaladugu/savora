@@ -26,7 +26,8 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               key={tab.id}
               whileTap={{ scale: 0.95 }}
               onClick={() => onTabChange(tab.id)}
-              className="flex flex-col items-center justify-center p-3 relative min-w-[64px]"
+              className="flex flex-col items-center justify-center p-3 relative min-w-[64px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-xl"
+              aria-label={`Navigate to ${tab.label}`}
             >
               {isActive && (
                 <motion.div
@@ -40,15 +41,15 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 className={`w-6 h-6 mb-1 transition-colors duration-300 relative z-10 ${
                   isActive 
                     ? "text-primary" 
-                    : "text-foreground/70 hover:text-foreground"
+                    : "text-foreground dark:text-foreground/90"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               
-              <span className={`text-xs font-medium transition-colors duration-300 relative z-10 text-label ${
+              <span className={`text-xs font-medium transition-colors duration-300 relative z-10 ${
                 isActive 
                   ? "text-primary" 
-                  : "text-foreground/70 hover:text-foreground"
+                  : "text-foreground dark:text-foreground/90"
               }`}>
                 {tab.label}
               </span>

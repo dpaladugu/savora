@@ -33,8 +33,16 @@ export function MetricCard({
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className="relative overflow-hidden rounded-2xl p-4 cursor-pointer metric-card transition-all duration-300 hover:shadow-card"
+      className="relative overflow-hidden rounded-2xl p-4 cursor-pointer metric-card transition-all duration-300 hover:shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       onClick={onClick}
+      tabIndex={onClick ? 0 : -1}
+      role={onClick ? "button" : undefined}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
     >
       <div className="relative z-10 flex items-center justify-between mb-4">
         <div className={`p-3 rounded-xl ${gradient} text-white shadow-soft`}>
@@ -48,7 +56,7 @@ export function MetricCard({
       </div>
       
       <div className="relative z-10">
-        <h4 className="text-sm font-medium text-muted-foreground mb-2 text-label">
+        <h4 className="text-sm font-medium text-muted-foreground mb-2">
           {title}
         </h4>
         <p className="text-xl font-bold text-foreground tracking-tight">

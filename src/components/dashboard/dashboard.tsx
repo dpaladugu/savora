@@ -48,7 +48,7 @@ export function Dashboard() {
       <DarkModeToggle />
       
       <div className="pt-12 px-4">
-        {/* Header with improved typography */}
+        {/* Header with improved typography and contrast */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -57,7 +57,7 @@ export function Dashboard() {
           <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
             Good morning! 👋
           </h1>
-          <p className="text-muted-foreground text-content text-lg">
+          <p className="text-muted-foreground text-lg font-medium">
             Here's your financial overview
           </p>
         </motion.div>
