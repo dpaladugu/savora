@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield } from "lucide-react";
 import { MetricCard } from "../ui/metric-card";
@@ -43,26 +44,26 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-colors duration-300">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-all duration-300 overflow-auto">
       <DarkModeToggle />
       
       <div className="pt-12 px-4">
-        {/* Header */}
+        {/* Header with improved typography */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
+          className="mb-8 px-2"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
             Good morning! 👋
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-content text-lg">
             Here's your financial overview
           </p>
         </motion.div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        {/* Metrics Grid with consistent spacing */}
+        <div className="grid grid-cols-2 gap-4 mb-8 px-2">
           {metrics.map((metric, index) => (
             <motion.div
               key={metric.title}
@@ -75,8 +76,8 @@ export function Dashboard() {
           ))}
         </div>
 
-        {/* Charts Section */}
-        <div className="space-y-6">
+        {/* Charts Section with proper spacing */}
+        <div className="space-y-6 px-2">
           <ExpenseChart />
           <AssetAllocation />
         </div>

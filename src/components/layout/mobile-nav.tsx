@@ -26,12 +26,12 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               key={tab.id}
               whileTap={{ scale: 0.95 }}
               onClick={() => onTabChange(tab.id)}
-              className="flex flex-col items-center justify-center p-2 relative min-w-[60px]"
+              className="flex flex-col items-center justify-center p-3 relative min-w-[64px]"
             >
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/20 dark:bg-primary/25 rounded-xl border border-primary/30"
+                  className="absolute inset-0 bg-primary/15 dark:bg-primary/20 rounded-xl border border-primary/25"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
@@ -45,7 +45,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 strokeWidth={isActive ? 2.5 : 2}
               />
               
-              <span className={`text-xs font-medium transition-colors duration-300 relative z-10 ${
+              <span className={`text-xs font-medium transition-colors duration-300 relative z-10 text-label ${
                 isActive 
                   ? "text-primary" 
                   : "text-foreground/70 hover:text-foreground"

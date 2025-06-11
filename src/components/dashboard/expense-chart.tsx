@@ -19,7 +19,7 @@ export function ExpenseChart() {
       transition={{ delay: 0.4 }}
       className="metric-card rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-foreground mb-4 text-readable">
+      <h3 className="text-xl font-bold text-foreground mb-6 tracking-tight">
         Expense Trend
       </h3>
       
@@ -45,9 +45,9 @@ export function ExpenseChart() {
         </ResponsiveContainer>
       </div>
       
-      <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground text-readable-muted">Average monthly</span>
-        <span className="font-semibold text-foreground text-readable">₹49,167</span>
+      <div className="mt-6 flex items-center justify-between text-sm">
+        <span className="text-muted-foreground text-content">Average monthly</span>
+        <span className="font-bold text-foreground">₹49,167</span>
       </div>
     </motion.div>
   );

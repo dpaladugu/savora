@@ -17,12 +17,12 @@ export function AssetAllocation() {
       transition={{ delay: 0.5 }}
       className="metric-card rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-foreground mb-4 text-readable">
+      <h3 className="text-xl font-bold text-foreground mb-6 tracking-tight">
         Asset Allocation
       </h3>
       
       <div className="flex items-center">
-        <div className="h-48 w-48">
+        <div className="h-48 w-48 flex-shrink-0">
           <ResponsiveContainer width="100%" height="100%">
             <PieChart>
               <Pie
@@ -44,15 +44,15 @@ export function AssetAllocation() {
         
         <div className="flex-1 ml-6 space-y-3">
           {data.map((item) => (
-            <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-background/20 backdrop-blur-sm">
+            <div key={item.name} className="flex items-center justify-between p-3 rounded-lg bg-background/30 backdrop-blur-sm border border-border/20">
               <div className="flex items-center">
                 <div
                   className="w-3 h-3 rounded-full mr-3 border border-background/20"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-sm text-muted-foreground text-readable-muted">{item.name}</span>
+                <span className="text-sm text-muted-foreground text-content">{item.name}</span>
               </div>
-              <span className="text-sm font-medium text-foreground text-readable">
+              <span className="text-sm font-bold text-foreground">
                 {item.value}%
               </span>
             </div>
