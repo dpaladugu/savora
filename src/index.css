@@ -6,37 +6,44 @@
 /* Apple-inspired design system with improved contrast */
 @layer base {
   :root {
-    /* Core Apple-inspired colors with better contrast */
-    --background: 255 255 255;
-    --foreground: 17 24 39;
+    /* Light mode - enhanced contrast */
+    --background: 248 250 252;
+    --foreground: 15 23 42;
     --card: 255 255 255;
-    --card-foreground: 17 24 39;
+    --card-foreground: 15 23 42;
     --primary: 59 130 246;
     --primary-foreground: 255 255 255;
-    --secondary: 100 116 139;
+    --secondary: 71 85 105;
     --secondary-foreground: 255 255 255;
-    --muted: 248 250 252;
-    --muted-foreground: 71 85 105;
+    --muted: 241 245 249;
+    --muted-foreground: 51 65 85;
     --accent: 239 246 255;
-    --accent-foreground: 30 41 59;
+    --accent-foreground: 15 23 42;
     --destructive: 239 68 68;
     --destructive-foreground: 255 255 255;
     --success: 34 197 94;
     --success-foreground: 255 255 255;
     --warning: 245 158 11;
     --warning-foreground: 255 255 255;
-    --border: 226 232 240;
+    --border: 203 213 225;
     --input: 226 232 240;
     --ring: 59 130 246;
     --radius: 0.75rem;
 
-    /* Improved glassmorphism with better contrast */
-    --glass-bg: rgba(255, 255, 255, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.3);
+    /* Enhanced glassmorphism for light mode */
+    --glass-bg: rgba(255, 255, 255, 0.9);
+    --glass-border: rgba(148, 163, 184, 0.3);
     --glass-shadow: rgba(0, 0, 0, 0.1);
+    
+    /* Navigation specific colors */
+    --nav-bg: rgba(255, 255, 255, 0.95);
+    --nav-border: rgba(148, 163, 184, 0.2);
+    --nav-icon: 51 65 85;
+    --nav-icon-active: 59 130 246;
   }
 
   .dark {
+    /* Dark mode - enhanced contrast */
     --background: 15 23 42;
     --foreground: 248 250 252;
     --card: 30 41 59;
@@ -46,16 +53,22 @@
     --secondary: 71 85 105;
     --secondary-foreground: 248 250 252;
     --muted: 51 65 85;
-    --muted-foreground: 156 163 175;
+    --muted-foreground: 148 163 184;
     --accent: 51 65 85;
     --accent-foreground: 248 250 252;
-    --border: 51 65 85;
+    --border: 71 85 105;
     --input: 51 65 85;
 
-    /* Dark mode glassmorphism with better contrast */
-    --glass-bg: rgba(30, 41, 59, 0.85);
-    --glass-border: rgba(255, 255, 255, 0.1);
+    /* Enhanced glassmorphism for dark mode */
+    --glass-bg: rgba(30, 41, 59, 0.9);
+    --glass-border: rgba(148, 163, 184, 0.1);
     --glass-shadow: rgba(0, 0, 0, 0.3);
+    
+    /* Navigation specific colors for dark mode */
+    --nav-bg: rgba(30, 41, 59, 0.95);
+    --nav-border: rgba(148, 163, 184, 0.1);
+    --nav-icon: 148 163 184;
+    --nav-icon-active: 99 102 241;
   }
 }
 
@@ -65,14 +78,18 @@
   }
   
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground transition-colors duration-300;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+  
+  html {
+    @apply transition-colors duration-300;
+  }
 }
 
-/* Improved glassmorphism with better readability */
+/* Enhanced glassmorphism with proper fallbacks */
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
@@ -80,7 +97,15 @@
   box-shadow: 0 8px 32px var(--glass-shadow);
 }
 
-/* Enhanced card styling for better contrast */
+/* Navigation specific glass styling */
+.nav-glass {
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  border: 1px solid var(--nav-border);
+  box-shadow: 0 4px 20px var(--glass-shadow);
+}
+
+/* Enhanced card styling */
 .metric-card {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
@@ -88,7 +113,7 @@
   box-shadow: 0 4px 20px var(--glass-shadow);
 }
 
-/* Custom scrollbar with better visibility */
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -106,13 +131,18 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* Ensure text remains readable on all backgrounds */
-.text-readable {
-  color: hsl(var(--foreground));
-  text-shadow: 0 1px 3px hsl(var(--background) / 0.8);
+/* Ensure high contrast text */
+.text-nav-icon {
+  color: hsl(var(--nav-icon));
 }
 
-.text-readable-muted {
-  color: hsl(var(--muted-foreground));
-  text-shadow: 0 1px 2px hsl(var(--background) / 0.6);
+.text-nav-icon-active {
+  color: hsl(var(--nav-icon-active));
+}
+
+/* Transition animations for dark mode */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
 }

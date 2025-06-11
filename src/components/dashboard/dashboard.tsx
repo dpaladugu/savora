@@ -1,9 +1,9 @@
-
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield } from "lucide-react";
 import { MetricCard } from "../ui/metric-card";
 import { ExpenseChart } from "./expense-chart";
 import { AssetAllocation } from "./asset-allocation";
+import { DarkModeToggle } from "../ui/dark-mode-toggle";
 
 export function Dashboard() {
   // Mock data - will be replaced with real data later
@@ -43,7 +43,9 @@ export function Dashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-colors duration-300">
+      <DarkModeToggle />
+      
       <div className="pt-12 px-4">
         {/* Header */}
         <motion.div
@@ -51,10 +53,10 @@ export function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2 text-readable">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Good morning! 👋
           </h1>
-          <p className="text-muted-foreground text-readable-muted">
+          <p className="text-muted-foreground">
             Here's your financial overview
           </p>
         </motion.div>

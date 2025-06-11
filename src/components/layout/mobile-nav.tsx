@@ -16,7 +16,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 glass border-t border-border/50">
+    <div className="fixed bottom-0 left-0 right-0 z-50 nav-glass border-t border-border/50">
       <div className="flex items-center justify-around h-20 px-4">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
@@ -31,20 +31,24 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               {isActive && (
                 <motion.div
                   layoutId="activeTab"
-                  className="absolute inset-0 bg-primary/15 rounded-xl border border-primary/20"
+                  className="absolute inset-0 bg-primary/20 dark:bg-primary/25 rounded-xl border border-primary/30"
                   transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                 />
               )}
               
               <tab.icon 
-                className={`w-6 h-6 mb-1 transition-colors duration-200 ${
-                  isActive ? "text-primary" : "text-muted-foreground"
+                className={`w-6 h-6 mb-1 transition-colors duration-300 relative z-10 ${
+                  isActive 
+                    ? "text-primary" 
+                    : "text-foreground/70 hover:text-foreground"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               
-              <span className={`text-xs font-medium transition-colors duration-200 ${
-                isActive ? "text-primary" : "text-muted-foreground"
+              <span className={`text-xs font-medium transition-colors duration-300 relative z-10 ${
+                isActive 
+                  ? "text-primary" 
+                  : "text-foreground/70 hover:text-foreground"
               }`}>
                 {tab.label}
               </span>

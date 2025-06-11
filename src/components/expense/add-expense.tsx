@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { DarkModeToggle } from "../ui/dark-mode-toggle";
 
 export function AddExpense() {
   const [amount, setAmount] = useState("");
@@ -53,17 +54,19 @@ export function AddExpense() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-colors duration-300">
+      <DarkModeToggle />
+      
       <div className="pt-12 px-4">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2 text-readable">
+          <h1 className="text-3xl font-bold text-foreground mb-2">
             Add Expense
           </h1>
-          <p className="text-muted-foreground text-readable-muted">
+          <p className="text-muted-foreground">
             Track your spending easily
           </p>
         </motion.div>
@@ -75,7 +78,7 @@ export function AddExpense() {
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Amount (₹)
               </label>
               <Input
@@ -83,24 +86,24 @@ export function AddExpense() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="text-2xl h-14 text-center bg-background/50 backdrop-blur-sm border-border/50"
+                className="text-2xl h-14 text-center bg-background/80 dark:bg-background/60 backdrop-blur-sm border-border/50"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Description
               </label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What did you spend on?"
-                className="bg-background/50 backdrop-blur-sm border-border/50"
+                className="bg-background/80 dark:bg-background/60 backdrop-blur-sm border-border/50"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
+              <label className="text-sm font-medium text-foreground mb-2 block">
                 Category
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -110,10 +113,10 @@ export function AddExpense() {
                     type="button"
                     onClick={() => setCategory(cat)}
                     className={`
-                      p-3 rounded-xl text-sm font-medium transition-all duration-200 backdrop-blur-sm
+                      p-3 rounded-xl text-sm font-medium transition-all duration-200 backdrop-blur-sm border
                       ${category === cat 
-                        ? "bg-primary text-primary-foreground shadow-lg border-2 border-primary/30" 
-                        : "bg-background/30 text-foreground border border-border/30 hover:bg-background/50"
+                        ? "bg-primary text-primary-foreground shadow-lg border-primary/50" 
+                        : "bg-background/60 dark:bg-background/40 text-foreground border-border/40 hover:bg-background/80 dark:hover:bg-background/60"
                       }
                     `}
                   >
