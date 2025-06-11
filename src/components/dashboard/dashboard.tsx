@@ -51,10 +51,10 @@ export function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2 text-readable">
             Good morning! 👋
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-readable-muted">
             Here's your financial overview
           </p>
         </motion.div>

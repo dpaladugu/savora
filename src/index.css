@@ -3,22 +3,22 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Apple-inspired design system */
+/* Apple-inspired design system with improved contrast */
 @layer base {
   :root {
-    /* Core Apple-inspired colors */
-    --background: 248 250 252;
-    --foreground: 15 23 42;
+    /* Core Apple-inspired colors with better contrast */
+    --background: 255 255 255;
+    --foreground: 17 24 39;
     --card: 255 255 255;
-    --card-foreground: 15 23 42;
+    --card-foreground: 17 24 39;
     --primary: 59 130 246;
     --primary-foreground: 255 255 255;
-    --secondary: 148 163 184;
-    --secondary-foreground: 15 23 42;
-    --muted: 241 245 249;
-    --muted-foreground: 100 116 139;
+    --secondary: 100 116 139;
+    --secondary-foreground: 255 255 255;
+    --muted: 248 250 252;
+    --muted-foreground: 71 85 105;
     --accent: 239 246 255;
-    --accent-foreground: 15 23 42;
+    --accent-foreground: 30 41 59;
     --destructive: 239 68 68;
     --destructive-foreground: 255 255 255;
     --success: 34 197 94;
@@ -30,11 +30,10 @@
     --ring: 59 130 246;
     --radius: 0.75rem;
 
-    /* Apple-specific gradients */
-    --gradient-blue: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    --gradient-green: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
-    --gradient-purple: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-    --gradient-orange: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    /* Improved glassmorphism with better contrast */
+    --glass-bg: rgba(255, 255, 255, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.3);
+    --glass-shadow: rgba(0, 0, 0, 0.1);
   }
 
   .dark {
@@ -47,11 +46,16 @@
     --secondary: 71 85 105;
     --secondary-foreground: 248 250 252;
     --muted: 51 65 85;
-    --muted-foreground: 148 163 184;
+    --muted-foreground: 156 163 175;
     --accent: 51 65 85;
     --accent-foreground: 248 250 252;
     --border: 51 65 85;
     --input: 51 65 85;
+
+    /* Dark mode glassmorphism with better contrast */
+    --glass-bg: rgba(30, 41, 59, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --glass-shadow: rgba(0, 0, 0, 0.3);
   }
 }
 
@@ -68,20 +72,23 @@
   }
 }
 
-/* Apple-inspired glassmorphism */
+/* Improved glassmorphism with better readability */
 .glass {
-  background: rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 8px 32px var(--glass-shadow);
 }
 
-.dark .glass {
-  background: rgba(30, 41, 59, 0.25);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+/* Enhanced card styling for better contrast */
+.metric-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px var(--glass-shadow);
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar with better visibility */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -91,10 +98,21 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.2);
+  background: hsl(var(--muted-foreground) / 0.3);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Ensure text remains readable on all backgrounds */
+.text-readable {
+  color: hsl(var(--foreground));
+  text-shadow: 0 1px 3px hsl(var(--background) / 0.8);
+}
+
+.text-readable-muted {
+  color: hsl(var(--muted-foreground));
+  text-shadow: 0 1px 2px hsl(var(--background) / 0.6);
 }

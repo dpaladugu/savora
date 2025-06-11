@@ -17,9 +17,9 @@ export function ExpenseChart() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.4 }}
-      className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-white/20 dark:border-slate-700/50 shadow-lg"
+      className="metric-card rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-foreground mb-4">
+      <h3 className="text-lg font-semibold text-foreground mb-4 text-readable">
         Expense Trend
       </h3>
       
@@ -30,24 +30,24 @@ export function ExpenseChart() {
               dataKey="month" 
               axisLine={false}
               tickLine={false}
-              className="text-xs text-muted-foreground"
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
             />
             <YAxis hide />
             <Line
               type="monotone"
               dataKey="amount"
-              stroke="#3b82f6"
+              stroke="hsl(var(--primary))"
               strokeWidth={3}
-              dot={{ fill: "#3b82f6", strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: "#3b82f6", strokeWidth: 2 }}
+              dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, stroke: "hsl(var(--primary))", strokeWidth: 2, fill: "hsl(var(--background))" }}
             />
           </LineChart>
         </ResponsiveContainer>
       </div>
       
       <div className="mt-4 flex items-center justify-between text-sm">
-        <span className="text-muted-foreground">Average monthly</span>
-        <span className="font-semibold text-foreground">₹49,167</span>
+        <span className="text-muted-foreground text-readable-muted">Average monthly</span>
+        <span className="font-semibold text-foreground text-readable">₹49,167</span>
       </div>
     </motion.div>
   );

@@ -60,10 +60,10 @@ export function AddExpense() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-2">
+          <h1 className="text-3xl font-bold text-foreground mb-2 text-readable">
             Add Expense
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-readable-muted">
             Track your spending easily
           </p>
         </motion.div>
@@ -71,11 +71,11 @@ export function AddExpense() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-white/20 dark:border-slate-700/50 shadow-lg"
+          className="metric-card rounded-2xl p-6"
         >
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
                 Amount (₹)
               </label>
               <Input
@@ -83,23 +83,24 @@ export function AddExpense() {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="text-2xl h-14 text-center"
+                className="text-2xl h-14 text-center bg-background/50 backdrop-blur-sm border-border/50"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
                 Description
               </label>
               <Input
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="What did you spend on?"
+                className="bg-background/50 backdrop-blur-sm border-border/50"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
+              <label className="text-sm font-medium text-foreground mb-2 block text-readable">
                 Category
               </label>
               <div className="grid grid-cols-3 gap-2">
@@ -109,10 +110,10 @@ export function AddExpense() {
                     type="button"
                     onClick={() => setCategory(cat)}
                     className={`
-                      p-3 rounded-xl text-sm font-medium transition-all duration-200
+                      p-3 rounded-xl text-sm font-medium transition-all duration-200 backdrop-blur-sm
                       ${category === cat 
-                        ? "bg-primary text-primary-foreground shadow-lg" 
-                        : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        ? "bg-primary text-primary-foreground shadow-lg border-2 border-primary/30" 
+                        : "bg-background/30 text-foreground border border-border/30 hover:bg-background/50"
                       }
                     `}
                   >
@@ -124,7 +125,7 @@ export function AddExpense() {
 
             <Button 
               type="submit" 
-              className="w-full h-12 text-lg bg-gradient-blue hover:opacity-90 transition-opacity"
+              className="w-full h-12 text-lg bg-gradient-blue hover:opacity-90 transition-opacity shadow-lg"
             >
               Add Expense
             </Button>

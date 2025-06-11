@@ -4,10 +4,10 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
 export function AssetAllocation() {
   const data = [
-    { name: "Equity", value: 45, color: "#3b82f6" },
-    { name: "Debt", value: 25, color: "#10b981" },
-    { name: "Gold", value: 15, color: "#f59e0b" },
-    { name: "Cash", value: 15, color: "#8b5cf6" },
+    { name: "Equity", value: 45, color: "hsl(var(--primary))" },
+    { name: "Debt", value: 25, color: "hsl(var(--success))" },
+    { name: "Gold", value: 15, color: "hsl(var(--warning))" },
+    { name: "Cash", value: 15, color: "hsl(var(--secondary))" },
   ];
 
   return (
@@ -15,9 +15,9 @@ export function AssetAllocation() {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.5 }}
-      className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-white/20 dark:border-slate-700/50 shadow-lg"
+      className="metric-card rounded-2xl p-6"
     >
-      <h3 className="text-lg font-semibold text-foreground mb-4">
+      <h3 className="text-lg font-semibold text-foreground mb-4 text-readable">
         Asset Allocation
       </h3>
       
@@ -44,15 +44,15 @@ export function AssetAllocation() {
         
         <div className="flex-1 ml-6 space-y-3">
           {data.map((item) => (
-            <div key={item.name} className="flex items-center justify-between">
+            <div key={item.name} className="flex items-center justify-between p-2 rounded-lg bg-background/20 backdrop-blur-sm">
               <div className="flex items-center">
                 <div
-                  className="w-3 h-3 rounded-full mr-2"
+                  className="w-3 h-3 rounded-full mr-3 border border-background/20"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-sm text-muted-foreground">{item.name}</span>
+                <span className="text-sm text-muted-foreground text-readable-muted">{item.name}</span>
               </div>
-              <span className="text-sm font-medium text-foreground">
+              <span className="text-sm font-medium text-foreground text-readable">
                 {item.value}%
               </span>
             </div>

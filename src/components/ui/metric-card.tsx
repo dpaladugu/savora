@@ -35,30 +35,29 @@ export function MetricCard({
       whileTap={{ scale: 0.98 }}
       className={`
         relative overflow-hidden rounded-2xl p-6 cursor-pointer
-        bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl
-        border border-white/20 dark:border-slate-700/50
-        shadow-lg hover:shadow-xl transition-all duration-300
+        metric-card transition-all duration-300 hover:shadow-xl
       `}
       onClick={onClick}
     >
-      <div className={`absolute inset-0 opacity-10 ${gradient}`} />
+      {/* Subtle gradient overlay for visual appeal without compromising readability */}
+      <div className={`absolute inset-0 opacity-5 ${gradient}`} />
       
       <div className="relative z-10 flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl ${gradient} text-white`}>
+        <div className={`p-3 rounded-xl ${gradient} text-white shadow-lg`}>
           <Icon className="w-6 h-6" />
         </div>
         {change && (
-          <span className={`text-sm font-medium ${changeColors[changeType]}`}>
+          <span className={`text-sm font-medium ${changeColors[changeType]} px-2 py-1 rounded-lg bg-background/20 backdrop-blur-sm`}>
             {change}
           </span>
         )}
       </div>
       
       <div className="relative z-10">
-        <h3 className="text-sm font-medium text-muted-foreground mb-1">
+        <h3 className="text-sm font-medium text-muted-foreground mb-1 text-readable-muted">
           {title}
         </h3>
-        <p className="text-2xl font-bold text-foreground">
+        <p className="text-2xl font-bold text-foreground text-readable">
           {value}
         </p>
       </div>
