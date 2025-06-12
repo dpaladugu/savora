@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Target, Plus, Trash2, Edit } from "lucide-react";
@@ -59,7 +58,7 @@ export function GoalsManager() {
     name: '',
     targetAmount: '',
     endDate: '',
-    category: 'short-term' as const
+    category: 'short-term' as 'long-term' | 'short-term'
   });
   const { toast } = useToast();
 
