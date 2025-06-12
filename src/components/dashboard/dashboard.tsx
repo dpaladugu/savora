@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { DollarSign, TrendingUp, Target, Shield } from "lucide-react";
+import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "lucide-react";
 import { MetricCard } from "../ui/metric-card";
 import { ExpenseChart } from "./expense-chart";
 import { AssetAllocation } from "./asset-allocation";
@@ -22,8 +22,8 @@ export function Dashboard() {
       value: "₹45,600",
       change: "-12%",
       changeType: "negative" as const,
-      icon: TrendingUp,
-      gradient: "bg-gradient-green"
+      icon: Receipt,
+      gradient: "bg-gradient-orange"
     },
     {
       title: "Emergency Fund",
@@ -34,12 +34,31 @@ export function Dashboard() {
       gradient: "bg-gradient-purple"
     },
     {
-      title: "Goals",
+      title: "Goals Progress",
       value: "₹8,20,000",
       change: "12/15",
       changeType: "neutral" as const,
       icon: Target,
-      gradient: "bg-gradient-orange"
+      gradient: "bg-gradient-green"
+    }
+  ];
+
+  const additionalMetrics = [
+    {
+      title: "Investments",
+      value: "₹4,50,000",
+      change: "+15.2%",
+      changeType: "positive" as const,
+      icon: TrendingUp,
+      gradient: "bg-gradient-green"
+    },
+    {
+      title: "Credit Cards",
+      value: "₹12,500",
+      change: "Due in 5 days",
+      changeType: "neutral" as const,
+      icon: CreditCard,
+      gradient: "bg-gradient-blue"
     }
   ];
 
@@ -62,14 +81,28 @@ export function Dashboard() {
           </p>
         </motion.div>
 
-        {/* Metrics Grid with consistent spacing */}
-        <div className="grid grid-cols-2 gap-4 mb-8 px-2">
+        {/* Primary Metrics Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-6 px-2">
           {metrics.map((metric, index) => (
             <motion.div
               key={metric.title}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
+            >
+              <MetricCard {...metric} />
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Secondary Metrics */}
+        <div className="grid grid-cols-2 gap-4 mb-8 px-2">
+          {additionalMetrics.map((metric, index) => (
+            <motion.div
+              key={metric.title}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: (metrics.length + index) * 0.1 }}
             >
               <MetricCard {...metric} />
             </motion.div>

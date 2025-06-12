@@ -8,6 +8,7 @@ import { GoalsManager } from "@/components/goals/goals-manager";
 import { CSVUpload } from "@/components/csv/csv-upload";
 import { SettingsScreen } from "@/components/settings/settings-screen";
 import { TelegramPlaceholder } from "@/components/telegram/telegram-placeholder";
+import { ExpenseTracker } from "@/components/expenses/expense-tracker";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
@@ -36,6 +37,12 @@ const Index = () => {
     switch (activeTab) {
       case "dashboard":
         return <Dashboard />;
+      case "expenses":
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <ExpenseTracker />
+          </div>
+        );
       case "goals":
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
