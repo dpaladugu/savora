@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Home, Plus, Search, Settings } from "lucide-react";
+import { Home, Plus, Target, Settings, Upload, MessageCircle } from "lucide-react";
 
 interface MobileNavProps {
   activeTab: string;
@@ -10,14 +10,15 @@ interface MobileNavProps {
 export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
   const tabs = [
     { id: "dashboard", icon: Home, label: "Home" },
-    { id: "add", icon: Plus, label: "Add" },
-    { id: "search", icon: Search, label: "Search" },
+    { id: "goals", icon: Target, label: "Goals" },
+    { id: "upload", icon: Upload, label: "Upload" },
+    { id: "telegram", icon: MessageCircle, label: "Bot" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 nav-glass border-t border-border/50">
-      <div className="flex items-center justify-around h-20 px-4">
+      <div className="flex items-center justify-around h-20 px-2">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
           
@@ -41,7 +42,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
                 className={`w-6 h-6 mb-1 transition-colors duration-300 relative z-10 ${
                   isActive 
                     ? "text-primary" 
-                    : "text-foreground dark:text-foreground/90"
+                    : "text-foreground/80 dark:text-foreground/90"
                 }`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
@@ -49,7 +50,7 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
               <span className={`text-xs font-medium transition-colors duration-300 relative z-10 ${
                 isActive 
                   ? "text-primary" 
-                  : "text-foreground dark:text-foreground/90"
+                  : "text-foreground/80 dark:text-foreground/90"
               }`}>
                 {tab.label}
               </span>
