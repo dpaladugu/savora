@@ -183,8 +183,8 @@ export function GoalsManager() {
                     onChange={(e) => setNewGoal({ ...newGoal, category: e.target.value as 'long-term' | 'short-term' })}
                     className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
                   >
-                    <option value="short-term">Short-term (< 3 years)</option>
-                    <option value="long-term">Long-term (> 3 years)</option>
+                    <option value="short-term">Short-term (&lt; 3 years)</option>
+                    <option value="long-term">Long-term (&gt; 3 years)</option>
                   </select>
                 </div>
               </div>
