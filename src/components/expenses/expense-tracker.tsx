@@ -1,7 +1,6 @@
-
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Plus, Search, Filter, Receipt, Upload, Link as LinkIcon } from "lucide-react";
+import { Plus, Search, Filter, Receipt, Upload, Link as LinkIcon, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -23,6 +22,10 @@ export interface Expense {
   sourcePlatform?: string;
   recurring?: boolean;
   recurringFrequency?: 'Monthly' | 'Quarterly' | 'Yearly';
+  linkedVehicle?: string;
+  lineItems?: Array<{ id: string; title: string; amount: number; }>;
+  autoTagged?: boolean;
+  linkedAccount?: string;
 }
 
 const mockExpenses: Expense[] = [
@@ -53,10 +56,12 @@ const mockExpenses: Expense[] = [
     amount: 1200,
     date: '2024-01-13',
     category: 'Fuel',
-    tag: 'Petrol Pump',
+    tag: 'Shell Petrol Pump',
     paymentMode: 'Credit Card',
     note: 'Full tank',
-    linkedGoal: 'Vehicle Maintenance'
+    linkedGoal: 'Vehicle Maintenance',
+    linkedVehicle: '1',
+    autoTagged: true
   }
 ];
 
@@ -67,12 +72,39 @@ export function ExpenseTracker() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("");
   const [selectedPaymentMode, setSelectedPaymentMode] = useState<string>("");
+  const [recurringDetections, setRecurringDetections] = useState<string[]>(['2']); // Mock recurring detection
   const { toast } = useToast();
 
   const handleAddExpense = (newExpense: Omit<Expense, 'id'>) => {
+    // Auto-tagging logic (stub)
+    let autoTagged = false;
+    const autoTagRules: Record<string, string> = {
+      'shell': 'Fuel',
+      'tanishq': 'Jewelry',
+      'zomato': 'Food',
+      'swiggy': 'Food',
+      'uber': 'Travel'
+    };
+
+    const tagLower = newExpense.tag.toLowerCase();
+    for (const [pattern, category] of Object.entries(autoTagRules)) {
+      if (tagLower.includes(pattern)) {
+        autoTagged = true;
+        break;
+      }
+    }
+
+    // Check for recurring pattern (stub)
+    const similarExpenses = expenses.filter(exp => 
+      exp.tag.toLowerCase() === newExpense.tag.toLowerCase() &&
+      Math.abs(exp.amount - newExpense.amount) < 100
+    );
+
     const expense: Expense = {
       ...newExpense,
-      id: Date.now().toString()
+      id: Date.now().toString(),
+      autoTagged,
+      linkedAccount: getLinkedAccount(newExpense.paymentMode) // Stub account linking
     };
     
     setExpenses([expense, ...expenses]);
@@ -81,10 +113,43 @@ export function ExpenseTracker() {
     // TODO: Firebase integration - save to Firestore
     console.log('TODO: Save expense to Firestore:', expense);
     
+    // Show auto-tag notification
+    if (autoTagged) {
+      toast({
+        title: "Auto-tagged expense",
+        description: `Tagged as ${newExpense.category} based on merchant pattern`,
+      });
+    }
+
+    // Suggest recurring goal creation
+    if (similarExpenses.length >= 2) {
+      toast({
+        title: "Recurring pattern detected",
+        description: "Consider creating a recurring goal for this expense",
+        action: {
+          altText: "Create Goal",
+          onClick: () => console.log('TODO: Create recurring goal')
+        }
+      });
+    }
+    
     toast({
       title: "Expense added successfully",
       description: `₹${newExpense.amount} added to ${newExpense.category}`,
     });
+  };
+
+  const getLinkedAccount = (paymentMode: string): string => {
+    // Stub account linking
+    const accountMapping: Record<string, string> = {
+      'Credit Card': 'ICICI Credit Card',
+      'Debit Card': 'ICICI Savings',
+      'UPI': 'PhonePe',
+      'Net Banking': 'ICICI Savings',
+      'Wallet': 'Paytm Wallet',
+      'Cash': 'Cash in Hand'
+    };
+    return accountMapping[paymentMode] || 'Unknown Account';
   };
 
   const handleDeleteExpense = (id: string) => {
@@ -145,6 +210,33 @@ export function ExpenseTracker() {
         </div>
       </div>
 
+      {/* Smart Notifications */}
+      {recurringDetections.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <Card className="border-orange-200 bg-orange-50 dark:bg-orange-900/20 dark:border-orange-800">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-orange-600" />
+                <div className="flex-1">
+                  <h4 className="font-medium text-orange-800 dark:text-orange-200">
+                    Recurring Expenses Detected
+                  </h4>
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    We found {recurringDetections.length} expense(s) that might benefit from recurring goal setup
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" className="border-orange-300">
+                  Review
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="metric-card border-border/50">
@@ -204,7 +296,7 @@ export function ExpenseTracker() {
         </Card>
       </div>
 
-      {/* CSV Import Placeholder */}
+      {/* CSV Import Modal */}
       {showCSVImport && (
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -219,10 +311,16 @@ export function ExpenseTracker() {
                 <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold text-foreground mb-2">Upload CSV File</h3>
                 <p className="text-muted-foreground mb-4">
-                  Support for bank statements and expense tracking apps
+                  CSV upload coming soon – will support duplicate handling, auto-tagging, and account linking.
                 </p>
-                <Button className="bg-gradient-blue hover:opacity-90">
-                  Choose File
+                <div className="text-sm text-muted-foreground space-y-1">
+                  <p>• Automatic duplicate detection</p>
+                  <p>• Smart merchant tagging</p>
+                  <p>• Account balance updates</p>
+                  <p>• Vehicle expense linking</p>
+                </div>
+                <Button className="bg-gradient-blue hover:opacity-90 mt-4" disabled>
+                  Choose File (Coming Soon)
                 </Button>
               </div>
               <div className="mt-4 flex justify-end">

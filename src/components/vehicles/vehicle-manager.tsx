@@ -1,10 +1,11 @@
-
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Plus, Car, Search, Trash2, Edit, AlertTriangle } from "lucide-react";
+import { Plus, Car, Search, Trash2, Edit, AlertTriangle, Shield, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 export interface Vehicle {
@@ -39,10 +40,26 @@ const mockVehicles: Vehicle[] = [
   }
 ];
 
+// Mock data for related expenses and insurance
+const mockRelatedExpenses: Record<string, Array<{ id: string; amount: number; date: string; category: string; tag: string; }>> = {
+  '1': [
+    { id: 'e1', amount: 1200, date: '2024-01-13', category: 'Fuel', tag: 'Shell Petrol Pump' },
+    { id: 'e2', amount: 3500, date: '2024-01-05', category: 'Servicing', tag: 'Service Center' },
+    { id: 'e3', amount: 15000, date: '2023-12-15', category: 'Vehicle Insurance', tag: 'ICICI Lombard' }
+  ]
+};
+
+const mockInsurancePolicies: Record<string, Array<{ id: string; policyNumber: string; insurer: string; premium: number; expiryDate: string; }>> = {
+  '1': [
+    { id: 'i1', policyNumber: 'POL123456', insurer: 'ICICI Lombard', premium: 15000, expiryDate: '2024-03-14' }
+  ]
+};
+
 export function VehicleManager() {
   const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [expandedVehicle, setExpandedVehicle] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleAddVehicle = (newVehicle: Omit<Vehicle, 'id'>) => {
@@ -196,6 +213,56 @@ export function VehicleManager() {
                           {new Date(vehicle.insuranceExpiry).toLocaleDateString('en-IN')}
                         </span>
                       </div>
+                    </div>
+
+                    {/* Related Data Section */}
+                    <div className="mt-3">
+                      <Collapsible 
+                        open={expandedVehicle === vehicle.id}
+                        onOpenChange={(open) => setExpandedVehicle(open ? vehicle.id : null)}
+                      >
+                        <CollapsibleTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 p-2">
+                            <span className="text-xs text-muted-foreground">View Related Data</span>
+                            <ChevronDown className="w-3 h-3 ml-1" />
+                          </Button>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent className="mt-3 space-y-3">
+                          {/* Related Insurance */}
+                          {mockInsurancePolicies[vehicle.id] && (
+                            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Shield className="w-4 h-4 text-blue-600" />
+                                <span className="text-sm font-medium text-blue-800 dark:text-blue-200">Insurance Policies</span>
+                              </div>
+                              {mockInsurancePolicies[vehicle.id].map(policy => (
+                                <div key={policy.id} className="text-xs text-blue-700 dark:text-blue-300">
+                                  {policy.insurer} - ₹{policy.premium.toLocaleString()} 
+                                  (Expires: {new Date(policy.expiryDate).toLocaleDateString('en-IN')})
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Recent Expenses */}
+                          {mockRelatedExpenses[vehicle.id] && (
+                            <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Receipt className="w-4 h-4 text-green-600" />
+                                <span className="text-sm font-medium text-green-800 dark:text-green-200">Recent Expenses</span>
+                              </div>
+                              <div className="space-y-1">
+                                {mockRelatedExpenses[vehicle.id].slice(0, 3).map(expense => (
+                                  <div key={expense.id} className="text-xs text-green-700 dark:text-green-300 flex justify-between">
+                                    <span>{expense.tag}</span>
+                                    <span>₹{expense.amount.toLocaleString()}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
                     </div>
                   </div>
                   

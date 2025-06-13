@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Trash2, Edit } from "lucide-react";
+import { Trash2, Edit, Car, Tag, Link as LinkIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Expense } from "./expense-tracker";
@@ -9,6 +9,12 @@ interface ExpenseListProps {
   expenses: Expense[];
   onDelete: (id: string) => void;
 }
+
+// Mock vehicle data for display
+const mockVehicles: Record<string, { name: string; number: string }> = {
+  '1': { name: 'My Swift', number: 'TS09AB1234' },
+  '2': { name: 'Activa', number: 'TS10XY5678' }
+};
 
 export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
   const formatDate = (dateString: string) => {
@@ -27,6 +33,8 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
       'EMI': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
       'Shopping': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
       'Entertainment': 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+      'Servicing': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'Maintenance': 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
     };
     return colors[category] || 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
   };
@@ -51,6 +59,17 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(expense.category)}`}>
                       {expense.category}
                     </span>
+                    {expense.autoTagged && (
+                      <div className="flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                        <Tag className="w-3 h-3" />
+                        Auto-tagged
+                      </div>
+                    )}
+                    {expense.recurring && (
+                      <div className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                        Recurring
+                      </div>
+                    )}
                   </div>
                   
                   <div className="space-y-1">
@@ -61,13 +80,39 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                       <span>•</span>
                       <span>{formatDate(expense.date)}</span>
                     </div>
+
+                    {expense.linkedAccount && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Account:</span>
+                        <span className="font-medium">{expense.linkedAccount}</span>
+                      </div>
+                    )}
+
+                    {expense.linkedVehicle && mockVehicles[expense.linkedVehicle] && (
+                      <div className="flex items-center gap-2 text-xs text-primary">
+                        <Car className="w-3 h-3" />
+                        <span>{mockVehicles[expense.linkedVehicle].name} ({mockVehicles[expense.linkedVehicle].number})</span>
+                      </div>
+                    )}
                     
                     {expense.note && (
                       <p className="text-sm text-muted-foreground">{expense.note}</p>
                     )}
+
+                    {expense.lineItems && expense.lineItems.length > 0 && (
+                      <div className="text-xs text-muted-foreground">
+                        <span className="font-medium">Itemized:</span>
+                        <span className="ml-1">
+                          {expense.lineItems.map(item => item.title).join(', ')}
+                        </span>
+                      </div>
+                    )}
                     
                     {expense.linkedGoal && (
-                      <p className="text-xs text-primary">→ {expense.linkedGoal}</p>
+                      <div className="flex items-center gap-1 text-xs text-primary">
+                        <LinkIcon className="w-3 h-3" />
+                        <span>{expense.linkedGoal}</span>
+                      </div>
                     )}
                   </div>
                 </div>
