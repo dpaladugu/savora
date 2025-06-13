@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,9 @@ export interface Expense {
   linkedProperty?: string;
   linkedCreditCard?: string;
   linkedRecurringGoal?: string;
+  linkedAccount?: string;
+  autoTagged?: boolean;
+  recurring?: boolean;
   lineItems?: Array<{
     id: string;
     title: string;
