@@ -13,7 +13,10 @@ import {
   Car,
   Wallet,
   Target,
-  Repeat
+  Repeat,
+  Bell,
+  Lightbulb,
+  Upload
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -23,6 +26,20 @@ interface MoreScreenProps {
 
 export function MoreScreen({ onNavigate }: MoreScreenProps) {
   const modules = [
+    {
+      id: 'suggestions',
+      title: 'Suggestions',
+      description: 'Smart financial insights & tips',
+      icon: Lightbulb,
+      color: 'bg-gradient-green'
+    },
+    {
+      id: 'reminders',
+      title: 'Reminders',
+      description: 'Upcoming payments & due dates',
+      icon: Bell,
+      color: 'bg-gradient-orange'
+    },
     {
       id: 'income',
       title: 'Income Tracker',

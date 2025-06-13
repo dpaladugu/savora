@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -15,6 +16,11 @@ import { VehicleManager } from "@/components/vehicles/vehicle-manager";
 import { AccountManager } from "@/components/accounts/account-manager";
 import { RecurringGoals } from "@/components/goals/recurring-goals";
 import { MoreScreen } from "@/components/more/more-screen";
+import { CSVImports } from "@/components/imports/csv-imports";
+import { CreditCardTracker } from "@/components/credit-cards/credit-card-tracker";
+import { SimpleGoalsTracker } from "@/components/goals/simple-goals-tracker";
+import { SuggestionsEngine } from "@/components/suggestions/suggestions-engine";
+import { UpcomingPayments } from "@/components/reminders/upcoming-payments";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
@@ -54,6 +60,18 @@ const Index = () => {
     }
 
     switch (activeMoreModule) {
+      case 'suggestions':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <SuggestionsEngine />
+          </div>
+        );
+      case 'reminders':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <UpcomingPayments />
+          </div>
+        );
       case 'income':
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
@@ -63,7 +81,7 @@ const Index = () => {
       case 'credit-cards':
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-            <CreditCardManager />
+            <CreditCardTracker />
           </div>
         );
       case 'accounts':
@@ -127,21 +145,13 @@ const Index = () => {
       case "goals":
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-            <GoalsManager />
+            <SimpleGoalsTracker />
           </div>
         );
       case "upload":
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-            <div className="mb-8">
-              <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
-                Import Data
-              </h1>
-              <p className="text-muted-foreground text-lg font-medium">
-                Upload your expense data from CSV files
-              </p>
-            </div>
-            <CSVUpload onDataParsed={handleCSVDataParsed} />
+            <CSVImports />
           </div>
         );
       case "settings":

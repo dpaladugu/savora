@@ -6,42 +6,42 @@
 /* Enhanced Apple-inspired design system with improved accessibility */
 @layer base {
   :root {
-    /* Light mode - improved accessibility colors */
+    /* Light mode - improved accessibility colors with better contrast */
     --background: 255 255 255;
-    --foreground: 17 24 39;
+    --foreground: 15 23 42; /* Darker text for better contrast */
     --card: 255 255 255;
-    --card-foreground: 17 24 39;
+    --card-foreground: 15 23 42; /* Darker text for better contrast */
     --primary: 59 130 246;
     --primary-foreground: 255 255 255;
-    --secondary: 55 65 81;
+    --secondary: 71 85 105; /* Darker secondary */
     --secondary-foreground: 255 255 255;
-    --muted: 249 250 251;
-    --muted-foreground: 75 85 99;
-    --accent: 243 244 246;
-    --accent-foreground: 17 24 39;
+    --muted: 241 245 249; /* Lighter muted background */
+    --muted-foreground: 51 65 85; /* Much darker muted text */
+    --accent: 226 232 240; /* Lighter accent background */
+    --accent-foreground: 15 23 42; /* Darker accent text */
     --destructive: 239 68 68;
     --destructive-foreground: 255 255 255;
     --success: 34 197 94;
     --success-foreground: 255 255 255;
     --warning: 245 158 11;
     --warning-foreground: 255 255 255;
-    --border: 229 231 235;
-    --input: 249 250 251;
+    --border: 203 213 225; /* More visible borders */
+    --input: 248 250 252;
     --ring: 59 130 246;
     --radius: 0.75rem;
 
     /* Enhanced glassmorphism with better contrast */
     --glass-bg: rgba(255, 255, 255, 0.95);
-    --glass-border: rgba(107, 114, 128, 0.2);
+    --glass-border: rgba(71, 85, 105, 0.2);
     --glass-shadow: rgba(0, 0, 0, 0.1);
     
     /* Navigation colors with improved contrast */
     --nav-bg: rgba(255, 255, 255, 0.98);
-    --nav-border: rgba(107, 114, 128, 0.15);
+    --nav-border: rgba(71, 85, 105, 0.2);
   }
 
   .dark {
-    /* Dark mode - improved accessibility colors */
+    /* Dark mode - keep existing colors */
     --background: 15 23 42;
     --foreground: 248 250 252;
     --card: 30 41 59;
@@ -96,7 +96,7 @@
   .text-content { @apply font-normal leading-relaxed text-foreground; }
   .text-label { @apply font-medium text-foreground; }
   
-  /* Improved muted text contrast */
+  /* Improved muted text contrast - much darker in light mode */
   .text-muted { @apply text-muted-foreground; }
 }
 
