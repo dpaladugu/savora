@@ -57,14 +57,14 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
           Savora
         </motion.h1>
 
-        {/* Tagline */}
+        {/* Updated Tagline */}
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6, duration: 0.5 }}
           className="text-xl text-muted-foreground font-medium mb-8"
         >
-          Grow your money, your way.
+          Grow your money, mindfully.
         </motion.p>
 
         {/* Content */}

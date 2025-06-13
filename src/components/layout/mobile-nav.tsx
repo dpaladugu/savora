@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Home, Plus, Target, Settings, Upload, MessageCircle, Receipt } from "lucide-react";
+import { Home, Receipt, Target, Settings, MoreHorizontal } from "lucide-react";
 
 interface MobileNavProps {
   activeTab: string;
@@ -12,9 +12,8 @@ export function MobileNav({ activeTab, onTabChange }: MobileNavProps) {
     { id: "dashboard", icon: Home, label: "Home" },
     { id: "expenses", icon: Receipt, label: "Expenses" },
     { id: "goals", icon: Target, label: "Goals" },
-    { id: "upload", icon: Upload, label: "Upload" },
-    { id: "telegram", icon: MessageCircle, label: "Bot" },
     { id: "settings", icon: Settings, label: "Settings" },
+    { id: "more", icon: MoreHorizontal, label: "More" },
   ];
 
   return (

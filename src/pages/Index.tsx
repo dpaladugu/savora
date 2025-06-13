@@ -1,18 +1,22 @@
 
 import { useState, useEffect } from "react";
 import { Dashboard } from "@/components/dashboard/dashboard";
-import { AddExpense } from "@/components/expense/add-expense";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { GoalsManager } from "@/components/goals/goals-manager";
 import { CSVUpload } from "@/components/csv/csv-upload";
 import { SettingsScreen } from "@/components/settings/settings-screen";
-import { TelegramPlaceholder } from "@/components/telegram/telegram-placeholder";
 import { ExpenseTracker } from "@/components/expenses/expense-tracker";
+import { IncomeTracker } from "@/components/income/income-tracker";
+import { InsuranceTracker } from "@/components/insurance/insurance-tracker";
+import { GoldTracker } from "@/components/gold/gold-tracker";
+import { RentalTracker } from "@/components/rentals/rental-tracker";
+import { MoreScreen } from "@/components/more/more-screen";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeMoreModule, setActiveMoreModule] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -29,8 +33,58 @@ const Index = () => {
   };
 
   const handleCSVDataParsed = (data: any[]) => {
-    // TODO: Process parsed CSV data
-    console.log("CSV data parsed:", data);
+    // TODO: Firebase integration - process parsed CSV data
+    console.log("TODO: Process CSV data with Firebase:", data);
+  };
+
+  const handleMoreNavigation = (moduleId: string) => {
+    setActiveMoreModule(moduleId);
+  };
+
+  const handleBackToMore = () => {
+    setActiveMoreModule(null);
+  };
+
+  const renderMoreContent = () => {
+    if (!activeMoreModule) {
+      return <MoreScreen onNavigate={handleMoreNavigation} />;
+    }
+
+    switch (activeMoreModule) {
+      case 'income':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <IncomeTracker />
+          </div>
+        );
+      case 'insurance':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <InsuranceTracker />
+          </div>
+        );
+      case 'gold':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <GoldTracker />
+          </div>
+        );
+      case 'rentals':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <RentalTracker />
+          </div>
+        );
+      default:
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <div className="text-center py-12">
+              <h2 className="text-2xl font-bold text-foreground mb-4">Coming Soon</h2>
+              <p className="text-muted-foreground">This module is under development</p>
+            </div>
+          </div>
+        );
+    }
   };
 
   const renderContent = () => {
@@ -63,14 +117,21 @@ const Index = () => {
             <CSVUpload onDataParsed={handleCSVDataParsed} />
           </div>
         );
-      case "telegram":
-        return <TelegramPlaceholder />;
       case "settings":
         return <SettingsScreen />;
+      case "more":
+        return renderMoreContent();
       default:
         return <Dashboard />;
     }
   };
+
+  // Reset more module when switching away from more tab
+  useEffect(() => {
+    if (activeTab !== "more") {
+      setActiveMoreModule(null);
+    }
+  }, [activeTab]);
 
   return (
     <div className="relative">
