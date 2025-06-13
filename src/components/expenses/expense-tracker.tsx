@@ -126,10 +126,6 @@ export function ExpenseTracker() {
       toast({
         title: "Recurring pattern detected",
         description: "Consider creating a recurring goal for this expense",
-        action: {
-          altText: "Create Goal",
-          onClick: () => console.log('TODO: Create recurring goal')
-        }
       });
     }
     
