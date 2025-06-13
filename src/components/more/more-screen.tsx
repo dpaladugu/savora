@@ -1,6 +1,20 @@
 
 import { motion } from "framer-motion";
-import { Shield, Coins, Home, DollarSign, FileText, Calculator, PieChart, TrendingUp } from "lucide-react";
+import { 
+  Shield, 
+  Coins, 
+  Home, 
+  DollarSign, 
+  FileText, 
+  Calculator, 
+  PieChart, 
+  TrendingUp, 
+  CreditCard, 
+  Car,
+  Wallet,
+  Target,
+  Repeat
+} from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface MoreScreenProps {
@@ -17,11 +31,39 @@ export function MoreScreen({ onNavigate }: MoreScreenProps) {
       color: 'bg-gradient-green'
     },
     {
+      id: 'credit-cards',
+      title: 'Credit Cards',
+      description: 'Manage credit cards & limits',
+      icon: CreditCard,
+      color: 'bg-gradient-blue'
+    },
+    {
+      id: 'accounts',
+      title: 'Banks & Wallets',
+      description: 'Track accounts & balances',
+      icon: Wallet,
+      color: 'bg-gradient-purple'
+    },
+    {
+      id: 'vehicles',
+      title: 'Vehicle Manager',
+      description: 'Track vehicles & insurance',
+      icon: Car,
+      color: 'bg-gradient-orange'
+    },
+    {
       id: 'insurance',
       title: 'Insurance & EMI',
       description: 'Manage policies and loan EMIs',
       icon: Shield,
       color: 'bg-gradient-purple'
+    },
+    {
+      id: 'recurring-goals',
+      title: 'Recurring Goals',
+      description: 'Auto-generated payment goals',
+      icon: Repeat,
+      color: 'bg-gradient-green'
     },
     {
       id: 'gold',

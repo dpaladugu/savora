@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { MobileNav } from "@/components/layout/mobile-nav";
@@ -11,6 +10,10 @@ import { IncomeTracker } from "@/components/income/income-tracker";
 import { InsuranceTracker } from "@/components/insurance/insurance-tracker";
 import { GoldTracker } from "@/components/gold/gold-tracker";
 import { RentalTracker } from "@/components/rentals/rental-tracker";
+import { CreditCardManager } from "@/components/credit-cards/credit-card-manager";
+import { VehicleManager } from "@/components/vehicles/vehicle-manager";
+import { AccountManager } from "@/components/accounts/account-manager";
+import { RecurringGoals } from "@/components/goals/recurring-goals";
 import { MoreScreen } from "@/components/more/more-screen";
 import { AnimatePresence } from "framer-motion";
 
@@ -57,10 +60,34 @@ const Index = () => {
             <IncomeTracker />
           </div>
         );
+      case 'credit-cards':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <CreditCardManager />
+          </div>
+        );
+      case 'accounts':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <AccountManager />
+          </div>
+        );
+      case 'vehicles':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <VehicleManager />
+          </div>
+        );
       case 'insurance':
         return (
           <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
             <InsuranceTracker />
+          </div>
+        );
+      case 'recurring-goals':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+            <RecurringGoals />
           </div>
         );
       case 'gold':
