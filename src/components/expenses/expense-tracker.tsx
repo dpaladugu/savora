@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { AddExpenseForm } from "./add-expense-form";
 import { ExpenseList } from "./expense-list";
+import { CSVImportPreview } from "../csv/csv-import-preview";
 
 export interface Expense {
   id: string;
@@ -157,6 +158,29 @@ export function ExpenseTracker() {
     });
   };
 
+  const handleCSVImport = (data: any[]) => {
+    // Process CSV data and convert to expenses
+    const importedExpenses: Expense[] = data.map((row, index) => ({
+      id: `csv_${Date.now()}_${index}`,
+      amount: parseFloat(row.amount) || 0,
+      date: row.date || new Date().toISOString().split('T')[0],
+      category: row.category || 'Other',
+      tag: row.tag || row.notes || 'Imported',
+      paymentMode: (row.mode as Expense['paymentMode']) || 'UPI',
+      note: row.notes,
+      merchant: row.tag || 'CSV Import',
+      linkedAccount: getLinkedAccount(row.mode || 'UPI')
+    }));
+
+    setExpenses([...importedExpenses, ...expenses]);
+    setShowCSVImport(false);
+    
+    toast({
+      title: "CSV imported successfully",
+      description: `${importedExpenses.length} expenses imported`,
+    });
+  };
+
   const filteredExpenses = expenses.filter(expense => {
     const matchesSearch = expense.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
       expense.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -298,37 +322,10 @@ export function ExpenseTracker() {
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
         >
-          <Card className="metric-card border-border/50">
-            <CardHeader>
-              <CardTitle>Import Expenses from CSV</CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
-                <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">Upload CSV File</h3>
-                <p className="text-muted-foreground mb-4">
-                  CSV upload coming soon – will support duplicate handling, auto-tagging, and account linking.
-                </p>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <p>• Automatic duplicate detection</p>
-                  <p>• Smart merchant tagging</p>
-                  <p>• Account balance updates</p>
-                  <p>• Vehicle expense linking</p>
-                </div>
-                <Button className="bg-gradient-blue hover:opacity-90 mt-4" disabled>
-                  Choose File (Coming Soon)
-                </Button>
-              </div>
-              <div className="mt-4 flex justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowCSVImport(false)}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <CSVImportPreview
+            onImport={handleCSVImport}
+            onCancel={() => setShowCSVImport(false)}
+          />
         </motion.div>
       )}
 

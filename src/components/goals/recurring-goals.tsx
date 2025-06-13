@@ -1,4 +1,3 @@
-
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Plus, Target, AlertCircle, TrendingUp, Calendar } from "lucide-react";
@@ -75,6 +74,35 @@ export function RecurringGoals() {
     toast({
       title: "Recurring goal added",
       description: `${newGoal.name} has been set up`,
+    });
+  };
+
+  const handleCreateCluster = (clusterGoals: RecurringGoal[], sipAmount: number) => {
+    // Create a clustered goal
+    const clusteredGoal: RecurringGoal = {
+      id: Date.now().toString(),
+      name: `Clustered SIP (${clusterGoals.length} goals)`,
+      amount: sipAmount,
+      frequency: 'Monthly',
+      nextDueDate: clusterGoals[0].nextDueDate,
+      category: 'Other',
+      suggestedSIPType: clusterGoals[0].suggestedSIPType,
+      currentSavings: 0,
+      isGrouped: true,
+      groupId: `group_${Date.now()}`
+    };
+
+    // Mark original goals as grouped
+    const updatedGoals = goals.map(goal => {
+      const isInCluster = clusterGoals.some(cg => cg.id === goal.id);
+      return isInCluster ? { ...goal, isGrouped: true, groupId: clusteredGoal.groupId } : goal;
+    });
+
+    setGoals([clusteredGoal, ...updatedGoals]);
+    
+    toast({
+      title: "Clustered SIP created",
+      description: `₹${Math.round(sipAmount).toLocaleString()}/month SIP for ${clusterGoals.length} goals`,
     });
   };
 
@@ -158,6 +186,9 @@ export function RecurringGoals() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Goal Clustering */}
+      <GoalClustering goals={goals} onCreateCluster={handleCreateCluster} />
 
       {/* Urgent Goals Alert */}
       {urgentGoals.length > 0 && (
@@ -279,6 +310,70 @@ export function RecurringGoals() {
           </Button>
         </motion.div>
       )}
+    </div>
+  );
+}
+
+function GoalClustering({ goals, onCreateCluster }: {
+  goals: RecurringGoal[];
+  onCreateCluster: (clusterGoals: RecurringGoal[], sipAmount: number) => void;
+}) {
+  const [clusterGoals, setClusterGoals] = useState<RecurringGoal[]>([]);
+  const [sipAmount, setSipAmount] = useState(0);
+
+  const handleCluster = () => {
+    if (clusterGoals.length > 0) {
+      onCreateCluster(clusterGoals, sipAmount);
+    }
+  };
+
+  return (
+    <div className="mt-4">
+      <h3 className="text-lg font-semibold text-foreground mb-2">Goal Clustering</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 block">
+            Select Goals to Cluster
+          </label>
+          <div className="space-y-4">
+            {goals.map((goal, index) => (
+              <div key={goal.id} className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={clusterGoals.some(cg => cg.id === goal.id)}
+                  onChange={() => {
+                    if (clusterGoals.some(cg => cg.id === goal.id)) {
+                      setClusterGoals(clusterGoals.filter(cg => cg.id !== goal.id));
+                    } else {
+                      setClusterGoals([...clusterGoals, goal]);
+                    }
+                  }}
+                />
+                <span className="ml-2">{goal.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div>
+          <label className="text-sm font-medium text-foreground mb-2 block">
+            SIP Amount (₹)
+          </label>
+          <input
+            type="number"
+            value={sipAmount}
+            onChange={(e) => setSipAmount(parseFloat(e.target.value))}
+            placeholder="25000"
+            className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+          />
+        </div>
+      </div>
+      
+      <div className="flex gap-3 pt-4">
+        <Button onClick={handleCluster} className="flex-1">
+          Create Cluster
+        </Button>
+      </div>
     </div>
   );
 }
