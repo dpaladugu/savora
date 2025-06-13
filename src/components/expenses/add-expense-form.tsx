@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,9 +14,8 @@ const categories = [
   'Health', 'Travel', 'Education', 'Other'
 ];
 
-const paymentModes = [
-  'UPI', 'Credit Card', 'Debit Card', 'Bank Transfer', 
-  'Wallet', 'Cash', 'Net Banking'
+const paymentModes: Array<'UPI' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Net Banking' | 'Wallet'> = [
+  'UPI', 'Credit Card', 'Debit Card', 'Cash', 'Net Banking', 'Wallet'
 ];
 
 export function AddExpenseForm({ onSubmit, onCancel }: AddExpenseFormProps) {
@@ -26,7 +24,7 @@ export function AddExpenseForm({ onSubmit, onCancel }: AddExpenseFormProps) {
     date: new Date().toISOString().split('T')[0],
     category: 'Food',
     tag: '',
-    paymentMode: 'UPI',
+    paymentMode: 'UPI' as const,
     note: '',
     linkedGoal: '',
     merchant: ''
@@ -119,7 +117,7 @@ export function AddExpenseForm({ onSubmit, onCancel }: AddExpenseFormProps) {
               </label>
               <select
                 value={formData.paymentMode}
-                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value as typeof formData.paymentMode })}
                 className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
                 required
               >
