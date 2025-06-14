@@ -67,7 +67,7 @@ export function Dashboard() {
       <DarkModeToggle />
       
       <div className="pt-12 px-4">
-        {/* Header with improved typography and contrast */}
+        {/* Header with Savora branding */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -77,7 +77,7 @@ export function Dashboard() {
             Good morning! 👋
           </h1>
           <p className="text-muted-foreground text-lg font-medium">
-            Here's your financial overview
+            Welcome to Savora - Your financial overview
           </p>
         </motion.div>
 

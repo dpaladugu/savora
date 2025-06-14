@@ -21,20 +21,25 @@ import { CreditCardTracker } from "@/components/credit-cards/credit-card-tracker
 import { SimpleGoalsTracker } from "@/components/goals/simple-goals-tracker";
 import { SuggestionsEngine } from "@/components/suggestions/suggestions-engine";
 import { UpcomingPayments } from "@/components/reminders/upcoming-payments";
+import { AuthScreen } from "@/components/auth/auth-screen";
+import { useAuth } from "@/contexts/auth-context";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
+  const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeMoreModule, setActiveMoreModule] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
-    // Check if user has seen welcome screen before
-    const hasSeenWelcome = localStorage.getItem("savora-welcome-seen");
-    if (!hasSeenWelcome) {
-      setShowWelcome(true);
+    if (user) {
+      // Check if user has seen welcome screen before
+      const hasSeenWelcome = localStorage.getItem("savora-welcome-seen");
+      if (!hasSeenWelcome) {
+        setShowWelcome(true);
+      }
     }
-  }, []);
+  }, [user]);
 
   const handleWelcomeComplete = () => {
     localStorage.setItem("savora-welcome-seen", "true");
@@ -53,6 +58,23 @@ const Index = () => {
   const handleBackToMore = () => {
     setActiveMoreModule(null);
   };
+
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading Savora...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth screen if not authenticated
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   const renderMoreContent = () => {
     if (!activeMoreModule) {
