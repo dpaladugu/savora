@@ -1,43 +1,91 @@
-
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "lucide-react";
 import { MetricCard } from "../ui/metric-card";
 import { ExpenseChart } from "./expense-chart";
 import { AssetAllocation } from "./asset-allocation";
-import { DarkModeToggle } from "../ui/dark-mode-toggle";
+import { GlobalHeader } from "../layout/global-header";
+import { FirestoreService } from "@/services/firestore";
+import { useAuth } from "@/contexts/auth-context";
 
 export function Dashboard() {
-  // Mock data - will be replaced with real data later
+  const { user } = useAuth();
+  const [dashboardData, setDashboardData] = useState({
+    totalExpenses: 0,
+    monthlyExpenses: 0,
+    totalInvestments: 0,
+    expenseCount: 0,
+    investmentCount: 0
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
+
+  const loadDashboardData = async () => {
+    if (!user) return;
+    
+    try {
+      const [expenses, investments] = await Promise.all([
+        FirestoreService.getExpenses(user.uid),
+        FirestoreService.getInvestments(user.uid)
+      ]);
+      
+      const currentMonth = new Date().toISOString().substring(0, 7);
+      const monthlyExpenses = expenses
+        .filter(expense => expense.date.startsWith(currentMonth))
+        .reduce((sum, expense) => sum + expense.amount, 0);
+      
+      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+      const totalInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
+      
+      setDashboardData({
+        totalExpenses,
+        monthlyExpenses,
+        totalInvestments,
+        expenseCount: expenses.length,
+        investmentCount: investments.length
+      });
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const metrics = [
     {
       title: "Net Worth",
-      value: "₹12,45,000",
-      change: "+8.2%",
-      changeType: "positive" as const,
+      value: loading ? "Loading..." : `₹${(dashboardData.totalInvestments - dashboardData.totalExpenses).toLocaleString()}`,
+      change: dashboardData.totalInvestments > dashboardData.totalExpenses ? "+8.2%" : "-2.1%",
+      changeType: dashboardData.totalInvestments > dashboardData.totalExpenses ? "positive" as const : "negative" as const,
       icon: DollarSign,
       gradient: "bg-gradient-blue"
     },
     {
       title: "This Month",
-      value: "₹45,600",
-      change: "-12%",
-      changeType: "negative" as const,
+      value: loading ? "Loading..." : `₹${dashboardData.monthlyExpenses.toLocaleString()}`,
+      change: `${dashboardData.expenseCount} transactions`,
+      changeType: "neutral" as const,
       icon: Receipt,
       gradient: "bg-gradient-orange"
     },
     {
       title: "Emergency Fund",
-      value: "₹2,50,000",
-      change: "85%",
+      value: loading ? "Loading..." : `₹${Math.min(dashboardData.totalInvestments * 0.3, 250000).toLocaleString()}`,
+      change: "Target: ₹3,00,000",
       changeType: "positive" as const,
       icon: Shield,
       gradient: "bg-gradient-purple"
     },
     {
-      title: "Goals Progress",
-      value: "₹8,20,000",
-      change: "12/15",
-      changeType: "neutral" as const,
+      title: "Investments",
+      value: loading ? "Loading..." : `₹${dashboardData.totalInvestments.toLocaleString()}`,
+      change: `${dashboardData.investmentCount} transactions`,
+      changeType: "positive" as const,
       icon: Target,
       gradient: "bg-gradient-green"
     }
@@ -45,10 +93,10 @@ export function Dashboard() {
 
   const additionalMetrics = [
     {
-      title: "Investments",
-      value: "₹4,50,000",
-      change: "+15.2%",
-      changeType: "positive" as const,
+      title: "Total Expenses",
+      value: loading ? "Loading..." : `₹${dashboardData.totalExpenses.toLocaleString()}`,
+      change: "All time",
+      changeType: "neutral" as const,
       icon: TrendingUp,
       gradient: "bg-gradient-green"
     },
@@ -64,18 +112,14 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-all duration-300 overflow-auto">
-      <DarkModeToggle />
+      <GlobalHeader title="Good morning! 👋" />
       
-      <div className="pt-12 px-4">
-        {/* Header with Savora branding */}
+      <div className="pt-20 px-4">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 px-2"
         >
-          <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
-            Good morning! 👋
-          </h1>
           <p className="text-muted-foreground text-lg font-medium">
             Welcome to Savora - Your financial overview
           </p>

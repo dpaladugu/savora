@@ -1,33 +1,16 @@
 
 import { Moon, Sun } from "lucide-react";
 import { Button } from "./button";
-import { useEffect, useState } from "react";
+import { useTheme } from "@/contexts/theme-context";
 
 export function DarkModeToggle() {
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    // Check localStorage and system preference on mount
-    const stored = localStorage.getItem('darkMode');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = stored ? stored === 'true' : systemPrefersDark;
-    
-    setIsDark(shouldBeDark);
-    document.documentElement.classList.toggle('dark', shouldBeDark);
-  }, []);
-
-  const toggleDarkMode = () => {
-    const newDarkMode = !isDark;
-    setIsDark(newDarkMode);
-    localStorage.setItem('darkMode', newDarkMode.toString());
-    document.documentElement.classList.toggle('dark', newDarkMode);
-  };
+  const { isDark, toggleTheme } = useTheme();
 
   return (
     <Button
       variant="outline"
       size="sm"
-      onClick={toggleDarkMode}
+      onClick={toggleTheme}
       className="fixed top-4 right-4 z-50 bg-background/95 backdrop-blur-sm border-border hover:bg-accent transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background min-h-[48px] min-w-[48px]"
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
     >
