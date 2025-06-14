@@ -3,10 +3,12 @@ import { SuggestionsEngine } from "@/components/suggestions/suggestions-engine";
 import { UpcomingPayments } from "@/components/reminders/upcoming-payments";
 import { IncomeTracker } from "@/components/income/income-tracker";
 import { CreditCardTracker } from "@/components/credit-cards/credit-card-tracker";
+import { CreditCardStatements } from "@/components/credit-cards/credit-card-statements";
 import { AccountManager } from "@/components/accounts/account-manager";
 import { VehicleManager } from "@/components/vehicles/vehicle-manager";
 import { InsuranceTracker } from "@/components/insurance/insurance-tracker";
 import { RecurringGoals } from "@/components/goals/recurring-goals";
+import { EmergencyFundCalculator } from "@/components/goals/emergency-fund-calculator";
 import { GoldTracker } from "@/components/gold/gold-tracker";
 import { RentalTracker } from "@/components/rentals/rental-tracker";
 
@@ -30,7 +32,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'income':
         return <IncomeTracker />;
       case 'credit-cards':
-        return <CreditCardTracker />;
+        return <CreditCardStatements />;
       case 'accounts':
         return <AccountManager />;
       case 'vehicles':
@@ -39,6 +41,8 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <InsuranceTracker />;
       case 'recurring-goals':
         return <RecurringGoals />;
+      case 'emergency-fund':
+        return <EmergencyFundCalculator />;
       case 'gold':
         return <GoldTracker />;
       case 'rentals':

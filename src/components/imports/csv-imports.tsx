@@ -26,6 +26,15 @@ export function CSVImports() {
       sampleFormat: 'Date, Amount, Category, Payment Method, Description, Tags'
     },
     {
+      id: 'credit-cards',
+      title: 'Credit Card Statements',
+      description: 'Import credit card transaction statements',
+      icon: CreditCard,
+      color: 'bg-gradient-to-r from-orange-500 to-orange-600',
+      fields: ['Date', 'Description', 'Amount', 'Type'],
+      sampleFormat: 'Date, Description, Amount, Transaction Type'
+    },
+    {
       id: 'kuvera-mf',
       title: 'Kuvera Mutual Funds',
       description: 'Import mutual fund investments from Kuvera',
@@ -42,15 +51,6 @@ export function CSVImports() {
       color: 'bg-gradient-to-r from-purple-500 to-purple-600',
       fields: ['Tier', 'Contribution', 'Employer Share', 'Interest', 'Date'],
       sampleFormat: 'Date, Tier, Contribution, Employer Share, Interest, Balance'
-    },
-    {
-      id: 'credit-cards',
-      title: 'Credit Cards List',
-      description: 'Import credit card details and limits',
-      icon: CreditCard,
-      color: 'bg-gradient-to-r from-orange-500 to-orange-600',
-      fields: ['Bank', 'Card Name', 'Last 4 Digits', 'Credit Limit', 'Due Date'],
-      sampleFormat: 'Bank, Card Name, Last 4 Digits, Credit Limit, Annual Fee, Due Date'
     }
   ];
 
@@ -88,6 +88,40 @@ export function CSVImports() {
         toast({
           title: "Success",
           description: `Imported ${expenses.length} expenses successfully!`,
+        });
+        
+        setUploadStatus(prev => ({ ...prev, [importType]: 'success' }));
+        
+      } else if (importType === 'credit-cards') {
+        const creditCardTransactions = CSVParser.parseCreditCardStatement(text);
+        
+        if (creditCardTransactions.length === 0) {
+          throw new Error('No valid credit card transactions found in CSV');
+        }
+        
+        // Convert credit card transactions to expenses format for now
+        const expenseFormat = creditCardTransactions
+          .filter(tx => tx.type === 'debit') // Only debits are expenses
+          .map(tx => ({
+            userId: user.uid,
+            date: tx.date,
+            amount: tx.amount,
+            category: tx.category,
+            paymentMode: 'Credit Card',
+            description: `${tx.merchant} - ${tx.description}`,
+            tags: `Credit Card - ${tx.merchant}`,
+            account: `Card ending ${tx.cardLastFour}`,
+            source: 'csv' as const,
+            createdAt: new Date().toISOString()
+          }));
+        
+        if (expenseFormat.length > 0) {
+          await FirestoreService.addExpenses(expenseFormat);
+        }
+        
+        toast({
+          title: "Success",
+          description: `Imported ${creditCardTransactions.length} credit card transactions (${expenseFormat.length} expenses)!`,
         });
         
         setUploadStatus(prev => ({ ...prev, [importType]: 'success' }));

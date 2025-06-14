@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "lucide-react";
@@ -120,7 +121,7 @@ export function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
           className="mb-8 px-2"
         >
-          <p className="text-muted-foreground text-lg font-medium">
+          <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">
             Welcome to Savora - Your financial overview
           </p>
         </motion.div>
