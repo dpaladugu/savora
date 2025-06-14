@@ -26,11 +26,13 @@ import { useAuth } from "@/contexts/auth-context";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
+  // Always call hooks at the top level in the same order
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState("dashboard");
   const [activeMoreModule, setActiveMoreModule] = useState<string | null>(null);
   const [showWelcome, setShowWelcome] = useState(false);
 
+  // All useEffect hooks should be called unconditionally
   useEffect(() => {
     if (user) {
       // Check if user has seen welcome screen before
@@ -40,6 +42,13 @@ const Index = () => {
       }
     }
   }, [user]);
+
+  // Reset more module when switching away from more tab
+  useEffect(() => {
+    if (activeTab !== "more") {
+      setActiveMoreModule(null);
+    }
+  }, [activeTab]);
 
   const handleWelcomeComplete = () => {
     localStorage.setItem("savora-welcome-seen", "true");
@@ -58,23 +67,6 @@ const Index = () => {
   const handleBackToMore = () => {
     setActiveMoreModule(null);
   };
-
-  // Show loading spinner while checking auth
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading Savora...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show auth screen if not authenticated
-  if (!user) {
-    return <AuthScreen />;
-  }
 
   const renderMoreContent = () => {
     if (!activeMoreModule) {
@@ -185,12 +177,22 @@ const Index = () => {
     }
   };
 
-  // Reset more module when switching away from more tab
-  useEffect(() => {
-    if (activeTab !== "more") {
-      setActiveMoreModule(null);
-    }
-  }, [activeTab]);
+  // Show loading spinner while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading Savora...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show auth screen if not authenticated
+  if (!user) {
+    return <AuthScreen />;
+  }
 
   return (
     <div className="relative">
