@@ -1,6 +1,6 @@
 import { Logger } from "./logger";
 import React from "react";
-import { ToastActionElement } from "@/components/ui/toast";
+import { ToastActionElement, ToastAction } from "@/components/ui/toast";
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -59,14 +59,9 @@ export class EnhancedNotificationService {
   }
 
   private static createActionButton(action: { label: string; onClick: () => void }): ToastActionElement {
-    return React.createElement(
-      'button',
-      {
-        onClick: action.onClick,
-        className: 'text-sm underline hover:no-underline'
-      },
-      action.label
-    ) as ToastActionElement;
+    return React.createElement(ToastAction, {
+      onClick: action.onClick,
+    }, action.label);
   }
 
   static success(options: NotificationOptions) {
