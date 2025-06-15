@@ -72,8 +72,8 @@ export function RecommendationsEngine() {
         });
       }
 
-      // Credit Card Utilization Warning
-      const creditCardExpenses = expenses.filter(exp => exp.paymentMode === 'Credit Card');
+      // Credit Card Utilization Warning - Fixed property name
+      const creditCardExpenses = expenses.filter(exp => exp.paymentMethod === 'Credit Card');
       const thisMonthCCExpenses = creditCardExpenses
         .filter(exp => exp.date.startsWith(currentMonth))
         .reduce((sum, exp) => sum + exp.amount, 0);
