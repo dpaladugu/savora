@@ -4,13 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Filter } from "lucide-react";
-import { AddExpenseForm } from "@/components/forms/add-expense-form";
+import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { ExpenseList } from "./expense-list";
 import { ExpenseManager } from "@/services/expense-manager";
 import { useAuth } from "@/contexts/auth-context";
-import { NotificationService } from "@/services/notification-service";
-import { DataValidator } from "@/services/data-validator";
+import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
+import { EnhancedDataValidator } from "@/services/enhanced-data-validator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<any[]>([]);
@@ -19,6 +21,10 @@ export function ExpenseTracker() {
   const [filterCategory, setFilterCategory] = useState("All");
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
+  const { toast } = useToast();
+
+  // Initialize notification service
+  EnhancedNotificationService.setToastFunction(toast);
 
   const loadExpenses = async () => {
     if (!user) return;
@@ -28,10 +34,7 @@ export function ExpenseTracker() {
       const data = await ExpenseManager.getExpenses(user.uid);
       setExpenses(data);
     } catch (error) {
-      NotificationService.error({
-        title: "Failed to load expenses",
-        description: "Please try again"
-      });
+      EnhancedNotificationService.dataLoadError();
     } finally {
       setLoading(false);
     }
@@ -43,25 +46,30 @@ export function ExpenseTracker() {
     try {
       await ExpenseManager.deleteExpense(user.uid, expenseId);
       await loadExpenses();
-      NotificationService.success({
-        title: "Expense deleted successfully"
-      });
+      EnhancedNotificationService.expenseDeleted();
     } catch (error) {
-      NotificationService.error({
+      EnhancedNotificationService.error({
         title: "Failed to delete expense",
         description: "Please try again"
       });
     }
   };
 
+  const handleAddExpense = async (expenseData: any) => {
+    if (!user) return;
+    
+    try {
+      await ExpenseManager.addExpense(user.uid, expenseData);
+      await loadExpenses();
+      setShowAddForm(false);
+    } catch (error) {
+      throw error; // Let the form handle the error
+    }
+  };
+
   useEffect(() => {
     loadExpenses();
   }, [user]);
-
-  const handleAddExpense = async () => {
-    setShowAddForm(false);
-    await loadExpenses();
-  };
 
   const categories = ["All", ...ExpenseManager.getPopularCategories()];
 
@@ -78,8 +86,8 @@ export function ExpenseTracker() {
   if (showAddForm) {
     return (
       <div className="space-y-4">
-        <AddExpenseForm
-          onSuccess={handleAddExpense}
+        <EnhancedAddExpenseForm
+          onSubmit={handleAddExpense}
           onCancel={() => setShowAddForm(false)}
         />
       </div>
@@ -87,72 +95,69 @@ export function ExpenseTracker() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Summary Card */}
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-foreground">
-                {DataValidator.formatCurrency(totalExpenses)}
-              </h2>
-              <p className="text-muted-foreground">Total Expenses ({filteredExpenses.length} transactions)</p>
+    <EnhancedLoadingWrapper 
+      loading={loading} 
+      loadingText="Loading expenses..."
+      onRetry={loadExpenses}
+    >
+      <div className="space-y-6">
+        {/* Summary Card */}
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-foreground">
+                  {EnhancedDataValidator.formatCurrency(totalExpenses)}
+                </h2>
+                <p className="text-muted-foreground">Total Expenses ({filteredExpenses.length} transactions)</p>
+              </div>
+              <Button onClick={() => setShowAddForm(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Add Expense
+              </Button>
             </div>
-            <Button onClick={() => setShowAddForm(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Expense
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Expense History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="text-center py-8">
-              <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading expenses...</p>
-            </div>
-          ) : (
-            <>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <div className="flex-1">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-                    <Input
-                      placeholder="Search expenses..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map(cat => (
-                        <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* Filters */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Expense History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex-1">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                  <Input
+                    placeholder="Search expenses..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
               </div>
+              <div className="flex gap-2">
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map(cat => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
 
-              <ExpenseList 
-                expenses={filteredExpenses}
-                onDelete={handleDeleteExpense}
-              />
-            </>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+            <ExpenseList 
+              expenses={filteredExpenses}
+              onDelete={handleDeleteExpense}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    </EnhancedLoadingWrapper>
   );
 }
