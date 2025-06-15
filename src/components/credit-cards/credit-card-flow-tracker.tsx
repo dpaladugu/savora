@@ -86,18 +86,19 @@ export function CreditCardFlowTracker() {
     
     return cardExpenses
       .filter(expense => expense.date.startsWith(currentMonth))
-      .reduce((sum, expense) => sum + expense.amount, 0);
+      .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   };
 
   const getCategoryBreakdown = (cardId: string) => {
     const cardExpenses = getCardExpenses(cardId);
     const categories = cardExpenses.reduce((acc, expense) => {
-      acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+      const amount = Number(expense.amount || 0);
+      acc[expense.category] = (acc[expense.category] || 0) + amount;
       return acc;
     }, {} as Record<string, number>);
     
     return Object.entries(categories)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([,a], [,b]) => Number(b) - Number(a))
       .slice(0, 5);
   };
 
@@ -224,7 +225,7 @@ export function CreditCardFlowTracker() {
                           {categoryBreakdown.map(([category, amount]) => (
                             <div key={category} className="flex justify-between text-sm">
                               <span className="text-muted-foreground">{category}</span>
-                              <span className="font-medium text-foreground">₹{amount.toLocaleString()}</span>
+                              <span className="font-medium text-foreground">₹{Number(amount).toLocaleString()}</span>
                             </div>
                           ))}
                         </div>
