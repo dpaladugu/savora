@@ -64,10 +64,10 @@ export function useDashboardData() {
       const currentMonth = new Date().toISOString().substring(0, 7);
       const monthlyExpenses = expenses
         .filter(expense => expense.date.startsWith(currentMonth))
-        .reduce((sum, expense) => sum + expense.amount, 0);
+        .reduce((sum: number, expense) => sum + expense.amount, 0);
       
-      const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-      const totalInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
+      const totalExpenses = expenses.reduce((sum: number, expense) => sum + expense.amount, 0);
+      const totalInvestments = investments.reduce((sum: number, investment) => sum + investment.amount, 0);
       
       // Calculate emergency fund requirements from actual data
       const sixMonthsAgo = new Date();
@@ -80,7 +80,7 @@ export function useDashboardData() {
       );
       
       const avgMonthlyExpenses = recentExpenses.length > 0 
-        ? recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6
+        ? recentExpenses.reduce((sum: number, expense) => sum + expense.amount, 0) / 6
         : monthlyExpenses;
       
       // Include insurance premiums and EMIs in emergency fund calculation

@@ -93,7 +93,7 @@ export function useEnhancedExpenseValidation() {
         const newErrors: ValidationErrors = {};
         error.errors.forEach(err => {
           if (err.path.length > 0) {
-            newErrors[err.path[0]] = err.message;
+            newErrors[err.path[0] as string] = err.message;
           }
         });
         setErrors(newErrors);

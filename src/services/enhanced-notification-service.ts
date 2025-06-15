@@ -1,6 +1,5 @@
 import { Logger } from "./logger";
 import React from "react";
-import { ToastActionElement, ToastAction } from "@/components/ui/toast";
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -20,7 +19,7 @@ export interface ToastFunction {
     description?: string;
     variant?: 'default' | 'destructive';
     duration?: number;
-    action?: ToastActionElement;
+    action?: React.ReactElement;
   }): void;
 }
 
@@ -58,11 +57,11 @@ export class EnhancedNotificationService {
     Logger.warn('Toast function not available, notification queued:', notification.title);
   }
 
-  private static createActionButton(action: { label: string; onClick: () => void }): ToastActionElement {
-    return React.createElement(ToastAction, {
-      altText: action.label,
-      onClick: action.onClick
-    }, action.label) as unknown as ToastActionElement;
+  private static createActionButton(action: { label: string; onClick: () => void }): React.ReactElement {
+    return React.createElement('button', {
+      onClick: action.onClick,
+      className: "inline-flex h-8 shrink-0 items-center justify-center rounded-md border bg-transparent px-3 text-sm font-medium ring-offset-background transition-colors hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50"
+    }, action.label);
   }
 
   static success(options: NotificationOptions) {
