@@ -98,10 +98,10 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))
-      .reduce((sum: number, expense) => sum + (expense.amount || 0), 0);
+      .reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
-    const totalExpenses = expenses.reduce((sum: number, expense) => sum + (expense.amount || 0), 0);
-    const totalInvestments = investments.reduce((sum: number, investment) => sum + (investment.amount || 0), 0);
+    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    const totalInvestments = investments.reduce((sum, investment) => sum + (investment.amount || 0), 0);
 
     // Calculate emergency fund
     const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback
