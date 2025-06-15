@@ -1,5 +1,6 @@
 import { Logger } from "./logger";
 import React from "react";
+import { ToastActionElement } from "@/components/ui/toast";
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -19,7 +20,7 @@ export interface ToastFunction {
     description?: string;
     variant?: 'default' | 'destructive';
     duration?: number;
-    action?: React.ReactNode;
+    action?: ToastActionElement;
   }): void;
 }
 
@@ -57,7 +58,7 @@ export class EnhancedNotificationService {
     Logger.warn('Toast function not available, notification queued:', notification.title);
   }
 
-  private static createActionButton(action: { label: string; onClick: () => void }): React.ReactElement {
+  private static createActionButton(action: { label: string; onClick: () => void }): ToastActionElement {
     return React.createElement(
       'button',
       {
@@ -65,7 +66,7 @@ export class EnhancedNotificationService {
         className: 'text-sm underline hover:no-underline'
       },
       action.label
-    );
+    ) as ToastActionElement;
   }
 
   static success(options: NotificationOptions) {
@@ -132,7 +133,6 @@ export class EnhancedNotificationService {
     }
   }
 
-  // Predefined common notifications with better error handling
   static expenseAdded() {
     this.success({
       title: "Expense Added",
@@ -231,7 +231,6 @@ export class EnhancedNotificationService {
     });
   }
 
-  // Utility method to check if notifications are working
   static testNotification() {
     this.info({
       title: "Test Notification",

@@ -1,4 +1,3 @@
-
 import { z } from "zod";
 import { Logger } from "./logger";
 
@@ -109,7 +108,8 @@ export class ComprehensiveDataValidator {
 
   static isValidDate(dateString: string): boolean {
     const date = new Date(dateString);
-    return !isNaN(date.getTime()) && dateString.match(/^\d{4}-\d{2}-\d{2}$/);
+    const matchesFormat = /^\d{4}-\d{2}-\d{2}$/.test(dateString);
+    return !isNaN(date.getTime()) && matchesFormat;
   }
 
   static isValidAmount(amount: unknown): boolean {

@@ -29,7 +29,7 @@ export class CriticalErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    Logger.error('Critical error boundary caught an error:', error, errorInfo);
+    Logger.error('Critical error boundary caught an error:', { error, errorInfo });
     this.setState({ errorInfo });
     this.props.onError?.(error, errorInfo);
   }
