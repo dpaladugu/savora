@@ -79,11 +79,11 @@ export const PersistentNavigation = memo(function PersistentNavigation({
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 nav-glass border-t border-border/50"
+      className="fixed bottom-0 left-0 right-0 z-50 enhanced-nav-glass border-t border-border/30"
       role="navigation" 
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around py-3 px-4 max-w-md mx-auto">
+      <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
         {mainTabs.map((tab) => (
           <AccessibleButton
             key={tab.id}
@@ -91,10 +91,10 @@ export const PersistentNavigation = memo(function PersistentNavigation({
             size="sm"
             onClick={() => handleTabClick(tab.id)}
             ariaLabel={tab.ariaLabel}
-            className={`flex flex-col items-center gap-1 h-14 px-3 rounded-xl transition-all duration-300 min-w-[60px] ${
+            className={`flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
               isActiveTab(tab.id)
-                ? "text-primary bg-primary/15 border border-primary/25"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
             }`}
           >
             <tab.icon 
@@ -115,10 +115,10 @@ export const PersistentNavigation = memo(function PersistentNavigation({
               size="sm"
               onClick={handleMoreClick}
               ariaLabel="Open more options menu"
-              className={`flex flex-col items-center gap-1 h-14 px-3 rounded-xl transition-all duration-300 min-w-[60px] ${
+              className={`flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
                 activeTab === "more" && !activeMoreModule
-                  ? "text-primary bg-primary/15 border border-primary/25"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                  ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
               }`}
             >
               <MoreHorizontal 
@@ -133,7 +133,7 @@ export const PersistentNavigation = memo(function PersistentNavigation({
           </SheetTrigger>
           <SheetContent 
             side="bottom" 
-            className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-sm border-t"
+            className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-t border-border/50"
             onInteractOutside={handleMoreSheetClose}
           >
             <SheetHeader className="pb-4">

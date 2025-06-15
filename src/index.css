@@ -36,9 +36,14 @@
     --glass-shadow: rgba(0, 0, 0, 0.08);
     
     /* Navigation colors with enhanced glass effect */
-    --nav-bg: rgba(255, 255, 255, 0.85);
-    --nav-border: rgba(71, 85, 105, 0.2);
-    --nav-shadow: rgba(0, 0, 0, 0.1);
+    --nav-bg: rgba(255, 255, 255, 0.80);
+    --nav-border: rgba(71, 85, 105, 0.20);
+    --nav-shadow: rgba(0, 0, 0, 0.12);
+
+    /* Enhanced navigation glass effect */
+    --enhanced-nav-bg: rgba(255, 255, 255, 0.75);
+    --enhanced-nav-border: rgba(71, 85, 105, 0.25);
+    --enhanced-nav-shadow: rgba(0, 0, 0, 0.15);
 
     /* Semantic surface tokens */
     --surface: 255 255 255;
@@ -74,9 +79,14 @@
     --glass-shadow: rgba(0, 0, 0, 0.3);
     
     /* Navigation colors for dark with enhanced glass */
-    --nav-bg: rgba(30, 41, 59, 0.85);
-    --nav-border: rgba(156, 163, 175, 0.2);
-    --nav-shadow: rgba(0, 0, 0, 0.4);
+    --nav-bg: rgba(30, 41, 59, 0.80);
+    --nav-border: rgba(156, 163, 175, 0.20);
+    --nav-shadow: rgba(0, 0, 0, 0.40);
+
+    /* Enhanced navigation glass effect for dark */
+    --enhanced-nav-bg: rgba(30, 41, 59, 0.75);
+    --enhanced-nav-border: rgba(156, 163, 175, 0.25);
+    --enhanced-nav-shadow: rgba(0, 0, 0, 0.50);
 
     /* Semantic surface tokens for dark */
     --surface: 30 41 59;
@@ -126,6 +136,7 @@
 .glass {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   box-shadow: 
     0 8px 32px var(--glass-shadow),
@@ -143,9 +154,21 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
+.enhanced-nav-glass {
+  background: var(--enhanced-nav-bg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--enhanced-nav-border);
+  box-shadow: 
+    0 -6px 30px var(--enhanced-nav-shadow),
+    0 -2px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
 .metric-card {
   background: var(--glass-bg);
   backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
   box-shadow: 
     0 8px 32px var(--glass-shadow),
@@ -175,6 +198,15 @@ input, select, textarea {
   @apply bg-input border-border text-foreground placeholder:text-muted-foreground;
 }
 
+/* Enhanced form validation styles */
+.form-error {
+  @apply text-destructive text-sm mt-1;
+}
+
+.form-success {
+  @apply text-success text-sm mt-1;
+}
+
 /* Scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
@@ -200,6 +232,22 @@ input, select, textarea {
   transition-duration: 300ms;
 }
 
+/* Enhanced loading animations */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  background-size: 200px 100%;
+  animation: shimmer 1.5s infinite;
+}
+
 /* Accessibility improvements for reduced motion */
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -209,7 +257,7 @@ input, select, textarea {
   }
 }
 
-/* Mobile optimizations for Samsung S22 Ultra */
+/* Mobile optimizations */
 @media (max-width: 768px) {
   /* Larger tap targets */
   button, .btn, [role="button"] {
@@ -229,8 +277,19 @@ input, select, textarea {
   }
   
   /* Enhanced navigation glass effect on mobile */
-  .nav-glass {
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+  .enhanced-nav-glass {
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .enhanced-nav-glass, .nav-glass, .glass {
+    border-width: 2px;
+  }
+  
+  button {
+    border-width: 2px;
   }
 }
