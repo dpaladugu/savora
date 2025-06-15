@@ -18,16 +18,16 @@ interface MoreModuleRouterProps {
 export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps) {
   const getModuleConfig = (moduleId: string) => {
     const configs = {
-      "investments": { title: "Investments", subtitle: "Track stocks, mutual funds & more" },
-      "emergency-fund": { title: "Emergency Fund", subtitle: "Calculate and track your emergency corpus" },
-      "rentals": { title: "Rental Properties", subtitle: "Manage rental income & tenants" },
-      "credit-cards": { title: "Credit Cards", subtitle: "Manage credit cards & limits" },
-      "credit-card-statements": { title: "Credit Card Statements", subtitle: "View and analyze statements" },
-      "recommendations": { title: "Smart Tips", subtitle: "Personalized financial recommendations" },
-      "cashflow": { title: "Cashflow Analysis", subtitle: "Income vs expense analysis" },
-      "telegram": { title: "Telegram Bot", subtitle: "Connect Telegram for quick updates" }
+      "investments": { title: "Investments", subtitle: "Track stocks, mutual funds & more", showHeader: true },
+      "emergency-fund": { title: "Emergency Fund", subtitle: "Calculate and track your emergency corpus", showHeader: true },
+      "rentals": { title: "Rental Properties", subtitle: "Manage rental income & tenants", showHeader: true },
+      "credit-cards": { title: "Credit Cards", subtitle: "Manage credit cards & limits", showHeader: true },
+      "credit-card-statements": { title: "Credit Card Statements", subtitle: "View and analyze statements", showHeader: true },
+      "recommendations": { title: "Smart Tips", subtitle: "Personalized financial recommendations", showHeader: true },
+      "cashflow": { title: "Cashflow Analysis", subtitle: "Income vs expense analysis", showHeader: true },
+      "telegram": { title: "Telegram Bot", subtitle: "Connect Telegram for quick updates", showHeader: true }
     };
-    return configs[moduleId] || { title: "Module", subtitle: "" };
+    return configs[moduleId] || { title: "Module", subtitle: "", showHeader: true };
   };
 
   const config = getModuleConfig(activeModule);
@@ -62,6 +62,7 @@ export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps
         subtitle={config.subtitle}
         onBack={onBack}
         showBackButton={!!onBack}
+        showHeader={config.showHeader}
       />
       <div className="px-4 py-4">
         {renderModuleContent()}

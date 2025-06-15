@@ -10,6 +10,7 @@ interface ModuleHeaderProps {
   onBack?: () => void;
   showBackButton?: boolean;
   showThemeToggle?: boolean;
+  showHeader?: boolean;
   actions?: React.ReactNode;
 }
 
@@ -19,9 +20,14 @@ export const ModuleHeader = memo(function ModuleHeader({
   onBack, 
   showBackButton = false,
   showThemeToggle = true,
+  showHeader = true,
   actions
 }: ModuleHeaderProps) {
   const { isDark, toggleTheme } = useTheme();
+
+  if (!showHeader) {
+    return null;
+  }
 
   return (
     <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">

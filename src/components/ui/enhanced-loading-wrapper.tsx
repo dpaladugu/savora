@@ -1,43 +1,43 @@
 
-import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { motion } from 'framer-motion';
+import { memo } from "react";
+import { AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "./button";
+import { Card, CardContent } from "./card";
+import { Progress } from "./progress";
 
 interface EnhancedLoadingWrapperProps {
   loading: boolean;
-  children: React.ReactNode;
+  error?: string | null;
   loadingText?: string;
   progress?: number;
-  error?: string | null;
   onRetry?: () => void;
+  children: React.ReactNode;
 }
 
-export function EnhancedLoadingWrapper({ 
-  loading, 
-  children, 
+export const EnhancedLoadingWrapper = memo(function EnhancedLoadingWrapper({
+  loading,
+  error,
   loadingText = "Loading...",
   progress,
-  error,
-  onRetry
+  onRetry,
+  children
 }: EnhancedLoadingWrapperProps) {
   if (error) {
     return (
-      <Card className="m-4 border-red-200 bg-red-50 dark:bg-red-950">
-        <CardContent className="text-center py-12">
-          <div className="text-red-600 dark:text-red-400 mb-4">
-            <svg className="w-12 h-12 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-            </svg>
-          </div>
-          <p className="text-sm text-red-700 dark:text-red-300 mb-4">{error}</p>
+      <Card className="mx-4 my-6 border-destructive">
+        <CardContent className="flex flex-col items-center justify-center p-6 text-center">
+          <AlertCircle className="w-12 h-12 text-destructive mb-4" />
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            Something went wrong
+          </h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            {error}
+          </p>
           {onRetry && (
-            <button
-              onClick={onRetry}
-              className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
-            >
+            <Button onClick={onRetry} variant="outline" size="sm">
+              <RefreshCw className="w-4 h-4 mr-2" />
               Try Again
-            </button>
+            </Button>
           )}
         </CardContent>
       </Card>
@@ -46,26 +46,20 @@ export function EnhancedLoadingWrapper({
 
   if (loading) {
     return (
-      <Card className="m-4">
-        <CardContent className="text-center py-12">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto"></div>
-            <p className="text-muted-foreground">{loadingText}</p>
-            {progress !== undefined && (
-              <div className="max-w-xs mx-auto">
-                <Progress value={progress} className="h-2" />
-                <p className="text-xs text-muted-foreground mt-2">{progress}%</p>
-              </div>
-            )}
-          </motion.div>
-        </CardContent>
-      </Card>
+      <div className="flex flex-col items-center justify-center p-8">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-sm text-muted-foreground mb-4">{loadingText}</p>
+        {typeof progress === 'number' && (
+          <div className="w-full max-w-xs">
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              {Math.round(progress)}%
+            </p>
+          </div>
+        )}
+      </div>
     );
   }
 
   return <>{children}</>;
-}
+});

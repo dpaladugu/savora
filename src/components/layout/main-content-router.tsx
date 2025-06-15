@@ -37,12 +37,12 @@ export const MainContentRouter = memo(function MainContentRouter({
   const getTabConfig = (tabId: string) => {
     const configs = {
       "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: false },
-      "expenses": { title: "Expenses", subtitle: "Track your spending" },
-      "credit-cards": { title: "Credit Cards", subtitle: "Manage your credit cards" },
-      "investments": { title: "Investments", subtitle: "Track your portfolio" },
-      "goals": { title: "Goals & SIPs", subtitle: "Financial goals and tracking" },
-      "upload": { title: "Import Data", subtitle: "Import CSV files" },
-      "settings": { title: "Settings", subtitle: "App preferences" }
+      "expenses": { title: "Expenses", subtitle: "Track your spending", showHeader: true },
+      "credit-cards": { title: "Credit Cards", subtitle: "Manage your credit cards", showHeader: true },
+      "investments": { title: "Investments", subtitle: "Track your portfolio", showHeader: true },
+      "goals": { title: "Goals & SIPs", subtitle: "Financial goals and tracking", showHeader: true },
+      "upload": { title: "Import Data", subtitle: "Import CSV files", showHeader: true },
+      "settings": { title: "Settings", subtitle: "App preferences", showHeader: true }
     };
     return configs[tabId] || { title: "Module", subtitle: "", showHeader: true };
   };
@@ -56,6 +56,7 @@ export const MainContentRouter = memo(function MainContentRouter({
             subtitle="Explore additional modules"
             onBack={handleBackFromMore}
             showBackButton={true}
+            showHeader={true}
           />
           <div className="px-4 py-4">
             <MoreScreen onNavigate={onMoreNavigation} />
@@ -90,7 +91,7 @@ export const MainContentRouter = memo(function MainContentRouter({
       }
     })();
 
-    if (config.showHeader === false) {
+    if (!config.showHeader) {
       return content;
     }
 
@@ -99,6 +100,7 @@ export const MainContentRouter = memo(function MainContentRouter({
         <ModuleHeader 
           title={config.title}
           subtitle={config.subtitle}
+          showHeader={config.showHeader}
         />
         <div className="px-4 py-4">
           {content}
