@@ -63,6 +63,7 @@ export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps
         onBack={onBack}
         showBackButton={!!onBack}
         showHeader={config.showHeader}
+        showThemeToggle={true}
       />
       <div className="px-4 py-4">
         {renderModuleContent()}

@@ -57,6 +57,7 @@ export const MainContentRouter = memo(function MainContentRouter({
             onBack={handleBackFromMore}
             showBackButton={true}
             showHeader={true}
+            showThemeToggle={true}
           />
           <div className="px-4 py-4">
             <MoreScreen onNavigate={onMoreNavigation} />
@@ -101,6 +102,7 @@ export const MainContentRouter = memo(function MainContentRouter({
           title={config.title}
           subtitle={config.subtitle}
           showHeader={config.showHeader}
+          showThemeToggle={true}
         />
         <div className="px-4 py-4">
           {content}

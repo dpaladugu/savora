@@ -54,6 +54,7 @@ export const ModuleHeader = memo(function ModuleHeader({
               size="sm"
               onClick={toggleTheme}
               className="bg-background/95 backdrop-blur-sm border-border hover:bg-accent transition-all duration-300"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDark ? (
                 <Sun className="h-4 w-4 text-foreground" />
