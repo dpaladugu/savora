@@ -1,4 +1,6 @@
 
+import { LucideIcon } from "lucide-react";
+
 export interface DashboardData {
   totalExpenses: number;
   monthlyExpenses: number;
@@ -14,7 +16,7 @@ export interface MetricCardProps {
   value: string;
   change: string;
   changeType: 'positive' | 'negative' | 'neutral';
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
   gradient: string;
   onClick?: () => void;
 }
