@@ -1,3 +1,4 @@
+
 import { Logger } from "./logger";
 import React from "react";
 import { ToastActionElement, ToastAction } from "@/components/ui/toast";
@@ -61,6 +62,7 @@ export class EnhancedNotificationService {
   private static createActionButton(action: { label: string; onClick: () => void }): ToastActionElement {
     return React.createElement(ToastAction, {
       onClick: action.onClick,
+      altText: action.label,
     }, action.label);
   }
 
