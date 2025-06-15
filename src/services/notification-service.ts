@@ -1,6 +1,5 @@
 
 import { toast } from '@/hooks/use-toast';
-import { ToastAction } from '@/components/ui/toast';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -22,11 +21,6 @@ export class NotificationService {
       title: options.title,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? (
-        <ToastAction onClick={options.action.onClick}>
-          {options.action.label}
-        </ToastAction>
-      ) : undefined,
     });
   }
 
@@ -36,11 +30,6 @@ export class NotificationService {
       description: options.description,
       variant: 'destructive',
       duration: options.duration || this.defaultDuration,
-      action: options.action ? (
-        <ToastAction onClick={options.action.onClick}>
-          {options.action.label}
-        </ToastAction>
-      ) : undefined,
     });
   }
 
@@ -49,11 +38,6 @@ export class NotificationService {
       title: `⚠️ ${options.title}`,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? (
-        <ToastAction onClick={options.action.onClick}>
-          {options.action.label}
-        </ToastAction>
-      ) : undefined,
     });
   }
 
@@ -62,11 +46,6 @@ export class NotificationService {
       title: `ℹ️ ${options.title}`,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? (
-        <ToastAction onClick={options.action.onClick}>
-          {options.action.label}
-        </ToastAction>
-      ) : undefined,
     });
   }
 
@@ -95,11 +74,7 @@ export class NotificationService {
   static networkError() {
     this.error({
       title: 'Network Error',
-      description: 'Please check your internet connection and try again',
-      action: {
-        label: 'Retry',
-        onClick: () => window.location.reload()
-      }
+      description: 'Please check your internet connection and try again'
     });
   }
 
