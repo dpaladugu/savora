@@ -94,7 +94,7 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       FirestoreService.getInvestments(userId).catch(() => [])
     ]);
 
-    // Calculate real metrics with correct reduce usage - Fixed
+    // Calculate real metrics with correct reduce usage - Fixed with initial value
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))

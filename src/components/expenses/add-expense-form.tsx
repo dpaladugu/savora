@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,17 +80,11 @@ export function AddExpenseForm({ onSubmit, onCancel }: AddExpenseFormProps) {
       amount: mainAmount,
       date: formData.date,
       category: formData.category,
-      tag: formData.tag,
-      paymentMode: formData.paymentMode,
-      note: formData.note || undefined,
-      linkedGoal: formData.linkedGoal || undefined,
-      merchant: formData.merchant || formData.tag,
-      linkedVehicle: linkedEntities.vehicle || undefined,
-      linkedInsurance: linkedEntities.insurance || undefined,
-      linkedProperty: linkedEntities.property || undefined,
-      linkedCreditCard: linkedEntities.creditCard || undefined,
-      linkedRecurringGoal: linkedEntities.goal || undefined,
-      lineItems: convertedLineItems
+      description: formData.tag, // Use description instead of tag
+      type: 'expense' as const,
+      paymentMethod: formData.paymentMode,
+      tags: formData.tag ? [formData.tag] : undefined, // Convert tag to tags array
+      // Note: Other properties like linkedGoal, merchant, etc. are not part of the base Expense interface
     });
   };
 
