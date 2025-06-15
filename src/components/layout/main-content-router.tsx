@@ -8,6 +8,8 @@ import { MoreScreen } from "@/components/more/more-screen";
 import { MoreModuleRouter } from "./more-module-router";
 import { CreditCardFlowTracker } from "@/components/credit-cards/credit-card-flow-tracker";
 import { InvestmentsTracker } from "@/components/investments/investments-tracker";
+import { ErrorBoundary } from "@/components/error/error-boundary";
+import { memo } from "react";
 
 interface MainContentRouterProps {
   activeTab: string;
@@ -16,7 +18,7 @@ interface MainContentRouterProps {
   onTabChange: (tab: string) => void;
 }
 
-export function MainContentRouter({ 
+export const MainContentRouter = memo(function MainContentRouter({ 
   activeTab, 
   activeMoreModule, 
   onMoreNavigation,
@@ -29,24 +31,32 @@ export function MainContentRouter({
     return <MoreModuleRouter activeModule={activeMoreModule} />;
   };
 
-  switch (activeTab) {
-    case "dashboard":
-      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
-    case "expenses":
-      return <ExpenseTracker />;
-    case "credit-cards":
-      return <CreditCardFlowTracker />;
-    case "investments":
-      return <InvestmentsTracker />;
-    case "goals":
-      return <SimpleGoalsTracker />;
-    case "upload":
-      return <CSVImports />;
-    case "settings":
-      return <SettingsScreen />;
-    case "more":
-      return renderMoreContent();
-    default:
-      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
-  }
-}
+  const renderContent = () => {
+    switch (activeTab) {
+      case "dashboard":
+        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+      case "expenses":
+        return <ExpenseTracker />;
+      case "credit-cards":
+        return <CreditCardFlowTracker />;
+      case "investments":
+        return <InvestmentsTracker />;
+      case "goals":
+        return <SimpleGoalsTracker />;
+      case "upload":
+        return <CSVImports />;
+      case "settings":
+        return <SettingsScreen />;
+      case "more":
+        return renderMoreContent();
+      default:
+        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+    }
+  };
+
+  return (
+    <ErrorBoundary>
+      {renderContent()}
+    </ErrorBoundary>
+  );
+});

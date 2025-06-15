@@ -1,6 +1,7 @@
 
 import { motion } from "framer-motion";
 import { LucideIcon } from "lucide-react";
+import { memo } from "react";
 
 interface MetricCardProps {
   title: string;
@@ -12,7 +13,7 @@ interface MetricCardProps {
   onClick?: () => void;
 }
 
-export function MetricCard({ 
+export const MetricCard = memo(function MetricCard({ 
   title, 
   value, 
   change, 
@@ -65,4 +66,4 @@ export function MetricCard({
       </div>
     </motion.div>
   );
-}
+});

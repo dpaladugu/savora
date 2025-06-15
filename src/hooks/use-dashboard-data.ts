@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { FirestoreService } from "@/services/firestore";
+import { DataIntegrationService } from "@/services/data-integration";
 import { useAuth } from "@/contexts/auth-context";
 import { DashboardData } from "@/types/dashboard";
 
@@ -31,9 +32,12 @@ export function useDashboardData() {
       setLoading(true);
       setError(null);
       
-      const [expenses, investments] = await Promise.all([
+      const [expenses, investments, insurances, emis, rentals] = await Promise.all([
         FirestoreService.getExpenses(user.uid),
-        FirestoreService.getInvestments(user.uid)
+        FirestoreService.getInvestments(user.uid),
+        DataIntegrationService.getInsuranceData(user.uid),
+        DataIntegrationService.getEMIData(user.uid),
+        DataIntegrationService.getRentalData(user.uid)
       ]);
       
       const currentMonth = new Date().toISOString().substring(0, 7);
@@ -58,7 +62,13 @@ export function useDashboardData() {
         ? recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6
         : monthlyExpenses;
       
-      const emergencyFundTarget = avgMonthlyExpenses * 6;
+      // Include insurance premiums and EMIs in emergency fund calculation
+      const annualInsurancePremiums = DataIntegrationService.calculateAnnualInsurancePremiums(insurances);
+      const monthlyEMIs = DataIntegrationService.calculateMonthlyEMIs(emis);
+      const monthlyRentalIncome = DataIntegrationService.calculateMonthlyRentalIncome(rentals);
+      
+      const adjustedMonthlyExpenses = avgMonthlyExpenses + (annualInsurancePremiums / 12) + monthlyEMIs - monthlyRentalIncome;
+      const emergencyFundTarget = Math.max(adjustedMonthlyExpenses * 6, 0);
       const emergencyFundCurrent = totalInvestments * 0.15; // Assume 15% is emergency fund
       
       setDashboardData({
