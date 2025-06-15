@@ -4,16 +4,17 @@ import { QuickActions } from "./quick-actions";
 import { DashboardMetrics } from "./dashboard-metrics";
 import { DashboardCharts } from "./dashboard-charts";
 import { ErrorBoundary } from "@/components/error/error-boundary";
-import { LoadingWrapper } from "@/components/ui/loading-wrapper";
-import { useDashboardData } from "@/hooks/use-dashboard-data";
+import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
+import { useOptimizedDashboardData } from "@/hooks/use-optimized-dashboard-data";
+import { memo } from "react";
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
   onMoreNavigation: (moduleId: string) => void;
 }
 
-export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
-  const { dashboardData, loading } = useDashboardData();
+export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
+  const { dashboardData, loading, error, refetch } = useOptimizedDashboardData();
 
   const handleQuickActions = {
     onAddExpense: () => onTabChange("expenses"),
@@ -32,7 +33,12 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
             <QuickActions {...handleQuickActions} />
           </div>
 
-          <LoadingWrapper loading={loading} loadingText="Loading dashboard data...">
+          <EnhancedLoadingWrapper 
+            loading={loading} 
+            loadingText="Loading dashboard data..."
+            error={error}
+            onRetry={refetch}
+          >
             <DashboardMetrics
               dashboardData={dashboardData}
               loading={loading}
@@ -40,9 +46,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
               onMoreNavigation={onMoreNavigation}
             />
             <DashboardCharts />
-          </LoadingWrapper>
+          </EnhancedLoadingWrapper>
         </div>
       </div>
     </ErrorBoundary>
   );
-}
+});

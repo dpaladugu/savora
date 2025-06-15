@@ -1,8 +1,9 @@
 
 import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AccessibleButton } from "@/components/ui/accessible-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
+import { memo } from "react";
 
 interface PersistentNavigationProps {
   activeTab: string;
@@ -11,17 +12,17 @@ interface PersistentNavigationProps {
   onMoreNavigation: (moduleId: string) => void;
 }
 
-export function PersistentNavigation({
+export const PersistentNavigation = memo(function PersistentNavigation({
   activeTab,
   onTabChange,
   onMoreNavigation
 }: PersistentNavigationProps) {
   
   const mainTabs = [
-    { id: "dashboard", label: "Dashboard", icon: Home },
-    { id: "expenses", label: "Expenses", icon: Receipt },
-    { id: "credit-cards", label: "Cards", icon: CreditCard },
-    { id: "investments", label: "Investments", icon: TrendingUp },
+    { id: "dashboard", label: "Dashboard", icon: Home, ariaLabel: "Navigate to dashboard" },
+    { id: "expenses", label: "Expenses", icon: Receipt, ariaLabel: "Navigate to expenses" },
+    { id: "credit-cards", label: "Cards", icon: CreditCard, ariaLabel: "Navigate to credit cards" },
+    { id: "investments", label: "Investments", icon: TrendingUp, ariaLabel: "Navigate to investments" },
   ];
 
   const moreModules = [
@@ -44,53 +45,60 @@ export function PersistentNavigation({
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-border">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-border"
+      role="navigation" 
+      aria-label="Main navigation"
+    >
       <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
         {mainTabs.map((tab) => (
-          <Button
+          <AccessibleButton
             key={tab.id}
             variant="ghost"
             size="sm"
             onClick={() => onTabChange(tab.id)}
+            ariaLabel={tab.ariaLabel}
             className={`flex flex-col items-center gap-1 h-12 px-3 ${
               activeTab === tab.id || (tab.id === "investments" && activeTab === "more")
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <tab.icon className="w-5 h-5" />
+            <tab.icon className="w-5 h-5" aria-hidden="true" />
             <span className="text-xs font-medium">{tab.label}</span>
-          </Button>
+          </AccessibleButton>
         ))}
         
         <Sheet>
           <SheetTrigger asChild>
-            <Button
+            <AccessibleButton
               variant="ghost"
               size="sm"
+              ariaLabel="Open more options menu"
               className={`flex flex-col items-center gap-1 h-12 px-3 ${
                 activeTab === "more"
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
-              <MoreHorizontal className="w-5 h-5" />
+              <MoreHorizontal className="w-5 h-5" aria-hidden="true" />
               <span className="text-xs font-medium">More</span>
-            </Button>
+            </AccessibleButton>
           </SheetTrigger>
           <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
             <SheetHeader>
               <SheetTitle>More Features</SheetTitle>
             </SheetHeader>
-            <div className="grid gap-3 mt-6">
+            <div className="grid gap-3 mt-6" role="list">
               {moreModules.map((module) => (
                 <Card 
                   key={module.id} 
-                  className="cursor-pointer hover:bg-accent transition-colors"
+                  className="cursor-pointer hover:bg-accent transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
                   onClick={() => handleMoreModuleClick(module.id)}
+                  role="listitem"
                 >
                   <CardContent className="flex items-center gap-4 p-4">
-                    <div className="text-2xl">{module.icon}</div>
+                    <div className="text-2xl" aria-hidden="true">{module.icon}</div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-foreground">{module.label}</h3>
                       <p className="text-sm text-muted-foreground">{module.description}</p>
@@ -102,6 +110,6 @@ export function PersistentNavigation({
           </SheetContent>
         </Sheet>
       </div>
-    </div>
+    </nav>
   );
-}
+});
