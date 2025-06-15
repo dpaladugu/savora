@@ -1,4 +1,3 @@
-
 export interface ParsedExpense {
   date: string;
   amount: number;
@@ -11,7 +10,7 @@ export interface ParsedExpense {
 
 export interface ParsedInvestment {
   date: string;
-  fundName: string;
+  name: string; // Changed from fundName to name to match FirestoreInvestment
   folio: string;
   units: number;
   nav: number;
@@ -124,7 +123,7 @@ export class CSVParser {
         if (!isNaN(parsedAmount) && parsedAmount > 0) {
           investments.push({
             date: this.parseDate(date),
-            fundName: fundName || '',
+            name: fundName || '', // Changed from fundName to name
             folio: folio || '',
             units: parsedUnits || 0,
             nav: parsedNav || 0,
