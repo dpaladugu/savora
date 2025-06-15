@@ -62,7 +62,7 @@ export class EnhancedNotificationService {
     return React.createElement(ToastAction, {
       altText: action.label,
       onClick: action.onClick
-    }, action.label) as ToastActionElement;
+    }, action.label) as unknown as ToastActionElement;
   }
 
   static success(options: NotificationOptions) {
