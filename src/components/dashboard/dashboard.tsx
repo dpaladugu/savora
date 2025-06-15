@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "lucide-react";
@@ -120,22 +119,22 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
   const additionalMetrics = [
     {
-      title: "Total Expenses",
-      value: loading ? "Loading..." : `₹${dashboardData.totalExpenses.toLocaleString()}`,
-      change: "All time",
+      title: "Smart Tips",
+      value: "3 Active",
+      change: "View recommendations",
       changeType: "neutral" as const,
       icon: TrendingUp,
       gradient: "bg-gradient-green",
-      onClick: () => onTabChange("expenses")
+      onClick: () => onMoreNavigation("recommendations")
     },
     {
-      title: "Credit Cards",
-      value: "₹12,500",
-      change: "Due in 5 days",
-      changeType: "neutral" as const,
+      title: "Cashflow",
+      value: "₹32,500",
+      change: "Monthly surplus",
+      changeType: "positive" as const,
       icon: CreditCard,
       gradient: "bg-gradient-blue",
-      onClick: () => onMoreNavigation("credit-cards")
+      onClick: () => onMoreNavigation("cashflow")
     }
   ];
 

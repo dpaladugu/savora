@@ -1,6 +1,6 @@
 
 import { motion } from "framer-motion";
-import { Home, Receipt, Target, Upload, Settings, MoreHorizontal, TrendingUp, Shield, Building } from "lucide-react";
+import { Home, Receipt, Target, Upload, Settings, MoreHorizontal, TrendingUp, Shield, Building, CreditCard, ArrowUpDown, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PersistentNavigationProps {
@@ -26,8 +26,12 @@ export function PersistentNavigation({
 
   const moreModules = [
     { id: "investments", icon: TrendingUp, label: "Investments" },
-    { id: "emergency-fund", icon: Shield, label: "Emergency Fund" },
+    { id: "emergency-fund", icon: Shield, label: "Emergency" },
+    { id: "credit-cards", icon: CreditCard, label: "Cards" },
     { id: "rentals", icon: Building, label: "Rentals" },
+    { id: "cashflow", icon: ArrowUpDown, label: "Cashflow" },
+    { id: "recommendations", icon: Target, label: "Tips" },
+    { id: "telegram", icon: MessageCircle, label: "Telegram" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 
