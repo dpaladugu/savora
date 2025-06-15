@@ -37,6 +37,13 @@ export class FirestoreService {
     );
     await Promise.all(batch);
   }
+
+  static async addInvestments(investments: Omit<FirestoreInvestment, 'id'>[]): Promise<void> {
+    const batch = investments.map(investment => 
+      addDoc(collection(db, 'investments'), investment)
+    );
+    await Promise.all(batch);
+  }
   
   static async getExpenses(userId: string): Promise<FirestoreExpense[]> {
     try {
