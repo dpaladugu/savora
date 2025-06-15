@@ -1,3 +1,4 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
@@ -93,14 +94,21 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       FirestoreService.getInvestments(userId).catch(() => [])
     ]);
 
-    // Calculate real metrics with correct reduce usage - Fixed with initial value
+    // Calculate real metrics with proper type handling
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))
-      .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+      .reduce((sum: number, expense) => {
+        return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
+      }, 0);
 
-    const totalExpenses = expenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
-    const totalInvestments = investments.reduce((sum, investment) => sum + (investment.amount || 0), 0);
+    const totalExpenses = expenses.reduce((sum: number, expense) => {
+      return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
+    }, 0);
+
+    const totalInvestments = investments.reduce((sum: number, investment) => {
+      return sum + (typeof investment.amount === 'number' ? investment.amount : 0);
+    }, 0);
 
     // Calculate emergency fund
     const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback
@@ -118,7 +126,7 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       emergencyFundCurrent,
       recentTransactions: expenses.slice(0, 5).map(expense => ({
         id: expense.id || '',
-        amount: -(expense.amount || 0),
+        amount: -(typeof expense.amount === 'number' ? expense.amount : 0),
         description: expense.description || 'Unknown',
         category: expense.category || 'Other',
         date: expense.date || new Date().toISOString().split('T')[0],

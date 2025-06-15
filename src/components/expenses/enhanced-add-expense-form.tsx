@@ -10,8 +10,10 @@ import { ExpenseItemization, ExpenseLineItem } from "./expense-itemization";
 import { EnhancedBasicExpenseFields } from "./enhanced-basic-expense-fields";
 import { CategoryPaymentSelectors } from "./category-payment-selectors";
 import { AdvancedExpenseOptions } from "./advanced-expense-options";
-import { useExpenseFormValidation } from "./expense-form-validation";
+import { useEnhancedExpenseValidation } from "@/hooks/use-enhanced-expense-validation";
 import { useToast } from "@/hooks/use-toast";
+import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
+import { Logger } from "@/services/logger";
 
 interface EnhancedAddExpenseFormProps {
   onSubmit: (expense: Omit<Expense, 'id'>) => Promise<void>;
@@ -20,7 +22,14 @@ interface EnhancedAddExpenseFormProps {
 
 export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpenseFormProps) {
   const { toast } = useToast();
-  const { errors, validateField, validateForm, clearErrors, hasErrors } = useExpenseFormValidation();
+  const { 
+    errors, 
+    validateField, 
+    validateForm, 
+    clearErrors, 
+    hasErrors, 
+    isValidating 
+  } = useEnhancedExpenseValidation();
   
   const [formData, setFormData] = useState({
     amount: '',
@@ -38,12 +47,15 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
   const [linkedEntities, setLinkedEntities] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Set up notification service
+  EnhancedNotificationService.setToastFunction(toast);
+
   const handleFormDataChange = (updates: Partial<typeof formData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
   };
 
-  const handleFieldBlur = (fieldName: string, value: string) => {
-    validateField(fieldName, value, formData);
+  const handleFieldBlur = async (fieldName: string, value: string) => {
+    await validateField(fieldName, value, formData);
   };
 
   const handleEntityLinkChange = (entityType: string, entityId: string) => {
@@ -60,12 +72,13 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm(formData)) {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors before submitting",
-        variant: "destructive"
-      });
+    if (isSubmitting || isValidating) return;
+
+    Logger.info('Starting expense form submission', formData);
+    
+    const isValid = await validateForm(formData);
+    if (!isValid || hasErrors) {
+      EnhancedNotificationService.validationError("Please fix the errors before submitting");
       return;
     }
 
@@ -75,11 +88,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
     if (showItemization && lineItems.length > 0) {
       const itemsTotal = lineItems.reduce((sum, item) => sum + (item.cost * (item.quantity || 1)), 0);
       if (Math.abs(itemsTotal - mainAmount) > 0.01) {
-        toast({
-          title: "Itemization Error",
-          description: "Line items total must match the main amount",
-          variant: "destructive"
-        });
+        EnhancedNotificationService.validationError("Line items total must match the main amount");
         return;
       }
     }
@@ -96,25 +105,48 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
         tags: formData.tag ? [formData.tag] : undefined,
       });
 
-      toast({
-        title: "Success",
-        description: "Expense added successfully",
+      EnhancedNotificationService.expenseAdded();
+      Logger.info('Expense added successfully');
+      
+      // Reset form
+      setFormData({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        category: 'Food',
+        tag: '',
+        paymentMode: 'UPI' as const,
+        note: '',
+        linkedGoal: '',
+        merchant: ''
       });
+      clearErrors();
+      setLineItems([]);
+      setLinkedEntities({});
+      setShowItemization(false);
+      
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add expense. Please try again.",
-        variant: "destructive"
+      Logger.error('Failed to add expense', error);
+      EnhancedNotificationService.error({
+        title: "Failed to Add Expense",
+        description: "Please try again. If the problem persists, check your connection.",
+        duration: 5000
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const isFormDisabled = isSubmitting || isValidating || hasErrors;
+
   return (
     <Card className="metric-card border-border/50">
       <CardHeader>
-        <CardTitle>Add New Expense</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          Add New Expense
+          {isValidating && (
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -139,7 +171,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
 
           <Collapsible open={showItemization} onOpenChange={setShowItemization}>
             <CollapsibleTrigger asChild>
-              <Button type="button" variant="outline" className="w-full justify-between">
+              <Button type="button" variant="outline" className="w-full justify-between" disabled={isFormDisabled}>
                 <div className="flex items-center gap-2">
                   <Receipt className="w-4 h-4" />
                   <span>Itemize Expense (Optional)</span>
@@ -165,7 +197,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
             <Button 
               type="submit" 
               className="flex-1"
-              disabled={isSubmitting || hasErrors}
+              disabled={isFormDisabled}
             >
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {isSubmitting ? 'Adding...' : 'Add Expense'}
@@ -180,6 +212,12 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel }: EnhancedAddExpens
               Cancel
             </Button>
           </div>
+          
+          {hasErrors && (
+            <div className="text-sm text-red-600 mt-2">
+              Please fix the errors above before submitting.
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>
