@@ -1,5 +1,6 @@
 
 import { toast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -21,10 +22,11 @@ export class NotificationService {
       title: options.title,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? {
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
+      action: options.action ? (
+        <ToastAction onClick={options.action.onClick}>
+          {options.action.label}
+        </ToastAction>
+      ) : undefined,
     });
   }
 
@@ -34,10 +36,11 @@ export class NotificationService {
       description: options.description,
       variant: 'destructive',
       duration: options.duration || this.defaultDuration,
-      action: options.action ? {
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
+      action: options.action ? (
+        <ToastAction onClick={options.action.onClick}>
+          {options.action.label}
+        </ToastAction>
+      ) : undefined,
     });
   }
 
@@ -46,10 +49,11 @@ export class NotificationService {
       title: `⚠️ ${options.title}`,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? {
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
+      action: options.action ? (
+        <ToastAction onClick={options.action.onClick}>
+          {options.action.label}
+        </ToastAction>
+      ) : undefined,
     });
   }
 
@@ -58,10 +62,11 @@ export class NotificationService {
       title: `ℹ️ ${options.title}`,
       description: options.description,
       duration: options.duration || this.defaultDuration,
-      action: options.action ? {
-        onClick: options.action.onClick,
-        children: options.action.label
-      } : undefined,
+      action: options.action ? (
+        <ToastAction onClick={options.action.onClick}>
+          {options.action.label}
+        </ToastAction>
+      ) : undefined,
     });
   }
 
