@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { FirestoreService } from "@/services/firestore";
+import { DataIntegrationService } from "@/services/data-integration";
 import { useAuth } from "@/contexts/auth-context";
 
 interface EmergencyFundData {
@@ -39,16 +40,25 @@ export function useEmergencyFund() {
 
   useEffect(() => {
     if (user) {
-      calculateFromExpenses();
+      loadIntegratedData();
     }
   }, [user]);
 
-  const calculateFromExpenses = async () => {
+  const loadIntegratedData = async () => {
     if (!user) return;
     
     try {
-      const expenses = await FirestoreService.getExpenses(user.uid);
+      setLoading(true);
       
+      // Load data from all modules concurrently
+      const [expenses, insurances, emis, rentals] = await Promise.all([
+        FirestoreService.getExpenses(user.uid),
+        DataIntegrationService.getInsuranceData(user.uid),
+        DataIntegrationService.getEMIData(user.uid),
+        DataIntegrationService.getRentalData(user.uid)
+      ]);
+      
+      // Calculate essential expenses from expense data
       const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
       
@@ -69,42 +79,50 @@ export function useEmergencyFund() {
       );
       
       const totalEssential = essentialExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-      const avgMonthlyEssential = totalEssential / 6;
+      const avgMonthlyEssential = recentExpenses.length > 0 ? totalEssential / 6 : 0;
       
+      // Calculate data from integrated modules
+      const monthlyEMIs = DataIntegrationService.calculateMonthlyEMIs(emis);
+      const annualInsurancePremiums = DataIntegrationService.calculateAnnualInsurancePremiums(insurances);
+      const monthlyRentalIncome = DataIntegrationService.calculateMonthlyRentalIncome(rentals);
+      
+      // Determine missing data
       const missing: string[] = [];
       
-      const emiExpenses = recentExpenses.filter(expense => 
-        expense.description?.toLowerCase().includes('emi') ||
-        expense.category === 'EMI' ||
-        expense.tags?.includes('emi')
-      );
-      
-      const insuranceExpenses = recentExpenses.filter(expense => 
-        expense.description?.toLowerCase().includes('insurance') ||
-        expense.category === 'Insurance' ||
-        expense.tags?.includes('insurance')
-      );
-      
-      if (emiExpenses.length === 0) {
-        missing.push('EMI/Loan details');
+      if (emis.length === 0) {
+        missing.push('EMI/Loan details - Add your active loans');
       }
       
-      if (insuranceExpenses.length === 0) {
-        missing.push('Insurance premium details');
+      if (insurances.length === 0) {
+        missing.push('Insurance policies - Add your active policies');
       }
       
+      if (avgMonthlyEssential === 0) {
+        missing.push('Monthly expenses - Add your regular expenses');
+      }
+      
+      // Update state with real data
       setData(prev => ({
         ...prev,
         monthlyExpenses: Math.round(avgMonthlyEssential),
-        monthlyEMIs: emiExpenses.length > 0 ? Math.round(emiExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6) : 0,
-        insurancePremiums: insuranceExpenses.length > 0 ? Math.round(insuranceExpenses.reduce((sum, expense) => sum + expense.amount, 0) * 2) : 0,
+        monthlyEMIs: monthlyEMIs,
+        insurancePremiums: annualInsurancePremiums,
+        rentalIncome: monthlyRentalIncome,
       }));
       
       setMissingData(missing);
       
-      console.log(`Calculated emergency fund requirements from actual data`);
+      console.log('Emergency fund data loaded:', {
+        monthlyExpenses: Math.round(avgMonthlyEssential),
+        monthlyEMIs,
+        annualInsurancePremiums,
+        monthlyRentalIncome,
+        missingDataCount: missing.length
+      });
+      
     } catch (error) {
-      console.error('Failed to calculate emergency fund requirements:', error);
+      console.error('Failed to load integrated emergency fund data:', error);
+      setMissingData(['Unable to load data - Please check your connection']);
     } finally {
       setLoading(false);
     }
@@ -138,5 +156,6 @@ export function useEmergencyFund() {
     loading,
     missingData,
     calculation: calculateEmergencyFund(),
+    refreshData: loadIntegratedData,
   };
 }
