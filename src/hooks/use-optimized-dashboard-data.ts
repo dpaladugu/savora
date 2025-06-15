@@ -2,7 +2,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { FirestoreService } from "@/services/firestore";
+import { FirestoreService, FirestoreExpense, FirestoreInvestment } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 
 // Enhanced mock data for development
@@ -98,15 +98,15 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))
-      .reduce((sum: number, expense) => {
+      .reduce((sum: number, expense: FirestoreExpense) => {
         return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
       }, 0);
 
-    const totalExpenses = expenses.reduce((sum: number, expense) => {
+    const totalExpenses = expenses.reduce((sum: number, expense: FirestoreExpense) => {
       return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
     }, 0);
 
-    const totalInvestments = investments.reduce((sum: number, investment) => {
+    const totalInvestments = investments.reduce((sum: number, investment: FirestoreInvestment) => {
       return sum + (typeof investment.amount === 'number' ? investment.amount : 0);
     }, 0);
 
