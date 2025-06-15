@@ -60,10 +60,9 @@ export class EnhancedNotificationService {
 
   private static createActionButton(action: { label: string; onClick: () => void }): ToastActionElement {
     return React.createElement(ToastAction, {
-      onClick: action.onClick,
       altText: action.label,
-      children: action.label
-    }) as ToastActionElement;
+      onClick: action.onClick
+    }, action.label) as ToastActionElement;
   }
 
   static success(options: NotificationOptions) {
