@@ -5,18 +5,26 @@ import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "luc
 import { MetricCard } from "../ui/metric-card";
 import { ExpenseChart } from "./expense-chart";
 import { AssetAllocation } from "./asset-allocation";
+import { QuickActions } from "./quick-actions";
 import { GlobalHeader } from "../layout/global-header";
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 
-export function Dashboard() {
+interface DashboardProps {
+  onTabChange: (tab: string) => void;
+  onMoreNavigation: (moduleId: string) => void;
+}
+
+export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState({
     totalExpenses: 0,
     monthlyExpenses: 0,
     totalInvestments: 0,
     expenseCount: 0,
-    investmentCount: 0
+    investmentCount: 0,
+    emergencyFundTarget: 0,
+    emergencyFundCurrent: 0
   });
   const [loading, setLoading] = useState(true);
 
@@ -43,18 +51,32 @@ export function Dashboard() {
       const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
       const totalInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
       
+      // Calculate emergency fund requirements
+      const avgMonthlyExpenses = totalExpenses / Math.max(1, expenses.length / 30 * 12); // Rough monthly average
+      const emergencyFundTarget = avgMonthlyExpenses * 6; // 6 months coverage
+      const emergencyFundCurrent = totalInvestments * 0.1; // Assume 10% is emergency fund
+      
       setDashboardData({
         totalExpenses,
         monthlyExpenses,
         totalInvestments,
         expenseCount: expenses.length,
-        investmentCount: investments.length
+        investmentCount: investments.length,
+        emergencyFundTarget,
+        emergencyFundCurrent
       });
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleQuickActions = {
+    onAddExpense: () => onTabChange("expenses"),
+    onImportCSV: () => onTabChange("upload"),
+    onCreateGoal: () => onTabChange("goals"),
+    onViewCards: () => onMoreNavigation("credit-cards")
   };
 
   const metrics = [
@@ -64,7 +86,8 @@ export function Dashboard() {
       change: dashboardData.totalInvestments > dashboardData.totalExpenses ? "+8.2%" : "-2.1%",
       changeType: dashboardData.totalInvestments > dashboardData.totalExpenses ? "positive" as const : "negative" as const,
       icon: DollarSign,
-      gradient: "bg-gradient-blue"
+      gradient: "bg-gradient-blue",
+      onClick: () => onMoreNavigation("investments")
     },
     {
       title: "This Month",
@@ -72,15 +95,17 @@ export function Dashboard() {
       change: `${dashboardData.expenseCount} transactions`,
       changeType: "neutral" as const,
       icon: Receipt,
-      gradient: "bg-gradient-orange"
+      gradient: "bg-gradient-orange",
+      onClick: () => onTabChange("expenses")
     },
     {
       title: "Emergency Fund",
-      value: loading ? "Loading..." : `₹${Math.min(dashboardData.totalInvestments * 0.3, 250000).toLocaleString()}`,
-      change: "Target: ₹3,00,000",
-      changeType: "positive" as const,
+      value: loading ? "Loading..." : `₹${dashboardData.emergencyFundCurrent.toLocaleString()}`,
+      change: `Target: ₹${dashboardData.emergencyFundTarget.toLocaleString()}`,
+      changeType: dashboardData.emergencyFundCurrent >= dashboardData.emergencyFundTarget ? "positive" as const : "negative" as const,
       icon: Shield,
-      gradient: "bg-gradient-purple"
+      gradient: "bg-gradient-purple",
+      onClick: () => onMoreNavigation("emergency-fund")
     },
     {
       title: "Investments",
@@ -88,7 +113,8 @@ export function Dashboard() {
       change: `${dashboardData.investmentCount} transactions`,
       changeType: "positive" as const,
       icon: Target,
-      gradient: "bg-gradient-green"
+      gradient: "bg-gradient-green",
+      onClick: () => onMoreNavigation("investments")
     }
   ];
 
@@ -99,7 +125,8 @@ export function Dashboard() {
       change: "All time",
       changeType: "neutral" as const,
       icon: TrendingUp,
-      gradient: "bg-gradient-green"
+      gradient: "bg-gradient-green",
+      onClick: () => onTabChange("expenses")
     },
     {
       title: "Credit Cards",
@@ -107,7 +134,8 @@ export function Dashboard() {
       change: "Due in 5 days",
       changeType: "neutral" as const,
       icon: CreditCard,
-      gradient: "bg-gradient-blue"
+      gradient: "bg-gradient-blue",
+      onClick: () => onMoreNavigation("credit-cards")
     }
   ];
 
@@ -125,6 +153,11 @@ export function Dashboard() {
             Welcome to Savora - Your financial overview
           </p>
         </motion.div>
+
+        {/* Quick Actions */}
+        <div className="px-2">
+          <QuickActions {...handleQuickActions} />
+        </div>
 
         {/* Primary Metrics Grid */}
         <div className="grid grid-cols-2 gap-4 mb-6 px-2">

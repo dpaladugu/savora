@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { MobileNav } from "@/components/layout/mobile-nav";
+import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { AuthScreen } from "@/components/auth/auth-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
@@ -35,7 +35,15 @@ const Index = () => {
   };
 
   const handleMoreNavigation = (moduleId: string) => {
+    setActiveTab("more");
     setActiveMoreModule(moduleId);
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== "more") {
+      setActiveMoreModule(null);
+    }
   };
 
   if (loading) {
@@ -60,8 +68,14 @@ const Index = () => {
             activeTab={activeTab}
             activeMoreModule={activeMoreModule}
             onMoreNavigation={handleMoreNavigation}
+            onTabChange={handleTabChange}
           />
-          <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
+          <PersistentNavigation 
+            activeTab={activeTab} 
+            onTabChange={handleTabChange}
+            activeMoreModule={activeMoreModule}
+            onMoreNavigation={handleMoreNavigation}
+          />
         </>
       )}
     </div>

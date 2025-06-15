@@ -11,12 +11,14 @@ interface MainContentRouterProps {
   activeTab: string;
   activeMoreModule: string | null;
   onMoreNavigation: (moduleId: string) => void;
+  onTabChange: (tab: string) => void;
 }
 
 export function MainContentRouter({ 
   activeTab, 
   activeMoreModule, 
-  onMoreNavigation 
+  onMoreNavigation,
+  onTabChange
 }: MainContentRouterProps) {
   const renderMoreContent = () => {
     if (!activeMoreModule) {
@@ -27,13 +29,9 @@ export function MainContentRouter({
 
   switch (activeTab) {
     case "dashboard":
-      return <Dashboard />;
+      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
     case "expenses":
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-          <ExpenseTracker />
-        </div>
-      );
+      return <ExpenseTracker />;
     case "goals":
       return <SimpleGoalsTracker />;
     case "upload":
@@ -43,6 +41,6 @@ export function MainContentRouter({
     case "more":
       return renderMoreContent();
     default:
-      return <Dashboard />;
+      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
   }
 }
