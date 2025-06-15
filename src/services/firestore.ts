@@ -1,7 +1,6 @@
 
 import { collection, addDoc, getDocs, query, where, orderBy, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/firebase';
-import { useAuth } from '@/contexts/auth-context';
 
 export interface FirestoreExpense {
   id?: string;
@@ -40,38 +39,47 @@ export class FirestoreService {
   }
   
   static async getExpenses(userId: string): Promise<FirestoreExpense[]> {
-    const q = query(
-      collection(db, 'expenses'),
-      where('userId', '==', userId),
-      orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirestoreExpense));
-  }
-  
-  static async addInvestments(investments: Omit<FirestoreInvestment, 'id'>[]): Promise<void> {
-    const batch = investments.map(investment => 
-      addDoc(collection(db, 'investments'), investment)
-    );
-    await Promise.all(batch);
+    try {
+      // Simple query without composite index requirement
+      const q = query(
+        collection(db, 'expenses'),
+        where('userId', '==', userId)
+      );
+      
+      const snapshot = await getDocs(q);
+      const expenses = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as FirestoreExpense));
+      
+      // Sort in memory to avoid composite index requirement
+      return expenses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (error) {
+      console.error('Error fetching expenses:', error);
+      return [];
+    }
   }
   
   static async getInvestments(userId: string): Promise<FirestoreInvestment[]> {
-    const q = query(
-      collection(db, 'investments'),
-      where('userId', '==', userId),
-      orderBy('date', 'desc')
-    );
-    
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    } as FirestoreInvestment));
+    try {
+      // Simple query without composite index requirement
+      const q = query(
+        collection(db, 'investments'),
+        where('userId', '==', userId)
+      );
+      
+      const snapshot = await getDocs(q);
+      const investments = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      } as FirestoreInvestment));
+      
+      // Sort in memory to avoid composite index requirement
+      return investments.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } catch (error) {
+      console.error('Error fetching investments:', error);
+      return [];
+    }
   }
   
   static async deleteExpense(expenseId: string): Promise<void> {
