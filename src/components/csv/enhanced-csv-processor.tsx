@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { CSVParser } from "@/services/csv-parser";
+import { EnhancedCSVParser } from "@/services/enhanced-csv-parser";
 import { CSVFileUpload } from "./csv-file-upload";
 import { CSVColumnMapping } from "./csv-column-mapping";
 import { CSVDataPreview } from "./csv-data-preview";
@@ -25,23 +25,8 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
   const [csvType, setCsvType] = useState<'axio' | 'kuvera' | 'credit-card' | null>(null);
   const [headers, setHeaders] = useState<string[]>([]);
+  const [fullData, setFullData] = useState<any[]>([]);
   const { toast } = useToast();
-
-  const detectCSVType = (csvText: string): 'axio' | 'kuvera' | 'credit-card' | null => {
-    const lowerText = csvText.toLowerCase();
-    
-    if (lowerText.includes('payment mode') || lowerText.includes('axio')) {
-      return 'axio';
-    }
-    if (lowerText.includes('fund house') || lowerText.includes('kuvera') || lowerText.includes('folio')) {
-      return 'kuvera';
-    }
-    if (lowerText.includes('credit') || lowerText.includes('debit') || lowerText.includes('merchant')) {
-      return 'credit-card';
-    }
-    
-    return null;
-  };
 
   const handleFileUpload = async (selectedFile: File) => {
     if (!selectedFile.name.toLowerCase().endsWith('.csv')) {
@@ -58,24 +43,15 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
 
     try {
       const text = await selectedFile.text();
-      const detectedType = detectCSVType(text);
-      setCsvType(detectedType);
-
-      let parsedData: any[] = [];
+      const detectedType = EnhancedCSVParser.detectCSVType(text);
       
-      if (detectedType === 'axio') {
-        parsedData = CSVParser.parseAxioExpenses(text);
-      } else if (detectedType === 'kuvera') {
-        parsedData = CSVParser.parseKuveraInvestments(text);
-      } else if (detectedType === 'credit-card') {
-        parsedData = CSVParser.parseCreditCardStatement(text);
-      }
-
-      if (parsedData.length === 0) {
+      if (detectedType === 'unknown') {
+        // Show manual mapping for unknown formats
         setShowMapping(true);
         const lines = text.split('\n').filter(line => line.trim());
         const csvHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
         setHeaders(csvHeaders);
+        setCsvType('axio'); // Default for mapping
         
         // Initialize mapping with best guesses
         const initialMapping: ColumnMapping = {};
@@ -91,12 +67,27 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
         });
         setColumnMapping(initialMapping);
       } else {
+        // Use enhanced parser for known formats
+        const parsedData = EnhancedCSVParser.parseCSV(text, detectedType);
+        
+        if (parsedData.length === 0) {
+          throw new Error('No valid data found in the CSV file');
+        }
+        
+        setFullData(parsedData);
         setPreviewData(parsedData.slice(0, 5));
+        setCsvType(detectedType === 'bank-statement' ? 'credit-card' : detectedType as any);
+        
+        toast({
+          title: "Success",
+          description: `Detected ${detectedType} format and parsed ${parsedData.length} records`,
+        });
       }
     } catch (error) {
+      console.error('CSV parsing error:', error);
       toast({
         title: "Error",
-        description: "Failed to process CSV file",
+        description: error instanceof Error ? error.message : "Failed to process CSV file",
         variant: "destructive",
       });
     } finally {
@@ -107,43 +98,70 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
   const handleManualParsing = async () => {
     if (!file || !csvType) return;
 
-    const text = await file.text();
-    const lines = text.split('\n').filter(line => line.trim());
-    const dataLines = lines.slice(1);
-    
-    const parsedData: any[] = [];
-    
-    for (const line of dataLines) {
-      const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
-      const record: any = {};
+    setProcessing(true);
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      const dataLines = lines.slice(1);
       
-      Object.entries(columnMapping).forEach(([field, headerName]) => {
-        const headerIndex = headers.indexOf(headerName);
-        if (headerIndex !== -1 && columns[headerIndex]) {
-          if (field === 'amount' || field === 'units') {
-            record[field] = parseFloat(columns[headerIndex].replace(/[^\d.-]/g, '')) || 0;
-          } else {
-            record[field] = columns[headerIndex];
+      const parsedData: any[] = [];
+      
+      for (const line of dataLines) {
+        const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+        const record: any = {};
+        
+        Object.entries(columnMapping).forEach(([field, headerName]) => {
+          const headerIndex = headers.indexOf(headerName);
+          if (headerIndex !== -1 && columns[headerIndex]) {
+            if (field === 'amount' || field === 'units') {
+              record[field] = parseFloat(columns[headerIndex].replace(/[^\d.-]/g, '')) || 0;
+            } else {
+              record[field] = columns[headerIndex];
+            }
           }
+        });
+
+        // Add default values based on type
+        if (csvType === 'axio' || csvType === 'credit-card') {
+          record.type = 'expense';
+          record.paymentMethod = record.paymentMethod || 'Unknown';
         }
-      });
 
-      if (record.date && record.amount) {
-        parsedData.push(record);
+        if (record.date && record.amount && record.amount > 0) {
+          parsedData.push(record);
+        }
       }
-    }
 
-    setPreviewData(parsedData.slice(0, 5));
-    setShowMapping(false);
+      if (parsedData.length === 0) {
+        throw new Error('No valid records found with the selected mapping');
+      }
+
+      setFullData(parsedData);
+      setPreviewData(parsedData.slice(0, 5));
+      setShowMapping(false);
+      
+      toast({
+        title: "Success",
+        description: `Manually parsed ${parsedData.length} records`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to parse CSV with manual mapping",
+        variant: "destructive",
+      });
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleConfirmImport = () => {
-    if (previewData.length > 0 && csvType) {
-      onDataProcessed(previewData, csvType);
+    if (fullData.length > 0 && csvType) {
+      onDataProcessed(fullData, csvType);
       resetForm();
       toast({
         title: "Success",
-        description: `Imported ${previewData.length} records successfully!`,
+        description: `Imported ${fullData.length} records successfully!`,
       });
     }
   };
@@ -151,6 +169,7 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
   const resetForm = () => {
     setFile(null);
     setPreviewData([]);
+    setFullData([]);
     setShowMapping(false);
     setColumnMapping({});
     setCsvType(null);
@@ -178,12 +197,13 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
           />
         )}
 
-        {previewData.length > 0 && (
+        {previewData.length > 0 && !showMapping && (
           <CSVDataPreview
             previewData={previewData}
             csvType={csvType || ''}
             onConfirmImport={handleConfirmImport}
             onCancel={resetForm}
+            totalRecords={fullData.length}
           />
         )}
 

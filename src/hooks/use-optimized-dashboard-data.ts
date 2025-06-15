@@ -86,12 +86,12 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     Logger.info('Fetching dashboard data for user:', userId);
     
     // Simulate API delay for realistic loading experience
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 800));
     
     // In production, fetch real data from Firestore
     const [expenses, investments] = await Promise.all([
-      FirestoreService.getExpenses(userId),
-      FirestoreService.getInvestments(userId)
+      FirestoreService.getExpenses(userId).catch(() => []),
+      FirestoreService.getInvestments(userId).catch(() => [])
     ]);
 
     // Calculate real metrics
@@ -144,7 +144,7 @@ export function useOptimizedDashboardData() {
     queryFn: () => fetchDashboardData(user?.uid || ''),
     enabled: !!user?.uid,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (renamed from cacheTime)
+    gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
