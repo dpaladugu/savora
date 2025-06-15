@@ -5,13 +5,14 @@ import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { AuthScreen } from "@/components/auth/auth-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { MainContentRouter } from "@/components/layout/main-content-router";
+import { ErrorBoundary } from "@/components/error/error-boundary";
 import { useAuth } from "@/contexts/auth-context";
+import { useNavigationRouter } from "@/components/layout/navigation-router";
 import { AnimatePresence } from "framer-motion";
 
 const Index = () => {
   const { user, loading } = useAuth();
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [activeMoreModule, setActiveMoreModule] = useState<string | null>(null);
+  const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
   const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
@@ -23,29 +24,9 @@ const Index = () => {
     }
   }, [user]);
 
-  useEffect(() => {
-    // Clear more module when switching away from more tab
-    if (activeTab !== "more") {
-      setActiveMoreModule(null);
-    }
-  }, [activeTab]);
-
   const handleWelcomeComplete = () => {
     localStorage.setItem("savora-welcome-seen", "true");
     setShowWelcome(false);
-  };
-
-  const handleMoreNavigation = (moduleId: string) => {
-    setActiveTab("more");
-    setActiveMoreModule(moduleId);
-  };
-
-  const handleTabChange = (tab: string) => {
-    setActiveTab(tab);
-    // Clear more module when changing tabs
-    if (tab !== "more") {
-      setActiveMoreModule(null);
-    }
   };
 
   if (loading) {
@@ -53,34 +34,40 @@ const Index = () => {
   }
 
   if (!user) {
-    return <AuthScreen />;
+    return (
+      <ErrorBoundary>
+        <AuthScreen />
+      </ErrorBoundary>
+    );
   }
 
   return (
-    <div className="relative min-h-screen">
-      <AnimatePresence>
-        {showWelcome && (
-          <WelcomeScreen onComplete={handleWelcomeComplete} />
+    <ErrorBoundary>
+      <div className="relative min-h-screen">
+        <AnimatePresence>
+          {showWelcome && (
+            <WelcomeScreen onComplete={handleWelcomeComplete} />
+          )}
+        </AnimatePresence>
+        
+        {!showWelcome && (
+          <>
+            <MainContentRouter 
+              activeTab={activeTab}
+              activeMoreModule={activeMoreModule}
+              onMoreNavigation={handleMoreNavigation}
+              onTabChange={handleTabChange}
+            />
+            <PersistentNavigation 
+              activeTab={activeTab} 
+              onTabChange={handleTabChange}
+              activeMoreModule={activeMoreModule}
+              onMoreNavigation={handleMoreNavigation}
+            />
+          </>
         )}
-      </AnimatePresence>
-      
-      {!showWelcome && (
-        <>
-          <MainContentRouter 
-            activeTab={activeTab}
-            activeMoreModule={activeMoreModule}
-            onMoreNavigation={handleMoreNavigation}
-            onTabChange={handleTabChange}
-          />
-          <PersistentNavigation 
-            activeTab={activeTab} 
-            onTabChange={handleTabChange}
-            activeMoreModule={activeMoreModule}
-            onMoreNavigation={handleMoreNavigation}
-          />
-        </>
-      )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 };
 
