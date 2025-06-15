@@ -1,4 +1,3 @@
-
 import { FirestoreService, FirestoreExpense } from "./firestore";
 import { Logger } from "./logger";
 
@@ -34,6 +33,7 @@ export class ExpenseManager {
         ...expense,
         userId,
         paymentMethod: expense.paymentMethod || 'Unknown',
+        tags: expense.tags?.join(', ') || '',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -51,8 +51,9 @@ export class ExpenseManager {
     try {
       Logger.info('Updating expense', { userId, expenseId, updates });
       
-      const updateData = {
+      const updateData: Partial<FirestoreExpense> = {
         ...updates,
+        tags: updates.tags?.join(', '),
         updatedAt: new Date().toISOString()
       };
 
@@ -89,6 +90,7 @@ export class ExpenseManager {
         date: expense.date,
         type: expense.type,
         paymentMethod: expense.paymentMethod,
+        tags: expense.tags ? expense.tags.split(', ') : [],
         userId: expense.userId
       }));
 

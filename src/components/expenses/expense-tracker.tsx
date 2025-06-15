@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -64,7 +63,7 @@ export function ExpenseTracker() {
         date: expense.date,
         category: expense.category,
         tag: expense.description || expense.tags || 'Imported',
-        paymentMode: (expense.paymentMode as any) || 'UPI',
+        paymentMode: (expense.paymentMethod as any) || 'UPI',
         note: expense.description,
         linkedAccount: expense.account,
         autoTagged: expense.source === 'csv'
@@ -88,15 +87,16 @@ export function ExpenseTracker() {
     if (!user) return;
     
     try {
-      const firestoreExpense = {
+      const firestoreExpense: Omit<FirestoreExpense, 'id'> = {
         userId: user.uid,
         date: expenseData.date,
         amount: expenseData.amount,
         category: expenseData.category,
-        paymentMode: expenseData.paymentMode,
+        paymentMethod: expenseData.paymentMode,
         description: expenseData.note || expenseData.tag,
         tags: expenseData.tag,
         account: expenseData.linkedAccount || 'Manual',
+        type: 'expense',
         source: 'manual' as const,
         createdAt: new Date().toISOString()
       };
@@ -120,8 +120,10 @@ export function ExpenseTracker() {
   };
 
   const handleDeleteExpense = async (id: string) => {
+    if (!user) return;
+    
     try {
-      await FirestoreService.deleteExpense(id);
+      await FirestoreService.deleteExpense(user.uid, id);
       await loadFirestoreExpenses(); // Reload to get updated data
       
       toast({

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -64,7 +63,17 @@ export function AddExpenseForm({ onSuccess, onCancel }: AddExpenseFormProps) {
 
     setIsLoading(true);
     try {
-      await ExpenseManager.addExpense(user.uid, data);
+      // Create properly typed data object
+      const expenseData = {
+        amount: data.amount,
+        description: data.description,
+        category: data.category,
+        date: data.date,
+        type: data.type,
+        paymentMethod: data.paymentMethod
+      };
+
+      await ExpenseManager.addExpense(user.uid, expenseData);
       
       toast({
         title: "Success",

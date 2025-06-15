@@ -64,7 +64,20 @@ export function AddInvestmentForm({ onSuccess, onCancel }: AddInvestmentFormProp
 
     setIsLoading(true);
     try {
-      await InvestmentManager.addInvestment(user.uid, data);
+      // Create properly typed data object
+      const investmentData = {
+        name: data.name,
+        type: data.type,
+        amount: data.amount,
+        units: data.units,
+        price: data.price,
+        purchaseDate: data.purchaseDate,
+        maturityDate: data.maturityDate,
+        expectedReturn: data.expectedReturn,
+        riskLevel: data.riskLevel
+      };
+
+      await InvestmentManager.addInvestment(user.uid, investmentData);
       
       toast({
         title: "Success",

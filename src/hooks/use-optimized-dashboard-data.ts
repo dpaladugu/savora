@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
@@ -94,7 +93,7 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       FirestoreService.getInvestments(userId).catch(() => [])
     ]);
 
-    // Calculate real metrics
+    // Calculate real metrics with correct reduce usage
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,6 +79,7 @@ export function CSVImports() {
         const firestoreExpenses = expenses.map(expense => ({
           ...expense,
           userId: user.uid,
+          type: 'expense' as const,
           source: 'csv' as const,
           createdAt: new Date().toISOString()
         }));
@@ -108,10 +108,11 @@ export function CSVImports() {
             date: tx.date,
             amount: tx.amount,
             category: tx.category,
-            paymentMode: 'Credit Card',
+            paymentMethod: 'Credit Card',
             description: `${tx.merchant} - ${tx.description}`,
             tags: `Credit Card - ${tx.merchant}`,
             account: `Card ending ${tx.cardLastFour}`,
+            type: 'expense' as const,
             source: 'csv' as const,
             createdAt: new Date().toISOString()
           }));
@@ -137,6 +138,8 @@ export function CSVImports() {
         const firestoreInvestments = investments.map(investment => ({
           ...investment,
           userId: user.uid,
+          purchaseDate: investment.date,
+          riskLevel: 'medium' as const,
           source: 'csv' as const,
           createdAt: new Date().toISOString()
         }));
@@ -226,6 +229,7 @@ export function CSVImports() {
         const firestoreExpenses = data.map(expense => ({
           ...expense,
           userId: user.uid,
+          type: 'expense' as const,
           source: 'csv' as const,
           createdAt: new Date().toISOString()
         }));
@@ -235,6 +239,8 @@ export function CSVImports() {
         const firestoreInvestments = data.map(investment => ({
           ...investment,
           userId: user.uid,
+          purchaseDate: investment.date,
+          riskLevel: 'medium' as const,
           source: 'csv' as const,
           createdAt: new Date().toISOString()
         }));
