@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -44,6 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(false);
   };
 
+  const signUp = async (email: string, password: string) => {
+    setLoading(true);
+    // Mock sign up
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({
+      uid: 'mock-user-id',
+      email,
+      displayName: 'Test User'
+    });
+    setLoading(false);
+  };
+
   const signOut = async () => {
     setLoading(true);
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -52,7 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );
