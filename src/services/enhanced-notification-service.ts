@@ -1,4 +1,5 @@
 import { Logger } from "./logger";
+import React from "react";
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 
@@ -56,6 +57,17 @@ export class EnhancedNotificationService {
     Logger.warn('Toast function not available, notification queued:', notification.title);
   }
 
+  private static createActionButton(action: { label: string; onClick: () => void }): React.ReactElement {
+    return React.createElement(
+      'button',
+      {
+        onClick: action.onClick,
+        className: 'text-sm underline hover:no-underline'
+      },
+      action.label
+    );
+  }
+
   static success(options: NotificationOptions) {
     Logger.info('Success notification', options);
     
@@ -65,14 +77,7 @@ export class EnhancedNotificationService {
         description: options.description,
         variant: 'default',
         duration: options.duration || 3000,
-        action: options.action ? (
-          <button 
-            onClick={options.action.onClick}
-            className="text-sm underline hover:no-underline"
-          >
-            {options.action.label}
-          </button>
-        ) : undefined
+        action: options.action ? this.createActionButton(options.action) : undefined
       });
     } else {
       this.queueFallbackNotification(options);
@@ -88,14 +93,7 @@ export class EnhancedNotificationService {
         description: options.description,
         variant: 'destructive',
         duration: options.duration || 5000,
-        action: options.action ? (
-          <button 
-            onClick={options.action.onClick}
-            className="text-sm underline hover:no-underline"
-          >
-            {options.action.label}
-          </button>
-        ) : undefined
+        action: options.action ? this.createActionButton(options.action) : undefined
       });
     } else {
       this.queueFallbackNotification(options);
@@ -111,14 +109,7 @@ export class EnhancedNotificationService {
         description: options.description,
         variant: 'default',
         duration: options.duration || 4000,
-        action: options.action ? (
-          <button 
-            onClick={options.action.onClick}
-            className="text-sm underline hover:no-underline"
-          >
-            {options.action.label}
-          </button>
-        ) : undefined
+        action: options.action ? this.createActionButton(options.action) : undefined
       });
     } else {
       this.queueFallbackNotification(options);
@@ -134,14 +125,7 @@ export class EnhancedNotificationService {
         description: options.description,
         variant: 'default',
         duration: options.duration || 3000,
-        action: options.action ? (
-          <button 
-            onClick={options.action.onClick}
-            className="text-sm underline hover:no-underline"
-          >
-            {options.action.label}
-          </button>
-        ) : undefined
+        action: options.action ? this.createActionButton(options.action) : undefined
       });
     } else {
       this.queueFallbackNotification(options);
