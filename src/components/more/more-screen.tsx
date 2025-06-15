@@ -22,164 +22,116 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface MoreScreenProps {
   onNavigate: (screen: string) => void;
+  onClose?: () => void;
 }
 
-export function MoreScreen({ onNavigate }: MoreScreenProps) {
+export function MoreScreen({ onNavigate, onClose }: MoreScreenProps) {
   const modules = [
     {
-      id: 'suggestions',
-      title: 'Suggestions',
-      description: 'Smart financial insights & tips',
-      icon: Lightbulb,
-      color: 'bg-gradient-green'
-    },
-    {
-      id: 'reminders',
-      title: 'Reminders',
-      description: 'Upcoming payments & due dates',
-      icon: Bell,
-      color: 'bg-gradient-orange'
-    },
-    {
-      id: 'income',
-      title: 'Income Tracker',
-      description: 'Track salary, rental & other income',
-      icon: DollarSign,
-      color: 'bg-gradient-green'
-    },
-    {
-      id: 'credit-cards',
-      title: 'Credit Cards',
-      description: 'Manage credit cards & limits',
-      icon: CreditCard,
-      color: 'bg-gradient-blue'
-    },
-    {
-      id: 'accounts',
-      title: 'Banks & Wallets',
-      description: 'Track accounts & balances',
-      icon: Wallet,
-      color: 'bg-gradient-purple'
-    },
-    {
-      id: 'vehicles',
-      title: 'Vehicle Manager',
-      description: 'Track vehicles & insurance',
-      icon: Car,
-      color: 'bg-gradient-orange'
-    },
-    {
-      id: 'insurance',
-      title: 'Insurance & EMI',
-      description: 'Manage policies and loan EMIs',
+      id: 'emergency-fund',
+      title: 'Emergency Fund',
+      description: 'Calculate and track your emergency corpus',
       icon: Shield,
-      color: 'bg-gradient-purple'
-    },
-    {
-      id: 'recurring-goals',
-      title: 'Recurring Goals',
-      description: 'Auto-generated payment goals',
-      icon: Repeat,
-      color: 'bg-gradient-green'
-    },
-    {
-      id: 'gold',
-      title: 'Gold Investments',
-      description: 'Track physical gold holdings',
-      icon: Coins,
-      color: 'bg-gradient-orange'
+      color: 'bg-gradient-to-r from-green-500 to-green-600'
     },
     {
       id: 'rentals',
       title: 'Rental Properties',
-      description: 'Manage rental income & tenants',
+      description: 'Track rental income and expenses',
       icon: Home,
-      color: 'bg-gradient-blue'
+      color: 'bg-gradient-to-r from-blue-500 to-blue-600'
     },
     {
-      id: 'investments',
-      title: 'Investments',
-      description: 'Track stocks, mutual funds & more',
-      icon: TrendingUp,
-      color: 'bg-gradient-green'
+      id: 'recommendations',
+      title: 'Smart Tips',
+      description: 'Personalized financial recommendations',
+      icon: Lightbulb,
+      color: 'bg-gradient-to-r from-purple-500 to-purple-600'
     },
     {
-      id: 'reports',
-      title: 'Reports',
-      description: 'Financial reports & analytics',
+      id: 'cashflow',
+      title: 'Cashflow Analysis',
+      description: 'Income vs expense analysis',
       icon: PieChart,
-      color: 'bg-gradient-purple'
+      color: 'bg-gradient-to-r from-indigo-500 to-indigo-600'
     },
     {
-      id: 'calculator',
-      title: 'Calculators',
-      description: 'EMI, SIP & tax calculators',
+      id: 'telegram',
+      title: 'Telegram Bot',
+      description: 'Connect Telegram for quick updates',
+      icon: Bell,
+      color: 'bg-gradient-to-r from-teal-500 to-teal-600'
+    },
+    {
+      id: 'goals',
+      title: 'Goals & SIPs',
+      description: 'Financial goals and SIP tracking',
+      icon: Target,
+      color: 'bg-gradient-to-r from-orange-500 to-orange-600'
+    },
+    {
+      id: 'upload',
+      title: 'Import CSV',
+      description: 'Import Axio, Kuvera data',
+      icon: Upload,
+      color: 'bg-gradient-to-r from-cyan-500 to-cyan-600'
+    },
+    {
+      id: 'settings',
+      title: 'Settings',
+      description: 'App preferences and data export',
       icon: Calculator,
-      color: 'bg-gradient-blue'
-    },
-    {
-      id: 'documents',
-      title: 'Documents',
-      description: 'Store financial documents',
-      icon: FileText,
-      color: 'bg-gradient-orange'
+      color: 'bg-gradient-to-r from-gray-500 to-gray-600'
     }
   ];
 
+  const handleModuleClick = (moduleId: string) => {
+    onNavigate(moduleId);
+    if (onClose) {
+      onClose();
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
+    <div className="space-y-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-foreground mb-2">
           More Features
-        </h1>
-        <p className="text-muted-foreground text-lg font-medium">
+        </h2>
+        <p className="text-muted-foreground">
           Explore additional financial modules
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-3">
         {modules.map((module, index) => (
           <motion.div
             key={module.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.1 }}
+            transition={{ delay: index * 0.05 }}
           >
             <Card 
-              className="metric-card border-border/50 cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => onNavigate(module.id)}
+              className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/50 hover:border-primary/50"
+              onClick={() => handleModuleClick(module.id)}
             >
-              <CardContent className="p-4">
-                <div className="flex flex-col items-center text-center space-y-3">
-                  <div className={`p-3 rounded-xl ${module.color} text-white`}>
-                    <module.icon className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground text-sm leading-tight">
-                      {module.title}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-1 leading-snug">
-                      {module.description}
-                    </p>
-                  </div>
+              <CardContent className="flex items-center gap-4 p-4">
+                <div className={`p-3 rounded-xl ${module.color} text-white flex-shrink-0`}>
+                  <module.icon className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-foreground text-base">
+                    {module.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {module.description}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         ))}
       </div>
-
-      {/* Coming Soon Notice */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.8 }}
-        className="mt-8 text-center"
-      >
-        <p className="text-sm text-muted-foreground">
-          More features coming soon! 🚀
-        </p>
-      </motion.div>
     </div>
   );
 }

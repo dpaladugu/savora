@@ -12,6 +12,7 @@ import { ErrorBoundary } from "@/components/error/error-boundary";
 import { memo, Suspense } from "react";
 import { Logger } from "@/services/logger";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
+import { ModuleHeader } from "./module-header";
 
 interface MainContentRouterProps {
   activeTab: string;
@@ -29,16 +30,47 @@ export const MainContentRouter = memo(function MainContentRouter({
   
   Logger.debug('MainContentRouter render', { activeTab, activeMoreModule });
 
-  const renderMoreContent = () => {
-    if (!activeMoreModule) {
-      return <MoreScreen onNavigate={onMoreNavigation} />;
-    }
-    return <MoreModuleRouter activeModule={activeMoreModule} />;
+  const handleBackFromMore = () => {
+    onTabChange('dashboard');
   };
 
-  const renderContent = () => {
-    try {
-      switch (activeTab) {
+  const getTabConfig = (tabId: string) => {
+    const configs = {
+      "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: false },
+      "expenses": { title: "Expenses", subtitle: "Track your spending" },
+      "credit-cards": { title: "Credit Cards", subtitle: "Manage your credit cards" },
+      "investments": { title: "Investments", subtitle: "Track your portfolio" },
+      "goals": { title: "Goals & SIPs", subtitle: "Financial goals and tracking" },
+      "upload": { title: "Import Data", subtitle: "Import CSV files" },
+      "settings": { title: "Settings", subtitle: "App preferences" }
+    };
+    return configs[tabId] || { title: "Module", subtitle: "", showHeader: true };
+  };
+
+  const renderMoreContent = () => {
+    if (!activeMoreModule) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
+          <ModuleHeader 
+            title="More Features"
+            subtitle="Explore additional modules"
+            onBack={handleBackFromMore}
+            showBackButton={true}
+          />
+          <div className="px-4 py-4">
+            <MoreScreen onNavigate={onMoreNavigation} />
+          </div>
+        </div>
+      );
+    }
+    return <MoreModuleRouter activeModule={activeMoreModule} onBack={handleBackFromMore} />;
+  };
+
+  const renderTabContent = (tabId: string) => {
+    const config = getTabConfig(tabId);
+    
+    const content = (() => {
+      switch (tabId) {
         case "dashboard":
           return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
         case "expenses":
@@ -53,12 +85,35 @@ export const MainContentRouter = memo(function MainContentRouter({
           return <CSVImports />;
         case "settings":
           return <SettingsScreen />;
-        case "more":
-          return renderMoreContent();
         default:
-          Logger.warn('Unknown tab accessed', { activeTab });
           return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
       }
+    })();
+
+    if (config.showHeader === false) {
+      return content;
+    }
+
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
+        <ModuleHeader 
+          title={config.title}
+          subtitle={config.subtitle}
+        />
+        <div className="px-4 py-4">
+          {content}
+        </div>
+      </div>
+    );
+  };
+
+  const renderContent = () => {
+    try {
+      if (activeTab === "more") {
+        return renderMoreContent();
+      }
+      
+      return renderTabContent(activeTab);
     } catch (error) {
       Logger.error('Error rendering content', { activeTab, error });
       throw error;

@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-context";
-import { DarkModeToggle } from "@/components/ui/dark-mode-toggle";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 
@@ -19,7 +18,6 @@ const App = () => (
         <AuthProvider>
           <Toaster />
           <Sonner />
-          <DarkModeToggle />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />

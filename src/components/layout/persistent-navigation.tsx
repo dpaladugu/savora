@@ -2,9 +2,9 @@
 import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
 import { AccessibleButton } from "@/components/ui/accessible-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Card, CardContent } from "@/components/ui/card";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { Logger } from "@/services/logger";
+import { MoreScreen } from "@/components/more/more-screen";
 
 interface PersistentNavigationProps {
   activeTab: string;
@@ -19,6 +19,8 @@ export const PersistentNavigation = memo(function PersistentNavigation({
   onMoreNavigation
 }: PersistentNavigationProps) {
   
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  
   const mainTabs = [
     { id: "dashboard", label: "Dashboard", icon: Home, ariaLabel: "Navigate to dashboard" },
     { id: "expenses", label: "Expenses", icon: Receipt, ariaLabel: "Navigate to expenses" },
@@ -26,20 +28,10 @@ export const PersistentNavigation = memo(function PersistentNavigation({
     { id: "investments", label: "Investments", icon: TrendingUp, ariaLabel: "Navigate to investments" },
   ];
 
-  const moreModules = [
-    { id: "emergency-fund", label: "Emergency Fund", icon: "💰", description: "Calculate and track your emergency corpus" },
-    { id: "goals", label: "Goals & SIPs", icon: "🎯", description: "Financial goals and SIP tracking" },
-    { id: "rentals", label: "Rental Properties", icon: "🏠", description: "Track rental income and expenses" },
-    { id: "recommendations", label: "Smart Tips", icon: "💡", description: "Personalized financial recommendations" },
-    { id: "cashflow", label: "Cashflow Analysis", icon: "📊", description: "Income vs expense analysis" },
-    { id: "upload", label: "Import CSV", icon: "📁", description: "Import Axio, Kuvera data" },
-    { id: "telegram", label: "Telegram Bot", icon: "🤖", description: "Connect Telegram for quick updates" },
-    { id: "settings", label: "Settings", icon: "⚙️", description: "App preferences and data export" },
-  ];
-
   const handleTabClick = (tabId: string) => {
     Logger.info('Navigation tab clicked', { tabId, currentTab: activeTab });
     onTabChange(tabId);
+    setIsMoreSheetOpen(false); // Close more sheet if open
   };
 
   const handleMoreModuleClick = (moduleId: string) => {
@@ -49,6 +41,11 @@ export const PersistentNavigation = memo(function PersistentNavigation({
     } else {
       onMoreNavigation(moduleId);
     }
+    setIsMoreSheetOpen(false); // Close the sheet after selection
+  };
+
+  const handleMoreSheetClose = () => {
+    setIsMoreSheetOpen(false);
   };
 
   return (
@@ -76,7 +73,7 @@ export const PersistentNavigation = memo(function PersistentNavigation({
           </AccessibleButton>
         ))}
         
-        <Sheet>
+        <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
           <SheetTrigger asChild>
             <AccessibleButton
               variant="ghost"
@@ -96,30 +93,11 @@ export const PersistentNavigation = memo(function PersistentNavigation({
             <SheetHeader>
               <SheetTitle>More Features</SheetTitle>
             </SheetHeader>
-            <div className="grid gap-3 mt-6" role="list">
-              {moreModules.map((module) => (
-                <Card 
-                  key={module.id} 
-                  className="cursor-pointer hover:bg-accent transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
-                  onClick={() => handleMoreModuleClick(module.id)}
-                  role="listitem"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      handleMoreModuleClick(module.id);
-                    }
-                  }}
-                >
-                  <CardContent className="flex items-center gap-4 p-4">
-                    <div className="text-2xl" aria-hidden="true">{module.icon}</div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-foreground">{module.label}</h3>
-                      <p className="text-sm text-muted-foreground">{module.description}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="mt-6">
+              <MoreScreen 
+                onNavigate={handleMoreModuleClick}
+                onClose={handleMoreSheetClose}
+              />
             </div>
           </SheetContent>
         </Sheet>

@@ -1,5 +1,4 @@
 
-import { DashboardHeader } from "./dashboard-header";
 import { QuickActions } from "./quick-actions";
 import { DashboardMetrics } from "./dashboard-metrics";
 import { DashboardCharts } from "./dashboard-charts";
@@ -8,6 +7,7 @@ import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper
 import { useOptimizedDashboardData } from "@/hooks/use-optimized-dashboard-data";
 import { memo } from "react";
 import { Logger } from "@/services/logger";
+import { motion } from "framer-motion";
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -41,12 +41,19 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-all duration-300 overflow-auto">
-        <div className="pt-4 px-4">
-          <DashboardHeader />
+        <div className="px-4 py-4">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6"
+          >
+            <h1 className="text-2xl font-bold text-foreground mb-1">Dashboard</h1>
+            <p className="text-slate-600 dark:text-slate-300 text-sm">
+              Your financial overview
+            </p>
+          </motion.div>
           
-          <div className="px-2">
-            <QuickActions {...handleQuickActions} />
-          </div>
+          <QuickActions {...handleQuickActions} />
 
           <EnhancedLoadingWrapper 
             loading={loading} 
