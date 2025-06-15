@@ -7,11 +7,13 @@ export interface FirestoreExpense {
   category: string;
   date: string;
   userId: string;
+  type: 'expense' | 'income';
+  paymentMethod?: string;
   tags?: string;
-  paymentMode?: string;
   account?: string;
   source?: 'manual' | 'csv';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface FirestoreInvestment {
@@ -20,11 +22,19 @@ export interface FirestoreInvestment {
   type: string;
   name: string;
   date: string;
+  purchaseDate: string;
   userId: string;
   units?: number;
   nav?: number;
+  price?: number;
+  currentValue?: number;
+  expectedReturn?: number;
+  actualReturn?: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  maturityDate?: string;
   source?: 'manual' | 'csv';
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export class FirestoreService {
@@ -38,8 +48,9 @@ export class FirestoreService {
         category: 'Food',
         date: '2024-01-15',
         userId,
+        type: 'expense',
+        paymentMethod: 'UPI',
         tags: 'groceries, food',
-        paymentMode: 'UPI',
         account: 'Main Account',
         source: 'manual'
       },
@@ -50,8 +61,9 @@ export class FirestoreService {
         category: 'Transport',
         date: '2024-01-14',
         userId,
+        type: 'expense',
+        paymentMethod: 'Credit Card',
         tags: 'fuel, transport',
-        paymentMode: 'Credit Card',
         account: 'Main Account',
         source: 'manual'
       }
@@ -64,26 +76,40 @@ export class FirestoreService {
       {
         id: '1',
         amount: 50000,
-        type: 'SIP',
+        type: 'mutual_funds',
         name: 'Large Cap Fund',
         date: '2024-01-01',
+        purchaseDate: '2024-01-01',
         userId,
         units: 1000,
         nav: 50,
+        price: 50,
+        currentValue: 52000,
+        riskLevel: 'medium',
         source: 'manual'
       },
       {
         id: '2',
         amount: 25000,
-        type: 'Lumpsum',
-        name: 'Mid Cap Fund',
+        type: 'stocks',
+        name: 'Tech Stock',
         date: '2024-01-10',
+        purchaseDate: '2024-01-10',
         userId,
         units: 500,
-        nav: 50,
+        price: 50,
+        currentValue: 26000,
+        riskLevel: 'high',
         source: 'manual'
       }
     ];
+  }
+
+  static async addExpense(userId: string, expense: Omit<FirestoreExpense, 'id'>): Promise<string> {
+    // Mock implementation
+    console.log('Adding expense:', expense);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return Date.now().toString();
   }
 
   static async addExpenses(expenses: FirestoreExpense[]): Promise<void> {
@@ -92,21 +118,40 @@ export class FirestoreService {
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
+  static async addInvestment(userId: string, investment: Omit<FirestoreInvestment, 'id'>): Promise<string> {
+    // Mock implementation
+    console.log('Adding investment:', investment);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return Date.now().toString();
+  }
+
   static async addInvestments(investments: FirestoreInvestment[]): Promise<void> {
     // Mock implementation
     console.log('Adding investments:', investments);
     await new Promise(resolve => setTimeout(resolve, 500));
   }
 
-  static async deleteExpense(expenseId: string): Promise<void> {
+  static async updateExpense(userId: string, expenseId: string, updates: Partial<FirestoreExpense>): Promise<void> {
     // Mock implementation
-    console.log('Deleting expense:', expenseId);
+    console.log('Updating expense:', { userId, expenseId, updates });
     await new Promise(resolve => setTimeout(resolve, 300));
   }
 
-  static async deleteInvestment(investmentId: string): Promise<void> {
+  static async updateInvestment(userId: string, investmentId: string, updates: Partial<FirestoreInvestment>): Promise<void> {
     // Mock implementation
-    console.log('Deleting investment:', investmentId);
+    console.log('Updating investment:', { userId, investmentId, updates });
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  static async deleteExpense(userId: string, expenseId: string): Promise<void> {
+    // Mock implementation
+    console.log('Deleting expense:', { userId, expenseId });
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+
+  static async deleteInvestment(userId: string, investmentId: string): Promise<void> {
+    // Mock implementation
+    console.log('Deleting investment:', { userId, investmentId });
     await new Promise(resolve => setTimeout(resolve, 300));
   }
 }

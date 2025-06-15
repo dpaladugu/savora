@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,7 +47,8 @@ export function AddInvestmentForm({ onSuccess, onCancel }: AddInvestmentFormProp
     resolver: zodResolver(investmentSchema),
     defaultValues: {
       purchaseDate: new Date().toISOString().split('T')[0],
-      riskLevel: 'medium'
+      riskLevel: 'medium',
+      type: 'mutual_funds'
     }
   });
 

@@ -1,4 +1,3 @@
-
 import { Logger } from "./logger";
 
 export interface ParsedExpense {
@@ -132,7 +131,7 @@ export class EnhancedCSVParser {
         description: columns[descIndex] || 'Credit Card Transaction',
         category: this.categorizeTransaction(columns[descIndex] || ''),
         paymentMethod: 'Credit Card',
-        type: (transactionType?.includes('cr') || transactionType?.includes('credit')) ? 'income' : 'expense'
+        type: (transactionType?.includes('cr') || transactionType?.includes('credit')) ? 'income' as const : 'expense' as const
       };
     }).filter(expense => expense.amount > 0);
   }

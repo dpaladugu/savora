@@ -1,5 +1,5 @@
 
-import { FirestoreService } from "./firestore";
+import { FirestoreService, FirestoreExpense } from "./firestore";
 import { Logger } from "./logger";
 
 export interface Expense {
@@ -30,9 +30,10 @@ export class ExpenseManager {
     try {
       Logger.info('Adding expense', { userId, expense });
       
-      const expenseData = {
+      const expenseData: Omit<FirestoreExpense, 'id'> = {
         ...expense,
         userId,
+        paymentMethod: expense.paymentMethod || 'Unknown',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -77,7 +78,19 @@ export class ExpenseManager {
   static async getExpenses(userId: string, filter?: ExpenseFilter): Promise<Expense[]> {
     try {
       Logger.info('Getting expenses', { userId, filter });
-      let expenses = await FirestoreService.getExpenses(userId);
+      const firestoreExpenses = await FirestoreService.getExpenses(userId);
+      
+      // Convert FirestoreExpense to Expense
+      let expenses: Expense[] = firestoreExpenses.map(expense => ({
+        id: expense.id,
+        amount: expense.amount,
+        description: expense.description,
+        category: expense.category,
+        date: expense.date,
+        type: expense.type,
+        paymentMethod: expense.paymentMethod,
+        userId: expense.userId
+      }));
 
       if (filter) {
         expenses = this.applyFilter(expenses, filter);

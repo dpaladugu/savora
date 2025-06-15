@@ -18,7 +18,7 @@ const expenseSchema = z.object({
   description: z.string().min(1, "Description is required"),
   category: z.string().min(1, "Category is required"),
   date: z.string().min(1, "Date is required"),
-  paymentMethod: z.string().optional(),
+  paymentMethod: z.string().min(1, "Payment method is required"),
   type: z.enum(['expense', 'income']).default('expense')
 });
 
@@ -45,7 +45,8 @@ export function AddExpenseForm({ onSuccess, onCancel }: AddExpenseFormProps) {
     resolver: zodResolver(expenseSchema),
     defaultValues: {
       type: 'expense',
-      date: new Date().toISOString().split('T')[0]
+      date: new Date().toISOString().split('T')[0],
+      paymentMethod: 'UPI'
     }
   });
 
@@ -102,7 +103,10 @@ export function AddExpenseForm({ onSuccess, onCancel }: AddExpenseFormProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Select onValueChange={(value) => setValue('type', value as 'expense' | 'income')}>
+            <Select 
+              value={watchedType} 
+              onValueChange={(value) => setValue('type', value as 'expense' | 'income')}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -184,6 +188,9 @@ export function AddExpenseForm({ onSuccess, onCancel }: AddExpenseFormProps) {
                 ))}
               </SelectContent>
             </Select>
+            {errors.paymentMethod && (
+              <p className="text-sm text-destructive">{errors.paymentMethod.message}</p>
+            )}
           </div>
 
           <div className="flex gap-2 pt-4">
