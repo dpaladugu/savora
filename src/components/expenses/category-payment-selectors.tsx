@@ -5,7 +5,7 @@ interface CategoryPaymentSelectorsProps {
     paymentMode: 'UPI' | 'Credit Card' | 'Debit Card' | 'Cash' | 'Net Banking' | 'Wallet';
     linkedGoal: string;
   };
-  onFormDataChange: (updates: Partial<typeof formData>) => void;
+  onFormDataChange: (updates: Partial<CategoryPaymentSelectorsProps['formData']>) => void;
 }
 
 const categories = [

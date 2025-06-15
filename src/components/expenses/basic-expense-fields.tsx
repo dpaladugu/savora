@@ -7,7 +7,7 @@ interface BasicExpenseFieldsProps {
     date: string;
     tag: string;
   };
-  onFormDataChange: (updates: Partial<typeof formData>) => void;
+  onFormDataChange: (updates: Partial<BasicExpenseFieldsProps['formData']>) => void;
 }
 
 export function BasicExpenseFields({ formData, onFormDataChange }: BasicExpenseFieldsProps) {

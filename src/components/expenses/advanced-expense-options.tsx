@@ -10,7 +10,7 @@ interface AdvancedExpenseOptionsProps {
     merchant: string;
     note: string;
   };
-  onFormDataChange: (updates: Partial<typeof formData>) => void;
+  onFormDataChange: (updates: Partial<AdvancedExpenseOptionsProps['formData']>) => void;
 }
 
 export function AdvancedExpenseOptions({ formData, onFormDataChange }: AdvancedExpenseOptionsProps) {
