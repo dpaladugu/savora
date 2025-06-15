@@ -3,100 +3,60 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Enhanced Apple-inspired design system with proper semantic tokens */
 @layer base {
   :root {
-    /* Light mode - proper semantic tokens with WCAG AA compliance */
-    --background: 255 255 255;
-    --foreground: 15 23 42; /* Dark slate for high contrast */
-    --card: 255 255 255;
-    --card-foreground: 15 23 42;
-    --primary: 59 130 246; /* Blue 500 */
-    --primary-foreground: 255 255 255;
-    --secondary: 71 85 105; /* Slate 600 */
-    --secondary-foreground: 255 255 255;
-    --muted: 248 250 252; /* Slate 50 */
-    --muted-foreground: 71 85 105; /* Slate 600 for proper contrast */
-    --accent: 241 245 249; /* Slate 100 */
-    --accent-foreground: 15 23 42;
-    --destructive: 239 68 68;
-    --destructive-foreground: 255 255 255;
-    --success: 34 197 94;
-    --success-foreground: 255 255 255;
-    --warning: 245 158 11;
-    --warning-foreground: 255 255 255;
-    --border: 226 232 240; /* Slate 200 */
-    --input: 248 250 252;
-    --ring: 59 130 246;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
     --radius: 0.75rem;
-
-    /* Enhanced glassmorphism */
-    --glass-bg: rgba(255, 255, 255, 0.95);
-    --glass-border: rgba(71, 85, 105, 0.15);
-    --glass-shadow: rgba(0, 0, 0, 0.08);
-    
-    /* Navigation colors with enhanced glass effect */
-    --nav-bg: rgba(255, 255, 255, 0.80);
-    --nav-border: rgba(71, 85, 105, 0.20);
-    --nav-shadow: rgba(0, 0, 0, 0.12);
-
-    /* Enhanced navigation glass effect */
-    --enhanced-nav-bg: rgba(255, 255, 255, 0.75);
-    --enhanced-nav-border: rgba(71, 85, 105, 0.25);
-    --enhanced-nav-shadow: rgba(0, 0, 0, 0.15);
-
-    /* Semantic surface tokens */
-    --surface: 255 255 255;
-    --surface-foreground: 15 23 42;
-    --surface-variant: 248 250 252;
-    --surface-variant-foreground: 71 85 105;
-    --on-primary: 255 255 255;
-    --on-secondary: 255 255 255;
-    --on-surface: 15 23 42;
-    --on-surface-variant: 71 85 105;
   }
 
   .dark {
-    /* Dark mode - keep existing high contrast */
-    --background: 15 23 42;
-    --foreground: 248 250 252;
-    --card: 30 41 59;
-    --card-foreground: 248 250 252;
-    --primary: 99 102 241;
-    --primary-foreground: 255 255 255;
-    --secondary: 71 85 105;
-    --secondary-foreground: 248 250 252;
-    --muted: 30 41 59;
-    --muted-foreground: 156 163 175;
-    --accent: 51 65 85;
-    --accent-foreground: 248 250 252;
-    --border: 55 65 81;
-    --input: 30 41 59;
-
-    /* Enhanced glassmorphism for dark */
-    --glass-bg: rgba(30, 41, 59, 0.95);
-    --glass-border: rgba(156, 163, 175, 0.15);
-    --glass-shadow: rgba(0, 0, 0, 0.3);
-    
-    /* Navigation colors for dark with enhanced glass */
-    --nav-bg: rgba(30, 41, 59, 0.80);
-    --nav-border: rgba(156, 163, 175, 0.20);
-    --nav-shadow: rgba(0, 0, 0, 0.40);
-
-    /* Enhanced navigation glass effect for dark */
-    --enhanced-nav-bg: rgba(30, 41, 59, 0.75);
-    --enhanced-nav-border: rgba(156, 163, 175, 0.25);
-    --enhanced-nav-shadow: rgba(0, 0, 0, 0.50);
-
-    /* Semantic surface tokens for dark */
-    --surface: 30 41 59;
-    --surface-foreground: 248 250 252;
-    --surface-variant: 51 65 85;
-    --surface-variant-foreground: 156 163 175;
-    --on-primary: 255 255 255;
-    --on-secondary: 248 250 252;
-    --on-surface: 248 250 252;
-    --on-surface-variant: 156 163 175;
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
@@ -104,192 +64,97 @@
   * {
     @apply border-border;
   }
-  
   body {
-    @apply bg-background text-foreground transition-all duration-300;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  html {
-    @apply transition-all duration-300;
-  }
-
-  /* Enhanced typography with proper contrast */
-  h1 { @apply text-3xl font-bold tracking-tight text-foreground; }
-  h2 { @apply text-2xl font-bold tracking-tight text-foreground; }
-  h3 { @apply text-xl font-semibold tracking-tight text-foreground; }
-  h4 { @apply text-lg font-semibold text-foreground; }
-  h5 { @apply text-base font-semibold text-foreground; }
-  h6 { @apply text-sm font-semibold text-foreground; }
-  
-  p { @apply text-base font-normal leading-relaxed text-foreground; }
-  .text-content { @apply font-normal leading-relaxed text-foreground; }
-  .text-label { @apply font-medium text-foreground; }
-  
-  /* Proper muted text with sufficient contrast */
-  .text-muted { @apply text-muted-foreground; }
-}
-
-/* Enhanced component styles with semantic tokens */
-.glass {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 
-    0 8px 32px var(--glass-shadow),
-    0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.nav-glass {
-  background: var(--nav-bg);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid var(--nav-border);
-  box-shadow: 
-    0 -4px 24px var(--nav-shadow),
-    0 -1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-.enhanced-nav-glass {
-  background: var(--enhanced-nav-bg);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--enhanced-nav-border);
-  box-shadow: 
-    0 -6px 30px var(--enhanced-nav-shadow),
-    0 -2px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-}
-
-.metric-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid var(--glass-border);
-  box-shadow: 
-    0 8px 32px var(--glass-shadow),
-    0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-/* Button styles with proper contrast */
-.btn-primary {
-  @apply bg-primary text-primary-foreground hover:bg-primary/90;
-}
-
-.btn-secondary {
-  @apply bg-secondary text-secondary-foreground hover:bg-secondary/90;
-}
-
-/* Enhanced focus states for accessibility */
-.focus-visible:focus-visible {
-  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
-}
-
-button:focus-visible {
-  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
-}
-
-/* Form elements with proper contrast */
-input, select, textarea {
-  @apply bg-input border-border text-foreground placeholder:text-muted-foreground;
-}
-
-/* Enhanced form validation styles */
-.form-error {
-  @apply text-destructive text-sm mt-1;
-}
-
-.form-success {
-  @apply text-success text-sm mt-1;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-  width: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.4);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.6);
-}
-
-/* Smooth transitions for all elements */
-* {
-  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, transform;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 300ms;
-}
-
-/* Enhanced loading animations */
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
+    @apply bg-background text-foreground;
   }
 }
 
-.shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-  background-size: 200px 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-/* Accessibility improvements for reduced motion */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-
-/* Mobile optimizations */
-@media (max-width: 768px) {
-  /* Larger tap targets */
-  button, .btn, [role="button"] {
-    min-height: 48px;
-    min-width: 48px;
-  }
-  
-  /* Improved form inputs */
-  input, select, textarea {
-    min-height: 48px;
-    font-size: 16px; /* Prevent zoom on iOS */
-  }
-  
-  /* Better card spacing */
-  .metric-card {
-    padding: 1rem;
-  }
-  
-  /* Enhanced navigation glass effect on mobile */
+@layer components {
+  /* Glass Effect Navigation */
   .enhanced-nav-glass {
-    backdrop-filter: blur(28px);
-    -webkit-backdrop-filter: blur(28px);
+    @apply bg-background/95 backdrop-blur-xl border-t border-border/50;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  .nav-glass {
+    @apply bg-background/95 backdrop-blur-xl;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Gradient Backgrounds */
+  .bg-gradient-blue {
+    @apply bg-gradient-to-r from-blue-500 to-blue-600;
+  }
+
+  .bg-gradient-green {
+    @apply bg-gradient-to-r from-green-500 to-green-600;
+  }
+
+  .bg-gradient-purple {
+    @apply bg-gradient-to-r from-purple-500 to-purple-600;
+  }
+
+  .bg-gradient-orange {
+    @apply bg-gradient-to-r from-orange-500 to-orange-600;
+  }
+
+  /* Metric Cards */
+  .metric-card {
+    @apply bg-card/95 backdrop-blur-sm border border-border/50 rounded-xl transition-all duration-300;
+  }
+
+  .metric-card:hover {
+    @apply shadow-lg border-primary/30;
+  }
+
+  /* Loading Animation */
+  .loading-pulse {
+    @apply animate-pulse bg-muted rounded;
+  }
+
+  /* Interactive Elements */
+  .interactive-scale {
+    @apply transition-transform duration-200 hover:scale-105 active:scale-95;
+  }
+
+  /* Focus States */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  .enhanced-nav-glass, .nav-glass, .glass {
-    border-width: 2px;
+/* Custom Animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  
-  button {
-    border-width: 2px;
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-in-bottom {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in-bottom {
+  animation: slide-in-bottom 0.3s ease-out;
+}
+
+/* Responsive Design Helpers */
+@media (max-width: 768px) {
+  .metric-card {
+    @apply text-sm;
   }
 }

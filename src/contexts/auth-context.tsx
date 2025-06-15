@@ -1,51 +1,58 @@
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { AuthService, AuthUser } from '@/services/auth';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+
+interface User {
+  uid: string;
+  email: string;
+  displayName?: string;
+}
 
 interface AuthContextType {
-  user: AuthUser | null;
+  user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<AuthUser | null>(null);
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check for stored user first
-    const storedUser = AuthService.getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-
-    // Listen for auth state changes
-    const unsubscribe = AuthService.onAuthStateChange((user) => {
-      setUser(user);
+    // Mock authentication - in real app, this would check Firebase auth state
+    setTimeout(() => {
+      setUser({
+        uid: 'mock-user-id',
+        email: 'user@example.com',
+        displayName: 'Test User'
+      });
       setLoading(false);
-    });
-
-    return unsubscribe;
+    }, 1000);
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    await AuthService.signIn(email, password);
-  };
-
-  const signUp = async (email: string, password: string) => {
-    await AuthService.signUp(email, password);
+    setLoading(true);
+    // Mock sign in
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setUser({
+      uid: 'mock-user-id',
+      email,
+      displayName: 'Test User'
+    });
+    setLoading(false);
   };
 
   const signOut = async () => {
-    await AuthService.signOut();
+    setLoading(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    setUser(null);
+    setLoading(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, loading, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

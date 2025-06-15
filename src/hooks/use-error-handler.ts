@@ -2,53 +2,28 @@
 import { useState, useCallback } from 'react';
 import { Logger } from '@/services/logger';
 
-export interface ErrorState {
-  error: Error | null;
-  isError: boolean;
-  errorMessage: string | null;
-}
-
 export function useErrorHandler() {
-  const [errorState, setErrorState] = useState<ErrorState>({
-    error: null,
-    isError: false,
-    errorMessage: null
-  });
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const handleError = useCallback((error: Error | string, context?: string) => {
-    const errorObj = typeof error === 'string' ? new Error(error) : error;
-    const contextMessage = context ? `${context}: ${errorObj.message}` : errorObj.message;
+  const handleError = useCallback((error: Error, context?: string) => {
+    const message = error.message || 'An unexpected error occurred';
+    setErrorMessage(message);
     
-    Logger.error(contextMessage, errorObj);
-    
-    setErrorState({
-      error: errorObj,
-      isError: true,
-      errorMessage: contextMessage
-    });
+    if (context) {
+      Logger.error(`${context}: ${message}`, error);
+    } else {
+      Logger.error(message, error);
+    }
   }, []);
 
   const clearError = useCallback(() => {
-    setErrorState({
-      error: null,
-      isError: false,
-      errorMessage: null
-    });
+    setErrorMessage(null);
   }, []);
 
-  const retryOperation = useCallback(async (operation: () => Promise<void>) => {
-    try {
-      clearError();
-      await operation();
-    } catch (error) {
-      handleError(error as Error, 'Retry operation failed');
-    }
-  }, [clearError, handleError]);
-
   return {
-    ...errorState,
+    errorMessage,
     handleError,
     clearError,
-    retryOperation
+    hasError: !!errorMessage
   };
 }

@@ -1,45 +1,49 @@
 
 import { useState, useCallback } from 'react';
 
-export interface LoadingState {
+interface LoadingState {
   isLoading: boolean;
-  loadingText: string;
+  message: string;
   progress?: number;
 }
 
-export function useLoadingState(initialText = 'Loading...') {
-  const [loadingState, setLoadingState] = useState<LoadingState>({
+export function useLoadingState() {
+  const [state, setState] = useState<LoadingState>({
     isLoading: false,
-    loadingText: initialText
+    message: '',
+    progress: undefined
   });
 
-  const startLoading = useCallback((text?: string, progress?: number) => {
-    setLoadingState({
+  const startLoading = useCallback((message: string = 'Loading...', progress?: number) => {
+    setState({
       isLoading: true,
-      loadingText: text || initialText,
+      message,
       progress
     });
-  }, [initialText]);
+  }, []);
 
-  const stopLoading = useCallback(() => {
-    setLoadingState(prev => ({
+  const updateProgress = useCallback((progress: number, message?: string) => {
+    setState(prev => ({
       ...prev,
-      isLoading: false
+      progress,
+      message: message || prev.message
     }));
   }, []);
 
-  const updateProgress = useCallback((progress: number, text?: string) => {
-    setLoadingState(prev => ({
-      ...prev,
-      progress,
-      loadingText: text || prev.loadingText
-    }));
+  const stopLoading = useCallback(() => {
+    setState({
+      isLoading: false,
+      message: '',
+      progress: undefined
+    });
   }, []);
 
   return {
-    ...loadingState,
+    isLoading: state.isLoading,
+    loadingMessage: state.message,
+    progress: state.progress,
     startLoading,
-    stopLoading,
-    updateProgress
+    updateProgress,
+    stopLoading
   };
 }
