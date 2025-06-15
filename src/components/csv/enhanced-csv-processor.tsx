@@ -21,11 +21,12 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
   const [showMapping, setShowMapping] = useState(false);
   const [columnMapping, setColumnMapping] = useState<ColumnMapping>({});
   const [csvType, setCsvType] = useState<'axio' | 'kuvera' | 'credit-card' | null>(null);
+  const [headers, setHeaders] = useState<string[]>([]);
   const { toast } = useToast();
 
   const requiredFields = {
     axio: ['date', 'amount', 'category', 'description'],
-    kuvera: ['date', 'fund_name', 'amount', 'units'],
+    kuvera: ['date', 'name', 'amount', 'units'],
     'credit-card': ['date', 'description', 'amount', 'type']
   };
 
@@ -63,15 +64,20 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
       if (parsedData.length === 0) {
         setShowMapping(true);
         const lines = text.split('\n').filter(line => line.trim());
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+        const csvHeaders = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        setHeaders(csvHeaders);
         
         // Initialize mapping with best guesses
         const initialMapping: ColumnMapping = {};
-        headers.forEach(header => {
-          if (header.includes('date')) initialMapping['date'] = header;
-          if (header.includes('amount') || header.includes('value')) initialMapping['amount'] = header;
-          if (header.includes('description') || header.includes('desc')) initialMapping['description'] = header;
-          if (header.includes('category')) initialMapping['category'] = header;
+        csvHeaders.forEach(header => {
+          const lowerHeader = header.toLowerCase();
+          if (lowerHeader.includes('date')) initialMapping['date'] = header;
+          if (lowerHeader.includes('amount') || lowerHeader.includes('value')) initialMapping['amount'] = header;
+          if (lowerHeader.includes('description') || lowerHeader.includes('desc')) initialMapping['description'] = header;
+          if (lowerHeader.includes('category')) initialMapping['category'] = header;
+          if (lowerHeader.includes('fund') || lowerHeader.includes('name')) initialMapping['name'] = header;
+          if (lowerHeader.includes('units')) initialMapping['units'] = header;
+          if (lowerHeader.includes('type')) initialMapping['type'] = header;
         });
         setColumnMapping(initialMapping);
       } else {
@@ -104,6 +110,40 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
     return null;
   };
 
+  const handleManualParsing = async () => {
+    if (!file || !csvType) return;
+
+    const text = await file.text();
+    const lines = text.split('\n').filter(line => line.trim());
+    const dataLines = lines.slice(1); // Skip header
+    
+    const parsedData: any[] = [];
+    
+    for (const line of dataLines) {
+      const columns = line.split(',').map(col => col.trim().replace(/"/g, ''));
+      const record: any = {};
+      
+      // Map columns based on user selection
+      Object.entries(columnMapping).forEach(([field, headerName]) => {
+        const headerIndex = headers.indexOf(headerName);
+        if (headerIndex !== -1 && columns[headerIndex]) {
+          if (field === 'amount' || field === 'units') {
+            record[field] = parseFloat(columns[headerIndex].replace(/[^\d.-]/g, '')) || 0;
+          } else {
+            record[field] = columns[headerIndex];
+          }
+        }
+      });
+
+      if (record.date && record.amount) {
+        parsedData.push(record);
+      }
+    }
+
+    setPreviewData(parsedData.slice(0, 5));
+    setShowMapping(false);
+  };
+
   const handleConfirmImport = () => {
     if (previewData.length > 0 && csvType) {
       onDataProcessed(previewData, csvType);
@@ -121,10 +161,11 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
     setShowMapping(false);
     setColumnMapping({});
     setCsvType(null);
+    setHeaders([]);
   };
 
   return (
-    <Card className="metric-card border-border/50">
+    <Card className="border-border/50">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="w-5 h-5" />
@@ -169,7 +210,7 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
         {/* Column Mapping Interface */}
         {showMapping && csvType && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-warning">
+            <div className="flex items-center gap-2 text-orange-500">
               <MapPin className="w-4 h-4" />
               <span className="text-sm font-medium">Column Mapping Required</span>
             </div>
@@ -188,17 +229,23 @@ export function EnhancedCSVProcessor({ onDataProcessed }: EnhancedCSVProcessorPr
                   className="w-full px-3 py-2 border border-border rounded-md bg-background text-foreground"
                 >
                   <option value="">Select column...</option>
-                  {/* This would be populated with actual CSV headers */}
+                  {headers.map(header => (
+                    <option key={header} value={header}>{header}</option>
+                  ))}
                 </select>
               </div>
             ))}
+
+            <Button onClick={handleManualParsing} className="w-full">
+              Process with Manual Mapping
+            </Button>
           </div>
         )}
 
         {/* Preview Data */}
         {previewData.length > 0 && (
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-success">
+            <div className="flex items-center gap-2 text-green-500">
               <CheckCircle className="w-4 h-4" />
               <span className="text-sm font-medium">Preview Data ({csvType})</span>
             </div>

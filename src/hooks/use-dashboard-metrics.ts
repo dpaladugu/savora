@@ -1,7 +1,17 @@
 
 import { useMemo } from "react";
-import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard, LucideIcon } from "lucide-react";
-import { DashboardData, MetricCardProps } from "@/types/dashboard";
+import { DashboardData } from "@/types/dashboard";
+import { TrendingUp, TrendingDown, DollarSign, PiggyBank, Target, CreditCard } from "lucide-react";
+
+export interface MetricCardProps {
+  title: string;
+  value: string;
+  change?: string;
+  trend?: "up" | "down" | "neutral";
+  icon: any;
+  onClick?: () => void;
+  loading?: boolean;
+}
 
 export function useDashboardMetrics(
   dashboardData: DashboardData | null,
@@ -9,101 +19,87 @@ export function useDashboardMetrics(
   onTabChange: (tab: string) => void,
   onMoreNavigation: (moduleId: string) => void
 ) {
-  const primaryMetrics = useMemo((): MetricCardProps[] => {
-    if (!dashboardData) {
-      return [
-        {
-          title: "Net Worth",
-          value: "Loading...",
-          icon: DollarSign as LucideIcon,
-          gradient: "bg-gradient-to-r from-blue-500 to-blue-600",
-          loading: true
-        },
-        {
-          title: "This Month",
-          value: "Loading...",
-          icon: Receipt as LucideIcon,
-          gradient: "bg-gradient-to-r from-orange-500 to-orange-600",
-          loading: true
-        },
-        {
-          title: "Emergency Fund",
-          value: "Loading...",
-          icon: Shield as LucideIcon,
-          gradient: "bg-gradient-to-r from-purple-500 to-purple-600",
-          loading: true
-        },
-        {
-          title: "Investments",
-          value: "Loading...",
-          icon: Target as LucideIcon,
-          gradient: "bg-gradient-to-r from-green-500 to-green-600",
-          loading: true
-        }
-      ];
-    }
+  const primaryMetrics = useMemo(() => {
+    if (!dashboardData) return [];
+
+    const formatCurrency = (amount: number) => 
+      new Intl.NumberFormat('en-IN', { 
+        style: 'currency', 
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(amount);
 
     return [
       {
-        title: "Net Worth",
-        value: `₹${(dashboardData.totalInvestments - dashboardData.totalExpenses).toLocaleString()}`,
-        change: dashboardData.totalInvestments > dashboardData.totalExpenses ? "+8.2%" : "-2.1%",
-        changeType: dashboardData.totalInvestments > dashboardData.totalExpenses ? "positive" as const : "negative" as const,
-        icon: DollarSign as LucideIcon,
-        gradient: "bg-gradient-to-r from-blue-500 to-blue-600",
-        onClick: () => onMoreNavigation("investments")
+        title: "Total Investments",
+        value: formatCurrency(dashboardData.totalInvestments || 0),
+        change: dashboardData.totalInvestments > 200000 ? "+12.5%" : "+8.2%",
+        trend: "up" as const,
+        icon: TrendingUp,
+        onClick: () => onTabChange("investments"),
+        loading
       },
       {
-        title: "This Month",
-        value: `₹${dashboardData.monthlyExpenses.toLocaleString()}`,
-        change: `${dashboardData.expenseCount} transactions`,
-        changeType: "neutral" as const,
-        icon: Receipt as LucideIcon,
-        gradient: "bg-gradient-to-r from-orange-500 to-orange-600",
-        onClick: () => onTabChange("expenses")
+        title: "Monthly Expenses",
+        value: formatCurrency(dashboardData.monthlyExpenses || 0),
+        change: `${dashboardData.expenseCount || 0} transactions`,
+        trend: "neutral" as const,
+        icon: DollarSign,
+        onClick: () => onTabChange("expenses"),
+        loading
       },
       {
         title: "Emergency Fund",
-        value: `₹${dashboardData.emergencyFundCurrent.toLocaleString()}`,
-        change: `${dashboardData.emergencyFundCurrent >= dashboardData.emergencyFundTarget ? '✓ Target met' : `₹${(dashboardData.emergencyFundTarget - dashboardData.emergencyFundCurrent).toLocaleString()} needed`}`,
-        changeType: dashboardData.emergencyFundCurrent >= dashboardData.emergencyFundTarget ? "positive" as const : "negative" as const,
-        icon: Shield as LucideIcon,
-        gradient: "bg-gradient-to-r from-purple-500 to-purple-600",
-        onClick: () => onMoreNavigation("emergency-fund")
-      },
-      {
-        title: "Investments",
-        value: `₹${dashboardData.totalInvestments.toLocaleString()}`,
-        change: `${dashboardData.investmentCount} holdings`,
-        changeType: "positive" as const,
-        icon: Target as LucideIcon,
-        gradient: "bg-gradient-to-r from-green-500 to-green-600",
-        onClick: () => onMoreNavigation("investments")
+        value: formatCurrency(dashboardData.emergencyFundCurrent || 0),
+        change: `${Math.round(((dashboardData.emergencyFundCurrent || 0) / (dashboardData.emergencyFundTarget || 1)) * 100)}% of target (${formatCurrency(dashboardData.emergencyFundTarget || 0)})`,
+        trend: (dashboardData.emergencyFundCurrent || 0) >= (dashboardData.emergencyFundTarget || 0) ? "up" : "down" as const,
+        icon: PiggyBank,
+        onClick: () => onMoreNavigation("emergency-fund"),
+        loading
       }
     ];
   }, [dashboardData, loading, onTabChange, onMoreNavigation]);
 
-  const secondaryMetrics = useMemo((): MetricCardProps[] => [
-    {
-      title: "Smart Tips",
-      value: "3 Active",
-      change: "View recommendations",
-      changeType: "neutral" as const,
-      icon: TrendingUp as LucideIcon,
-      gradient: "bg-gradient-to-r from-green-500 to-green-600",
-      onClick: () => onMoreNavigation("recommendations")
-    },
-    {
-      title: "Cashflow",
-      value: dashboardData ? `₹${Math.max(0, dashboardData.totalInvestments - dashboardData.monthlyExpenses).toLocaleString()}` : "Loading...",
-      change: "Monthly surplus",
-      changeType: "positive" as const,
-      icon: CreditCard as LucideIcon,
-      gradient: "bg-gradient-to-r from-blue-500 to-blue-600",
-      onClick: () => onMoreNavigation("cashflow"),
-      loading: !dashboardData
-    }
-  ], [dashboardData, onMoreNavigation]);
+  const secondaryMetrics = useMemo(() => {
+    if (!dashboardData) return [];
+
+    const formatCurrency = (amount: number) => 
+      new Intl.NumberFormat('en-IN', { 
+        style: 'currency', 
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(amount);
+
+    return [
+      {
+        title: "Portfolio Value",
+        value: formatCurrency(dashboardData.totalInvestments || 0),
+        change: `${dashboardData.investmentCount || 0} investments`,
+        trend: "up" as const,
+        icon: Target,
+        onClick: () => onTabChange("investments"),
+        loading
+      },
+      {
+        title: "Savings Rate",
+        value: `${Math.round(((dashboardData.totalInvestments || 0) / ((dashboardData.monthlyExpenses || 1) * 12)) * 100)}%`,
+        change: "Monthly savings vs expenses",
+        trend: "neutral" as const,
+        icon: TrendingUp,
+        onClick: () => onMoreNavigation("cashflow"),
+        loading
+      },
+      {
+        title: "Net Worth",
+        value: formatCurrency((dashboardData.totalInvestments || 0) - (dashboardData.monthlyExpenses || 0) * 6),
+        change: `Investments minus 6mo expenses`,
+        trend: ((dashboardData.totalInvestments || 0) - (dashboardData.monthlyExpenses || 0) * 6) > 0 ? "up" : "down" as const,
+        icon: CreditCard,
+        onClick: () => onMoreNavigation("cashflow"),
+        loading
+      }
+    ];
+  }, [dashboardData, loading, onTabChange, onMoreNavigation]);
 
   return { primaryMetrics, secondaryMetrics };
 }
