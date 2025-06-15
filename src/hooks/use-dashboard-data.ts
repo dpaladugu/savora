@@ -2,16 +2,7 @@
 import { useState, useEffect } from "react";
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
-
-interface DashboardData {
-  totalExpenses: number;
-  monthlyExpenses: number;
-  totalInvestments: number;
-  expenseCount: number;
-  investmentCount: number;
-  emergencyFundTarget: number;
-  emergencyFundCurrent: number;
-}
+import { DashboardData } from "@/types/dashboard";
 
 export function useDashboardData() {
   const { user } = useAuth();
@@ -25,6 +16,7 @@ export function useDashboardData() {
     emergencyFundCurrent: 0
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -36,6 +28,9 @@ export function useDashboardData() {
     if (!user) return;
     
     try {
+      setLoading(true);
+      setError(null);
+      
       const [expenses, investments] = await Promise.all([
         FirestoreService.getExpenses(user.uid),
         FirestoreService.getInvestments(user.uid)
@@ -75,12 +70,13 @@ export function useDashboardData() {
         emergencyFundTarget,
         emergencyFundCurrent
       });
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error);
+    } catch (err) {
+      console.error('Failed to load dashboard data:', err);
+      setError('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
-  return { dashboardData, loading, refetch: loadDashboardData };
+  return { dashboardData, loading, error, refetch: loadDashboardData };
 }
