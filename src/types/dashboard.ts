@@ -3,6 +3,12 @@ import { LucideIcon } from "lucide-react";
 
 export interface DashboardData {
   totalExpenses: number;
+  monthlyExpenses: number;
+  totalInvestments: number;
+  expenseCount: number;
+  investmentCount: number;
+  emergencyFundTarget: number;
+  emergencyFundCurrent: number;
   monthlyIncome: number;
   savingsRate: number;
   investmentValue: number;
@@ -42,6 +48,9 @@ export interface MetricCardProps {
   title: string;
   value: string | number;
   icon?: LucideIcon;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+  gradient?: string;
   trend?: {
     value: number;
     isPositive: boolean;

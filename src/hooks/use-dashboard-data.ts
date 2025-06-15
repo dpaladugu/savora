@@ -23,7 +23,15 @@ export function useDashboardData() {
     expenseCount: 0,
     investmentCount: 0,
     emergencyFundTarget: 0,
-    emergencyFundCurrent: 0
+    emergencyFundCurrent: 0,
+    monthlyIncome: 0,
+    savingsRate: 0,
+    investmentValue: 0,
+    creditCardDebt: 0,
+    emergencyFund: 0,
+    goals: [],
+    recentTransactions: [],
+    categoryBreakdown: []
   });
 
   const loadDashboardData = useCallback(async (forceRefresh = false) => {
@@ -91,7 +99,15 @@ export function useDashboardData() {
         expenseCount: expenses.length,
         investmentCount: investments.length,
         emergencyFundTarget,
-        emergencyFundCurrent
+        emergencyFundCurrent,
+        monthlyIncome: 85000, // Mock data - should come from actual income tracking
+        savingsRate: totalInvestments > 0 ? Math.round((totalInvestments / (totalInvestments + totalExpenses)) * 100) : 0,
+        investmentValue: totalInvestments,
+        creditCardDebt: 0, // Mock data - should come from actual debt tracking
+        emergencyFund: emergencyFundCurrent,
+        goals: [], // Mock data - should come from goals service
+        recentTransactions: [], // Mock data - should come from recent transactions
+        categoryBreakdown: [] // Mock data - should come from category analysis
       };
 
       setDashboardData(newData);

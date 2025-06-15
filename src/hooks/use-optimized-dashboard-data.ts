@@ -6,6 +6,12 @@ import { Logger } from "@/services/logger";
 // Mock data for development
 const mockDashboardData: DashboardData = {
   totalExpenses: 45230,
+  monthlyExpenses: 15430,
+  totalInvestments: 230000,
+  expenseCount: 42,
+  investmentCount: 8,
+  emergencyFundTarget: 150000,
+  emergencyFundCurrent: 120000,
   monthlyIncome: 85000,
   savingsRate: 25,
   investmentValue: 230000,

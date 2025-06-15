@@ -7,6 +7,9 @@ export interface MetricCardProps {
   title: string;
   value: string | number;
   icon?: LucideIcon;
+  change?: string;
+  changeType?: 'positive' | 'negative' | 'neutral';
+  gradient?: string;
   trend?: {
     value: number;
     isPositive: boolean;
@@ -20,6 +23,9 @@ export function MetricCard({
   title,
   value,
   icon: Icon,
+  change,
+  changeType = 'neutral',
+  gradient,
   trend,
   onClick,
   className = "",
@@ -27,7 +33,7 @@ export function MetricCard({
 }: MetricCardProps) {
   const cardContent = (
     <Card 
-      className={`metric-card cursor-pointer hover:shadow-lg transition-all duration-300 ${className}`}
+      className={`metric-card cursor-pointer hover:shadow-lg transition-all duration-300 ${gradient || ''} ${className}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
@@ -50,13 +56,18 @@ export function MetricCard({
             <div className="text-2xl font-bold text-foreground mb-1">
               {value}
             </div>
-            {trend && (
+            {(change || trend) && (
               <div className={`text-xs flex items-center ${
-                trend.isPositive ? 'text-success' : 'text-destructive'
+                changeType === 'positive' ? 'text-green-600' : 
+                changeType === 'negative' ? 'text-red-600' : 
+                'text-muted-foreground'
               }`}>
-                <span>
-                  {trend.isPositive ? '+' : ''}{trend.value}%
-                </span>
+                {change && <span>{change}</span>}
+                {trend && !change && (
+                  <span>
+                    {trend.isPositive ? '+' : ''}{trend.value}%
+                  </span>
+                )}
               </div>
             )}
           </>
