@@ -35,9 +35,10 @@
     --glass-border: rgba(71, 85, 105, 0.15);
     --glass-shadow: rgba(0, 0, 0, 0.08);
     
-    /* Navigation colors */
-    --nav-bg: rgba(255, 255, 255, 0.98);
-    --nav-border: rgba(71, 85, 105, 0.15);
+    /* Navigation colors with enhanced glass effect */
+    --nav-bg: rgba(255, 255, 255, 0.85);
+    --nav-border: rgba(71, 85, 105, 0.2);
+    --nav-shadow: rgba(0, 0, 0, 0.1);
 
     /* Semantic surface tokens */
     --surface: 255 255 255;
@@ -72,9 +73,10 @@
     --glass-border: rgba(156, 163, 175, 0.15);
     --glass-shadow: rgba(0, 0, 0, 0.3);
     
-    /* Navigation colors for dark */
-    --nav-bg: rgba(30, 41, 59, 0.98);
-    --nav-border: rgba(156, 163, 175, 0.15);
+    /* Navigation colors for dark with enhanced glass */
+    --nav-bg: rgba(30, 41, 59, 0.85);
+    --nav-border: rgba(156, 163, 175, 0.2);
+    --nav-shadow: rgba(0, 0, 0, 0.4);
 
     /* Semantic surface tokens for dark */
     --surface: 30 41 59;
@@ -133,10 +135,12 @@
 .nav-glass {
   background: var(--nav-bg);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--nav-border);
   box-shadow: 
-    0 4px 24px var(--glass-shadow),
-    0 1px 2px rgba(0, 0, 0, 0.05);
+    0 -4px 24px var(--nav-shadow),
+    0 -1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .metric-card {
@@ -222,5 +226,11 @@ input, select, textarea {
   /* Better card spacing */
   .metric-card {
     padding: 1rem;
+  }
+  
+  /* Enhanced navigation glass effect on mobile */
+  .nav-glass {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
   }
 }

@@ -1,78 +1,81 @@
 
-import { memo } from "react";
+import { motion } from "framer-motion";
 import { Card, CardContent } from "./card";
 import { LucideIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
 
-interface MetricCardProps {
+export interface MetricCardProps {
   title: string;
-  value: string;
-  change?: string;
-  changeType?: 'positive' | 'negative' | 'neutral';
-  icon: LucideIcon;
-  gradient: string;
+  value: string | number;
+  icon?: LucideIcon;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
   onClick?: () => void;
+  className?: string;
   loading?: boolean;
 }
 
-export const MetricCard = memo(function MetricCard({
+export function MetricCard({
   title,
   value,
-  change,
-  changeType = 'neutral',
   icon: Icon,
-  gradient,
+  trend,
   onClick,
+  className = "",
   loading = false
 }: MetricCardProps) {
-  const changeColor = {
-    positive: 'text-green-600 dark:text-green-400',
-    negative: 'text-red-600 dark:text-red-400',
-    neutral: 'text-gray-600 dark:text-gray-400'
-  };
-
-  if (loading) {
-    return (
-      <Card className="metric-card border-border/50 animate-pulse">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-lg"></div>
-            <div className="w-4 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-          <div className="space-y-2">
-            <div className="w-16 h-4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="w-24 h-6 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            <div className="w-20 h-3 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
+  const cardContent = (
     <Card 
-      className={cn(
-        "metric-card border-border/50 transition-all duration-200",
-        onClick && "cursor-pointer hover:shadow-md hover:border-primary/50"
-      )}
+      className={`metric-card cursor-pointer hover:shadow-lg transition-all duration-300 ${className}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className={`p-2 rounded-lg ${gradient} text-white`}>
-            <Icon className="w-4 h-4" />
-          </div>
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <p className="text-2xl font-bold text-foreground">{value}</p>
-          {change && (
-            <p className={cn("text-xs", changeColor[changeType])}>
-              {change}
-            </p>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-muted-foreground truncate">
+            {title}
+          </h3>
+          {Icon && (
+            <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
           )}
         </div>
+        
+        {loading ? (
+          <div className="space-y-2">
+            <div className="h-6 bg-muted rounded animate-pulse" />
+            <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
+          </div>
+        ) : (
+          <>
+            <div className="text-2xl font-bold text-foreground mb-1">
+              {value}
+            </div>
+            {trend && (
+              <div className={`text-xs flex items-center ${
+                trend.isPositive ? 'text-success' : 'text-destructive'
+              }`}>
+                <span>
+                  {trend.isPositive ? '+' : ''}{trend.value}%
+                </span>
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );
-});
+
+  if (onClick) {
+    return (
+      <motion.div
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ duration: 0.2 }}
+      >
+        {cardContent}
+      </motion.div>
+    );
+  }
+
+  return cardContent;
+}

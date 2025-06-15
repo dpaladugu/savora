@@ -79,11 +79,11 @@ export const PersistentNavigation = memo(function PersistentNavigation({
 
   return (
     <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-sm border-t border-border"
+      className="fixed bottom-0 left-0 right-0 z-50 nav-glass border-t border-border/50"
       role="navigation" 
       aria-label="Main navigation"
     >
-      <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
+      <div className="flex items-center justify-around py-3 px-4 max-w-md mx-auto">
         {mainTabs.map((tab) => (
           <AccessibleButton
             key={tab.id}
@@ -91,13 +91,19 @@ export const PersistentNavigation = memo(function PersistentNavigation({
             size="sm"
             onClick={() => handleTabClick(tab.id)}
             ariaLabel={tab.ariaLabel}
-            className={`flex flex-col items-center gap-1 h-12 px-3 transition-colors duration-200 ${
+            className={`flex flex-col items-center gap-1 h-14 px-3 rounded-xl transition-all duration-300 min-w-[60px] ${
               isActiveTab(tab.id)
-                ? "text-primary bg-primary/10"
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-primary bg-primary/15 border border-primary/25"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
             }`}
           >
-            <tab.icon className="w-5 h-5" aria-hidden="true" />
+            <tab.icon 
+              className={`w-5 h-5 transition-all duration-300 ${
+                isActiveTab(tab.id) ? "scale-110" : ""
+              }`} 
+              aria-hidden="true"
+              strokeWidth={isActiveTab(tab.id) ? 2.5 : 2}
+            />
             <span className="text-xs font-medium">{tab.label}</span>
           </AccessibleButton>
         ))}
@@ -109,25 +115,31 @@ export const PersistentNavigation = memo(function PersistentNavigation({
               size="sm"
               onClick={handleMoreClick}
               ariaLabel="Open more options menu"
-              className={`flex flex-col items-center gap-1 h-12 px-3 transition-colors duration-200 ${
+              className={`flex flex-col items-center gap-1 h-14 px-3 rounded-xl transition-all duration-300 min-w-[60px] ${
                 activeTab === "more" && !activeMoreModule
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-primary bg-primary/15 border border-primary/25"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
               }`}
             >
-              <MoreHorizontal className="w-5 h-5" aria-hidden="true" />
+              <MoreHorizontal 
+                className={`w-5 h-5 transition-all duration-300 ${
+                  activeTab === "more" && !activeMoreModule ? "scale-110" : ""
+                }`}
+                aria-hidden="true"
+                strokeWidth={activeTab === "more" && !activeMoreModule ? 2.5 : 2}
+              />
               <span className="text-xs font-medium">More</span>
             </AccessibleButton>
           </SheetTrigger>
           <SheetContent 
             side="bottom" 
-            className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-sm"
+            className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-sm border-t"
             onInteractOutside={handleMoreSheetClose}
           >
-            <SheetHeader>
-              <SheetTitle>More Features</SheetTitle>
+            <SheetHeader className="pb-4">
+              <SheetTitle className="text-left">More Features</SheetTitle>
             </SheetHeader>
-            <div className="mt-6">
+            <div className="mt-2">
               <MoreScreen 
                 onNavigate={handleMoreModuleClick}
                 onClose={handleMoreSheetClose}

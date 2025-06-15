@@ -30,11 +30,17 @@ export const ModuleHeader = memo(function ModuleHeader({
   }
 
   return (
-    <div className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border">
+    <div className="sticky top-0 z-40 nav-glass border-b border-border/50">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {showBackButton && onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack} className="flex-shrink-0">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={onBack} 
+              className="flex-shrink-0 hover:bg-accent/50 transition-all duration-300"
+              aria-label="Go back"
+            >
               <ArrowLeft className="w-4 h-4" />
             </Button>
           )}
@@ -53,7 +59,7 @@ export const ModuleHeader = memo(function ModuleHeader({
               variant="outline"
               size="sm"
               onClick={toggleTheme}
-              className="bg-background/95 backdrop-blur-sm border-border hover:bg-accent transition-all duration-300"
+              className="bg-background/50 backdrop-blur-sm border-border hover:bg-accent/50 transition-all duration-300 min-h-[40px] min-w-[40px]"
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
             >
               {isDark ? (
