@@ -4,6 +4,7 @@ import { AccessibleButton } from "@/components/ui/accessible-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { memo } from "react";
+import { Logger } from "@/services/logger";
 
 interface PersistentNavigationProps {
   activeTab: string;
@@ -36,7 +37,13 @@ export const PersistentNavigation = memo(function PersistentNavigation({
     { id: "settings", label: "Settings", icon: "⚙️", description: "App preferences and data export" },
   ];
 
+  const handleTabClick = (tabId: string) => {
+    Logger.info('Navigation tab clicked', { tabId, currentTab: activeTab });
+    onTabChange(tabId);
+  };
+
   const handleMoreModuleClick = (moduleId: string) => {
+    Logger.info('More module clicked', { moduleId });
     if (moduleId === "upload" || moduleId === "goals" || moduleId === "settings") {
       onTabChange(moduleId);
     } else {
@@ -56,9 +63,9 @@ export const PersistentNavigation = memo(function PersistentNavigation({
             key={tab.id}
             variant="ghost"
             size="sm"
-            onClick={() => onTabChange(tab.id)}
+            onClick={() => handleTabClick(tab.id)}
             ariaLabel={tab.ariaLabel}
-            className={`flex flex-col items-center gap-1 h-12 px-3 ${
+            className={`flex flex-col items-center gap-1 h-12 px-3 transition-colors duration-200 ${
               activeTab === tab.id || (tab.id === "investments" && activeTab === "more")
                 ? "text-primary bg-primary/10"
                 : "text-muted-foreground hover:text-foreground"
@@ -75,7 +82,7 @@ export const PersistentNavigation = memo(function PersistentNavigation({
               variant="ghost"
               size="sm"
               ariaLabel="Open more options menu"
-              className={`flex flex-col items-center gap-1 h-12 px-3 ${
+              className={`flex flex-col items-center gap-1 h-12 px-3 transition-colors duration-200 ${
                 activeTab === "more"
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground"
@@ -85,7 +92,7 @@ export const PersistentNavigation = memo(function PersistentNavigation({
               <span className="text-xs font-medium">More</span>
             </AccessibleButton>
           </SheetTrigger>
-          <SheetContent side="bottom" className="h-[80vh] overflow-y-auto">
+          <SheetContent side="bottom" className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-sm">
             <SheetHeader>
               <SheetTitle>More Features</SheetTitle>
             </SheetHeader>
@@ -96,6 +103,13 @@ export const PersistentNavigation = memo(function PersistentNavigation({
                   className="cursor-pointer hover:bg-accent transition-colors focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2"
                   onClick={() => handleMoreModuleClick(module.id)}
                   role="listitem"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleMoreModuleClick(module.id);
+                    }
+                  }}
                 >
                   <CardContent className="flex items-center gap-4 p-4">
                     <div className="text-2xl" aria-hidden="true">{module.icon}</div>

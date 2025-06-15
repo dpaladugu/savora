@@ -7,6 +7,7 @@ import { ErrorBoundary } from "@/components/error/error-boundary";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 import { useOptimizedDashboardData } from "@/hooks/use-optimized-dashboard-data";
 import { memo } from "react";
+import { Logger } from "@/services/logger";
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -16,11 +17,25 @@ interface DashboardProps {
 export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { dashboardData, loading, error, refetch } = useOptimizedDashboardData();
 
+  Logger.debug('Dashboard render', { loading, error: !!error, hasData: !!dashboardData });
+
   const handleQuickActions = {
-    onAddExpense: () => onTabChange("expenses"),
-    onImportCSV: () => onTabChange("upload"),
-    onCreateGoal: () => onTabChange("goals"),
-    onViewCards: () => onMoreNavigation("credit-cards")
+    onAddExpense: () => {
+      Logger.info('Quick action: Add expense clicked');
+      onTabChange("expenses");
+    },
+    onImportCSV: () => {
+      Logger.info('Quick action: Import CSV clicked');
+      onTabChange("upload");
+    },
+    onCreateGoal: () => {
+      Logger.info('Quick action: Create goal clicked');
+      onTabChange("goals");
+    },
+    onViewCards: () => {
+      Logger.info('Quick action: View cards clicked');
+      onMoreNavigation("credit-cards");
+    }
   };
 
   return (
@@ -37,7 +52,10 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
             loading={loading} 
             loadingText="Loading dashboard data..."
             error={error}
-            onRetry={refetch}
+            onRetry={() => {
+              Logger.info('Dashboard retry requested');
+              refetch();
+            }}
           >
             <DashboardMetrics
               dashboardData={dashboardData}
