@@ -22,7 +22,6 @@ export class NotificationService {
       description: options.description,
       duration: options.duration || this.defaultDuration,
       action: options.action ? {
-        altText: options.action.label,
         onClick: options.action.onClick,
         children: options.action.label
       } : undefined,
@@ -36,7 +35,6 @@ export class NotificationService {
       variant: 'destructive',
       duration: options.duration || this.defaultDuration,
       action: options.action ? {
-        altText: options.action.label,
         onClick: options.action.onClick,
         children: options.action.label
       } : undefined,
@@ -49,7 +47,6 @@ export class NotificationService {
       description: options.description,
       duration: options.duration || this.defaultDuration,
       action: options.action ? {
-        altText: options.action.label,
         onClick: options.action.onClick,
         children: options.action.label
       } : undefined,
@@ -62,7 +59,6 @@ export class NotificationService {
       description: options.description,
       duration: options.duration || this.defaultDuration,
       action: options.action ? {
-        altText: options.action.label,
         onClick: options.action.onClick,
         children: options.action.label
       } : undefined,

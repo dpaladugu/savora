@@ -35,19 +35,14 @@ export function EnhancedExpenseTracker() {
     }
   );
 
-  const { execute: deleteExpense } = useAsyncOperation(
-    async (expenseId: string) => {
-      if (!user) return;
-      await ExpenseManager.deleteExpense(user.uid, expenseId);
-      await loadExpenses();
-    },
-    {
-      showSuccessToast: true,
-      successMessage: "Expense deleted successfully",
-      showErrorToast: true,
-      errorMessage: "Failed to delete expense"
-    }
-  );
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!user) return;
+    await ExpenseManager.deleteExpense(user.uid, expenseId);
+    await loadExpenses();
+    NotificationService.success({
+      title: "Expense deleted successfully"
+    });
+  };
 
   useEffect(() => {
     loadExpenses();
@@ -215,7 +210,7 @@ export function EnhancedExpenseTracker() {
 
                 <ExpenseList 
                   expenses={filteredExpenses}
-                  onDelete={(id) => deleteExpense(id)}
+                  onDelete={handleDeleteExpense}
                 />
               </>
             )}
