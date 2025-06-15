@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Plus, Trash2, Car, Settings, Receipt } from "lucide-react";
-import { Expense } from "./expense-tracker";
+import { Expense } from "@/services/expense-manager";
 import { SmartEntityLinking } from "./smart-entity-linking";
 import { ExpenseItemization, ExpenseLineItem } from "./expense-itemization";
 
