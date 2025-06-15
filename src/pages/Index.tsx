@@ -24,6 +24,7 @@ const Index = () => {
   }, [user]);
 
   useEffect(() => {
+    // Clear more module when switching away from more tab
     if (activeTab !== "more") {
       setActiveMoreModule(null);
     }
@@ -41,6 +42,7 @@ const Index = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    // Clear more module when changing tabs
     if (tab !== "more") {
       setActiveMoreModule(null);
     }
@@ -55,7 +57,7 @@ const Index = () => {
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-h-screen">
       <AnimatePresence>
         {showWelcome && (
           <WelcomeScreen onComplete={handleWelcomeComplete} />

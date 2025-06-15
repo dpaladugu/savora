@@ -2,12 +2,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, FileText, CreditCard, TrendingUp, Shield, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileText, CreditCard, TrendingUp, Shield, CheckCircle, AlertCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { GlobalHeader } from "@/components/layout/global-header";
 import { CSVParser } from "@/services/csv-parser";
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
+import { EnhancedCSVProcessor } from "@/components/csv/enhanced-csv-processor";
 
 export function CSVImports() {
   const [uploading, setUploading] = useState<string | null>(null);
@@ -73,7 +74,7 @@ export function CSVImports() {
         const expenses = CSVParser.parseAxioExpenses(text);
         
         if (expenses.length === 0) {
-          throw new Error('No valid expenses found in CSV');
+          throw new Error('No valid expenses found in CSV. Please check the format or use the enhanced processor.');
         }
         
         const firestoreExpenses = expenses.map(expense => ({
@@ -186,17 +187,91 @@ export function CSVImports() {
     input.click();
   };
 
+  const downloadTemplate = (templateType: string) => {
+    let csvContent = '';
+    
+    switch (templateType) {
+      case 'axio-expenses':
+        csvContent = 'Date,Amount,Category,Payment Method,Description,Tags\n2024-01-15,250,Food,UPI,Lunch at restaurant,dining\n2024-01-16,50,Transport,Card,Metro card recharge,transport';
+        break;
+      case 'credit-cards':
+        csvContent = 'Date,Description,Amount,Type\n2024-01-15,AMAZON PURCHASE,1250,debit\n2024-01-16,PAYMENT RECEIVED,5000,credit';
+        break;
+      case 'kuvera-mf':
+        csvContent = 'Date,Fund House,Scheme Name,Folio Number,Units,NAV,Amount\n2024-01-15,HDFC,HDFC Top 100 Fund,12345678,10.5,650.25,6827.63';
+        break;
+      default:
+        csvContent = 'Please select a valid template type';
+    }
+    
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${templateType}-template.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Template Downloaded",
+      description: "Use this template to format your data correctly.",
+    });
+  };
+
+  const handleEnhancedDataProcessed = async (data: any[], type: string) => {
+    if (!user) return;
+    
+    try {
+      if (type === 'axio') {
+        const firestoreExpenses = data.map(expense => ({
+          ...expense,
+          userId: user.uid,
+          source: 'csv' as const,
+          createdAt: new Date().toISOString()
+        }));
+        
+        await FirestoreService.addExpenses(firestoreExpenses);
+      } else if (type === 'kuvera') {
+        const firestoreInvestments = data.map(investment => ({
+          ...investment,
+          userId: user.uid,
+          source: 'csv' as const,
+          createdAt: new Date().toISOString()
+        }));
+        
+        await FirestoreService.addInvestments(firestoreInvestments);
+      }
+      
+      toast({
+        title: "Import Successful",
+        description: `Successfully imported ${data.length} records via enhanced processor.`,
+      });
+    } catch (error) {
+      console.error('Enhanced import error:', error);
+      toast({
+        title: "Import Failed",
+        description: "Failed to import data. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
       <GlobalHeader title="CSV Imports" />
       
       <div className="pt-20 px-4 space-y-6">
         <div className="mb-8">
-          <p className="text-muted-foreground text-lg font-medium">
+          <h2 className="text-xl font-bold text-foreground mb-2">Import Financial Data</h2>
+          <p className="text-muted-foreground">
             Import data from various financial platforms
           </p>
         </div>
 
+        {/* Enhanced CSV Processor */}
+        <EnhancedCSVProcessor onDataProcessed={handleEnhancedDataProcessed} />
+
+        {/* Quick Import Options */}
         <div className="grid gap-4">
           {importTypes.map((importType) => (
             <Card key={importType.id} className="metric-card border-border/50">
@@ -236,14 +311,22 @@ export function CSVImports() {
                   </p>
                 </div>
 
-                <Button
-                  onClick={() => triggerFileInput(importType.id)}
-                  disabled={uploading === importType.id}
-                  className="w-full"
-                >
-                  <Upload className="w-4 h-4 mr-2" />
-                  {uploading === importType.id ? 'Uploading...' : 'Upload CSV'}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => triggerFileInput(importType.id)}
+                    disabled={uploading === importType.id}
+                    className="flex-1"
+                  >
+                    <Upload className="w-4 h-4 mr-2" />
+                    {uploading === importType.id ? 'Uploading...' : 'Quick Upload'}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => downloadTemplate(importType.id)}
+                  >
+                    <Download className="w-4 h-4" />
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -251,14 +334,15 @@ export function CSVImports() {
 
         <Card className="metric-card border-border/50">
           <CardContent className="p-6">
-            <h3 className="font-semibold text-foreground mb-3">Upload Guidelines</h3>
+            <h3 className="font-semibold text-foreground mb-3">Import Guidelines</h3>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>• Ensure your CSV files have headers in the first row</li>
-              <li>• Remove any summary rows or footers from bank statements</li>
+              <li>• Use Enhanced Processor for complex files with headers/footers</li>
+              <li>• Quick Upload works for standard format files</li>
               <li>• Date format should be DD/MM/YYYY or YYYY-MM-DD</li>
-              <li>• Amount values should be numeric (without currency symbols)</li>
+              <li>• Amount values should be numeric (commas are automatically handled)</li>
               <li>• Files are processed and stored securely in Firebase</li>
               <li>• Duplicate transactions are automatically filtered out</li>
+              <li>• Download templates if you need to format your data</li>
             </ul>
           </CardContent>
         </Card>

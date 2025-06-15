@@ -6,6 +6,8 @@ import { CSVImports } from "@/components/imports/csv-imports";
 import { SettingsScreen } from "@/components/settings/settings-screen";
 import { MoreScreen } from "@/components/more/more-screen";
 import { MoreModuleRouter } from "./more-module-router";
+import { CreditCardFlowTracker } from "@/components/credit-cards/credit-card-flow-tracker";
+import { InvestmentsTracker } from "@/components/investments/investments-tracker";
 
 interface MainContentRouterProps {
   activeTab: string;
@@ -32,6 +34,10 @@ export function MainContentRouter({
       return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
     case "expenses":
       return <ExpenseTracker />;
+    case "credit-cards":
+      return <CreditCardFlowTracker />;
+    case "investments":
+      return <InvestmentsTracker />;
     case "goals":
       return <SimpleGoalsTracker />;
     case "upload":

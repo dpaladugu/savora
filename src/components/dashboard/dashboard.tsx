@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, Target, Shield, Receipt, CreditCard } from "lucide-react";
@@ -5,7 +6,6 @@ import { MetricCard } from "../ui/metric-card";
 import { ExpenseChart } from "./expense-chart";
 import { AssetAllocation } from "./asset-allocation";
 import { QuickActions } from "./quick-actions";
-import { GlobalHeader } from "../layout/global-header";
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -50,10 +50,22 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
       const totalInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
       
-      // Calculate emergency fund requirements
-      const avgMonthlyExpenses = totalExpenses / Math.max(1, expenses.length / 30 * 12); // Rough monthly average
-      const emergencyFundTarget = avgMonthlyExpenses * 6; // 6 months coverage
-      const emergencyFundCurrent = totalInvestments * 0.1; // Assume 10% is emergency fund
+      // Calculate emergency fund requirements from actual data
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      
+      const recentExpenses = expenses.filter(expense => 
+        new Date(expense.date) >= sixMonthsAgo &&
+        !expense.description?.toLowerCase().includes('bill payment') &&
+        !expense.description?.toLowerCase().includes('emi')
+      );
+      
+      const avgMonthlyExpenses = recentExpenses.length > 0 
+        ? recentExpenses.reduce((sum, expense) => sum + expense.amount, 0) / 6
+        : monthlyExpenses;
+      
+      const emergencyFundTarget = avgMonthlyExpenses * 6;
+      const emergencyFundCurrent = totalInvestments * 0.15; // Assume 15% is emergency fund
       
       setDashboardData({
         totalExpenses,
@@ -100,7 +112,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     {
       title: "Emergency Fund",
       value: loading ? "Loading..." : `₹${dashboardData.emergencyFundCurrent.toLocaleString()}`,
-      change: `Target: ₹${dashboardData.emergencyFundTarget.toLocaleString()}`,
+      change: `${dashboardData.emergencyFundCurrent >= dashboardData.emergencyFundTarget ? '✓ Target met' : `₹${(dashboardData.emergencyFundTarget - dashboardData.emergencyFundCurrent).toLocaleString()} needed`}`,
       changeType: dashboardData.emergencyFundCurrent >= dashboardData.emergencyFundTarget ? "positive" as const : "negative" as const,
       icon: Shield,
       gradient: "bg-gradient-purple",
@@ -129,7 +141,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     },
     {
       title: "Cashflow",
-      value: "₹32,500",
+      value: loading ? "Loading..." : `₹${Math.max(0, dashboardData.totalInvestments - dashboardData.monthlyExpenses).toLocaleString()}`,
       change: "Monthly surplus",
       changeType: "positive" as const,
       icon: CreditCard,
@@ -140,16 +152,16 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-all duration-300 overflow-auto">
-      <GlobalHeader title="Good morning! 👋" />
-      
-      <div className="pt-20 px-4">
+      <div className="pt-4 px-4">
+        {/* Compact header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mb-8 px-2"
+          className="mb-6 px-2"
         >
-          <p className="text-slate-600 dark:text-slate-300 text-lg font-medium">
-            Welcome to Savora - Your financial overview
+          <h1 className="text-2xl font-bold text-foreground mb-1">Dashboard</h1>
+          <p className="text-slate-600 dark:text-slate-300 text-sm">
+            Your financial overview
           </p>
         </motion.div>
 
@@ -186,7 +198,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
           ))}
         </div>
 
-        {/* Charts Section with proper spacing */}
+        {/* Charts Section */}
         <div className="space-y-6 px-2">
           <ExpenseChart />
           <AssetAllocation />
