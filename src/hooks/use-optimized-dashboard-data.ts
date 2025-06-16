@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
@@ -98,17 +97,16 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))
-      .reduce((sum: number, expense: FirestoreExpense) => {
-        return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
-      }, 0);
+      .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
+      .reduce((sum, amount) => sum + amount, 0);
 
-    const totalExpenses = expenses.reduce((sum: number, expense: FirestoreExpense) => {
-      return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
-    }, 0);
+    const totalExpenses = expenses
+      .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
+      .reduce((sum, amount) => sum + amount, 0);
 
-    const totalInvestments = investments.reduce((sum: number, investment: FirestoreInvestment) => {
-      return sum + (typeof investment.amount === 'number' ? investment.amount : 0);
-    }, 0);
+    const totalInvestments = investments
+      .map(investment => typeof investment.amount === 'number' ? investment.amount : 0)
+      .reduce((sum, amount) => sum + amount, 0);
 
     // Calculate emergency fund
     const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback
