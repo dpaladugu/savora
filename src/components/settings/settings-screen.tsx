@@ -1,30 +1,51 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Settings, User, Palette, Database, LogOut, Shield } from "lucide-react";
+import { useState } from "react";
+import { Logger } from "@/services/logger";
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = async () => {
+    if (isSigningOut) return;
+    
     try {
+      setIsSigningOut(true);
+      Logger.info('User signing out', { userId: user?.uid });
       await signOut();
       toast({
         title: "Signed out",
         description: "You have been successfully signed out of Savora.",
       });
     } catch (error) {
+      Logger.error('Sign out error', error);
       toast({
         title: "Error",
         description: "Failed to sign out. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSigningOut(false);
     }
   };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
+        <Card className="metric-card border-border/50">
+          <CardContent className="p-6 text-center">
+            <p className="text-muted-foreground">Please sign in to access settings.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
@@ -56,7 +77,7 @@ export function SettingsScreen() {
                 Email
               </label>
               <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                {user?.email}
+                {user.email || 'No email provided'}
               </div>
             </div>
             <div>
@@ -64,7 +85,7 @@ export function SettingsScreen() {
                 User ID
               </label>
               <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md font-mono">
-                {user?.uid}
+                {user.uid}
               </div>
             </div>
           </CardContent>
@@ -161,10 +182,11 @@ export function SettingsScreen() {
               <Button
                 variant="outline"
                 onClick={handleSignOut}
+                disabled={isSigningOut}
                 className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
                 <LogOut className="w-4 h-4 mr-2" />
-                Sign Out
+                {isSigningOut ? 'Signing Out...' : 'Sign Out'}
               </Button>
             </div>
           </CardContent>

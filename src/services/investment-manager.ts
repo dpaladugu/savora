@@ -1,6 +1,6 @@
-
 import { FirestoreService, FirestoreInvestment } from "./firestore";
 import { Logger } from "./logger";
+import { InvestmentTypeMapper } from "./investment-type-mapper";
 
 export interface Investment {
   id?: string;
@@ -32,14 +32,7 @@ export class InvestmentManager {
     try {
       Logger.info('Adding investment', { userId, investment });
       
-      const investmentData: Omit<FirestoreInvestment, 'id'> = {
-        ...investment,
-        userId,
-        date: investment.purchaseDate,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
+      const investmentData = InvestmentTypeMapper.toFirestoreInvestment(investment, userId);
       const id = await FirestoreService.addInvestment(userId, investmentData);
       Logger.info('Investment added successfully', { id });
       return id;
@@ -53,7 +46,7 @@ export class InvestmentManager {
     try {
       Logger.info('Updating investment', { userId, investmentId, updates });
       
-      const updateData = {
+      const updateData: Partial<FirestoreInvestment> = {
         ...updates,
         updatedAt: new Date().toISOString()
       };
@@ -82,23 +75,7 @@ export class InvestmentManager {
       Logger.info('Getting investments', { userId });
       const firestoreInvestments = await FirestoreService.getInvestments(userId);
       
-      // Convert FirestoreInvestment to Investment
-      const investments: Investment[] = firestoreInvestments.map(investment => ({
-        id: investment.id,
-        name: investment.name,
-        type: investment.type as Investment['type'],
-        amount: investment.amount,
-        units: investment.units,
-        price: investment.price,
-        currentValue: investment.currentValue,
-        purchaseDate: investment.purchaseDate,
-        maturityDate: investment.maturityDate,
-        expectedReturn: investment.expectedReturn,
-        actualReturn: investment.actualReturn,
-        riskLevel: investment.riskLevel,
-        userId: investment.userId
-      }));
-      
+      const investments = firestoreInvestments.map(InvestmentTypeMapper.fromFirestoreInvestment);
       return investments.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
     } catch (error) {
       Logger.error('Error getting investments', error);

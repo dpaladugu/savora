@@ -1,4 +1,3 @@
-
 // Mock Firestore service for development
 export interface FirestoreExpense {
   id?: string;
@@ -39,6 +38,10 @@ export interface FirestoreInvestment {
 
 export class FirestoreService {
   static async getExpenses(userId: string): Promise<FirestoreExpense[]> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
     // Mock data for development
     return [
       {
@@ -52,7 +55,9 @@ export class FirestoreService {
         paymentMethod: 'UPI',
         tags: 'groceries, food',
         account: 'Main Account',
-        source: 'manual'
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
       {
         id: '2',
@@ -65,12 +70,18 @@ export class FirestoreService {
         paymentMethod: 'Credit Card',
         tags: 'fuel, transport',
         account: 'Main Account',
-        source: 'manual'
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ];
   }
 
   static async getInvestments(userId: string): Promise<FirestoreInvestment[]> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
     // Mock data for development
     return [
       {
@@ -86,7 +97,9 @@ export class FirestoreService {
         price: 50,
         currentValue: 52000,
         riskLevel: 'medium',
-        source: 'manual'
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       },
       {
         id: '2',
@@ -100,7 +113,9 @@ export class FirestoreService {
         price: 50,
         currentValue: 26000,
         riskLevel: 'high',
-        source: 'manual'
+        source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       }
     ];
   }
