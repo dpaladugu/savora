@@ -34,7 +34,7 @@ export class ExpenseErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    Logger.error('Expense component error:', error, errorInfo);
+    Logger.error('Expense component error:', { error: error.message, stack: error.stack, errorInfo });
     this.setState({
       error,
       errorInfo
