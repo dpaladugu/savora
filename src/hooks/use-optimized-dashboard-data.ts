@@ -98,15 +98,15 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth))
-      .reduce<number>((sum: number, expense: FirestoreExpense) => {
+      .reduce((sum: number, expense: FirestoreExpense) => {
         return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
       }, 0);
 
-    const totalExpenses = expenses.reduce<number>((sum: number, expense: FirestoreExpense) => {
+    const totalExpenses = expenses.reduce((sum: number, expense: FirestoreExpense) => {
       return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
     }, 0);
 
-    const totalInvestments = investments.reduce<number>((sum: number, investment: FirestoreInvestment) => {
+    const totalInvestments = investments.reduce((sum: number, investment: FirestoreInvestment) => {
       return sum + (typeof investment.amount === 'number' ? investment.amount : 0);
     }, 0);
 
