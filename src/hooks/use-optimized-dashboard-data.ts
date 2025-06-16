@@ -102,24 +102,13 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
         return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
       }, 0);
 
-    /*const totalExpenses = expenses.reduce<number>((sum, expense) => {
+    const totalExpenses = expenses.reduce<number>((sum, expense) => {
       return sum + (typeof expense.amount === 'number' ? expense.amount : 0);
     }, 0);
 
     const totalInvestments = investments.reduce<number>((sum, investment) => {
       return sum + (typeof investment.amount === 'number' ? investment.amount : 0);
-    }, 0);*/
-
-    const totalExpenses = expenses.reduce(
-        (sum: number, expense: FirestoreExpense) => sum + expense.amount,
-          0 // ✅ initial value fixes TS type inference
-          );
-
-    const totalInvestments = investments.reduce(
-            (sum: number, investment: FirestoreInvestment) => sum + investment.amount,
-              0
-              );
-    )
+    }, 0);
 
     // Calculate emergency fund
     const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback

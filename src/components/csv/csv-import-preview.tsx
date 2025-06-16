@@ -3,6 +3,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Upload, Download, CheckCircle, AlertCircle } from "lucide-react";
+import { EnhancedCSVImportValidator } from "./enhanced-csv-import-validator";
+import { SmartCSVTransformer } from "@/services/smart-csv-transformer";
 
 interface CSVImportPreviewProps {
   onImport: (data: any[]) => void;
@@ -14,25 +16,29 @@ const templateTypes = [
     id: 'axio',
     name: 'Axio Bank Statement',
     columns: ['Date', 'Amount', 'Mode', 'Notes', 'Category', 'Tag'],
-    sample: 'date,amount,mode,notes,category,tag\n2024-01-15,450,UPI,Lunch order,Food,Zomato'
+    sample: 'date,amount,mode,notes,category,tag\n2024-01-15,450,UPI,Lunch order,Food,Zomato',
+    dataType: 'expense'
   },
   {
     id: 'kuvera',
     name: 'Kuvera Portfolio',
     columns: ['Fund Name', 'Date', 'Units', 'NAV', 'Amount'],
-    sample: 'fund_name,date,units,nav,amount\nAxis Bluechip Fund,2024-01-15,10.5,45.67,479.54'
+    sample: 'fund_name,date,units,nav,amount\nAxis Bluechip Fund,2024-01-15,10.5,45.67,479.54',
+    dataType: 'investment'
   },
   {
     id: 'nps',
     name: 'NPS Statement',
     columns: ['Scheme', 'PRAN', 'NAV', 'Transaction Date', 'Amount'],
-    sample: 'scheme,pran,nav,transaction_date,amount\nTier 1,123456789012,25.45,2024-01-15,5000'
+    sample: 'scheme,pran,nav,transaction_date,amount\nTier 1,123456789012,25.45,2024-01-15,5000',
+    dataType: 'investment'
   },
   {
     id: 'cards',
     name: 'Credit Cards',
     columns: ['Bank', 'Card Name', 'Last Digits', 'Credit Limit', 'Payment Mode', 'Fee Waiver'],
-    sample: 'bank,card_name,last_digits,credit_limit,payment_mode,fee_waiver\nICICI,Amazon Pay,1234,150000,Auto Debit,Yes'
+    sample: 'bank,card_name,last_digits,credit_limit,payment_mode,fee_waiver\nICICI,Amazon Pay,1234,150000,Auto Debit,Yes',
+    dataType: 'other'
   }
 ];
 
@@ -42,6 +48,7 @@ export function CSVImportPreview({ onImport, onCancel }: CSVImportPreviewProps) 
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
   const [showPreview, setShowPreview] = useState(false);
+  const [isValidated, setIsValidated] = useState(false);
 
   const downloadTemplate = (template: typeof templateTypes[0]) => {
     const blob = new Blob([template.sample], { type: 'text/csv' });
@@ -53,6 +60,23 @@ export function CSVImportPreview({ onImport, onCancel }: CSVImportPreviewProps) 
     window.URL.revokeObjectURL(url);
   };
 
+  const parseCSV = (text: string): any[] => {
+    const lines = text.split('\n').filter(line => line.trim());
+    if (lines.length === 0) return [];
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+    const rows = lines.slice(1).map(line => {
+      const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+      const row: Record<string, string> = {};
+      headers.forEach((header, index) => {
+        row[header] = values[index] || '';
+      });
+      return row;
+    });
+
+    return rows;
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -62,50 +86,62 @@ export function CSVImportPreview({ onImport, onCancel }: CSVImportPreviewProps) 
       const text = e.target?.result as string;
       setCsvData(text);
       
-      // Parse CSV (basic implementation)
-      const lines = text.split('\n').filter(line => line.trim());
-      const headers = lines[0].split(',').map(h => h.trim());
-      const rows = lines.slice(1).map(line => {
-        const values = line.split(',').map(v => v.trim());
-        const row: Record<string, string> = {};
-        headers.forEach((header, index) => {
-          row[header] = values[index] || '';
-        });
-        return row;
-      });
-
-      setParsedData(rows);
-      
-      // Auto-map columns based on selected template
-      const mapping: Record<string, string> = {};
-      selectedTemplate.columns.forEach(templateCol => {
-        const matchingHeader = headers.find(header => 
-          header.toLowerCase().includes(templateCol.toLowerCase()) ||
-          templateCol.toLowerCase().includes(header.toLowerCase())
-        );
-        if (matchingHeader) {
-          mapping[templateCol] = matchingHeader;
+      try {
+        const rows = parseCSV(text);
+        setParsedData(rows);
+        
+        if (rows.length > 0) {
+          const headers = Object.keys(rows[0]);
+          
+          // Auto-map columns based on selected template
+          const mapping: Record<string, string> = {};
+          selectedTemplate.columns.forEach(templateCol => {
+            const matchingHeader = headers.find(header => {
+              const headerLower = header.toLowerCase();
+              const templateLower = templateCol.toLowerCase();
+              return headerLower.includes(templateLower) || templateLower.includes(headerLower);
+            });
+            if (matchingHeader) {
+              mapping[templateCol] = matchingHeader;
+            }
+          });
+          
+          setColumnMapping(mapping);
+          setShowPreview(true);
+          setIsValidated(false);
         }
-      });
-      setColumnMapping(mapping);
-      setShowPreview(true);
+      } catch (error) {
+        console.error('Error parsing CSV:', error);
+      }
     };
     reader.readAsText(file);
   };
 
   const handleImport = () => {
-    // Transform data based on column mapping
-    const transformedData = parsedData.map(row => {
-      const transformed: Record<string, any> = {};
-      Object.entries(columnMapping).forEach(([templateCol, csvCol]) => {
-        if (csvCol && row[csvCol] !== undefined) {
-          transformed[templateCol.toLowerCase().replace(' ', '_')] = row[csvCol];
-        }
-      });
-      return transformed;
-    });
+    try {
+      let transformedData: any[] = [];
+      
+      if (selectedTemplate.dataType === 'expense') {
+        transformedData = SmartCSVTransformer.transformExpenseData(parsedData, columnMapping);
+      } else if (selectedTemplate.dataType === 'investment') {
+        transformedData = SmartCSVTransformer.transformInvestmentData(parsedData, columnMapping);
+      } else {
+        // For other types, use basic transformation
+        transformedData = parsedData.map(row => {
+          const transformed: Record<string, any> = {};
+          Object.entries(columnMapping).forEach(([templateCol, csvCol]) => {
+            if (csvCol && row[csvCol] !== undefined) {
+              transformed[templateCol.toLowerCase().replace(' ', '_')] = row[csvCol];
+            }
+          });
+          return transformed;
+        });
+      }
 
-    onImport(transformedData);
+      onImport(transformedData);
+    } catch (error) {
+      console.error('Error transforming data:', error);
+    }
   };
 
   return (
@@ -185,10 +221,13 @@ export function CSVImportPreview({ onImport, onCancel }: CSVImportPreviewProps) 
                     <div className="w-32 text-sm font-medium">{templateCol}:</div>
                     <select
                       value={columnMapping[templateCol] || ''}
-                      onChange={(e) => setColumnMapping({
-                        ...columnMapping,
-                        [templateCol]: e.target.value
-                      })}
+                      onChange={(e) => {
+                        setColumnMapping({
+                          ...columnMapping,
+                          [templateCol]: e.target.value
+                        });
+                        setIsValidated(false);
+                      }}
                       className="flex-1 h-9 px-3 rounded-md border border-border bg-background text-foreground text-sm"
                     >
                       <option value="">Select column</option>
@@ -203,6 +242,15 @@ export function CSVImportPreview({ onImport, onCancel }: CSVImportPreviewProps) 
                 ))}
               </div>
             </div>
+
+            {/* Validation */}
+            {parsedData.length > 0 && Object.keys(columnMapping).some(key => columnMapping[key]) && (
+              <EnhancedCSVImportValidator
+                data={parsedData}
+                templateType={selectedTemplate.id}
+                columnMapping={columnMapping}
+              />
+            )}
 
             {/* Preview Table */}
             <div>
