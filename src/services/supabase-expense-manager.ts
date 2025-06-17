@@ -107,7 +107,7 @@ export class SupabaseExpenseManager {
 
       const expenses: Expense[] = (data || []).map(row => ({
         id: row.id,
-        amount: parseFloat(row.amount),
+        amount: Number(row.amount),
         description: row.description,
         category: row.category,
         date: row.date,

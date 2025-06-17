@@ -7,6 +7,7 @@ import { Plus, Search, Download } from "lucide-react";
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { ExpenseList } from "./expense-list";
 import { SupabaseExpenseManager } from "@/services/supabase-expense-manager";
+import { ExpenseManager } from "@/services/expense-manager";
 import { useAuth } from "@/contexts/auth-context";
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
