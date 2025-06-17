@@ -9,7 +9,138 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      expenses: {
+        Row: {
+          account: string | null
+          amount: number
+          category: string
+          created_at: string | null
+          date: string
+          description: string
+          id: string
+          payment_method: string | null
+          source: string | null
+          tags: string | null
+          type: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account?: string | null
+          amount: number
+          category: string
+          created_at?: string | null
+          date: string
+          description: string
+          id?: string
+          payment_method?: string | null
+          source?: string | null
+          tags?: string | null
+          type: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account?: string | null
+          amount?: number
+          category?: string
+          created_at?: string | null
+          date?: string
+          description?: string
+          id?: string
+          payment_method?: string | null
+          source?: string | null
+          tags?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      investments: {
+        Row: {
+          actual_return: number | null
+          amount: number
+          created_at: string | null
+          current_value: number | null
+          expected_return: number | null
+          id: string
+          maturity_date: string | null
+          name: string
+          price: number | null
+          purchase_date: string
+          risk_level: string
+          source: string | null
+          type: string
+          units: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          actual_return?: number | null
+          amount: number
+          created_at?: string | null
+          current_value?: number | null
+          expected_return?: number | null
+          id?: string
+          maturity_date?: string | null
+          name: string
+          price?: number | null
+          purchase_date: string
+          risk_level: string
+          source?: string | null
+          type: string
+          units?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          actual_return?: number | null
+          amount?: number
+          created_at?: string | null
+          current_value?: number | null
+          expected_return?: number | null
+          id?: string
+          maturity_date?: string | null
+          name?: string
+          price?: number | null
+          purchase_date?: string
+          risk_level?: string
+          source?: string | null
+          type?: string
+          units?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

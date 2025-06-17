@@ -1,5 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { SupabaseAuthService } from '@/services/supabase-auth';
 
 interface User {
   uid: string;
@@ -22,46 +23,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock authentication - in real app, this would check Firebase auth state
-    setTimeout(() => {
-      setUser({
-        uid: 'mock-user-id',
-        email: 'user@example.com',
-        displayName: 'Test User'
-      });
+    // Set up auth state listener
+    const { data: { subscription } } = SupabaseAuthService.onAuthStateChange((authUser) => {
+      setUser(authUser);
       setLoading(false);
-    }, 1000);
+    });
+
+    // Check for existing session
+    SupabaseAuthService.getCurrentUser().then((authUser) => {
+      setUser(authUser);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const signIn = async (email: string, password: string) => {
     setLoading(true);
-    // Mock sign in
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({
-      uid: 'mock-user-id',
-      email,
-      displayName: 'Test User'
-    });
-    setLoading(false);
+    try {
+      const authUser = await SupabaseAuthService.signIn(email, password);
+      setUser(authUser);
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signUp = async (email: string, password: string) => {
     setLoading(true);
-    // Mock sign up
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setUser({
-      uid: 'mock-user-id',
-      email,
-      displayName: 'Test User'
-    });
-    setLoading(false);
+    try {
+      const authUser = await SupabaseAuthService.signUp(email, password);
+      setUser(authUser);
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   const signOut = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setUser(null);
-    setLoading(false);
+    try {
+      await SupabaseAuthService.signOut();
+      setUser(null);
+    } catch (error) {
+      throw error;
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

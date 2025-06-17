@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Search, Download } from "lucide-react";
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { ExpenseList } from "./expense-list";
-import { ExpenseManager } from "@/services/expense-manager";
+import { SupabaseExpenseManager } from "@/services/supabase-expense-manager";
 import { useAuth } from "@/contexts/auth-context";
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
@@ -35,7 +35,7 @@ export function ExpenseTracker() {
     clearError();
     
     try {
-      const data = await ExpenseManager.getExpenses(user.uid);
+      const data = await SupabaseExpenseManager.getExpenses(user.uid);
       setExpenses(data);
     } catch (error) {
       EnhancedNotificationService.dataLoadError(() => loadExpenses());
@@ -50,7 +50,7 @@ export function ExpenseTracker() {
     if (!user) return;
     
     try {
-      await ExpenseManager.deleteExpense(user.uid, expenseId);
+      await SupabaseExpenseManager.deleteExpense(user.uid, expenseId);
       await loadExpenses();
       EnhancedNotificationService.expenseDeleted();
     } catch (error) {
@@ -71,7 +71,7 @@ export function ExpenseTracker() {
         userId: user.uid
       });
       
-      await ExpenseManager.addExpense(user.uid, expenseData);
+      await SupabaseExpenseManager.addExpense(user.uid, expenseData);
       await loadExpenses();
       setShowAddForm(false);
     } catch (error) {

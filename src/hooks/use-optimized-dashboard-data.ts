@@ -1,7 +1,9 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { FirestoreService, FirestoreExpense, FirestoreInvestment } from "@/services/firestore";
+import { SupabaseExpenseManager } from "@/services/supabase-expense-manager";
+import { SupabaseInvestmentManager } from "@/services/supabase-investment-manager";
 import { useAuth } from "@/contexts/auth-context";
 
 // Enhanced mock data for development
@@ -87,26 +89,36 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
     // Simulate API delay for realistic loading experience
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    // In production, fetch real data from Firestore
+    // Fetch real data from Supabase
     const [expenses, investments] = await Promise.all([
-      FirestoreService.getExpenses(userId).catch(() => []),
-      FirestoreService.getInvestments(userId).catch(() => [])
+      SupabaseExpenseManager.getExpenses(userId).catch(() => []),
+      SupabaseInvestmentManager.getInvestments(userId).catch(() => [])
     ]);
 
     // Calculate real metrics with proper type handling and initial values
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
-      .filter(expense => expense.date?.startsWith(currentMonth))
+      .filter(expense => expense.date?.startsWith(currentMonth) && expense.type === 'expense')
       .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
       .reduce((sum, amount) => sum + amount, 0);
 
     const totalExpenses = expenses
+      .filter(expense => expense.type === 'expense')
       .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
       .reduce((sum, amount) => sum + amount, 0);
 
     const totalInvestments = investments
       .map(investment => typeof investment.amount === 'number' ? investment.amount : 0)
       .reduce((sum, amount) => sum + amount, 0);
+
+    // Calculate category breakdown from real data
+    const categoryBreakdown = await SupabaseExpenseManager.getExpensesByCategory(userId);
+    const categoryBreakdownArray = Object.entries(categoryBreakdown).map(([category, amount], index) => ({
+      category,
+      amount,
+      percentage: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0,
+      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'][index % 5]
+    }));
 
     // Calculate emergency fund
     const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback
@@ -118,17 +130,18 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       totalExpenses,
       monthlyExpenses,
       totalInvestments,
-      expenseCount: expenses.length,
+      expenseCount: expenses.filter(e => e.type === 'expense').length,
       investmentCount: investments.length,
       emergencyFundTarget,
       emergencyFundCurrent,
+      categoryBreakdown: categoryBreakdownArray.length > 0 ? categoryBreakdownArray : mockDashboardData.categoryBreakdown,
       recentTransactions: expenses.slice(0, 5).map(expense => ({
         id: expense.id || '',
-        amount: -(typeof expense.amount === 'number' ? expense.amount : 0),
+        amount: expense.type === 'expense' ? -(typeof expense.amount === 'number' ? expense.amount : 0) : (typeof expense.amount === 'number' ? expense.amount : 0),
         description: expense.description || 'Unknown',
         category: expense.category || 'Other',
         date: expense.date || new Date().toISOString().split('T')[0],
-        type: 'expense' as const
+        type: expense.type as 'expense' | 'income'
       }))
     };
 
