@@ -8,10 +8,86 @@ import { SipRecommendation } from "./sip-recommendation";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Sparkles, AlertTriangle } from "lucide-react"; // Added Sparkles, AlertTriangle
+import { useState } from "react"; // Added useState
+import { DeepseekAiService } from "@/services/deepseek-ai-service"; // Added AI Service
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card components
+// import ReactMarkdown from 'react-markdown'; // Placeholder for markdown rendering
+// import remarkGfm from 'remark-gfm';         // For GitHub Flavored Markdown
 
 export function EmergencyFundCalculator() {
-  const { data, updateData, loading, missingData, calculation, refreshData } = useEmergencyFund();
+  const { data, updateData, loading: initialDataLoading, missingData, calculation, refreshData } = useEmergencyFund();
+  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
+  const [aiAdviceError, setAiAdviceError] = useState<string | null>(null);
+
+  const handleGetAiAdvice = async () => {
+    setAiAdviceLoading(true);
+    setAiAdviceError(null);
+    setAiAdvice(null);
+
+    // Construct the prompt using data from the 'data' object
+    // This is based on the prompt designed in Step 3 of the plan.
+    const prompt = `
+You are an expert financial advisor AI. Your goal is to provide clear, actionable, and prudent advice regarding a user's emergency fund. Your advice should be based on established financial planning best practices.
+
+Consider the following user data:
+- Average Monthly Essential Expenses: ${data.monthlyExpenses}
+- Number of Dependents: ${data.dependents}
+- Number of Income Earners in Household: ${data.numIncomeSources || 1}
+- Assessed Job Stability: ${data.jobStability || 'medium'}
+- Current Emergency Fund Savings: ${data.currentCorpus}
+- Other Readily Available Liquid Savings (not part of emergency fund): ${data.otherLiquidSavings || 0}
+- Significant Monthly Debt Payments (e.g., loans, EMIs, excluding rent/mortgage which is in monthly expenses): ${data.monthlyEMIs}
+- Annual Insurance Premiums (total for term, health, motor, etc.): ${data.insurancePremiums}
+- Monthly Rental Income (if any, this can offset expenses): ${data.rentalIncome || 0}
+- User's Preferred Emergency Fund Size (in months of expenses): ${data.emergencyMonths}
+- User's Risk Tolerance for Emergency Fund Size: ${data.efRiskTolerance || 'moderate'}
+- User's Preferred Expense Buffer Percentage: ${data.bufferPercentage}%
+
+Based on this data, please provide the following in a structured format (e.g., using Markdown headings):
+
+1.  **Calculated Monthly Need:**
+    *   Calculate the adjusted monthly essential expenses by adding the user's preferred buffer: Adjusted Monthly Expenses = ${data.monthlyExpenses} * (1 + ${data.bufferPercentage}/100).
+    *   Calculate the net monthly amount needed for the emergency fund core calculation: Net Monthly Core Need = (Adjusted Monthly Expenses) + ${data.monthlyEMIs} + (${data.insurancePremiums} / 12) - ${data.rentalIncome || 0}. State this calculated Net Monthly Core Need.
+
+2.  **Recommended Emergency Fund Target Range:**
+    *   Considering factors like job stability, number of dependents, income sources, and the user's risk tolerance, recommend a target range for their emergency fund in terms of months of 'Net Monthly Core Need' (e.g., "3-6 months", "6-9 months").
+    *   Justify your recommendation briefly, explaining how these factors influence the range.
+
+3.  **Assessment of Current Situation:**
+    *   Calculate the total recommended emergency fund amount based on the lower and upper end of your recommended range from point 2.
+    *   Compare the user's Current Emergency Fund Savings (${data.currentCorpus}) against this recommended target range.
+    *   State clearly whether they are below, within, or above the recommended range.
+    *   Calculate how many months of 'Net Monthly Core Need' their Current Emergency Fund Savings (${data.currentCorpus}) covers.
+
+4.  **Actionable Advice:**
+    *   If below target: Provide 2-3 concise, actionable suggestions on how to build up their emergency fund.
+    *   If within target: Congratulate them. Suggest they review the fund size annually or if circumstances change.
+    *   If above target: Congratulate them. Suggest they consider moving the excess amount to other financial goals. Also, mention the Other Readily Available Liquid Savings (${data.otherLiquidSavings || 0}) and how that might factor into their overall liquidity, but emphasize the dedicated nature of an emergency fund.
+
+5.  **Where to Keep the Emergency Fund:**
+    *   Briefly recommend keeping the emergency fund in safe, liquid accounts.
+
+Output Format Guidance:
+Please use Markdown for formatting your response, including headings for each section (e.g., \`## Recommended Emergency Fund Target Range\`). Make the advice easy to read and understand. Be encouraging and practical.
+    `;
+
+    try {
+      // The system prompt for DeepseekAiService can be very generic here,
+      // as the main prompt contains detailed persona instructions.
+      const advice = await DeepseekAiService.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
+      setAiAdvice(advice);
+    } catch (error) {
+      if (error instanceof Error) {
+        setAiAdviceError(error.message);
+      } else {
+        setAiAdviceError("An unknown error occurred while fetching AI advice.");
+      }
+    } finally {
+      setAiAdviceLoading(false);
+    }
+  };
 
   return (
     <ErrorBoundary>
@@ -20,7 +96,7 @@ export function EmergencyFundCalculator() {
         
         <div className="pt-20 px-4 space-y-6">
           <LoadingWrapper 
-            loading={loading} 
+            loading={initialDataLoading}
             loadingText="Loading data from your financial modules..."
           >
             <div className="flex justify-between items-center">
@@ -32,6 +108,7 @@ export function EmergencyFundCalculator() {
                 size="sm"
                 onClick={refreshData}
                 className="gap-2"
+                disabled={aiAdviceLoading} // Disable while AI is working
               >
                 <RefreshCw className="w-4 h-4" />
                 Refresh Data
@@ -42,6 +119,58 @@ export function EmergencyFundCalculator() {
             <EmergencyFundForm data={data} onUpdate={updateData} />
             <EmergencyFundResults calculation={calculation} emergencyMonths={data.emergencyMonths} />
             <SipRecommendation shortfall={calculation.shortfall} />
+
+            {/* AI Advice Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  AI Financial Advisor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Get personalized advice on your emergency fund based on your current data.
+                  Remember, this is AI-generated information and not professional financial advice.
+                </p>
+                <Button onClick={handleGetAiAdvice} disabled={aiAdviceLoading || initialDataLoading}>
+                  {aiAdviceLoading ? "Getting Advice..." : "Get AI Emergency Fund Advice"}
+                </Button>
+
+                {aiAdviceLoading && (
+                  <div className="flex items-center space-x-2 text-muted-foreground">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Fetching recommendations...</span>
+                  </div>
+                )}
+
+                {aiAdviceError && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      <h4 className="font-semibold">Error Fetching Advice</h4>
+                    </div>
+                    <p className="text-sm mt-1">{aiAdviceError}</p>
+                  </div>
+                )}
+
+                {aiAdvice && !aiAdviceLoading && (
+                  <Card className="bg-background/50 p-4 border">
+                    <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
+                    {/* For proper markdown rendering, a library like react-markdown would be used:
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
+                        For now, displaying as preformatted text.
+                    */}
+                    <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
+                      {aiAdvice}
+                    </pre>
+                  </Card>
+                )}
+                <p className="text-xs text-muted-foreground italic mt-4">
+                  Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance. Ensure your API key and usage comply with Deepseek's terms of service.
+                </p>
+              </CardContent>
+            </Card>
           </LoadingWrapper>
         </div>
       </div>
