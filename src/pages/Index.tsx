@@ -51,7 +51,7 @@ const Index = () => {
         </AnimatePresence>
         
         {!showWelcome && (
-          <>
+          <div className="pb-20 md:pb-0"> {/* Add padding-bottom for mobile nav, remove for md and up if nav changes */}
             <MainContentRouter 
               activeTab={activeTab}
               activeMoreModule={activeMoreModule}
