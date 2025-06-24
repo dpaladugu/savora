@@ -1,7 +1,10 @@
-// Placeholder for Deepseek API configuration
 // User needs to verify these from Deepseek documentation.
-const DEEPSEEK_API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'; // EXAMPLE - VERIFY THIS
-const DEEPSEEK_MODEL_NAME = 'deepseek-chat'; // EXAMPLE - VERIFY THIS
+const DEEPSEEK_API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'; // EXAMPLE - VERIFY THIS (Ensure this is your actual endpoint)
+const DEEPSEEK_MODEL_NAME = 'deepseek-chat'; // EXAMPLE - VERIFY THIS (Ensure this is your actual model)
+
+// Correctly access the API key using Vite's import.meta.env
+// The user must set VITE_DEEPSEEK_API_KEY in their .env file (and on their deployment platform)
+const VITE_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
 
 interface DeepseekChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -24,17 +27,29 @@ interface DeepseekApiResponseChoice {
   // Add other fields if present in the response, like finish_reason
 }
 
+interface TokenUsage {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
 interface DeepseekApiResponseBody {
   choices: DeepseekApiResponseChoice[];
-  // Add other fields like 'id', 'object', 'created', 'model', 'usage' if needed
+  usage?: TokenUsage; // Add usage object, make it optional as it might not always be there
+  // Add other fields like 'id', 'object', 'created', 'model' if needed
+}
+
+export interface AiAdviceResponse {
+  advice: string;
+  usage?: TokenUsage;
 }
 
 export class DeepseekAiService {
-  private static apiKey: string | undefined = import.meta.env.VITE_DEEPSEEK_API_KEY;
+  // No longer need a static apiKey field here, VITE_API_KEY is module-scoped constant
 
-  public static async getFinancialAdvice(prompt: string, systemPrompt?: string): Promise<string> {
-    if (!this.apiKey) {
-      console.error('Deepseek API key is not configured. Set VITE_DEEPSEEK_API_KEY.');
+  public static async getFinancialAdvice(prompt: string, systemPrompt?: string): Promise<AiAdviceResponse> {
+    if (!VITE_API_KEY) { // Check the module-scoped constant
+      console.error('Deepseek API key is not configured. Set VITE_DEEPSEEK_API_KEY in your .env file.');
       throw new Error('API key not configured for AI service.');
     }
 
@@ -47,8 +62,8 @@ export class DeepseekAiService {
     const requestBody: DeepseekApiRequestBody = {
       model: DEEPSEEK_MODEL_NAME,
       messages: messages,
-      max_tokens: 1500, // Increased for potentially detailed advice
-      temperature: 0.3,  // Lower temperature for more factual/deterministic financial advice
+      max_tokens: 1500,
+      temperature: 0.3,
     };
 
     try {
@@ -56,7 +71,7 @@ export class DeepseekAiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.apiKey}`,
+          'Authorization': `Bearer ${VITE_API_KEY}`, // Use the module-scoped constant
         },
         body: JSON.stringify(requestBody),
       });
@@ -69,10 +84,16 @@ export class DeepseekAiService {
 
       const responseData = (await response.json()) as DeepseekApiResponseBody;
 
+      // Log the full response for debugging token usage structure if needed
+      // console.log("Full Deepseek Response:", JSON.stringify(responseData, null, 2));
+
       if (responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
-        return responseData.choices[0].message.content.trim();
+        return {
+          advice: responseData.choices[0].message.content.trim(),
+          usage: responseData.usage, // Pass along the usage data
+        };
       } else {
-        console.error('Deepseek API response does not contain expected data:', responseData);
+        console.error('Deepseek API response does not contain expected data (choices or message missing):', responseData);
         throw new Error('Invalid response structure from Deepseek API.');
       }
     } catch (error) {

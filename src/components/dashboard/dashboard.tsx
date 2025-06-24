@@ -40,18 +40,24 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 transition-all duration-300 overflow-auto">
-        <div className="px-4 py-4">
+      {/* The outer div (min-h-screen, bg-gradient, pb-24) and content padding (px-4, py-4)
+          are expected to be handled by MainContentRouter now that ModuleHeader is shown.
+          This component should just return its direct content.
+      */}
+      <div className="space-y-6"> {/* Simplified top-level div, specific padding/margins handled by router's structure */}
+          {/* Removed inline title/subtitle - ModuleHeader will provide this */}
+          {/*
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-6"
+            className="mb-6" // This margin might still be useful if QuickActions is the first visible thing
           >
             <h1 className="text-2xl font-bold text-foreground mb-1">Dashboard</h1>
             <p className="text-slate-600 dark:text-slate-300 text-sm">
               Your financial overview
             </p>
           </motion.div>
+          */}
           
           <QuickActions {...handleQuickActions} />
 

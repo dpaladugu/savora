@@ -8,23 +8,25 @@ import { SipRecommendation } from "./sip-recommendation";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Sparkles, AlertTriangle } from "lucide-react"; // Added Sparkles, AlertTriangle
-import { useState } from "react"; // Added useState
-import { DeepseekAiService } from "@/services/deepseek-ai-service"; // Added AI Service
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; // Added Card components
+import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react"; // Added Sparkles, AlertTriangle, Info
+import { useState } from "react";
+import { DeepseekAiService, AiAdviceResponse } from "@/services/deepseek-ai-service"; // Import AiAdviceResponse type
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 // import ReactMarkdown from 'react-markdown'; // Placeholder for markdown rendering
 // import remarkGfm from 'remark-gfm';         // For GitHub Flavored Markdown
 
+// Removed GlobalHeader import as ModuleHeader from MoreModuleRouter should handle it.
+
 export function EmergencyFundCalculator() {
   const { data, updateData, loading: initialDataLoading, missingData, calculation, refreshData } = useEmergencyFund();
-  const [aiAdvice, setAiAdvice] = useState<string | null>(null);
+  const [aiResponse, setAiResponse] = useState<AiAdviceResponse | null>(null);
   const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const [aiAdviceError, setAiAdviceError] = useState<string | null>(null);
 
   const handleGetAiAdvice = async () => {
     setAiAdviceLoading(true);
     setAiAdviceError(null);
-    setAiAdvice(null);
+    setAiResponse(null); // Reset AI response state
 
     // Construct the prompt using data from the 'data' object
     // This is based on the prompt designed in Step 3 of the plan.
@@ -76,8 +78,8 @@ Please use Markdown for formatting your response, including headings for each se
     try {
       // The system prompt for DeepseekAiService can be very generic here,
       // as the main prompt contains detailed persona instructions.
-      const advice = await DeepseekAiService.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
-      setAiAdvice(advice);
+      const response = await DeepseekAiService.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
+      setAiResponse(response);
     } catch (error) {
       if (error instanceof Error) {
         setAiAdviceError(error.message);
@@ -91,13 +93,14 @@ Please use Markdown for formatting your response, including headings for each se
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-        <GlobalHeader title="Emergency Fund Calculator" />
-        
-        <div className="pt-20 px-4 space-y-6">
-          <LoadingWrapper 
-            loading={initialDataLoading}
-            loadingText="Loading data from your financial modules..."
+      {/* GlobalHeader removed. The surrounding MoreModuleRouter provides ModuleHeader. */}
+      {/* The div with min-h-screen, bg-gradient, pb-24 is also part of MoreModuleRouter's responsibility. */}
+      {/* The px-4, py-4 for content area is also provided by MoreModuleRouter. */}
+      {/* This component now just returns its direct content. */}
+      <div className="space-y-6"> {/* Removed pt-20, assumes header spacing is handled by router */}
+        <LoadingWrapper
+          loading={initialDataLoading}
+          loadingText="Loading data from your financial modules..."
           >
             <div className="flex justify-between items-center">
               <div className="text-sm text-muted-foreground">
@@ -154,16 +157,26 @@ Please use Markdown for formatting your response, including headings for each se
                   </div>
                 )}
 
-                {aiAdvice && !aiAdviceLoading && (
+                {aiResponse?.advice && !aiAdviceLoading && (
                   <Card className="bg-background/50 p-4 border">
                     <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
                     {/* For proper markdown rendering, a library like react-markdown would be used:
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiAdvice}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
                         For now, displaying as preformatted text.
                     */}
                     <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
-                      {aiAdvice}
+                      {aiResponse.advice}
                     </pre>
+                    {aiResponse.usage && (
+                      <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                        <p className="flex items-center gap-1"><Info className="w-3 h-3" /> Token Usage:</p>
+                        <ul>
+                          <li>Prompt Tokens: {aiResponse.usage.prompt_tokens}</li>
+                          <li>Completion Tokens: {aiResponse.usage.completion_tokens}</li>
+                          <li>Total Tokens: {aiResponse.usage.total_tokens}</li>
+                        </ul>
+                      </div>
+                    )}
                   </Card>
                 )}
                 <p className="text-xs text-muted-foreground italic mt-4">
