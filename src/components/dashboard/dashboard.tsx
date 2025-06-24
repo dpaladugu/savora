@@ -2,6 +2,7 @@
 import { QuickActions } from "./quick-actions";
 import { DashboardMetrics } from "./dashboard-metrics";
 import { DashboardCharts } from "./dashboard-charts";
+import { AiTokenUsageDisplay } from "./ai-token-usage-display"; // Import the new component
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 import { useOptimizedDashboardData } from "@/hooks/use-optimized-dashboard-data";
@@ -77,6 +78,10 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
               onMoreNavigation={onMoreNavigation}
             />
             <DashboardCharts />
+            {/* Add the AI Token Usage Display */}
+            <div className="mt-6"> {/* Added some margin-top */}
+              <AiTokenUsageDisplay />
+            </div>
           </EnhancedLoadingWrapper>
         </div>
       </div>

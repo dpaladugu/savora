@@ -1,3 +1,5 @@
+import { TokenUsageService } from './token-usage-service'; // Import TokenUsageService
+
 // User needs to verify these from Deepseek documentation.
 const DEEPSEEK_API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'; // EXAMPLE - VERIFY THIS (Ensure this is your actual endpoint)
 const DEEPSEEK_MODEL_NAME = 'deepseek-chat'; // EXAMPLE - VERIFY THIS (Ensure this is your actual model)
@@ -42,6 +44,8 @@ interface DeepseekApiResponseBody {
 export interface AiAdviceResponse {
   advice: string;
   usage?: TokenUsage;
+import { TokenUsageService } from './token-usage-service'; // Import TokenUsageService
+
 }
 
 export class DeepseekAiService {
@@ -88,9 +92,16 @@ export class DeepseekAiService {
       // console.log("Full Deepseek Response:", JSON.stringify(responseData, null, 2));
 
       if (responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
+        const adviceContent = responseData.choices[0].message.content.trim();
+        const usageData = responseData.usage;
+
+        if (usageData && typeof usageData.total_tokens === 'number') {
+          TokenUsageService.addUsage(usageData.total_tokens);
+        }
+
         return {
-          advice: responseData.choices[0].message.content.trim(),
-          usage: responseData.usage, // Pass along the usage data
+          advice: adviceContent,
+          usage: usageData,
         };
       } else {
         console.error('Deepseek API response does not contain expected data (choices or message missing):', responseData);
