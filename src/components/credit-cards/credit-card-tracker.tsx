@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, CreditCard, Calendar, DollarSign, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 
 interface CreditCardData {
   id: string;
@@ -65,20 +67,30 @@ export function CreditCardTracker() {
   const activeCards = cards.filter(card => card.isActive);
 
   if (showAddForm) {
-    return <AddCreditCardForm onSubmit={handleAddCard} onCancel={() => setShowAddForm(false)} />;
+    // When showing AddCreditCardForm, render it with its own ModuleHeader
+    return (
+      <>
+        <ModuleHeader
+          title="Add New Credit Card"
+          showBackButton
+          onBack={() => setShowAddForm(false)}
+        />
+        <div className="px-4 py-4 space-y-6"> {/* Content padding for form */}
+          <AddCreditCardForm onSubmit={handleAddCard} onCancel={() => setShowAddForm(false)} />
+        </div>
+      </>
+    );
   }
 
+  // Main view of CreditCardTracker
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground mb-2 tracking-tight">
-            Credit Cards
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Manage your credit cards and limits
-          </p>
-        </div>
+      {/* Header section removed. Title/subtitle ("Credit Cards", "Manage your credit cards and limits")
+          would come from ModuleHeader via router config.
+          The "Add Card" button is also a candidate for a header action.
+          For now, placing it at the top of the content.
+      */}
+      <div className="flex justify-end">
         <Button onClick={() => setShowAddForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Card
@@ -217,22 +229,15 @@ function AddCreditCardForm({ onSubmit, onCancel }: {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">
-          Add Credit Card
-        </h1>
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-
-      <Card className="metric-card border-border/50">
-        <CardContent className="p-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Bank Name</label>
+    // The AddCreditCardForm no longer renders its own header.
+    // It relies on the parent (CreditCardTracker when showAddForm is true) to render ModuleHeader.
+    // Removed the outer space-y-6 div as well, assuming parent provides padding.
+    <Card className="metric-card border-border/50">
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-foreground mb-2">Bank Name</label>
                 <Input
                   value={formData.bankName}
                   onChange={(e) => setFormData({...formData, bankName: e.target.value})}
@@ -314,15 +319,19 @@ function AddCreditCardForm({ onSubmit, onCancel }: {
 
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">Payment Method</label>
-              <select
+              <Select
                 value={formData.paymentMethod}
-                onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})}
-                className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+                onValueChange={(value) => setFormData({...formData, paymentMethod: value as 'UPI' | 'NEFT' | 'In App'})}
               >
-                <option value="UPI">UPI</option>
-                <option value="NEFT">NEFT</option>
-                <option value="In App">In App</option>
-              </select>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UPI">UPI</SelectItem>
+                  <SelectItem value="NEFT">NEFT</SelectItem>
+                  <SelectItem value="In App">In App</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <Button type="submit" className="w-full">

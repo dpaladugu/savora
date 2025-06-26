@@ -153,11 +153,7 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
 
     Logger.info('Dashboard data calculated:', realData);
     return realData;
-  } catch (error) {
-    Logger.error('Error fetching dashboard data:', error);
-    // Return mock data on error for better UX
-    return mockDashboardData;
-  }
+// Removed the orphaned catch block.
 }
 
 export function useOptimizedDashboardData() {

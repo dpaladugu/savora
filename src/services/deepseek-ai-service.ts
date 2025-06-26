@@ -44,8 +44,7 @@ interface DeepseekApiResponseBody {
 export interface AiAdviceResponse {
   advice: string;
   usage?: TokenUsage;
-import { TokenUsageService } from './token-usage-service'; // Import TokenUsageService
-
+// Removed misplaced import { TokenUsageService } from './token-usage-service';
 }
 
 export class DeepseekAiService {

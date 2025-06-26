@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, CreditCard, TrendingDown, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { CSVParser, ParsedCreditCard } from "@/services/csv-parser";
 import { useAuth } from "@/contexts/auth-context";
 
@@ -70,21 +70,24 @@ export function CreditCardStatements() {
   const totalCredits = statements.filter(s => s.type === 'credit').reduce((sum, s) => sum + s.amount, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Credit Card Statements" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <Card className="metric-card border-border/50">
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <span>Credit Card Statements</span>
-              <Button onClick={triggerFileInput} disabled={loading}>
-                <Upload className="w-4 h-4 mr-2" />
-                {loading ? 'Uploading...' : 'Upload CSV'}
-              </Button>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+      <Card className="metric-card border-border/50">
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            {/* Title "Credit Card Statements" would come from ModuleHeader.
+                This CardTitle can be more specific or removed if redundant.
+                For now, keeping it as a sub-header for the card itself.
+            */}
+            <span>Statement Details</span>
+            <Button onClick={triggerFileInput} disabled={loading}>
+              <Upload className="w-4 h-4 mr-2" />
+              {loading ? 'Uploading...' : 'Upload CSV'}
+            </Button>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="metric-card p-4">
                 <div className="flex items-center gap-2 mb-2">
