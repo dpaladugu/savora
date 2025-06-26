@@ -83,7 +83,7 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
               <AiTokenUsageDisplay />
             </div>
           </EnhancedLoadingWrapper>
-        </div>
+        {/* Removed the extra closing div tag that was here */}
       </div>
     </ErrorBoundary>
   );

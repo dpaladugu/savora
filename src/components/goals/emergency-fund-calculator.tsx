@@ -185,7 +185,7 @@ Please use Markdown for formatting your response, including headings for each se
               </CardContent>
             </Card>
           </LoadingWrapper>
-        </div>
+        {/* Removed the extra closing div tag that was here */}
       </div>
     </ErrorBoundary>
   );

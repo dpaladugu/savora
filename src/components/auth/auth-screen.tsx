@@ -150,5 +150,6 @@ export function AuthScreen() {
         </div>
       </motion.div>
     </div>
+    </> // Closing the fragment opened on line 51
   );
 }

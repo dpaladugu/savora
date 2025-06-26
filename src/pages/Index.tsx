@@ -64,7 +64,7 @@ const Index = () => {
               activeMoreModule={activeMoreModule}
               onMoreNavigation={handleMoreNavigation}
             />
-          </>
+          </div> // Corrected: Closing div tag instead of fragment
         )}
       </div>
     </ErrorBoundary>
