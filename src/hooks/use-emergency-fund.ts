@@ -12,7 +12,12 @@ interface EmergencyFundData {
   bufferPercentage: number;
   currentCorpus: number;
   rentalIncome: number;
-  emergencyMonths: number;
+  emergencyMonths: number; // User's desired months, can be an input to LLM
+  // New fields for more detailed AI advice
+  numIncomeSources?: number; // Optional, as it might not be readily available
+  jobStability?: 'high' | 'medium' | 'low';
+  otherLiquidSavings?: number;
+  efRiskTolerance?: 'conservative' | 'moderate' | 'aggressive';
 }
 
 interface EmergencyFundCalculation {
@@ -36,6 +41,11 @@ export function useEmergencyFund() {
     currentCorpus: 0,
     rentalIncome: 0,
     emergencyMonths: 6,
+    // Default values for new fields
+    numIncomeSources: 1, // Default to 1, user can change
+    jobStability: 'medium',
+    otherLiquidSavings: 0,
+    efRiskTolerance: 'moderate',
   });
 
   useEffect(() => {

@@ -50,7 +50,8 @@ export function AssetAllocation() {
                   className="w-3 h-3 rounded-full mr-3 border border-background/20"
                   style={{ backgroundColor: item.color }}
                 />
-                <span className="text-sm text-muted-foreground text-content">{item.name}</span>
+                {/* Removed text-content, explicitly setting dark mode color for better contrast */}
+                <span className="text-sm text-muted-foreground dark:text-slate-200">{item.name}</span>
               </div>
               <span className="text-sm font-bold text-foreground">
                 {item.value}%

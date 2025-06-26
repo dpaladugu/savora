@@ -10,8 +10,9 @@ export interface Expense {
   type: 'expense' | 'income';
   paymentMethod?: string;
   tags?: string[];
-  recurring?: boolean;
+  recurring?: boolean; // This field might be re-evaluated or used by the recurring system
   userId?: string;
+  source_recurring_transaction_id?: string; // Link to the parent recurring transaction
 }
 
 export interface ExpenseFilter {
