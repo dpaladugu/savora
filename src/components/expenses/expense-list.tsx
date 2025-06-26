@@ -1,7 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, CreditCard } from "lucide-react";
+import { Trash2, Calendar, CreditCard, Repeat } from "lucide-react"; // Import Repeat
 import { Expense } from "@/services/expense-manager";
 import { DataValidator } from "@/services/data-validator";
 
@@ -40,6 +40,9 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                   <span className="inline-flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     {new Date(expense.date).toLocaleDateString()}
+                    {expense.source_recurring_transaction_id && (
+                      <Repeat className="w-3 h-3 ml-1 text-blue-500" title="Recurring" />
+                    )}
                   </span>
                   
                   <span className="px-2 py-1 bg-primary/10 text-primary rounded-full text-xs">

@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Shield } from "lucide-react";
 
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select components
+
 interface EmergencyFundData {
   monthlyExpenses: number;
   dependents: number;
@@ -12,11 +14,16 @@ interface EmergencyFundData {
   currentCorpus: number;
   rentalIncome: number;
   emergencyMonths: number;
+  // New fields
+  numIncomeSources?: number;
+  jobStability?: 'high' | 'medium' | 'low';
+  otherLiquidSavings?: number;
+  efRiskTolerance?: 'conservative' | 'moderate' | 'aggressive';
 }
 
 interface EmergencyFundFormProps {
   data: EmergencyFundData;
-  onUpdate: (field: keyof EmergencyFundData, value: number) => void;
+  onUpdate: (field: keyof EmergencyFundData, value: number | string) => void;
 }
 
 export function EmergencyFundForm({ data, onUpdate }: EmergencyFundFormProps) {
@@ -127,6 +134,67 @@ export function EmergencyFundForm({ data, onUpdate }: EmergencyFundFormProps) {
               placeholder="Current savings"
             />
           </div>
+
+          {/* New Fields for AI Advice */}
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Number of Income Sources
+            </label>
+            <Input
+              type="number"
+              value={data.numIncomeSources || 1}
+              onChange={(e) => onUpdate('numIncomeSources', Number(e.target.value))}
+              placeholder="e.g., 1"
+              min="0"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Job Stability</label>
+            <Select
+              value={data.jobStability || 'medium'}
+              onValueChange={(value) => onUpdate('jobStability', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select job stability" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low / Unstable</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">
+              Other Liquid Savings (Optional)
+            </label>
+            <Input
+              type="number"
+              value={data.otherLiquidSavings || 0}
+              onChange={(e) => onUpdate('otherLiquidSavings', Number(e.target.value))}
+              placeholder="e.g., 50000"
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-foreground mb-2 block">Risk Tolerance (for EF Size)</label>
+            <Select
+              value={data.efRiskTolerance || 'moderate'}
+              onValueChange={(value) => onUpdate('efRiskTolerance', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select risk tolerance" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="conservative">Conservative (Prefers Larger Fund)</SelectItem>
+                <SelectItem value="moderate">Moderate</SelectItem>
+                <SelectItem value="aggressive">Aggressive (Prefers Smaller Fund)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
         </div>
       </CardContent>
     </Card>
