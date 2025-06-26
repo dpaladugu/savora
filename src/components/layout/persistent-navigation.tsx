@@ -1,8 +1,9 @@
 
+import React, { memo, useState, useEffect, useRef } from "react"; // Import React and useRef
 import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
 import { AccessibleButton } from "@/components/ui/accessible-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { memo, useState, useEffect } from "react";
+// import { memo, useState, useEffect } from "react"; // Already imported via React.memo etc.
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
 
@@ -64,11 +65,40 @@ export const PersistentNavigation = memo(function PersistentNavigation({
   };
 
   const handleMoreSheetClose = () => {
+    // This function is primarily for when the user dismisses the sheet without selecting an item
+    // (e.g., by clicking outside or pressing Esc).
+    // If an item *was* selected, handleMoreModuleClick would have already initiated navigation.
     setIsMoreSheetOpen(false);
-    if (activeTab === 'more' && !activeMoreModule) {
-      onTabChange('dashboard');
-    }
+
+    // Use a timeout to allow React state updates (activeTab, activeMoreModule props) to propagate
+    // before checking their values. This helps prevent navigating to dashboard if a module was just selected.
+    setTimeout(() => {
+      // We need to access the latest props here.
+      // This component will re-render if activeTab or activeMoreModule props change.
+      // However, this callback might have a stale closure over activeTab and activeMoreModule.
+      // To be truly safe, this logic should ideally live where it has access to the most current state,
+      // or PersistentNavigation should also use useNavigationRouter to get live state.
+
+      // For now, let's assume the props will update if we delay the check slightly.
+      // The check needs to use the component's current props at the time of execution.
+      // The props passed to PersistentNavigation are what matter.
+
+      // If, after the sheet closes and state updates have had a chance to settle:
+      // 1. The activeTab is still 'more' (meaning we didn't navigate to a main tab like 'goals')
+      // 2. AND activeMoreModule is null (meaning no specific 'more' module is active or became active)
+      // THEN, it implies the user closed the 'More' sheet without making a persistent selection, so go to dashboard.
+      if (propsRef.current.activeTab === 'more' && !propsRef.current.activeMoreModule) {
+        propsRef.current.onTabChange('dashboard');
+      }
+    }, 0);
   };
+
+  // Keep a ref to the latest props to avoid stale closures in setTimeout
+  const propsRef = React.useRef({ activeTab, onTabChange, activeMoreModule });
+  React.useEffect(() => {
+    propsRef.current = { activeTab, onTabChange, activeMoreModule };
+  }, [activeTab, onTabChange, activeMoreModule]);
+
 
   const isActiveTab = (tabId: string) => {
     if (tabId === "investments" && (activeTab === "more" || activeMoreModule === "investments")) {

@@ -36,7 +36,7 @@ export const MainContentRouter = memo(function MainContentRouter({
 
   const getTabConfig = (tabId: string) => {
     const configs = {
-      "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: false },
+      "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: true }, // Changed showHeader to true
       "expenses": { title: "Expenses", subtitle: "Track your spending", showHeader: true },
       "credit-cards": { title: "Credit Cards", subtitle: "Manage your credit cards", showHeader: true },
       "investments": { title: "Investments", subtitle: "Track your portfolio", showHeader: true },

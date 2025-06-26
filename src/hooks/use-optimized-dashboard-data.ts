@@ -83,19 +83,25 @@ const mockDashboardData: DashboardData = {
 };
 
 async function fetchDashboardData(userId: string): Promise<DashboardData> {
-  try {
-    Logger.info('Fetching dashboard data for user:', userId);
-    
-    // Simulate API delay for realistic loading experience
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Fetch real data from Supabase
-    const [expenses, investments] = await Promise.all([
-      SupabaseExpenseManager.getExpenses(userId).catch(() => []),
-      SupabaseInvestmentManager.getInvestments(userId).catch(() => [])
-    ]);
+  // Removed the outer try-catch that returns mockDashboardData.
+  // Let react-query handle errors and retries.
+  // If fetchDashboardData throws, react-query will set the error state.
 
-    // Calculate real metrics with proper type handling and initial values
+  Logger.info('Fetching dashboard data for user:', userId);
+
+  // Simulate API delay for realistic loading experience - consider removing for production or making it dev-only
+  // await new Promise(resolve => setTimeout(resolve, 800));
+
+  // Fetch real data from Supabase
+  // Allow errors to propagate if .catch is removed or re-throws.
+  // SupabaseExpenseManager.getExpenses already returns [] on error, which might be okay
+  // but for other data sources, we might want to ensure errors are thrown.
+  const expenses = await SupabaseExpenseManager.getExpenses(userId);
+  const investments = await SupabaseInvestmentManager.getInvestments(userId);
+  // Consider if getInvestments also needs a .catch or if its internal error handling is sufficient.
+  // For now, assuming they return empty arrays on failure or throw, which react-query will catch.
+
+  // Calculate real metrics with proper type handling and initial values
     const currentMonth = new Date().toISOString().substring(0, 7);
     const monthlyExpenses = expenses
       .filter(expense => expense.date?.startsWith(currentMonth) && expense.type === 'expense')

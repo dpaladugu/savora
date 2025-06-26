@@ -13,10 +13,12 @@ import {
   Car,
   Wallet,
   Target,
-  Repeat,
+  Repeat, // Already imported, good.
   Bell,
   Lightbulb,
-  Upload
+  Upload,
+  Settings // Settings icon is Calculator, let's use an actual Settings icon if available or keep Calculator for now.
+           // For Recurring Transactions, Repeat is good.
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
@@ -77,10 +79,17 @@ export function MoreScreen({ onNavigate, onClose }: MoreScreenProps) {
       color: 'bg-gradient-to-r from-cyan-500 to-cyan-600'
     },
     {
+      id: 'recurring-transactions',
+      title: 'Recurring',
+      description: 'Manage automated transactions',
+      icon: Repeat,
+      color: 'bg-gradient-to-r from-pink-500 to-pink-600'
+    },
+    {
       id: 'settings',
       title: 'Settings',
       description: 'App preferences and data export',
-      icon: Calculator,
+      icon: Calculator, // Note: Settings icon is Calculator, consider changing if a specific Settings icon is available
       color: 'bg-gradient-to-r from-gray-500 to-gray-600'
     }
   ];
