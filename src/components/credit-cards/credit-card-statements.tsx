@@ -167,7 +167,7 @@ export function CreditCardStatements() {
             )}
           </CardContent>
         </Card>
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }
