@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, ArrowUpDown } from "lucide-react";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
@@ -62,7 +62,10 @@ export function CashflowAnalysis() {
         }
       });
 
-      // Assume income is expenses + investments + 20% (rough estimation)
+      // FIXME: Income is currently a rough estimation.
+      // For accurate cashflow, integrate with actual income data if available,
+      // or provide a way for users to input their income.
+      // Current estimation: Income = (Expenses + Investments) * 1.2 (implies a 20% savings/surplus rate on top of E+I)
       Object.keys(monthlyData).forEach(month => {
         const data = monthlyData[month];
         data.income = (data.expenses + data.investments) * 1.2;
@@ -109,17 +112,19 @@ export function CashflowAnalysis() {
   const savingsRate = totalIncome > 0 ? ((totalInvestments / totalIncome) * 100) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Cashflow Analysis" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-muted-foreground text-lg font-medium">
-              Track your income, expenses, and savings flow
-            </p>
-          </div>
-          <div className="flex gap-2">
+    // Removed min-h-screen, bg-gradient, pb-24, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          {/* Title/subtitle would come from ModuleHeader via router config.
+              This text is more of a description for the page content itself.
+          */}
+          <p className="text-muted-foreground text-base"> {/* Adjusted size */}
+            Analyze your income, expenses, and savings flow over selected periods.
+          </p>
+        </div>
+        <div className="flex gap-2">
             {(['3m', '6m', '1y'] as const).map((period) => (
               <Button
                 key={period}

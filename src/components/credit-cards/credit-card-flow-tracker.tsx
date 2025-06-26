@@ -4,10 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreditCard, Plus, TrendingDown, Calendar, AlertCircle } from "lucide-react";
-import { GlobalHeader } from "@/components/layout/global-header";
+import { ModuleHeader } from "@/components/layout/module-header";
 import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { Expense } from "@/services/expense-manager"; // Import Expense type
 
 interface CreditCardInfo {
   id: string;
@@ -22,8 +23,8 @@ export function CreditCardFlowTracker() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [cards, setCards] = useState<CreditCardInfo[]>([]);
-  const [expenses, setExpenses] = useState<any[]>([]);
-  const [showAddCard, setShowAddCard] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]); // Use Expense[] type
+  const [showAddCard, setShowAddCard] = useState(false); // Kept original name
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
