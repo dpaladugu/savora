@@ -3,9 +3,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, TrendingUp, Target, CreditCard, Shield, X } from "lucide-react";
-import { FirestoreService } from "@/services/firestore";
+import { FirestoreService } from "@/services/firestore"; // Note: This service might need to be ExpenseManager if that's the consolidated source
 import { useAuth } from "@/contexts/auth-context";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 
 interface Recommendation {
   id: string;
@@ -157,12 +157,11 @@ export function RecommendationsEngine() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Smart Recommendations" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        {loading ? (
-          <div className="text-center py-12">
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+      {loading ? (
+        <div className="text-center py-12">
             <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
             <p className="text-muted-foreground">Analyzing your financial data...</p>
           </div>
@@ -229,7 +228,7 @@ export function RecommendationsEngine() {
             </Card>
           </>
         )}
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }

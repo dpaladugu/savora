@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { MessageCircle, Upload, CheckCircle, AlertCircle, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 
 export function TelegramIntegration() {
   const [botToken, setBotToken] = useState('');
@@ -58,12 +58,11 @@ export function TelegramIntegration() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Telegram Integration" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <Card className="metric-card border-border/50">
-          <CardHeader>
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+      <Card className="metric-card border-border/50">
+        <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageCircle className="w-5 h-5" />
               Telegram Bot Setup
@@ -218,7 +217,7 @@ export function TelegramIntegration() {
             )}
           </CardContent>
         </Card>
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }

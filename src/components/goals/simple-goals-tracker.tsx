@@ -3,9 +3,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Target, TrendingUp } from "lucide-react";
+import { Plus, Target } from "lucide-react"; // Removed TrendingUp as it's not used directly here
 import { useToast } from "@/hooks/use-toast";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
+import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 
 interface Goal {
   id: string;
@@ -55,27 +57,40 @@ export function SimpleGoalsTracker() {
   const progress = totalTarget > 0 ? (totalSaved / totalTarget) * 100 : 0;
 
   if (showAddForm) {
-    return <AddGoalForm onSubmit={handleAddGoal} onCancel={() => setShowAddForm(false)} />;
+    return (
+      <>
+        <ModuleHeader
+          title="Add New Goal"
+          showBackButton
+          onBack={() => setShowAddForm(false)}
+        />
+        <div className="px-4 py-4 space-y-6"> {/* Content padding for form */}
+          <AddGoalForm onSubmit={handleAddGoal} onCancel={() => setShowAddForm(false)} />
+        </div>
+      </>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Goals Tracker" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <p className="text-muted-foreground text-lg font-medium">
-              Track your financial goals and progress
-            </p>
-          </div>
-          <Button onClick={() => setShowAddForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Goal
-          </Button>
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          {/* Title/subtitle would come from ModuleHeader via router config.
+              This text is more of a description for the page content itself.
+          */}
+          <p className="text-muted-foreground text-base">
+            Track your financial goals and progress.
+          </p>
         </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Goal
+        </Button>
+      </div>
 
-        {/* Summary Cards */}
+      {/* Summary Cards */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           <Card className="metric-card border-border/50">
             <CardContent className="p-4 text-center">
@@ -157,7 +172,7 @@ export function SimpleGoalsTracker() {
             })
           )}
         </div>
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }
@@ -186,15 +201,14 @@ function AddGoalForm({ onSubmit, onCancel }: {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="Add Goal" showBackButton onBack={onCancel} />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Goal Name</label>
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // AddGoalForm is now rendered within a layout provided by SimpleGoalsTracker when showAddForm is true,
+    // which includes a ModuleHeader.
+    <Card className="metric-card border-border/50">
+      <CardContent className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="goalName" className="block text-sm font-medium text-foreground mb-2">Goal Name</label>
                 <Input
                   value={formData.name}
                   onChange={(e) => setFormData({...formData, name: e.target.value})}
@@ -235,20 +249,24 @@ function AddGoalForm({ onSubmit, onCancel }: {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Category</label>
-                <select
+                <label htmlFor="goalCategory" className="block text-sm font-medium text-foreground mb-2">Category</label>
+                <Select
                   value={formData.category}
-                  onChange={(e) => setFormData({...formData, category: e.target.value})}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+                  onValueChange={(value) => setFormData({...formData, category: value})}
                 >
-                  <option value="Investment">Investment</option>
-                  <option value="Emergency Fund">Emergency Fund</option>
-                  <option value="Education">Education</option>
-                  <option value="House">House</option>
-                  <option value="Vehicle">Vehicle</option>
-                  <option value="Travel">Travel</option>
-                  <option value="Other">Other</option>
-                </select>
+                  <SelectTrigger id="goalCategory" className="w-full">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Investment">Investment</SelectItem>
+                    <SelectItem value="Emergency Fund">Emergency Fund</SelectItem>
+                    <SelectItem value="Education">Education</SelectItem>
+                    <SelectItem value="House">House</SelectItem>
+                    <SelectItem value="Vehicle">Vehicle</SelectItem>
+                    <SelectItem value="Travel">Travel</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -262,7 +280,6 @@ function AddGoalForm({ onSubmit, onCancel }: {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      // Removed 2 extra closing </div> tags that were here
   );
 }

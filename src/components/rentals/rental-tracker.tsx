@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 
 export interface RentalProperty {
   id: string;
@@ -139,14 +141,32 @@ export function RentalTracker() {
     return diffDays;
   };
 
+  if (showAddForm) {
+    return (
+      <>
+        <ModuleHeader
+          title="Add Rental Property"
+          showBackButton
+          onBack={() => setShowAddForm(false)}
+        />
+        <div className="px-4 py-4 space-y-6"> {/* Content padding for form */}
+          <AddPropertyForm
+            onSubmit={handleAddProperty}
+            onCancel={() => setShowAddForm(false)}
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Rental Properties</h2>
-          <p className="text-muted-foreground">Manage your rental income</p>
-        </div>
+      {/* Header section removed. Title/subtitle should be provided by ModuleHeader via router. */}
+      {/* The "Add Property" button might be passed as an 'action' to ModuleHeader,
+          or exist as a primary action button within this component's layout.
+          For now, let's place it visibly if not in a header.
+      */}
+      <div className="flex justify-end"> {/* Simple placement for the button for now */}
         <Button
           onClick={() => setShowAddForm(true)}
           className="bg-gradient-blue hover:opacity-90"
@@ -391,22 +411,26 @@ function AddPropertyForm({ onSubmit, onCancel }: {
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
+                <label htmlFor="propertyType" className="text-sm font-medium text-foreground mb-2 block">
                   Property Type *
                 </label>
-                <select
+                <Select
                   value={formData.propertyType}
-                  onChange={(e) => setFormData({ ...formData, propertyType: e.target.value as RentalProperty['propertyType'] })}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+                  onValueChange={(value) => setFormData({ ...formData, propertyType: value as RentalProperty['propertyType'] })}
                   required
                 >
-                  <option value="room">Room</option>
-                  <option value="shop">Shop</option>
-                  <option value="apartment">Apartment</option>
-                  <option value="house">House</option>
-                  <option value="office">Office</option>
-                  <option value="other">Other</option>
-                </select>
+                  <SelectTrigger id="propertyType" className="w-full">
+                    <SelectValue placeholder="Select property type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="room">Room</SelectItem>
+                    <SelectItem value="shop">Shop</SelectItem>
+                    <SelectItem value="apartment">Apartment</SelectItem>
+                    <SelectItem value="house">House</SelectItem>
+                    <SelectItem value="office">Office</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
@@ -470,19 +494,23 @@ function AddPropertyForm({ onSubmit, onCancel }: {
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
+                <label htmlFor="rentDueDay" className="text-sm font-medium text-foreground mb-2 block">
                   Rent Due Day *
                 </label>
-                <select
-                  value={formData.rentDueDay}
-                  onChange={(e) => setFormData({ ...formData, rentDueDay: e.target.value })}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+                <Select
+                  value={formData.rentDueDay.toString()}
+                  onValueChange={(value) => setFormData({ ...formData, rentDueDay: value })}
                   required
                 >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
-                    <option key={day} value={day}>{day}</option>
-                  ))}
-                </select>
+                  <SelectTrigger id="rentDueDay" className="w-full">
+                    <SelectValue placeholder="Select day" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map(day => (
+                      <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
