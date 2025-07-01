@@ -340,6 +340,6 @@ function AddCreditCardForm({ onSubmit, onCancel }: {
           </form>
         </CardContent>
       </Card>
-    </div>
+    // Removed extra closing </div> tag that was here
   );
 }
