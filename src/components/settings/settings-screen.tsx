@@ -188,7 +188,7 @@ export function SettingsScreen() {
         <div className="text-center text-sm text-muted-foreground">
           Savora v1.0.0 - Built for comprehensive personal finance tracking
         </div>
+      {/* Removed extra closing </div> tag that was here */}
       </motion.div>
-    </div>
   );
 }

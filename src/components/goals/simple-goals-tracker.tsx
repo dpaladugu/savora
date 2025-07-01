@@ -172,7 +172,7 @@ export function SimpleGoalsTracker() {
             })
           )}
         </div>
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }
@@ -280,7 +280,6 @@ function AddGoalForm({ onSubmit, onCancel }: {
             </form>
           </CardContent>
         </Card>
-      </div>
-    </div>
+      // Removed 2 extra closing </div> tags that were here
   );
 }
