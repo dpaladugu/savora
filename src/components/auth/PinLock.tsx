@@ -73,20 +73,28 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
       try {
         const apiKeyToEncrypt = import.meta.env.VITE_DEEPSEEK_API_KEY;
         if (!apiKeyToEncrypt) {
-          throw new Error('DeepSeek API Key not found in environment variables for setup.');
+          console.error('CRITICAL: VITE_DEEPSEEK_API_KEY is not defined in .env file.');
+          toast({ title: 'Configuration Error', description: 'API Key for AI service is missing in app configuration.', variant: 'destructive' });
+          setError('Application configuration error. Cannot setup PIN.');
+          setLoading(false);
+          return; // Stop execution
         }
-        const ciphertext = await EncryptionService.encryptData({ apiKey: apiKeyToEncrypt }, pin);
+
+        // Check if PIN is strong enough (e.g., min 4 digits already handled by button disable state)
+        // Additional checks can be added here.
+
+        const dataToEncrypt = { apiKey: apiKeyToEncrypt, timestamp: new Date().toISOString() };
+        const ciphertext = await EncryptionService.encryptData(dataToEncrypt, pin);
+
         if (ciphertext) {
           await db.appSettings.put({ key: 'encryptedApiKey', value: ciphertext });
-          // Optionally store a PIN hash for quick checks - not for decryption
-          // const pinHash = await EncryptionService.deriveKey(pin, "savora-pin-verifier-salt"); // Example
-          // await db.appSettings.put({ key: 'userPinHash', value: someRepresentationOf(pinHash) });
+          await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() }); // Store PIN set date
 
-          unlockApp(apiKeyToEncrypt); // Unlock with the plaintext key for this session
-          toast({ title: 'Success', description: 'PIN set up and application unlocked.' });
-          onUnlockSuccess();
+          unlockApp(apiKeyToEncrypt); // Unlock with the plaintext key for this current session
+          toast({ title: 'Success', description: 'PIN successfully set and application unlocked.' });
+          onUnlockSuccess(); // Signal to Index.tsx to change view
         } else {
-          throw new Error('Encryption failed during PIN setup.');
+          throw new Error('Encryption process failed during PIN setup.');
         }
       } catch (e: any) {
         console.error("PIN Setup Error:", e);
@@ -96,31 +104,37 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         setLoading(false);
       }
     } else if (mode === 'unlock') {
+      setLoading(true); // Ensure loading is true for unlock attempt
+      setError('');
       try {
         const setting = await db.appSettings.get('encryptedApiKey');
         const encryptedCiphertext = setting?.value as string | undefined;
 
         if (!encryptedCiphertext) {
-          setError('PIN not set up. Please refresh to go through setup.');
-          toast({ title: 'Error', description: 'PIN not set up.', variant: 'destructive' });
+          // This case should ideally not be hit if useEffect correctly sets mode to 'setup'
+          console.warn('encryptedApiKey not found in unlock mode, switching to setup.');
+          toast({ title: 'Setup Required', description: 'Please set up your PIN first.', variant: 'default' });
+          setMode('setup');
           setLoading(false);
-          setMode('setup'); // Force setup mode
           return;
         }
 
         const decryptedPayload = await EncryptionService.decryptData(encryptedCiphertext, pin);
-        if (decryptedPayload && decryptedPayload.apiKey) {
+
+        if (decryptedPayload && typeof decryptedPayload.apiKey === 'string') {
           unlockApp(decryptedPayload.apiKey);
-          toast({ title: 'Success', description: 'Application unlocked.' });
-          onUnlockSuccess();
+          toast({ title: 'Success!', description: 'Application unlocked.' });
+          onUnlockSuccess(); // Signal to Index.tsx to change view
         } else {
-          setError('Invalid PIN.');
-          toast({ title: 'Error', description: 'Invalid PIN.', variant: 'destructive' });
+          // Decryption failed or apiKey not in payload
+          setError('Invalid PIN. Please try again.');
+          toast({ title: 'Unlock Failed', description: 'Invalid PIN entered.', variant: 'destructive' });
         }
       } catch (e: any) {
-        console.error("PIN Unlock Error:", e);
-        setError(e.message || 'Unlock failed. Please try again.');
-        toast({ title: 'Error', description: e.message || 'Unlock failed.', variant: 'destructive' });
+        // Catch any other errors during the process
+        console.error("PIN Unlock Process Error:", e);
+        setError('An unexpected error occurred during unlock.');
+        toast({ title: 'Error', description: 'Unlock failed due to an unexpected error.', variant: 'destructive' });
       } finally {
         setLoading(false);
       }
