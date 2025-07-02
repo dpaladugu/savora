@@ -3,9 +3,10 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Settings, User, Palette, Database, LogOut, Shield } from "lucide-react";
+import { Settings, User, Palette, Database, LogOut, Shield, FileJson } from "lucide-react"; // Added FileJson
 import { useState } from "react";
 import { Logger } from "@/services/logger";
+import { DataImport } from "./DataImport"; // Import DataImport component
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -129,6 +130,9 @@ export function SettingsScreen() {
               <Button variant="outline" disabled>
                 Export Data (Coming Soon)
               </Button>
+            </div>
+            <div className="mt-6"> {/* Added margin for separation */}
+              <DataImport />
             </div>
             <div>
               <h4 className="font-medium text-foreground mb-2">Offline Access</h4>

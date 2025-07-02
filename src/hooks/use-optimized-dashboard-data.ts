@@ -1,12 +1,15 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { DashboardData } from "@/types/dashboard";
+import { DashboardData } from "@/types/dashboard"; // This type might need adjustment based on data from IndexedDB
 import { Logger } from "@/services/logger";
-import { SupabaseExpenseManager } from "@/services/supabase-expense-manager";
-import { SupabaseInvestmentManager } from "@/services/supabase-investment-manager";
-import { useAuth } from "@/contexts/auth-context";
+// import { SupabaseExpenseManager } from "@/services/supabase-expense-manager"; // Will be replaced by IndexedDB
+// import { SupabaseInvestmentManager } from "@/services/supabase-investment-manager"; // Will be replaced by IndexedDB
+import { useAuth } from "@/contexts/auth-context"; // Keep for now, might simplify if no backend auth
+import { db, Expense } from "@/db"; // Import Dexie db and Expense type
+// Assuming Investment type will be defined in db.ts later or we use a placeholder
+// For now, investments will be mocked or zeroed.
 
-// Enhanced mock data for development
+// Enhanced mock data for development - will be mostly replaced by calculations from DB
 const mockDashboardData: DashboardData = {
   totalExpenses: 45230,
   monthlyExpenses: 15430,
@@ -92,47 +95,58 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
   // Simulate API delay for realistic loading experience - consider removing for production or making it dev-only
   // await new Promise(resolve => setTimeout(resolve, 800));
 
-  // Fetch real data from Supabase
-  // Allow errors to propagate if .catch is removed or re-throws.
-  // SupabaseExpenseManager.getExpenses already returns [] on error, which might be okay
-  // but for other data sources, we might want to ensure errors are thrown.
-  const expenses = await SupabaseExpenseManager.getExpenses(userId);
-  const investments = await SupabaseInvestmentManager.getInvestments(userId);
-  // Consider if getInvestments also needs a .catch or if its internal error handling is sufficient.
-  // For now, assuming they return empty arrays on failure or throw, which react-query will catch.
+  // Fetch real data from IndexedDB
+  // The userId parameter might be optional if all data in IndexedDB is for the current user.
+  // For now, we'll assume db.expenses.toArray() gets all relevant expenses.
+  const allExpenses: Expense[] = await db.expenses.toArray();
 
-  // Calculate real metrics with proper type handling and initial values
-    const currentMonth = new Date().toISOString().substring(0, 7);
-    const monthlyExpenses = expenses
-      .filter(expense => expense.date?.startsWith(currentMonth) && expense.type === 'expense')
-      .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
-      .reduce((sum, amount) => sum + amount, 0);
+  // TODO: Fetch investments from IndexedDB once the 'investments' table is defined and populated
+  const allInvestments: any[] = []; // Placeholder
 
-    const totalExpenses = expenses
-      .filter(expense => expense.type === 'expense')
-      .map(expense => typeof expense.amount === 'number' ? expense.amount : 0)
-      .reduce((sum, amount) => sum + amount, 0);
+  // Calculate real metrics
+  const currentMonth = new Date().toISOString().substring(0, 7);
+  const monthlyExpenses = allExpenses
+    .filter(expense => expense.date?.startsWith(currentMonth) && expense.type === 'expense')
+    .reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
-    const totalInvestments = investments
-      .map(investment => typeof investment.amount === 'number' ? investment.amount : 0)
-      .reduce((sum, amount) => sum + amount, 0);
+  const totalExpenses = allExpenses
+    .filter(expense => expense.type === 'expense')
+    .reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
-    // Calculate category breakdown from real data
-    const categoryBreakdown = await SupabaseExpenseManager.getExpensesByCategory(userId);
-    const categoryBreakdownArray = Object.entries(categoryBreakdown).map(([category, amount], index) => ({
+  // Placeholder for investments - replace with actual calculation from allInvestments
+  const totalInvestments = allInvestments.reduce((sum, investment) => sum + (investment.currentValue || investment.amount || 0), 0);
+  const investmentCount = allInvestments.length;
+
+  // Calculate category breakdown from IndexedDB expenses
+  const categoryTotals: { [key: string]: number } = {};
+  allExpenses
+    .filter(expense => expense.type === 'expense')
+    .forEach(expense => {
+      const category = expense.category || 'Uncategorized';
+      categoryTotals[category] = (categoryTotals[category] || 0) + (expense.amount || 0);
+    });
+
+  const categoryBreakdownArray = Object.entries(categoryTotals)
+    .sort(([, a], [, b]) => b - a) // Sort by amount descending
+    .map(([category, amount], index) => ({
       category,
       amount,
       percentage: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0,
-      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6'][index % 5]
+      // Consistent colors, or generate dynamically based on more categories
+      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#ec4899'][index % 7]
     }));
 
-    // Calculate emergency fund
-    const avgMonthlyExpenses = monthlyExpenses || 15000; // fallback
-    const emergencyFundTarget = avgMonthlyExpenses * 6;
-    const emergencyFundCurrent = totalInvestments * 0.15; // Assume 15% is liquid
+  // Calculate emergency fund - using placeholders for now
+  // TODO: This needs to be based on actual user settings for EF months and potentially liquid savings
+  const avgMonthlyExpensesForEF = monthlyExpenses || (totalExpenses / 6) || 30000; // More robust fallback
+  const emergencyFundTarget = avgMonthlyExpensesForEF * 6; // Default 6 months
+  // Placeholder: current emergency fund might be a specific account type or goal
+  const emergencyFundCurrent = Math.min(totalInvestments * 0.1, emergencyFundTarget); // Highly speculative
 
-    const realData: DashboardData = {
-      ...mockDashboardData,
+  // Build the DashboardData object
+  // We use some parts of mockDashboardData as fallbacks or for structure if not yet calculated
+  const realData: DashboardData = {
+    ...mockDashboardData, // Spread mock first, then override with real calculated values
       totalExpenses,
       monthlyExpenses,
       totalInvestments,
