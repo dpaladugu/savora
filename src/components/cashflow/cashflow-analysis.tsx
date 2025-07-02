@@ -8,10 +8,23 @@ import { FirestoreService } from "@/services/firestore";
 import { useAuth } from "@/contexts/auth-context";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 
+interface CashflowChartEntry {
+  month: string;
+  income: number;
+  expenses: number;
+  investments: number;
+  surplus: number;
+}
+
+interface CategoryChartEntry {
+  category: string;
+  amount: number;
+}
+
 export function CashflowAnalysis() {
   const { user } = useAuth();
-  const [cashflowData, setCashflowData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [cashflowData, setCashflowData] = useState<CashflowChartEntry[]>([]);
+  const [categoryData, setCategoryData] = useState<CategoryChartEntry[]>([]);
   const [timeFilter, setTimeFilter] = useState<'3m' | '6m' | '1y'>('6m');
   const [loading, setLoading] = useState(true);
 

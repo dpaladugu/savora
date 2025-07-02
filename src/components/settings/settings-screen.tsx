@@ -51,6 +51,7 @@ export function SettingsScreen() {
     // Removed min-h-screen, bg-gradient, pb-24, pt-16, px-4.
     // These are expected to be handled by the parent router using ModuleHeader.
     // Also removed the inline H1/P title section.
+    <> {/* Wrapping in a fragment */}
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -190,5 +191,6 @@ export function SettingsScreen() {
         </div>
       {/* Removed extra closing </div> tag that was here */}
       </motion.div>
+    </> // Closing fragment
   );
 }

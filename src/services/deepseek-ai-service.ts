@@ -4,9 +4,10 @@ import { TokenUsageService } from './token-usage-service'; // Import TokenUsageS
 const DEEPSEEK_API_ENDPOINT = 'https://api.deepseek.com/v1/chat/completions'; // EXAMPLE - VERIFY THIS (Ensure this is your actual endpoint)
 const DEEPSEEK_MODEL_NAME = 'deepseek-chat'; // EXAMPLE - VERIFY THIS (Ensure this is your actual model)
 
+import { useAppStore } from '@/store/appStore'; // Import Zustand store
+
 // Correctly access the API key using Vite's import.meta.env
-// The user must set VITE_DEEPSEEK_API_KEY in their .env file (and on their deployment platform)
-const VITE_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY;
+// const VITE_API_KEY = import.meta.env.VITE_DEEPSEEK_API_KEY; // No longer directly used here
 
 interface DeepseekChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -48,12 +49,16 @@ export interface AiAdviceResponse {
 }
 
 export class DeepseekAiService {
-  // No longer need a static apiKey field here, VITE_API_KEY is module-scoped constant
 
   public static async getFinancialAdvice(prompt: string, systemPrompt?: string): Promise<AiAdviceResponse> {
-    if (!VITE_API_KEY) { // Check the module-scoped constant
-      console.error('Deepseek API key is not configured. Set VITE_DEEPSEEK_API_KEY in your .env file.');
-      throw new Error('API key not configured for AI service.');
+    const apiKey = useAppStore.getState().decryptedApiKey;
+
+    if (!apiKey) {
+      console.error('Deepseek API key is not available (App might be locked or key not decrypted).');
+      // Option 1: Throw an error to be caught by the caller
+      throw new Error('API key not available for AI service. Unlock the app or check PIN setup.');
+      // Option 2: Return a specific error structure (less ideal if Promise<AiAdviceResponse> is strict)
+      // return { advice: "Error: API Key not available.", usage: undefined };
     }
 
     const messages: DeepseekChatMessage[] = [];
@@ -74,7 +79,7 @@ export class DeepseekAiService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${VITE_API_KEY}`, // Use the module-scoped constant
+          'Authorization': `Bearer ${apiKey}`, // Use apiKey from Zustand store
         },
         body: JSON.stringify(requestBody),
       });
