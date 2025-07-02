@@ -38,27 +38,12 @@ const Index = () => {
   };
 
   // Handle unlock success from PinLock
-  // This will receive the decrypted API key from PinLock once implemented
-  const handleUnlockSuccess = (/* decryptedApiKey: string */) => {
-    // For now, PinLock simulates and calls onUnlockSuccess directly.
-    // When actual decryption happens in PinLock, it should pass the key here.
-    // unlockApp(decryptedApiKey);
-    // For simulation, we can call unlockApp with a dummy/placeholder if needed,
-    // or rely on PinLock's simulation to directly call its internal success path
-    // which then calls this onUnlockSuccess.
-    // Let's assume PinLock itself will call the store's unlockApp action upon successful decryption.
-    // So this handler might just be:
-    console.log("App unlocked via PIN (or simulation complete)");
-    // No, PinLock should call this, and *this* should call the store.
-    // This is because PinLock doesn't know about the API key, just that PIN was valid.
-    // The actual retrieval of encrypted key, decryption, and storing decrypted key
-    // should happen here or be orchestrated from here after PinLock says PIN is good.
-
-    // For the current PinLock simulation (pin === "1234"):
-    // We need to provide a placeholder API key to unlockApp for now.
-    // Later, this will come from decrypting the stored encrypted key.
-    const placeholderApiKey = "simulated-decrypted-api-key"; // Replace with actual logic later
-    unlockApp(placeholderApiKey);
+  // PinLock component itself is now responsible for calling the unlockApp action in the store
+  // with the decrypted API key. This function is purely a callback to signal success.
+  const handleUnlockSuccess = () => {
+    console.log("PINLock reported success (Setup or Unlock). App should now be unlocked.");
+    // No need to call unlockApp here anymore, PinLock does it.
+    // The component will re-render due to 'isUnlocked' changing in the Zustand store.
   };
 
   if (!isUnlocked) {
