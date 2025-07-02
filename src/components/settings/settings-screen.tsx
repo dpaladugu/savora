@@ -48,23 +48,17 @@ export function SettingsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-3 tracking-tight">
-            Settings
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Manage your Savora preferences and account
-          </p>
-        </div>
-
-        {/* User Profile */}
-        <Card className="metric-card border-border/50">
+    // Removed min-h-screen, bg-gradient, pb-24, pt-16, px-4.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    // Also removed the inline H1/P title section.
+    <> {/* Wrapping in a fragment */}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
+      {/* User Profile */}
+      <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
               <User className="w-5 h-5 text-primary" />
@@ -195,7 +189,8 @@ export function SettingsScreen() {
         <div className="text-center text-sm text-muted-foreground">
           Savora v1.0.0 - Built for comprehensive personal finance tracking
         </div>
+      {/* Removed extra closing </div> tag that was here */}
       </motion.div>
-    </div>
+    </> // Closing fragment
   );
 }

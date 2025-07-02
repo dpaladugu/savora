@@ -3,7 +3,7 @@ import { CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface CSVDataPreviewProps {
-  previewData: any[];
+  previewData: Record<string, any>[]; // Changed from any[]
   csvType: string;
   onConfirmImport: () => void;
   onCancel: () => void;
@@ -28,7 +28,7 @@ export function CSVDataPreview({
         </span>
       </div>
       
-      <div className="bg-muted/30 rounded-lg p-3 max-h-40 overflow-y-auto">
+      <div className="bg-muted/30 rounded-lg p-3 max-h-80 overflow-y-auto"> {/* Increased max-h-40 to max-h-80 */}
         <pre className="text-xs text-foreground whitespace-pre-wrap">
           {JSON.stringify(previewData, null, 2)}
         </pre>

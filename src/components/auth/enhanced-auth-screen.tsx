@@ -8,6 +8,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
+import { GlobalHeader } from "@/components/layout/global-header"; // Import GlobalHeader
 
 export function EnhancedAuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
@@ -49,35 +50,39 @@ export function EnhancedAuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
-        <Card className="border-0 shadow-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-          <CardHeader className="text-center pb-2">
+    <>
+      <GlobalHeader title="" /> {/* Added GlobalHeader for dark mode toggle consistency */}
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 pt-20"> {/* Added pt-20 for GlobalHeader */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          {/* The original custom header content can remain as part of the page body */}
+          <div className="text-center mb-6"> {/* Adjusted margin */}
             <motion.div
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              transition={{ delay: 0.2 }}
-              className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center"
+              transition={{ delay: 0.2, duration: 0.3 }}
+              className="w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mx-auto mb-3 flex items-center justify-center shadow-lg"
             >
               <User className="w-8 h-8 text-white" />
             </motion.div>
-            <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               {isLogin ? "Welcome Back" : "Create Account"}
             </CardTitle>
-            <p className="text-slate-600 dark:text-slate-300 text-sm">
+            <p className="text-slate-600 dark:text-slate-300 text-sm mt-1">
               {isLogin 
                 ? "Sign in to access your financial dashboard" 
                 : "Join us to start tracking your finances"
               }
             </p>
-          </CardHeader>
+          </div>
           
-          <CardContent className="space-y-4">
+          <Card className="border-0 shadow-2xl bg-white/80 dark:bg-slate-800/80 backdrop-blur-md"> {/* Increased backdrop blur slightly */}
+            {/* CardHeader removed as title is now part of the section above */}
+            <CardContent className="space-y-4 pt-6"> {/* Added pt-6 to CardContent as CardHeader was removed */}
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
                 <motion.div 

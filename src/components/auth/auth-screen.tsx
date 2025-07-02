@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { motion } from 'framer-motion';
 import { Wallet, Eye, EyeOff } from 'lucide-react';
+import { GlobalHeader } from '@/components/layout/global-header'; // Import GlobalHeader
 
 export function AuthScreen() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -47,10 +48,12 @@ export function AuthScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
+    <>
+      <GlobalHeader title="" /> {/* No title needed as it's part of the main content */}
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4 pt-20"> {/* Added pt-20 for GlobalHeader */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
         <div className="text-center mb-8">
@@ -147,5 +150,6 @@ export function AuthScreen() {
         </div>
       </motion.div>
     </div>
+    </> // Closing the fragment opened on line 51
   );
 }

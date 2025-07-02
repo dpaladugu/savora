@@ -12,6 +12,7 @@ export type MoreModule =
   | 'telegram'
   | 'credit-cards'
   | 'credit-card-statements'
+  | 'recurring-transactions' // Added
   | null;
 
 interface NavigationState {
@@ -49,7 +50,7 @@ export function useNavigationRouter() {
       // Validate moduleId is a valid MoreModule
       const validModules: MoreModule[] = [
         'emergency-fund', 'rentals', 'recommendations', 'cashflow', 
-        'telegram', 'credit-cards', 'credit-card-statements'
+        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions' // Added
       ];
       
       const validModuleId = validModules.includes(moduleId as MoreModule) ? moduleId as MoreModule : null;

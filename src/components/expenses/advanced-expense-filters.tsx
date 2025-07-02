@@ -148,7 +148,7 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
           </div>
         </div>
 
-        <Anim initial={false}>
+        <AnimatePresence initial={false}>
           {isExpanded && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}

@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, CreditCard, TrendingUp, Shield, CheckCircle, AlertCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { GlobalHeader } from "@/components/layout/global-header";
+// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { CSVParser } from "@/services/csv-parser";
-import { FirestoreService } from "@/services/firestore";
+import { FirestoreService } from "@/services/firestore"; // Consider using ExpenseManager/InvestmentManager if available
 import { useAuth } from "@/contexts/auth-context";
 import { EnhancedCSVProcessor } from "@/components/csv/enhanced-csv-processor";
 
@@ -109,9 +109,9 @@ export function CSVImports() {
             amount: tx.amount,
             category: tx.category,
             paymentMethod: 'Credit Card',
-            description: `${tx.merchant} - ${tx.description}`,
-            tags: `Credit Card - ${tx.merchant}`,
-            account: `Card ending ${tx.cardLastFour}`,
+            description: `${tx.merchant} - ${tx.description} (Card ...${tx.cardLastFour})`, // Added card info to description
+            tags: [`Credit Card - ${tx.merchant}`], // Changed to string array
+            // account: `Card ending ${tx.cardLastFour}`, // Removed 'account' property
             type: 'expense' as const,
             source: 'csv' as const,
             createdAt: new Date().toISOString()
@@ -263,13 +263,13 @@ export function CSVImports() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <GlobalHeader title="CSV Imports" />
-      
-      <div className="pt-20 px-4 space-y-6">
-        <div className="mb-8">
-          <h2 className="text-xl font-bold text-foreground mb-2">Import Financial Data</h2>
-          <p className="text-muted-foreground">
+    // Removed min-h-screen, bg-gradient, GlobalHeader, and pt-20.
+    // These are expected to be handled by the parent router using ModuleHeader.
+    <div className="space-y-6">
+        <div className="mb-4"> {/* Adjusted margin */}
+          {/* This title/description can be part of the page content if ModuleHeader handles the main page title */}
+          <h2 className="text-xl font-semibold text-foreground">Import Options</h2>
+          <p className="text-sm text-muted-foreground">
             Import data from various financial platforms
           </p>
         </div>
@@ -352,7 +352,7 @@ export function CSVImports() {
             </ul>
           </CardContent>
         </Card>
-      </div>
+      {/* Removed extra closing </div> tag that was here */}
     </div>
   );
 }

@@ -89,12 +89,12 @@ export function AccountManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-foreground">Accounts</h2>
-          <p className="text-muted-foreground">Manage banks & wallets</p>
-        </div>
+      {/* Header section removed. Title/subtitle should be provided by ModuleHeader via router. */}
+      {/* The "Add Account" button might be passed as an 'action' to ModuleHeader,
+          or exist as a primary action button within this component's layout.
+          For now, let's place it visibly if not in a header.
+      */}
+      <div className="flex justify-end"> {/* Simple placement for the button for now */}
         <Button
           onClick={() => setShowAddForm(true)}
           className="bg-gradient-blue hover:opacity-90"
