@@ -72,14 +72,14 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         return;
       }
       try {
-        // const apiKeyToEncrypt = import.meta.env.VITE_DEEPSEEK_API_KEY; // No longer use this
-        if (!apiKeyInput.trim()) {
+        const apiKeyToEncryptFromInput = apiKeyInput.trim(); // Use the state variable
+        if (!apiKeyToEncryptFromInput) {
           setError('API Key is required for setup.');
           toast({ title: 'Input Required', description: 'Please enter your DeepSeek API Key.', variant: 'destructive' });
           setLoading(false);
           return;
         }
-        const apiKeyToEncrypt = apiKeyInput.trim();
+        // const apiKeyToEncrypt = import.meta.env.VITE_DEEPSEEK_API_KEY; // This line is removed/already changed
 
         // Check if PIN is strong enough (e.g., min 4 digits already handled by button disable state)
         // Additional checks can be added here.
