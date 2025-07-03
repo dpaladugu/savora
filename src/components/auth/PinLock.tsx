@@ -19,6 +19,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const [mode, setMode] = useState<PinLockMode>('loading');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState(''); // For setup mode
+  const [apiKeyInput, setApiKeyInput] = useState(''); // For API key input in setup mode
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -71,14 +72,14 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         return;
       }
       try {
-        const apiKeyToEncrypt = import.meta.env.VITE_DEEPSEEK_API_KEY;
-        if (!apiKeyToEncrypt) {
-          console.error('CRITICAL: VITE_DEEPSEEK_API_KEY is not defined in .env file.');
-          toast({ title: 'Configuration Error', description: 'API Key for AI service is missing in app configuration.', variant: 'destructive' });
-          setError('Application configuration error. Cannot setup PIN.');
+        // const apiKeyToEncrypt = import.meta.env.VITE_DEEPSEEK_API_KEY; // No longer use this
+        if (!apiKeyInput.trim()) {
+          setError('API Key is required for setup.');
+          toast({ title: 'Input Required', description: 'Please enter your DeepSeek API Key.', variant: 'destructive' });
           setLoading(false);
-          return; // Stop execution
+          return;
         }
+        const apiKeyToEncrypt = apiKeyInput.trim();
 
         // Check if PIN is strong enough (e.g., min 4 digits already handled by button disable state)
         // Additional checks can be added here.
@@ -88,11 +89,11 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
 
         if (ciphertext) {
           await db.appSettings.put({ key: 'encryptedApiKey', value: ciphertext });
-          await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() }); // Store PIN set date
+          await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() });
 
-          unlockApp(apiKeyToEncrypt); // Unlock with the plaintext key for this current session
+          unlockApp(apiKeyToEncrypt); // Unlock with the plaintext key provided by user for this current session
           toast({ title: 'Success', description: 'PIN successfully set and application unlocked.' });
-          onUnlockSuccess(); // Signal to Index.tsx to change view
+          onUnlockSuccess();
         } else {
           throw new Error('Encryption process failed during PIN setup.');
         }
@@ -180,23 +181,47 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
             autoFocus
           />
           {mode === 'setup' && (
-            <Input
-              type="password"
-              value={confirmPin}
-              onChange={(e) => {
-                const numericValue = e.target.value.replace(/[^0-9]/g, '');
-                if (numericValue.length <= 6) setConfirmPin(numericValue);
-                setError('');
-              }}
-              placeholder="Confirm PIN"
-              maxLength={6}
-              className="text-center text-2xl tracking-[0.3em] font-mono h-14"
-            />
+            <>
+              <Input
+                type="password"
+                value={confirmPin}
+                onChange={(e) => {
+                  const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                  if (numericValue.length <= 6) setConfirmPin(numericValue);
+                  setError('');
+                }}
+                placeholder="Confirm PIN"
+                maxLength={6}
+                className="text-center text-2xl tracking-[0.3em] font-mono h-14"
+              />
+              <div>
+                <label htmlFor="apiKeyInput" className="sr-only">DeepSeek API Key</label>
+                <Input
+                  id="apiKeyInput"
+                  type="password" // Masked, but user is pasting
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  placeholder="Paste DeepSeek API Key here"
+                  className="text-sm h-12"
+                />
+                 <p className="text-xs text-muted-foreground mt-1 px-1">
+                   This key will be encrypted with your PIN and stored locally.
+                 </p>
+              </div>
+            </>
           )}
 
           {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-          <Button type="submit" className="w-full text-lg py-3 h-auto" disabled={loading || pin.length < 4 || (mode === 'setup' && confirmPin.length < 4)}>
+          <Button
+            type="submit"
+            className="w-full text-lg py-3 h-auto"
+            disabled={
+              loading ||
+              pin.length < 4 ||
+              (mode === 'setup' && (confirmPin.length < 4 || apiKeyInput.trim() === ''))
+            }
+          >
             {loading ? (
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
