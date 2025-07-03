@@ -9,6 +9,7 @@ import { preloadFinancialData, validateFinancialData } from '@/services/dataPrel
 export function DataImport() {
   const [file, setFile] = useState<File | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [importSummaryMessage, setImportSummaryMessage] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -35,24 +36,44 @@ export function DataImport() {
     reader.onload = async (e) => {
       try {
         const text = e.target?.result as string;
-        const data = JSON.parse(text);
+        const jsonData = JSON.parse(text);
+        setImportSummaryMessage(null); // Reset summary message
 
-        if (!validateFinancialData(data)) { // Use actual service
-          throw new Error('Invalid JSON structure. Please check the file content and ensure all required sections are present.');
+        const validationResult = validateFinancialData(jsonData); // Use actual service
+
+        if (!validationResult.isValid || !validationResult.data) {
+          let errorMessages = "Invalid JSON structure. Please check the file content.";
+          if (validationResult.errors) {
+            errorMessages = validationResult.errors.map(err => `${err.path.join('.')} - ${err.message}`).join('\n');
+          }
+          toast({
+            title: "Validation Failed",
+            description: <pre className="whitespace-pre-wrap max-h-60 overflow-y-auto">{errorMessages}</pre>,
+            variant: "destructive",
+            duration: 10000, // Show for longer
+          });
+          setIsImporting(false);
+          return;
         }
 
-        if (window.confirm("Importing will replace ALL existing application data with the content of this file. This cannot be undone. Are you sure you want to proceed?")) {
-            const result = await preloadFinancialData(data); // Use actual service
-            if (result.success) {
+        if (window.confirm("Importing will replace ALL existing application data (like expenses and vehicles) with the content of this file. This cannot be undone. Are you sure you want to proceed?")) {
+            const importResult = await preloadFinancialData(validationResult.data); // Use validated and typed data
+            if (importResult.success) {
                 toast({
                     title: "Import Successful",
-                    description: result.message,
+                    description: importResult.message,
                 });
-                // Optionally display result.summary details
-                console.log("Import Summary:", result.summary);
+                setImportSummaryMessage(importResult.message + (importResult.summary ? ` Details: ${JSON.stringify(importResult.summary)}` : ''));
+                console.log("Import Summary:", importResult.summary);
                 setFile(null); // Clear file input
             } else {
-                throw new Error(result.message);
+                // PreloadFinancialData itself might have a detailed error message
+                toast({
+                    title: "Import Partially Failed or Errored",
+                    description: importResult.message,
+                    variant: "destructive",
+                });
+                setImportSummaryMessage(`Import failed: ${importResult.message}`);
             }
         } else {
             toast({
@@ -126,6 +147,12 @@ export function DataImport() {
         <p className="text-xs text-muted-foreground">
           Ensure your JSON file is correctly formatted. Download a sample template if unsure (feature coming soon).
         </p>
+        {importSummaryMessage && (
+          <div className={`mt-4 p-3 rounded-md text-sm ${importSummaryMessage.startsWith("Import failed") ? 'bg-destructive/10 text-destructive border border-destructive/30' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-500/30'}`}>
+            <p className="font-semibold mb-1">Import Status:</p>
+            <pre className="whitespace-pre-wrap">{importSummaryMessage}</pre>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

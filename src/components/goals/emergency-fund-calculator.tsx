@@ -1,4 +1,3 @@
-
 import { GlobalHeader } from "@/components/layout/global-header";
 import { useEmergencyFund } from "@/hooks/use-emergency-fund";
 import { MissingDataAlert } from "./missing-data-alert";
@@ -8,28 +7,62 @@ import { SipRecommendation } from "./sip-recommendation";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react"; // Added Sparkles, AlertTriangle, Info
-import { useState } from "react";
-import { DeepseekAiService, AiAdviceResponse } from "@/services/deepseek-ai-service"; // Import AiAdviceResponse type
+import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { useState, useEffect } from "react";
+import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatService";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useAppStore } from "@/store/appStore";
+import { useToast } from "@/components/ui/use-toast";
 // import ReactMarkdown from 'react-markdown'; // Placeholder for markdown rendering
 // import remarkGfm from 'remark-gfm';         // For GitHub Flavored Markdown
 
-// Removed GlobalHeader import as ModuleHeader from MoreModuleRouter should handle it.
-
 export function EmergencyFundCalculator() {
   const { data, updateData, loading: initialDataLoading, missingData, calculation, refreshData } = useEmergencyFund();
+  const { toast } = useToast();
   const [aiResponse, setAiResponse] = useState<AiAdviceResponse | null>(null);
   const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const [aiAdviceError, setAiAdviceError] = useState<string | null>(null);
+  const [isAiConfigured, setIsAiConfigured] = useState(false);
+
+  useEffect(() => {
+    const { decryptedAiApiKey, currentAiProvider } = useAppStore.getState();
+    // Initialize provider, this will be re-checked by isConfigured() before actual call
+    if (decryptedAiApiKey && currentAiProvider) {
+        aiChatServiceInstance.initializeProvider();
+    }
+    setIsAiConfigured(!!decryptedAiApiKey && !!currentAiProvider);
+
+    const unsubscribe = useAppStore.subscribe(
+      (state) => ({ decryptedAiApiKey: state.decryptedAiApiKey, currentAiProvider: state.currentAiProvider }),
+      (newState, oldState) => {
+        const configured = !!newState.decryptedAiApiKey && !!newState.currentAiProvider;
+        setIsAiConfigured(configured);
+        if (configured) {
+            // Re-initialize if relevant parts of store change
+            if (newState.decryptedAiApiKey !== oldState.decryptedAiApiKey || newState.currentAiProvider !== oldState.currentAiProvider) {
+                aiChatServiceInstance.initializeProvider();
+            }
+        }
+      }
+    );
+    return unsubscribe;
+  }, []);
 
   const handleGetAiAdvice = async () => {
+    if (!aiChatServiceInstance.isConfigured()) {
+      setAiAdviceError("AI Service is not configured. Please set up the API key and provider in settings/PIN setup.");
+      toast({
+        title: "AI Service Not Configured",
+        description: "Please ensure your AI provider and API key are set up correctly.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setAiAdviceLoading(true);
     setAiAdviceError(null);
-    setAiResponse(null); // Reset AI response state
+    setAiResponse(null);
 
-    // Construct the prompt using data from the 'data' object
-    // This is based on the prompt designed in Step 3 of the plan.
     const prompt = `
 You are an expert financial advisor AI. Your goal is to provide clear, actionable, and prudent advice regarding a user's emergency fund. Your advice should be based on established financial planning best practices.
 
@@ -76,9 +109,7 @@ Please use Markdown for formatting your response, including headings for each se
     `;
 
     try {
-      // The system prompt for DeepseekAiService can be very generic here,
-      // as the main prompt contains detailed persona instructions.
-      const response = await DeepseekAiService.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
+      const response = await aiChatServiceInstance.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
       setAiResponse(response);
     } catch (error) {
       if (error instanceof Error) {
@@ -93,99 +124,102 @@ Please use Markdown for formatting your response, including headings for each se
 
   return (
     <ErrorBoundary>
-      {/* GlobalHeader removed. The surrounding MoreModuleRouter provides ModuleHeader. */}
-      {/* The div with min-h-screen, bg-gradient, pb-24 is also part of MoreModuleRouter's responsibility. */}
-      {/* The px-4, py-4 for content area is also provided by MoreModuleRouter. */}
-      {/* This component now just returns its direct content. */}
-      <div className="space-y-6"> {/* Removed pt-20, assumes header spacing is handled by router */}
+      {/* GlobalHeader is removed as ModuleHeader from a router should handle it if this component is used within such a router */}
+      {/* Assuming this component might be used standalone or its parent provides padding/layout */}
+      <div className="space-y-6">
         <LoadingWrapper
           loading={initialDataLoading}
           loadingText="Loading data from your financial modules..."
-          >
-            <div className="flex justify-between items-center">
-              <div className="text-sm text-muted-foreground">
-                Data integrated from: Expenses, Insurance, EMI & Rental modules
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshData}
-                className="gap-2"
-                disabled={aiAdviceLoading} // Disable while AI is working
-              >
-                <RefreshCw className="w-4 h-4" />
-                Refresh Data
-              </Button>
+        >
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-sm text-muted-foreground">
+              Data integrated from: Expenses, Insurance, EMI & Rental modules
             </div>
-            
-            <MissingDataAlert missingData={missingData} />
-            <EmergencyFundForm data={data} onUpdate={updateData} />
-            <EmergencyFundResults calculation={calculation} emergencyMonths={data.emergencyMonths} />
-            <SipRecommendation shortfall={calculation.shortfall} />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refreshData}
+              className="gap-2"
+              disabled={aiAdviceLoading || initialDataLoading}
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh Data
+            </Button>
+          </div>
 
-            {/* AI Advice Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  AI Financial Advisor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  Get personalized advice on your emergency fund based on your current data.
-                  Remember, this is AI-generated information and not professional financial advice.
-                </p>
-                <Button onClick={handleGetAiAdvice} disabled={aiAdviceLoading || initialDataLoading}>
-                  {aiAdviceLoading ? "Getting Advice..." : "Get AI Emergency Fund Advice"}
-                </Button>
+          <MissingDataAlert missingData={missingData} />
+          <EmergencyFundForm data={data} onUpdate={updateData} />
+          <EmergencyFundResults calculation={calculation} emergencyMonths={data.emergencyMonths} />
+          <SipRecommendation shortfall={calculation.shortfall} />
 
-                {aiAdviceLoading && (
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>Fetching recommendations...</span>
+          {/* AI Advice Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                AI Financial Advisor
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Get personalized advice on your emergency fund based on your current data.
+                Remember, this is AI-generated information and not professional financial advice.
+              </p>
+              <Button
+                onClick={handleGetAiAdvice}
+                disabled={!isAiConfigured || aiAdviceLoading || initialDataLoading}
+              >
+                {aiAdviceLoading ? "Getting Advice..." : "Get AI Emergency Fund Advice"}
+              </Button>
+              {!isAiConfigured && (
+                <p className="text-xs text-destructive">AI provider not configured. Please set it up in PIN/Settings.</p>
+              )}
+
+              {aiAdviceLoading && (
+                <div className="flex items-center space-x-2 text-muted-foreground">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Fetching recommendations...</span>
+                </div>
+              )}
+
+              {aiAdviceError && (
+                <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    <h4 className="font-semibold">Error Fetching Advice</h4>
                   </div>
-                )}
+                  <p className="text-sm mt-1">{aiAdviceError}</p>
+                </div>
+              )}
 
-                {aiAdviceError && (
-                  <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-md text-destructive">
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5" />
-                      <h4 className="font-semibold">Error Fetching Advice</h4>
+              {aiResponse?.advice && !aiAdviceLoading && (
+                <Card className="bg-background/50 p-4 border">
+                  <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
+                  {/* For proper markdown rendering, a library like react-markdown would be used:
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
+                      For now, displaying as preformatted text.
+                  */}
+                  <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
+                    {aiResponse.advice}
+                  </pre>
+                  {aiResponse.usage && (
+                    <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
+                      <p className="flex items-center gap-1"><Info className="w-3 h-3" /> Token Usage:</p>
+                      <ul>
+                        <li>Prompt Tokens: {aiResponse.usage.prompt_tokens}</li>
+                        <li>Completion Tokens: {aiResponse.usage.completion_tokens}</li>
+                        <li>Total Tokens: {aiResponse.usage.total_tokens}</li>
+                      </ul>
                     </div>
-                    <p className="text-sm mt-1">{aiAdviceError}</p>
-                  </div>
-                )}
-
-                {aiResponse?.advice && !aiAdviceLoading && (
-                  <Card className="bg-background/50 p-4 border">
-                    <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
-                    {/* For proper markdown rendering, a library like react-markdown would be used:
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
-                        For now, displaying as preformatted text.
-                    */}
-                    <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
-                      {aiResponse.advice}
-                    </pre>
-                    {aiResponse.usage && (
-                      <div className="mt-3 pt-3 border-t text-xs text-muted-foreground">
-                        <p className="flex items-center gap-1"><Info className="w-3 h-3" /> Token Usage:</p>
-                        <ul>
-                          <li>Prompt Tokens: {aiResponse.usage.prompt_tokens}</li>
-                          <li>Completion Tokens: {aiResponse.usage.completion_tokens}</li>
-                          <li>Total Tokens: {aiResponse.usage.total_tokens}</li>
-                        </ul>
-                      </div>
-                    )}
-                  </Card>
-                )}
-                <p className="text-xs text-muted-foreground italic mt-4">
-                  Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance. Ensure your API key and usage comply with Deepseek's terms of service.
-                </p>
-              </CardContent>
-            </Card>
-          </LoadingWrapper>
-        {/* Removed the extra closing div tag that was here */}
+                  )}
+                </Card>
+              )}
+              <p className="text-xs text-muted-foreground italic mt-4">
+                Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance. Ensure your API key and usage comply with the AI provider's terms of service.
+              </p>
+            </CardContent>
+          </Card>
+        </LoadingWrapper>
       </div>
     </ErrorBoundary>
   );

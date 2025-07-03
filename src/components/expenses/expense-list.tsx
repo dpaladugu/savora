@@ -2,7 +2,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Calendar, CreditCard, Repeat } from "lucide-react"; // Import Repeat
-import { Expense } from "@/services/expense-manager";
+import { Expense } from "@/db"; // Changed to use Expense type from db.ts
 import { DataValidator } from "@/services/data-validator";
 
 interface ExpenseListProps {

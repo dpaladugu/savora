@@ -8,7 +8,8 @@ import { CreditCardFlowTracker } from "@/components/credit-cards/credit-card-flo
 import { RecommendationsEngine } from "@/components/recommendations/recommendations-engine";
 import { CashflowAnalysis } from "@/components/cashflow/cashflow-analysis";
 import { TelegramIntegration } from "@/components/telegram/telegram-integration";
-import { RecurringTransactionsPage } from "@/components/recurring-transactions/recurring-transactions-page"; // Import new page
+import { RecurringTransactionsPage } from "@/components/recurring-transactions/recurring-transactions-page";
+import { VehicleManager } from "@/components/vehicles/VehicleManager"; // Import VehicleManager
 import { ModuleHeader } from "./module-header";
 
 interface MoreModuleRouterProps {
@@ -27,7 +28,8 @@ export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps
       "recommendations": { title: "Smart Tips", subtitle: "Personalized financial recommendations", showHeader: true },
       "cashflow": { title: "Cashflow Analysis", subtitle: "Income vs expense analysis", showHeader: true },
       "telegram": { title: "Telegram Bot", subtitle: "Connect Telegram for quick updates", showHeader: true },
-      "recurring-transactions": { title: "Recurring Transactions", subtitle: "Manage automated income and expenses", showHeader: true }
+      "recurring-transactions": { title: "Recurring Transactions", subtitle: "Manage automated income and expenses", showHeader: true },
+      "vehicles": { title: "Vehicle Management", subtitle: "Track vehicle details and related expenses", showHeader: true }
     };
     return configs[moduleId] || { title: "Module", subtitle: "", showHeader: true };
   };
@@ -54,6 +56,8 @@ export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps
         return <TelegramIntegration />;
       case "recurring-transactions":
         return <RecurringTransactionsPage />;
+      case "vehicles":
+        return <VehicleManager />;
       default:
         return <Dashboard onTabChange={() => {}} onMoreNavigation={() => {}} />;
     }
