@@ -4,80 +4,90 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Download } from "lucide-react";
-import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
+import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form"; // Or AddExpenseForm if preferred
 import { ExpenseList } from "./expense-list";
-import { SupabaseExpenseManager } from "@/services/supabase-expense-manager";
-import { ExpenseManager } from "@/services/expense-manager";
-import { useAuth } from "@/contexts/auth-context";
+import { db, Expense } from "@/db"; // Import db and Expense type from Dexie ORM
+// import { ExpenseManager } from "@/services/expense-manager"; // To be replaced for categories
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
-import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
+// import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator"; // Review if needed or simplify
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 import { CriticalErrorBoundary } from "@/components/ui/critical-error-boundary";
 import { useSingleLoading } from "@/hooks/use-comprehensive-loading";
+import { useLiveQuery } from 'dexie-react-hooks';
 
 export function ExpenseTracker() {
-  const [expenses, setExpenses] = useState<any[]>([]);
+  // const [expenses, setExpenses] = useState<Expense[]>([]); // Replaced by useLiveQuery
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
-  const { user } = useAuth();
+  // const { user } = useAuth(); // Removed useAuth
   const { toast } = useToast();
-  const { isLoading, startLoading, stopLoading, error, clearError } = useSingleLoading();
+  const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading, error: mutationError, clearError: clearMutationError } = useSingleLoading(); // For add/delete operations
 
   // Initialize notification service
   EnhancedNotificationService.setToastFunction(toast);
 
-  const loadExpenses = async () => {
-    if (!user) return;
-    
-    startLoading("Loading expenses...");
-    clearError();
-    
-    try {
-      const data = await SupabaseExpenseManager.getExpenses(user.uid);
-      setExpenses(data);
-    } catch (error) {
-      EnhancedNotificationService.dataLoadError(() => loadExpenses());
-      stopLoading(error as Error);
-      return;
-    }
-    
-    stopLoading();
-  };
+  // Live query for expenses from Dexie
+  const allExpenses = useLiveQuery(
+    async () => {
+      // Add any default sorting or complex queries here if needed
+      // For now, just fetching all and sorting by date client-side later if needed, or let filtering handle it.
+      // Fetching sorted by date (descending) directly from Dexie
+      const expensesFromDB = await db.expenses.orderBy('date').reverse().toArray();
+      return expensesFromDB;
+    },
+    [], // Dependencies array for useLiveQuery
+    [] // Initial value
+  );
 
-  const handleDeleteExpense = async (expenseId: string) => {
-    if (!user) return;
-    
+  const isLoading = allExpenses === undefined; // Loading state for useLiveQuery
+  const expenses = allExpenses || [];
+
+
+  const handleDeleteExpense = async (expenseId: number) => { // expenseId is number
+    startMutationLoading("Deleting expense...");
+    clearMutationError();
     try {
-      await SupabaseExpenseManager.deleteExpense(user.uid, expenseId);
-      await loadExpenses();
+      await db.expenses.delete(expenseId);
+      // loadExpenses(); // No longer needed, useLiveQuery handles updates
       EnhancedNotificationService.expenseDeleted();
+      toast({ title: "Success", description: "Expense deleted." });
     } catch (error) {
       EnhancedNotificationService.error({
         title: "Failed to delete expense",
-        description: "Please try again"
+        description: (error as Error).message || "Please try again"
       });
+      stopMutationLoading(error as Error);
     }
+    stopMutationLoading();
   };
 
-  const handleAddExpense = async (expenseData: any) => {
-    if (!user) return;
-    
+  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+    startMutationLoading("Adding expense...");
+    clearMutationError();
     try {
-      // Validate expense data before submission
-      ComprehensiveDataValidator.validateExpense({
+      // Form should ideally enforce required fields.
+      // Additional validation can be re-introduced here if needed.
+      const newExpense: Expense = {
         ...expenseData,
-        userId: user.uid
-      });
-      
-      await SupabaseExpenseManager.addExpense(user.uid, expenseData);
-      await loadExpenses();
+        type: expenseData.type || 'expense',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      await db.expenses.add(newExpense);
       setShowAddForm(false);
+      toast({ title: "Success", description: "Expense added." });
+      EnhancedNotificationService.operationCompleted("Expense added");
     } catch (error) {
-      throw error; // Let the form handle the error
+      EnhancedNotificationService.error({
+        title: "Failed to add expense",
+        description: (error as Error).message || "Please try again."
+      });
+      stopMutationLoading(error as Error);
     }
+    stopMutationLoading();
   };
 
   const exportExpenses = () => {
@@ -85,7 +95,7 @@ export function ExpenseTracker() {
       const csvContent = "data:text/csv;charset=utf-8," 
         + "Date,Description,Category,Amount,Payment Method\n"
         + filteredExpenses.map(expense => 
-            `${expense.date},${expense.description},${expense.category},${expense.amount},${expense.paymentMethod || ''}`
+            `${expense.date},${expense.description || ''},${expense.category || ''},${expense.amount},${expense.paymentMethod || ''}`
           ).join("\n");
       
       const encodedUri = encodeURI(csvContent);
@@ -105,16 +115,19 @@ export function ExpenseTracker() {
     }
   };
 
-  useEffect(() => {
-    loadExpenses();
-  }, [user]);
+  // useEffect for loadExpenses is no longer needed due to useLiveQuery
 
-  const categories = ["All", ...ExpenseManager.getPopularCategories()];
+  const uniqueCategories = expenses ? [...new Set(expenses.map(e => e.category || "Uncategorized"))].sort() : [];
+  const categoriesForFilter = ["All", ...uniqueCategories];
 
   const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.category?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory === "All" || expense.category === filterCategory;
+    const description = expense.description || "";
+    const category = expense.category || ""; // Ensure category is not null/undefined
+    const searchTermLower = searchTerm.toLowerCase();
+
+    const matchesSearch = description.toLowerCase().includes(searchTermLower) ||
+                         category.toLowerCase().includes(searchTermLower);
+    const matchesCategory = filterCategory === "All" || category === filterCategory;
     
     return matchesSearch && matchesCategory;
   });
@@ -187,11 +200,11 @@ export function ExpenseTracker() {
                 </div>
                 <div className="flex gap-2">
                   <Select value={filterCategory} onValueChange={setFilterCategory}>
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
+                    <SelectTrigger className="w-full sm:w-40">
+                      <SelectValue placeholder="Filter by category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {categories.map(cat => (
+                      {categoriesForFilter.map(cat => (
                         <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                       ))}
                     </SelectContent>

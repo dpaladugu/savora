@@ -4,27 +4,45 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 // --- Auth Slice ---
 interface AuthState {
   isUnlocked: boolean; // True if PIN has been successfully entered
-  decryptedApiKey: string | null; // Store decrypted API key in memory for the session
+  decryptedAiApiKey: string | null; // Store decrypted API key in memory for the session
+  currentAiProvider: string | null; // e.g., 'deepseek', 'groq', 'ollama_local'
+  aiServiceBaseUrl: string | null; // Optional base URL for services like Ollama
   // userPINHash?: string; // For comparing PIN attempts if PIN is stored hashed (more advanced)
 }
 
 interface AuthActions {
-  unlockApp: (apiKey: string) => void;
+  unlockApp: (apiKey: string, provider: string, baseUrl?: string) => void;
   lockApp: () => void;
   // setPINHash: (hash: string) => void; // For initial PIN setup
 }
 
 const initialAuthState: AuthState = {
   isUnlocked: false,
-  decryptedApiKey: null,
+  decryptedAiApiKey: null,
+  currentAiProvider: null,
+  aiServiceBaseUrl: null,
 };
 
+// createAuthSlice is not directly used when defining the store like this,
+// but the logic is incorporated into the main create function.
+// If we were to split into actual slices, it would be:
+/*
 const createAuthSlice = (set: any): AuthState & AuthActions => ({
   ...initialAuthState,
-  unlockApp: (apiKey) => set({ isUnlocked: true, decryptedApiKey: apiKey }),
-  lockApp: () => set({ isUnlocked: false, decryptedApiKey: null }),
-  // setPINHash: (hash) => set({ userPINHash: hash }),
+  unlockApp: (apiKey, provider, baseUrl) => set({
+    isUnlocked: true,
+    decryptedAiApiKey: apiKey,
+    currentAiProvider: provider,
+    aiServiceBaseUrl: baseUrl || null
+  }),
+  lockApp: () => set({
+    isUnlocked: false,
+    decryptedAiApiKey: null,
+    currentAiProvider: null,
+    aiServiceBaseUrl: null
+  }),
 });
+*/
 
 
 // --- UI Slice ---
@@ -65,12 +83,22 @@ export const useAppStore = create<AppState & AppActions>()(
   // isUnlocked might be okay to persist to keep the app unlocked across refreshes if desired.
   persist(
     (set, get) => ({
-      ...initialAuthState,
+      ...initialAuthState, // This now includes currentAiProvider and aiServiceBaseUrl as null
       ...initialUiState,
       // Auth Actions
-      unlockApp: (apiKey) => set({ isUnlocked: true, decryptedApiKey: apiKey }),
+      unlockApp: (apiKey, provider, baseUrl) => set({
+        isUnlocked: true,
+        decryptedAiApiKey: apiKey,
+        currentAiProvider: provider,
+        aiServiceBaseUrl: baseUrl || null,
+      }),
       lockApp: () => {
-        set({ isUnlocked: false, decryptedApiKey: null });
+        set({
+          isUnlocked: false,
+          decryptedAiApiKey: null,
+          currentAiProvider: null,
+          aiServiceBaseUrl: null,
+        });
         // Potentially clear other sensitive in-memory states here
       },
       // UI Actions
@@ -80,44 +108,49 @@ export const useAppStore = create<AppState & AppActions>()(
       name: 'savora-app-storage', // Name of the item in localStorage
       storage: createJSONStorage(() => localStorage), // Or sessionStorage
       partialize: (state) => ({
-        // Only persist non-sensitive parts if needed, e.g.,
-        // isUnlocked: state.isUnlocked
-        // theme: state.theme
+        // Only persist non-sensitive parts.
+        // isUnlocked: state.isUnlocked, // Persisting isUnlocked can be a choice
+        // currentAiProvider: state.currentAiProvider, // Persist provider choice
+        // aiServiceBaseUrl: state.aiServiceBaseUrl, // Persist base URL if set
+        // DO NOT persist decryptedAiApiKey
       }),
     }
   )
 );
 
-// Individual selectors for convenience (optional, but good practice)
+// Individual selectors for convenience
 export const useIsUnlocked = () => useAppStore((state) => state.isUnlocked);
-export const useDecryptedApiKey = () => useAppStore((state) => state.decryptedApiKey);
+export const useDecryptedAiApiKey = () => useAppStore((state) => state.decryptedAiApiKey);
+export const useCurrentAiProvider = () => useAppStore((state) => state.currentAiProvider);
+export const useAiServiceBaseUrl = () => useAppStore((state) => state.aiServiceBaseUrl);
 export const useIsLoadingGlobal = () => useAppStore((state) => state.isLoadingGlobal);
 
 // Actions can be accessed directly from the store instance:
 // const { unlockApp, lockApp, setGlobalLoading } = useAppStore.getState();
-// Or from the hook:
-// const unlockApp = useAppStore((state) => state.unlockApp);
 
 // Example of how PinLock might use it:
 // const unlockAppAction = useAppStore((state) => state.unlockApp);
 // if (decryptionSuccessful) {
-//   unlockAppAction(decryptedKeyFromEncryptionService);
+//   unlockAppAction(decryptedKey, provider, baseUrl);
 //   onUnlockSuccess();
 // }
 
-// Example of how DeepseekAiService might use it:
-// const apiKey = useAppStore.getState().decryptedApiKey;
-// if (!apiKey) { /* handle locked state */ }
-// // Use apiKey in fetch call
+// Example of how AiChatService might use it:
+// const { decryptedAiApiKey, currentAiProvider, aiServiceBaseUrl } = useAppStore.getState();
+// if (!decryptedAiApiKey) { /* handle locked state */ }
+// // Use these details to initialize the correct provider
 //
 // // Example of how App.tsx or Index.tsx might lock on session end / logout
 // const lockAppAction = useAppStore((state) => state.lockApp);
 // // onSignOut -> lockAppAction();
 
 // Note: Storing the decrypted API key in Zustand state means it's in JavaScript memory.
-// This is generally safer than localStorage for sensitive session data, but it's cleared on full page reload
-// unless `isUnlocked` and the *encrypted* key are persisted, and decryption happens on app load after PIN.
-// The current persist middleware example is basic and would need careful thought for what to persist.
-// For now, `decryptedApiKey` will be lost on refresh, requiring PIN re-entry, which is a secure default.
-// The `unlockApp` action now takes the key to store it.
-// `lockApp` clears it.
+// This is cleared on full page reload unless `isUnlocked` and the *encrypted* key are persisted,
+// and decryption happens on app load after PIN.
+// The `partialize` function in persist middleware is crucial for controlling what is stored.
+// `decryptedAiApiKey` should NEVER be persisted.
+// `currentAiProvider` and `aiServiceBaseUrl` could be persisted if desired, so the user doesn't
+// have to re-select them on every session, only re-enter PIN to decrypt the key.
+// For now, the partialize is commented out to default to not persisting these new fields either,
+// meaning provider and base URL would need to be re-established via PinLock on each session start
+// if the app is fully closed/reloaded. This can be adjusted based on desired UX.

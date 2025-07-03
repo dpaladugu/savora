@@ -86,6 +86,13 @@ export function MoreScreen({ onNavigate, onClose }: MoreScreenProps) {
       color: 'bg-gradient-to-r from-pink-500 to-pink-600'
     },
     {
+      id: 'vehicles',
+      title: 'Vehicle Management',
+      description: 'Track vehicle details, maintenance, and insurance',
+      icon: Car,
+      color: 'bg-gradient-to-r from-amber-500 to-amber-600'
+    },
+    {
       id: 'settings',
       title: 'Settings',
       description: 'App preferences and data export',
