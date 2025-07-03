@@ -150,14 +150,14 @@ async function fetchDashboardData(userId: string): Promise<DashboardData> {
       totalExpenses,
       monthlyExpenses,
       totalInvestments,
-      expenseCount: expenses.filter(e => e.type === 'expense').length,
-      investmentCount: investments.length,
+      expenseCount: allExpenses.filter(e => e.type === 'expense').length, // Changed to allExpenses
+      investmentCount: investmentCount, // Correctly uses investmentCount calculated above
       emergencyFundTarget,
       emergencyFundCurrent,
-      categoryBreakdown: categoryBreakdownArray.length > 0 ? categoryBreakdownArray : mockDashboardData.categoryBreakdown,
-      recentTransactions: expenses.slice(0, 5).map(expense => ({
-        id: expense.id || '',
-        amount: expense.type === 'expense' ? -(typeof expense.amount === 'number' ? expense.amount : 0) : (typeof expense.amount === 'number' ? expense.amount : 0),
+      categoryBreakdown: categoryBreakdownArray.length > 0 ? categoryBreakdownArray : mockDashboardData.categoryBreakdown, // Fallback to mock if empty
+      recentTransactions: allExpenses.slice(0, 5).map(expense => ({ // Changed to allExpenses
+        id: expense.id?.toString() || '', // Ensure id is string
+        amount: expense.type === 'expense' ? -(expense.amount || 0) : (expense.amount || 0),
         description: expense.description || 'Unknown',
         category: expense.category || 'Other',
         date: expense.date || new Date().toISOString().split('T')[0],
