@@ -79,7 +79,7 @@ export class EncryptionService {
 
       const decryptedString = this.textDecoder.decode(decryptedBuffer);
       return JSON.parse(decryptedString);
-    } catch (error)
+    } catch (error) { // Added missing opening brace
       // Common error for wrong PIN is "DOMException: OperationError" or similar during decrypt
       console.error("Decryption failed (possibly wrong PIN or corrupted data):", error);
       return null;
