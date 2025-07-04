@@ -26,6 +26,7 @@ const aiProviderOptions = [
 ];
 
 export function PinLock({ onUnlockSuccess }: PinLockProps) {
+  console.log("PinLock rendering/mounting."); // DEBUG LOG
   const [mode, setMode] = useState<PinLockMode>('loading');
   const [pin, setPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
@@ -43,12 +44,14 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   }));
 
 
-  React.useEffect(() => { // Changed to React.useEffect to be explicit if default import is preferred for React
+  useEffect(() => {
+    console.log("PinLock: useEffect for checkPinSetup running. Current mode:", mode); // DEBUG LOG
     const checkPinSetup = async () => {
+      console.log("PinLock: checkPinSetup called."); // DEBUG LOG
       try {
-        const aiConfigSetting = await db.appSettings.get('encryptedAiConfig'); // Changed key name
+        const aiConfigSetting = await db.appSettings.get('encryptedAiConfig');
         if (aiConfigSetting && aiConfigSetting.value) {
-          // Also load provider and base URL if they are stored separately (for display before unlock)
+          console.log("PinLock: Found existing encryptedAiConfig. Attempting to set mode to 'unlock'."); // DEBUG LOG
           const providerSetting = await db.appSettings.get('currentAiProvider');
           if (providerSetting?.value) {
             setAiProvider(providerSetting.value as string);
@@ -59,16 +62,17 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
           }
           setMode('unlock');
         } else {
+          console.log("PinLock: No encryptedAiConfig found. Attempting to set mode to 'setup'."); // DEBUG LOG
           setMode('setup');
         }
       } catch (e) {
-        console.error("Error checking PIN setup:", e);
+        console.error("PinLock: Error checking PIN setup:", e); // DEBUG LOG
         setError("Could not verify PIN status. Please refresh.");
-        setMode('unlock');
+        setMode('unlock'); // Default to unlock on error
       }
     };
     checkPinSetup();
-  }, []);
+  }, []); // Empty dependency array ensures this runs once on mount
 
   const handlePinChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
@@ -132,7 +136,8 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
             await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() });
           });
 
-          setDecryptedAiConfig({ // Use the new Zustand action
+          console.log("PinLock: Setup handleSubmit - Calling setDecryptedAiConfig with:", { apiKey: apiKeyToStore, provider: aiProvider, baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null }); // DEBUG LOG
+          setDecryptedAiConfig({
             apiKey: apiKeyToStore,
             provider: aiProvider,
             baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
@@ -140,6 +145,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
           toast({ title: 'Success', description: 'PIN successfully set and application unlocked.' });
           onUnlockSuccess();
         } else {
+          console.error("PinLock: Encryption process failed during PIN setup."); // DEBUG LOG
           throw new Error('Encryption process failed during PIN setup.');
         }
       } catch (err: any) {
@@ -165,7 +171,8 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         const decryptedPayload = await EncryptionService.decryptData(encryptedCiphertext, pin);
 
         if (decryptedPayload && typeof decryptedPayload.apiKey === 'string' && decryptedPayload.provider) {
-           setDecryptedAiConfig({ // Use the new Zustand action
+          console.log("PinLock: Unlock handleSubmit - Decryption successful. Calling setDecryptedAiConfig with:", decryptedPayload); // DEBUG LOG
+           setDecryptedAiConfig({
             apiKey: decryptedPayload.apiKey,
             provider: decryptedPayload.provider,
             baseUrl: decryptedPayload.baseUrl || null,
@@ -173,6 +180,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
           toast({ title: 'Success!', description: 'Application unlocked.' });
           onUnlockSuccess();
         } else {
+          console.warn("PinLock: Unlock handleSubmit - Decryption failed or payload malformed. Decrypted:", decryptedPayload); // DEBUG LOG
           setError('Invalid PIN or corrupted data. Please try again.');
           toast({ title: 'Unlock Failed', description: 'Invalid PIN or data corruption.', variant: 'destructive' });
         }
@@ -187,6 +195,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   };
 
   if (mode === 'loading') {
+    console.log("PinLock: Rendering Loading state. Current mode state:", mode); // DEBUG LOG
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -194,13 +203,14 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
     );
   }
 
+  console.log(`PinLock: Rendering ${mode} mode form. Current mode state:`, mode); // DEBUG LOG
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md p-8 bg-background dark:bg-slate-800/50 shadow-2xl rounded-xl border border-border/20 backdrop-blur-sm" // Increased max-w-md
+        className="w-full max-w-md p-8 bg-background dark:bg-slate-800/50 shadow-2xl rounded-xl border border-border/20 backdrop-blur-sm"
       >
         <div className="text-center mb-8">
           <LockKeyhole className="w-16 h-16 mx-auto text-primary mb-4" />

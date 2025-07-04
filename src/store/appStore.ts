@@ -28,45 +28,6 @@ const initialState: AppState = {
   decryptedApiKey: null,
   currentAiProvider: null, // Default to null or a sensible default like 'deepseek'
   aiServiceBaseUrl: null,
-  decryptedAiApiKey: null,
-  currentAiProvider: null,
-  aiServiceBaseUrl: null,
-};
-
-// createAuthSlice is not directly used when defining the store like this,
-// but the logic is incorporated into the main create function.
-// If we were to split into actual slices, it would be:
-/*
-const createAuthSlice = (set: any): AuthState & AuthActions => ({
-  ...initialAuthState,
-  unlockApp: (apiKey, provider, baseUrl) => set({
-    isUnlocked: true,
-    decryptedAiApiKey: apiKey,
-    currentAiProvider: provider,
-    aiServiceBaseUrl: baseUrl || null
-  }),
-  lockApp: () => set({
-    isUnlocked: false,
-    decryptedAiApiKey: null,
-    currentAiProvider: null,
-    aiServiceBaseUrl: null
-  }),
-});
-*/
-
-
-// --- UI Slice ---
-interface UiState {
-  isLoadingGlobal: boolean;
-  // theme: 'light' | 'dark'; // Theme is currently handled by ThemeContext, can be moved here if needed
-}
-
-interface UiActions {
-  setGlobalLoading: (isLoading: boolean) => void;
-  // toggleTheme: () => void;
-}
-
-const initialUiState: UiState = {
   isLoadingGlobal: false,
 };
 
@@ -74,18 +35,28 @@ export const useAppStore = create<AppState & AppActions>()(
   persist(
     (set) => ({
       ...initialState,
-      setDecryptedAiConfig: (config) => set({
-        isUnlocked: true,
-        decryptedApiKey: config.apiKey,
-        currentAiProvider: config.provider,
-        aiServiceBaseUrl: config.baseUrl,
-      }),
-      lockApp: () => set({
-        isUnlocked: false,
-        decryptedApiKey: null,
-        currentAiProvider: null, // Reset AI config on lock
-        aiServiceBaseUrl: null,
-      }),
+      setDecryptedAiConfig: (config) => {
+        console.log("appStore: setDecryptedAiConfig called with:", config); // DEBUG LOG
+        console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked, "currentAiProvider:", useAppStore.getState().currentAiProvider); // DEBUG LOG
+        set({
+          isUnlocked: true,
+          decryptedApiKey: config.apiKey,
+          currentAiProvider: config.provider,
+          aiServiceBaseUrl: config.baseUrl,
+        });
+        console.log("appStore: New state - isUnlocked:", useAppStore.getState().isUnlocked, "currentAiProvider:", useAppStore.getState().currentAiProvider); // DEBUG LOG
+      },
+      lockApp: () => {
+        console.log("appStore: lockApp called"); // DEBUG LOG
+        console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked); // DEBUG LOG
+        set({
+          isUnlocked: false,
+          decryptedApiKey: null,
+          currentAiProvider: null, // Reset AI config on lock
+          aiServiceBaseUrl: null,
+        });
+        console.log("appStore: New state - isUnlocked:", useAppStore.getState().isUnlocked); // DEBUG LOG
+      },
       setGlobalLoading: (isLoading) => set({ isLoadingGlobal: isLoading }),
     }),
     {
