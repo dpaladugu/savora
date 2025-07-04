@@ -1,4 +1,3 @@
-
 import { GlobalHeader } from "@/components/layout/global-header";
 import { useEmergencyFund } from "@/hooks/use-emergency-fund";
 import { MissingDataAlert } from "./missing-data-alert";
@@ -9,15 +8,11 @@ import { ErrorBoundary } from "@/components/error/error-boundary";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react";
-import { useState, useEffect as useReactEffect } from "react"; // Aliasing useEffect to avoid conflict if any local var is named useEffect
+import { useState, useEffect as useReactEffect } from "react"; // Aliasing useEffect
 import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatService"; // Use AiChatService
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useAppStore, useIsUnlocked } from "@/store/appStore"; // For checking AI config status indirectly via isUnlocked
-import { useToast } from "@/hooks/use-toast"; // To inform user if AI not ready
-// import ReactMarkdown from 'react-markdown';
-// import remarkGfm from 'remark-gfm';
-
-// Removed GlobalHeader import as ModuleHeader from MoreModuleRouter should handle it.
+import { useAppStore } from "@/store/appStore";
+import { useToast } from "@/hooks/use-toast";
 
 export function EmergencyFundCalculator() {
   const { data, updateData, loading: initialDataLoading, missingData, calculation, refreshData } = useEmergencyFund();
@@ -28,7 +23,6 @@ export function EmergencyFundCalculator() {
   const { toast } = useToast();
 
   // Check AI configuration status when component mounts or when app unlock status changes
-  // This uses a different useEffect from React, aliased to avoid naming conflicts if any.
   useReactEffect(() => {
     const checkAiConfig = () => {
       console.log("[EmergencyFundCalculator] Checking AI config status via isConfigured().");
@@ -40,29 +34,32 @@ export function EmergencyFundCalculator() {
         console.log("[EmergencyFundCalculator] AI Service IS configured.");
       }
     };
-    checkAiConfig(); // Check immediately
 
-    // Subscribe to isUnlocked changes as an indirect way to re-check AI config
-    // because AiChatService initializes based on store state which changes on unlock.
+    checkAiConfig(); // Check immediately on mount
+
+    // Subscribe to isUnlocked changes to re-check AI config.
+    // AiChatService's constructor also attempts to initialize, and its isConfigured() re-initializes.
     const unsubscribe = useAppStore.subscribe(
       (state) => state.isUnlocked,
       (unlocked) => {
         console.log("[EmergencyFundCalculator] App unlock status changed in store, re-checking AI config. Unlocked:", unlocked);
-        checkAiConfig();
+        checkAiConfig(); // Re-check when unlock status changes
       }
     );
-    return unsubscribe;
-  }, []);
+    return unsubscribe; // Cleanup subscription on unmount
+  }, []); // Empty dependency array: run on mount and cleanup on unmount
 
 
   const handleGetAiAdvice = async () => {
+    console.log("[EmergencyFundCalculator] handleGetAiAdvice called. isAiReady:", isAiReady); // Log
     if (!isAiReady) {
       setAiAdviceError("AI provider not configured. Please ensure PIN is entered and AI provider is set up in PIN/Settings.");
       toast({
         title: "AI Not Ready",
-        description: "AI provider configuration is missing or incomplete. Please check PIN/Settings.",
+        description: "AI provider configuration is missing or incomplete. Please check PIN/Settings or application startup.",
         variant: "destructive"
       });
+      setAiAdviceLoading(false); // Ensure loading is false if we return early
       return;
     }
 
@@ -133,11 +130,7 @@ Please use Markdown for formatting your response, including headings for each se
 
   return (
     <ErrorBoundary>
-      {/* GlobalHeader removed. The surrounding MoreModuleRouter provides ModuleHeader. */}
-      {/* The div with min-h-screen, bg-gradient, pb-24 is also part of MoreModuleRouter's responsibility. */}
-      {/* The px-4, py-4 for content area is also provided by MoreModuleRouter. */}
-      {/* This component now just returns its direct content. */}
-      <div className="space-y-6"> {/* Removed pt-20, assumes header spacing is handled by router */}
+      <div className="space-y-6">
         <LoadingWrapper
           loading={initialDataLoading}
           loadingText="Loading data from your financial modules..."
@@ -151,7 +144,7 @@ Please use Markdown for formatting your response, including headings for each se
                 size="sm"
                 onClick={refreshData}
                 className="gap-2"
-                disabled={aiAdviceLoading} // Disable while AI is working
+                disabled={aiAdviceLoading}
               >
                 <RefreshCw className="w-4 h-4" />
                 Refresh Data
@@ -163,7 +156,6 @@ Please use Markdown for formatting your response, including headings for each se
             <EmergencyFundResults calculation={calculation} emergencyMonths={data.emergencyMonths} />
             <SipRecommendation shortfall={calculation.shortfall} />
 
-            {/* AI Advice Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -237,7 +229,6 @@ Please use Markdown for formatting your response, including headings for each se
               </CardContent>
             </Card>
           </LoadingWrapper>
-        {/* Removed the extra closing div tag that was here */}
       </div>
     </ErrorBoundary>
   );
