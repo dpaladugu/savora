@@ -8,12 +8,14 @@ import { SipRecommendation } from "./sip-recommendation";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { LoadingWrapper } from "@/components/ui/loading-wrapper";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react"; // Added Sparkles, AlertTriangle, Info
-import { useState } from "react";
-import { DeepseekAiService, AiAdviceResponse } from "@/services/deepseek-ai-service"; // Import AiAdviceResponse type
+import { RefreshCw, Sparkles, AlertTriangle, Info } from "lucide-react";
+import { useState, useEffect as useReactEffect } from "react"; // Aliasing useEffect to avoid conflict if any local var is named useEffect
+import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatService"; // Use AiChatService
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-// import ReactMarkdown from 'react-markdown'; // Placeholder for markdown rendering
-// import remarkGfm from 'remark-gfm';         // For GitHub Flavored Markdown
+import { useAppStore, useIsUnlocked } from "@/store/appStore"; // For checking AI config status indirectly via isUnlocked
+import { useToast } from "@/hooks/use-toast"; // To inform user if AI not ready
+// import ReactMarkdown from 'react-markdown';
+// import remarkGfm from 'remark-gfm';
 
 // Removed GlobalHeader import as ModuleHeader from MoreModuleRouter should handle it.
 
@@ -22,14 +24,52 @@ export function EmergencyFundCalculator() {
   const [aiResponse, setAiResponse] = useState<AiAdviceResponse | null>(null);
   const [aiAdviceLoading, setAiAdviceLoading] = useState(false);
   const [aiAdviceError, setAiAdviceError] = useState<string | null>(null);
+  const [isAiReady, setIsAiReady] = useState(false);
+  const { toast } = useToast();
+
+  // Check AI configuration status when component mounts or when app unlock status changes
+  // This uses a different useEffect from React, aliased to avoid naming conflicts if any.
+  useReactEffect(() => {
+    const checkAiConfig = () => {
+      console.log("[EmergencyFundCalculator] Checking AI config status via isConfigured().");
+      const configured = aiChatServiceInstance.isConfigured();
+      setIsAiReady(configured);
+      if (!configured) {
+        console.warn("[EmergencyFundCalculator] AI Service not configured on mount/check.");
+      } else {
+        console.log("[EmergencyFundCalculator] AI Service IS configured.");
+      }
+    };
+    checkAiConfig(); // Check immediately
+
+    // Subscribe to isUnlocked changes as an indirect way to re-check AI config
+    // because AiChatService initializes based on store state which changes on unlock.
+    const unsubscribe = useAppStore.subscribe(
+      (state) => state.isUnlocked,
+      (unlocked) => {
+        console.log("[EmergencyFundCalculator] App unlock status changed in store, re-checking AI config. Unlocked:", unlocked);
+        checkAiConfig();
+      }
+    );
+    return unsubscribe;
+  }, []);
+
 
   const handleGetAiAdvice = async () => {
+    if (!isAiReady) {
+      setAiAdviceError("AI provider not configured. Please ensure PIN is entered and AI provider is set up in PIN/Settings.");
+      toast({
+        title: "AI Not Ready",
+        description: "AI provider configuration is missing or incomplete. Please check PIN/Settings.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setAiAdviceLoading(true);
     setAiAdviceError(null);
-    setAiResponse(null); // Reset AI response state
+    setAiResponse(null);
 
-    // Construct the prompt using data from the 'data' object
-    // This is based on the prompt designed in Step 3 of the plan.
     const prompt = `
 You are an expert financial advisor AI. Your goal is to provide clear, actionable, and prudent advice regarding a user's emergency fund. Your advice should be based on established financial planning best practices.
 
@@ -76,11 +116,11 @@ Please use Markdown for formatting your response, including headings for each se
     `;
 
     try {
-      // The system prompt for DeepseekAiService can be very generic here,
-      // as the main prompt contains detailed persona instructions.
-      const response = await DeepseekAiService.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
+      console.log("[EmergencyFundCalculator] Calling aiChatServiceInstance.getFinancialAdvice.");
+      const response = await aiChatServiceInstance.getFinancialAdvice(prompt.trim(), "You are a helpful financial planning assistant.");
       setAiResponse(response);
     } catch (error) {
+      console.error("[EmergencyFundCalculator] Error fetching AI advice:", error);
       if (error instanceof Error) {
         setAiAdviceError(error.message);
       } else {
@@ -136,14 +176,30 @@ Please use Markdown for formatting your response, including headings for each se
                   Get personalized advice on your emergency fund based on your current data.
                   Remember, this is AI-generated information and not professional financial advice.
                 </p>
-                <Button onClick={handleGetAiAdvice} disabled={aiAdviceLoading || initialDataLoading}>
-                  {aiAdviceLoading ? "Getting Advice..." : "Get AI Emergency Fund Advice"}
+                <Button
+                  onClick={handleGetAiAdvice}
+                  disabled={aiAdviceLoading || initialDataLoading || !isAiReady}
+                >
+                  {aiAdviceLoading ? "Getting Advice..." : (isAiReady ? "Get AI Emergency Fund Advice" : "Configure AI to Get Advice")}
                 </Button>
 
                 {aiAdviceLoading && (
                   <div className="flex items-center space-x-2 text-muted-foreground">
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Fetching recommendations...</span>
+                  </div>
+                )}
+
+                {!aiAdviceLoading && !isAiReady && (
+                  <div className="p-3 my-2 bg-amber-100 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-md text-amber-700 dark:text-amber-300 text-sm">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-5 h-5" />
+                      <h4 className="font-semibold">AI Not Ready</h4>
+                    </div>
+                    <p className="mt-1">
+                      The AI financial advisor is not yet configured. Please ensure you have entered your PIN (if set up)
+                      and configured an AI provider in the application settings (usually via the PIN lock screen on startup or a dedicated settings area).
+                    </p>
                   </div>
                 )}
 
@@ -157,13 +213,9 @@ Please use Markdown for formatting your response, including headings for each se
                   </div>
                 )}
 
-                {aiResponse?.advice && !aiAdviceLoading && (
+                {aiResponse?.advice && !aiAdviceLoading && isAiReady && (
                   <Card className="bg-background/50 p-4 border">
                     <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
-                    {/* For proper markdown rendering, a library like react-markdown would be used:
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
-                        For now, displaying as preformatted text.
-                    */}
                     <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
                       {aiResponse.advice}
                     </pre>
@@ -180,7 +232,7 @@ Please use Markdown for formatting your response, including headings for each se
                   </Card>
                 )}
                 <p className="text-xs text-muted-foreground italic mt-4">
-                  Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance. Ensure your API key and usage comply with Deepseek's terms of service.
+                  Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance. Ensure your API key and usage comply with your AI provider's terms of service.
                 </p>
               </CardContent>
             </Card>
