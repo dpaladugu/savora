@@ -37,11 +37,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Ensure useAppStore selectors are correctly typed for the new AI config fields
-  const { unlockApp, setDecryptedAiConfig } = useAppStore(state => ({ // Updated to use setDecryptedAiConfig
-    unlockApp: state.unlockApp, // Keep old unlockApp if it's still used elsewhere or phase it out
-    setDecryptedAiConfig: state.setDecryptedAiConfig,
-  }));
+  const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig); // Select only the needed action
 
 
   useEffect(() => {
