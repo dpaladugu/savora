@@ -1,115 +1,185 @@
 import Dexie, { Table } from 'dexie';
+import type {
+  AppSetting, // Keep existing AppSetting if still needed
+  ProfileData,
+  ExpenseData,
+  IncomeSourceData,
+  VehicleData,
+  LoanData,
+  InvestmentData,
+  CreditCardData
+  // Import other *Data types if they are part of AppSetting or ProfileData directly
+} from '@/types/jsonPreload'; // Assuming @ is src
 
-// 1. Define an interface for each data type/table
-// These should align with or be derived from your main spec interfaces
-
-export interface Expense {
-  id?: number; // Primary key, auto-incremented
-  date: string; // YYYY-MM-DD
-  description: string;
-  amount: number;
-  category: string;
-  type: 'expense' | 'income';
-  paymentMethod?: string;
-  tags?: string[]; // Stored as string array, Dexie handles this
-  cardLast4?: string; // Optional, if paid by card
-  // Add other fields from your spec as needed, e.g., merchant
-  merchant?: string;
-  createdAt?: string; // ISO string
-  updatedAt?: string; // ISO string
+// Re-define AppSetting here if it's not in jsonPreload.ts or needs adjustment
+export interface AppSettingTable extends AppSetting { // Ensure AppSetting has 'key'
+  // key: string; // Already in AppSetting from jsonPreload if defined as { key: string; value: any; }
+  // value: any;
 }
 
-export interface Vehicle {
-  id?: number; // Primary key, auto-incremented
-  name: string;
-  type: "motorcycle" | "car";
-  owner?: "self" | "brother"; // Made optional for simplicity if not always known
-  initial_odometer?: number;
-  current_odometer?: number;
-  // fuel_efficiency will be calculated, not stored directly here unless it's a target/manual override
-  insurance_provider?: string;
-  insurance_premium?: number;
-  insurance_renewal_date?: string; // YYYY-MM-DD
-  // Other fields from your spec can be added
-}
+// --- Dexie Database Class ---
 
-export interface AppSetting {
-  key: string; // Primary key (e.g., 'encryptedApiKey', 'userPinHash', 'lastSync')
-  value: any;  // Can store various types of settings
-}
-
-// 2. Define the Database class
 class SavoraDB extends Dexie {
-  // Declare tables, using '!' for definite assignment assertion
-  public expenses!: Table<Expense, number>;
-  public vehicles!: Table<Vehicle, number>;
-  public appSettings!: Table<AppSetting, string>; // Key is string
+  // Core MVP Tables
+  public appSettings!: Table<AppSettingTable, string>; // For general settings, API keys, user profile parts
+  public expenses!: Table<ExpenseData, number>;
+  public incomeSources!: Table<IncomeSourceData, number>;
+  public vehicles!: Table<VehicleData, number>;
+  public loans!: Table<LoanData, number>;
+  public investments!: Table<InvestmentData, number>; // Simplified for MVP (mainly MFs)
+  public creditCards!: Table<CreditCardData, number>;
 
-  // Other tables from your spec will be added here in later versions
-  // Example:
-  // public maintenance!: Table<MaintenanceRecord, number>;
+  // Tables from the previous Savora Spec-based version (to be reviewed/removed if not in MVP JSON)
+  // public maintenanceRecords!: Table<MaintenanceRecord, number>; // Example, if MaintenanceRecord type exists
+  // public parts!: Table<Part, number>;
   // public fuelRecords!: Table<FuelRecord, number>;
-  // public investments!: Table<Investment, number>;
-  // public creditCards!: Table<CreditCard, number>;
-  // public loans!: Table<Loan, number>;
-  // public realEstate!: Table<RealEstateProperty, number>;
+  // public yearlySummaries!: Table<YearlySummary, number>; // This is used by dataRetention.ts, so keep.
+  // public realEstateProperties!: Table<RealEstateProperty, number>;
   // public insurancePolicies!: Table<InsurancePolicy, number>;
   // public financialGoals!: Table<FinancialGoal, number>;
-  // public yearlySummaries!: Table<YearlySummary, number>; // For data retention
 
+  // Adding YearlySummary for dataRetention.ts
+  public yearlySummaries!: Table<YearlySummary, number>;
+   // Define YearlySummary interface if not already imported or defined
+   // For now, assuming it's defined elsewhere or implicitly by dataRetention.ts's needs
+   // Ideally, it should also be in jsonPreload.ts or a common types file.
+   // Let's add a placeholder for YearlySummary if it's not imported.
+}
+export interface YearlySummary { // Placeholder if not defined/imported, align with dataRetention.ts
+    id?: number;
+    year: number;
+    category?: string;
+    type: 'expense' | 'income' | 'investment' | string;
+    totalAmount: number;
+    transactionCount: number;
+}
+
+
+// Constructor
+export class SavoraDB extends Dexie {
   constructor() {
     super('SavoraFinanceDB'); // Database name
 
-    // Define current schema version (version 1)
-    this.version(1).stores({
-      expenses: '++id, date, category, type, paymentMethod, cardLast4, merchant, tags', // Indexed fields
-      vehicles: '++id, name, type',
-      appSettings: '&key', // Primary key 'key' is unique, not auto-incrementing
+    // Schema version 4 - focused on MVP JSON Preload
+    // This version will replace/update tables based on the new JSON structure.
+    // Previous version(3) was based on the Savora Spec doc.
+    this.version(4).stores({
+      // MVP Tables based on comprehensive JSON
+      appSettings: '&key', // Stores user profile parts, API keys, etc.
+      expenses: '++id, date, category, amount, type, merchant, source, cardLast4, *tags', // Key fields for querying
+      incomeSources: '++id, source, frequency, account',
+      vehicles: '++id, vehicle, owner, type', // 'vehicle' is the name field from JSON
+      loans: '++id, loan, lender, interest_rate', // 'loan' is the name field from JSON
+      investments: '++id, fund, investment_type, category', // 'fund' is name, 'investment_type' to distinguish
+      creditCards: '++id, &lastDigits, bank_name, card_name', // Assuming lastDigits is a good unique candidate
 
-      // Future tables can be added here or in subsequent versions
-      // maintenance: '++id, vehicleId, date, [vehicleId+date]',
-      // fuelRecords: '++id, vehicleId, date, [vehicleId+date]',
-      // investments: '++id, type, date, name',
-      // creditCards: '++id, lastFourDigits, dueDate',
-      // ... and so on for other entities from your spec
+      // Retaining yearlySummaries from previous version for dataRetention.ts
+      yearlySummaries: '++id, year, category, type',
+
+      // Comment out or remove tables from version(3) that are not part of this MVP
+      // or are significantly restructured.
+      // For example, the old 'maintenanceRecords', 'parts', 'fuelRecords' might need
+      // different structures if we decide to populate them from vehicle-related expenses later.
+      // For now, focusing on getting the direct JSON sections into their tables.
+      // maintenanceRecords: null, // Example of how to remove a table in a new version
     });
 
-    // You can chain more versions here for schema migrations if needed in the future
-    // this.version(2).stores({ ... }).upgrade(tx => { ... });
+    // Placeholder for migration from version 3 (Savora Spec based) to version 4 (JSON MVP based)
+    // This would be crucial if there was user data in version 3 that needs transforming.
+    // For now, we assume that `feat/phase1-core-infra` was not used by end-users yet,
+    // so a direct definition of version 4 is okay. If there was a v3 in use,
+    // we'd need an upgrade function here.
+    this.version(3).stores({
+        appSettings: '&key',
+        expenses: '++id, date, category, amount, cardLast4, type, merchant, *tags',
+        vehicles: '++id, name, type',
+        maintenanceRecords: '++id, vehicleId, date, [vehicleId+date], type',
+        parts: '++id, maintenanceId, name',
+        fuelRecords: '++id, vehicleId, date, [vehicleId+date]',
+        investments: '++id, type, date, name, platform',
+        creditCards: '++id, &lastDigits, name, bankName',
+        yearlySummaries: '++id, year, category, type',
+        loans: '++id, name, lenderName, type',
+        realEstateProperties: '++id, name, address',
+        insurancePolicies: '++id, type, policyNumber, renewalDate',
+        financialGoals: '++id, name, priority, targetDate',
+    }).upgrade(tx => {
+        // This upgrade function is for migrating data from the schema defined
+        // in `feat/phase1-core-infra` (which I called v3 based on Savora spec)
+        // to the new v4 schema (based on JSON MVP).
+        // This would involve mapping data from old tables/fields to new ones.
+        // Example: if 'vehicles.name' in v3 maps to 'vehicles.vehicle' in v4.
+        // For now, this is a placeholder. If no v3 data exists, it does nothing.
+        console.log("Attempting to upgrade from version 3 (Savora Spec based) to version 4 (JSON MVP). Migration logic placeholder.");
+        // tx.table('oldTable').clear(); // Example if removing a table
+        // return tx.table('someTable').toCollection().modify(item => { item.newField = item.oldField; delete item.oldField; });
+    });
+
+
+    // Initialize table properties
+    this.appSettings = this.table('appSettings');
+    this.expenses = this.table('expenses');
+    this.incomeSources = this.table('incomeSources');
+    this.vehicles = this.table('vehicles');
+    this.loans = this.table('loans');
+    this.investments = this.table('investments');
+    this.creditCards = this.table('creditCards');
+    this.yearlySummaries = this.table('yearlySummaries');
+
+    // We will handle personal_profile data likely via appSettings or a dedicated single-row table if it's complex.
+    // For MVP, individual fields of personal_profile can be stored in appSettings.
   }
+
+  // Storing complex single objects like 'personal_profile' can be done in appSettings
+  // or a dedicated table if preferred.
+  async savePersonalProfile(profile: ProfileData): Promise<void> {
+    await this.appSettings.put({ key: 'userPersonalProfile_v1', value: profile });
+  }
+
+  async getPersonalProfile(): Promise<ProfileData | null> {
+    const setting = await this.appSettings.get('userPersonalProfile_v1');
+    return setting ? (setting.value as ProfileData) : null;
+  }
+
+  // --- Complex Query Example from previous version (getVehicleMaintenanceHistoryWithParts) ---
+  // This query depended on 'maintenanceRecords' and 'parts' tables.
+  // If these tables are not part of the MVP JSON preload schema, or are significantly
+  // changed, this query will need to be re-evaluated or temporarily removed/commented out.
+  // For now, commenting out as 'maintenanceRecords' and 'parts' are not primary MVP tables.
+  /*
+  async getVehicleMaintenanceHistoryWithParts(vehicleId: number): Promise<MaintenanceRecord[]> {
+    // ... (implementation depends on MaintenanceRecord and Part interfaces and tables)
+  }
+  */
 }
 
-// 3. Export a single instance of the database
 export const db = new SavoraDB();
 
-// Basic example of how to use it (for testing/dev purposes, not part of the service itself)
+// --- Example Usage (for testing during development) ---
 /*
-async function testDB() {
+async function testDBOperations() {
   try {
-    // Add an expense
-    const expenseId = await db.expenses.add({
-      date: new Date().toISOString().split('T')[0],
-      description: 'Test Coffee',
-      amount: 150,
+    // Example: Add personal profile
+    await db.savePersonalProfile({ age: '30M', location: 'Test City' });
+    const profile = await db.getPersonalProfile();
+    console.log('Fetched profile:', profile);
+
+    // Example: Add an expense using the new ExpenseData structure
+    await db.expenses.add({
+      date: '2024-07-31',
+      amount: 120,
+      description: 'Coffee MVP',
       category: 'Food',
-      type: 'expense',
-      paymentMethod: 'UPI'
+      payment_method: 'UPI',
+      source: 'Form'
     });
-    console.log(`Added expense with id ${expenseId}`);
-
-    // Get all expenses
-    const allExpenses = await db.expenses.toArray();
-    console.log('All expenses:', allExpenses);
-
-    // Add a setting
-    await db.appSettings.put({ key: 'testSetting', value: 'testValue' });
-    const setting = await db.appSettings.get('testSetting');
-    console.log('Test setting:', setting);
+    const expenses = await db.expenses.toArray();
+    console.log('Current expenses:', expenses);
 
   } catch (error) {
-    console.error('Dexie DB test error:', error);
+    console.error('DB Test Operations Error:', error);
   }
 }
 
-// testDB(); // Uncomment to test basic DB operations in console when this file is imported
+// testDBOperations(); // Uncomment to run test operations
 */
