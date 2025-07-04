@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react'; // Ensure useEffect is imported here
 import { motion } from 'framer-motion';
 import { LockKeyhole } from 'lucide-react'; // Changed from LockIcon to LockKeyhole
 import { Input } from '@/components/ui/input'; // Assuming you have an InputOTP or similar, using regular Input for now
@@ -7,7 +7,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/db'; // Import Dexie db instance
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
-import { useEffect } from 'react'; // Import useEffect
+// Removed the redundant/commented out useEffect import from below
 
 interface PinLockProps {
   onUnlockSuccess: () => void;
@@ -25,7 +25,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const { toast } = useToast();
   const unlockApp = useAppStore((state) => state.unlockApp);
 
-  useEffect(() => {
+  React.useEffect(() => { // Changed to React.useEffect to be explicit if default import is preferred for React
     const checkPinSetup = async () => {
       try {
         const setting = await db.appSettings.get('encryptedApiKey');
