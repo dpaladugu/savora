@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'; // Added useEffect here as it was missing in the original paste
+import React, { useState, useEffect } from 'react'; // Ensure useEffect is imported here
 import { motion } from 'framer-motion';
 import { LockKeyhole } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast'; // Ensure this is the correct path
 import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
-import { useEffect } from 'react'; // Import useEffect
+// Removed the redundant/commented out useEffect import from below
 
 interface PinLockProps {
   onUnlockSuccess: () => void;
@@ -29,14 +29,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const { toast } = useToast();
   const unlockApp = useAppStore((state) => state.unlockApp);
 
-  const aiProviderOptions = [
-    { value: 'deepseek', label: 'DeepSeek (Cloud)' },
-    { value: 'groq', label: 'Groq (Cloud)' },
-    { value: 'ollama_local', label: 'Ollama (Local)' },
-    // { value: 'other', label: 'Other (Manual Config)' }, // Potentially for later
-  ];
-
-  useEffect(() => {
+  React.useEffect(() => { // Changed to React.useEffect to be explicit if default import is preferred for React
     const checkPinSetup = async () => {
       try {
         // We still check for encryptedApiKey to determine if setup has been done.
