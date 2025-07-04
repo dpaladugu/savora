@@ -11,7 +11,7 @@ export interface DecryptedAiConfig {
 // --- App State (combining Auth, UI, and new AI Config) ---
 interface AppState {
   isUnlocked: boolean;
-  decryptedApiKey: string | null;
+  decryptedAiApiKey: string | null;
   currentAiProvider: string | null;
   aiServiceBaseUrl: string | null;
   isLoadingGlobal: boolean;
@@ -25,7 +25,7 @@ interface AppActions {
 
 const initialState: AppState = {
   isUnlocked: false,
-  decryptedApiKey: null,
+  decryptedAiApiKey: null,
   currentAiProvider: null, // Default to null or a sensible default like 'deepseek'
   aiServiceBaseUrl: null,
   isLoadingGlobal: false,
@@ -40,7 +40,7 @@ export const useAppStore = create<AppState & AppActions>()(
         console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked, "currentAiProvider:", useAppStore.getState().currentAiProvider); // DEBUG LOG
         set({
           isUnlocked: true,
-          decryptedApiKey: config.apiKey,
+          decryptedAiApiKey: config.apiKey,
           currentAiProvider: config.provider,
           aiServiceBaseUrl: config.baseUrl,
         });
@@ -51,7 +51,7 @@ export const useAppStore = create<AppState & AppActions>()(
         console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked); // DEBUG LOG
         set({
           isUnlocked: false,
-          decryptedApiKey: null,
+          decryptedAiApiKey: null,
           currentAiProvider: null, // Reset AI config on lock
           aiServiceBaseUrl: null,
         });
@@ -77,7 +77,7 @@ export const useAppStore = create<AppState & AppActions>()(
 
 // --- Selectors ---
 export const useIsUnlocked = () => useAppStore((state) => state.isUnlocked);
-export const useDecryptedApiKey = () => useAppStore((state) => state.decryptedApiKey);
+export const useDecryptedApiKey = () => useAppStore((state) => state.decryptedAiApiKey);
 export const useCurrentAiProvider = () => useAppStore((state) => state.currentAiProvider);
 export const useAiServiceBaseUrl = () => useAppStore((state) => state.aiServiceBaseUrl);
 export const useIsLoadingGlobal = () => useAppStore((state) => state.isLoadingGlobal);

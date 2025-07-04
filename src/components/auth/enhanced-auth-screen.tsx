@@ -177,5 +177,6 @@ export function EnhancedAuthScreen() {
         </Card>
       </motion.div>
     </div>
+  </>
   );
 }

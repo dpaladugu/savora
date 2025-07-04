@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { UploadCloud, FileJson, RefreshCw } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
-import { preloadFinancialData, validateFinancialData } from '@/services/dataPreloaderService'; // Import actual services
+import { preloadFinancialData } from '@/services/dataPreloaderService';
+import { validateFinancialData } from '@/services/enhanced-data-validator';
 
 export function DataImport() {
   const [file, setFile] = useState<File | null>(null);

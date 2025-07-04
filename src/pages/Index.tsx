@@ -5,7 +5,7 @@ import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { AuthScreen } from "@/components/auth/auth-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { MainContentRouter } from "@/components/layout/main-content-router";
-import { ErrorBoundary } from "@/components/error/error-boundary";
+import { GlobalErrorBoundary } from "@/components/ui/global-error-boundary";
 import { useAuth } from "@/contexts/auth-context";
 import { useNavigationRouter } from "@/components/layout/navigation-router";
 import { AnimatePresence } from "framer-motion";
@@ -62,17 +62,17 @@ const Index = () => {
   if (!user) {
     console.log("Index: User not authenticated, rendering AuthScreen."); // DEBUG LOG
     return (
-      <ErrorBoundary>
+      <GlobalErrorBoundary>
         <AuthScreen />
         {/* Or EnhancedAuthScreen, depending on which one is primary */}
-      </ErrorBoundary>
+      </GlobalErrorBoundary>
     );
   }
 
   // User is authenticated and PIN is unlocked
   console.log("Index: User authenticated and app unlocked. Rendering main content or welcome screen."); // DEBUG LOG
   return (
-    <ErrorBoundary>
+    <GlobalErrorBoundary>
       <div className="relative min-h-screen">
         <AnimatePresence>
           {showWelcome && (
@@ -97,7 +97,7 @@ const Index = () => {
           </div>
         )}
       </div>
-    </ErrorBoundary>
+    </GlobalErrorBoundary>
   );
 };
 
