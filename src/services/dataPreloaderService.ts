@@ -1,220 +1,309 @@
-import { z } from 'zod';
-import { db, Expense, Vehicle } from '@/db'; // Import Dexie db and relevant types
+import { db } from '@/db'; // Import Dexie db instance
 import { Logger } from './logger';
 
-// --- Zod Schemas for Validation ---
-
-// Matches the structure provided by the user for individual expense transactions
-const ExpenseTransactionSchema = z.object({
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
-  amount: z.number().positive("Amount must be a positive number"),
-  description: z.string().min(1, "Description cannot be empty"),
-  category: z.string().min(1, "Category cannot be empty"),
-  payment_method: z.string().min(1, "Payment method cannot be empty"),
-  source: z.enum(["Telegram", "Voice", "CSV", "Form"]),
-  geotag: z.string().optional(),
-  merchant_code: z.string().optional(),
-  card_last4: z.string().optional(),
-  vehicle_id: z.string().optional(), // Will be used to link to a vehicle if applicable
-  part_details: z.string().optional(),
-});
-export type JsonExpenseTransaction = z.infer<typeof ExpenseTransactionSchema>;
-
-const VehicleInsuranceSchema = z.object({
-  premium: z.number().optional(),
-  provider: z.string().optional(),
-  frequency: z.string().optional(), // e.g., "yearly"
-  next_renewal: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
-});
-
-const VehicleTrackingSchema = z.object({
-  type: z.string().optional(),
-  last_service_odometer: z.number().optional(),
-  next_pollution_check: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
-  depreciation_rate: z.number().optional(),
-  cost_per_km: z.number().optional(),
-  resale_value: z.number().optional(),
-  idle_score: z.number().optional(),
-});
-
-// Matches the structure from `assets.vehicles`
-const VehicleSchema = z.object({
-  vehicle: z.string().min(1, "Vehicle name cannot be empty"), // This will map to 'name' in DB
-  usage: z.string().optional(),
-  owner: z.enum(["self", "brother"]).optional(),
-  status: z.string().optional(), // e.g., "Under repair"
-  location: z.string().optional(), // e.g., "Hyderabad Workshop"
-  repair_estimate: z.number().optional(),
-  insurance: VehicleInsuranceSchema.optional(),
-  tracking: VehicleTrackingSchema.optional(),
-  // Note: 'type' (car/motorcycle) is missing, will be inferred or defaulted in mapping.
-  // 'idle_score' is also present at top level for some vehicles in example. Consolidating under tracking.
-  idle_score: z.number().optional(), // For cases like Honda Shine where it's top-level
-});
-export type JsonVehicle = z.infer<typeof VehicleSchema>;
-
-const MainJsonSchema = z.object({
-  expense_transactions: z.object({
-    data_format: z.string().optional(),
-    transactions: z.array(ExpenseTransactionSchema),
-  }).optional(), // Making the whole section optional for now if user wants to import only vehicles
-  assets: z.object({
-    vehicles: z.array(VehicleSchema).optional(),
-    // Other asset types like real_estate, investments, gold can be added here later
-    real_estate: z.array(z.any()).optional(), // Placeholder
-    investments: z.object({
-        mutual_funds_total: z.any().optional(),
-        mutual_funds_breakdown: z.array(z.any()).optional(),
-        sips: z.array(z.any()).optional(),
-        ppf: z.any().optional(),
-        nps: z.any().optional(),
-        epf: z.any().optional(),
-    }).optional(),
-    gold: z.array(z.any()).optional(), // Placeholder
-  }).optional(),
-  // Add other top-level sections from the user's JSON as needed for validation
-  personal_profile: z.any().optional(),
-  income_cash_flows: z.array(z.any()).optional(),
-  liabilities: z.array(z.any()).optional(),
-  // expenses_tracking: z.any().optional(), // This seems to be metadata, not transactions
-  insurance_policies: z.any().optional(),
-  credit_card_management: z.any().optional(),
-  financial_goals: z.array(z.any()).optional(),
-  // ... other top-level keys
-});
-export type FinancialDataJson = z.infer<typeof MainJsonSchema>;
+import { z } from 'zod';
+import { jsonPreloadMVPDataSchema } from './jsonPreloadValidators';
+import type {
+  JsonPreloadMVPData,
+  JsonExpenseTransaction,
+  JsonIncomeCashFlow,
+  JsonVehicleAsset,
+  JsonLoan,
+  JsonInvestmentMutualFund,
+  JsonCreditCard,
+  ExpenseData,
+  IncomeSourceData,
+  VehicleData,
+  LoanData,
+  InvestmentData,
+  CreditCardData,
+  ProfileData // Assuming personal_profile maps to ProfileData for appSettings
+} from '@/types/jsonPreload';
 
 
-// Updated validation function using Zod
-export function validateFinancialData(data: any): { isValid: boolean; errors?: z.ZodIssue[]; data?: FinancialDataJson } {
-  const result = MainJsonSchema.safeParse(data);
+export interface ValidatedPreloadData {
+  success: true;
+  data: JsonPreloadMVPData; // Use the inferred type from Zod schema if preferred
+}
+export interface FailedValidationResult {
+  success: false;
+  errors: z.ZodIssue[];
+  message: string;
+}
+export type ValidationResult = ValidatedPreloadData | FailedValidationResult;
+
+
+// Validates the JSON data against the Zod schema for MVP sections
+export function validateFinancialData(data: unknown): ValidationResult {
+  Logger.info('Validating JSON data for preload (MVP sections)...');
+  const result = jsonPreloadMVPDataSchema.safeParse(data);
+
   if (result.success) {
-    Logger.info('JSON data validation successful with Zod.');
-    return { isValid: true, data: result.data };
+    Logger.info('JSON data validation successful (MVP sections).');
+    return { success: true, data: result.data as JsonPreloadMVPData }; // Cast to ensure type
   } else {
-    Logger.error('JSON data validation failed with Zod:', result.error.issues);
-    return { isValid: false, errors: result.error.issues };
+    Logger.error('JSON data validation failed (MVP sections):', result.error.errors);
+    return {
+      success: false,
+      errors: result.error.errors,
+      message: "JSON data validation failed. Check console for details or ensure all required fields for MVP sections are present and correctly formatted."
+    };
   }
 }
 
-// --- Mapping Functions (to be refined based on Zod schemas and Dexie interfaces) ---
+// --- Data Mapping Functions ---
 
-// Maps your JSON expense structure to the Dexie 'Expense' interface
-function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): Omit<Expense, 'id'> {
-  const tags: string[] = [];
-  if (jsonExpense.geotag) tags.push(`geo:${jsonExpense.geotag}`);
-  if (jsonExpense.merchant_code) tags.push(`mcc:${jsonExpense.merchant_code}`);
-  if (jsonExpense.vehicle_id) tags.push(`vehicle:${jsonExpense.vehicle_id}`);
-  if (jsonExpense.part_details) tags.push(`part:${jsonExpense.part_details}`);
-  if (jsonExpense.source) tags.push(`source:${jsonExpense.source}`);
-
+// Maps JsonExpenseTransaction to ExpenseData for Dexie
+function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): Omit<ExpenseData, 'id'> {
   return {
     date: jsonExpense.date,
+    amount: jsonExpense.amount,
     description: jsonExpense.description,
-    amount: jsonExpense.amount, // Assuming amounts in JSON are expenses (positive numbers)
     category: jsonExpense.category,
-    type: 'expense', // All transactions from "expense_transactions" are considered expenses
-    paymentMethod: jsonExpense.payment_method,
-    tags: tags.length > 0 ? tags : undefined,
+    payment_method: jsonExpense.payment_method,
+    source: jsonExpense.source,
+    geotag: jsonExpense.geotag,
+    merchant_code: jsonExpense.merchant_code,
     cardLast4: jsonExpense.card_last4,
-    merchant: undefined, // Consider if merchant can be extracted or is available
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    vehicle_id_json: jsonExpense.vehicle_id, // Store JSON vehicle_id, map to FK later if needed
+    part_details: jsonExpense.part_details,
+    odometer: jsonExpense.odometer,
+    liters: jsonExpense.liters,
+    rate_per_liter: jsonExpense.rate_per_liter,
+    json_id: jsonExpense.id, // Store original JSON id if present
+    subcategory: jsonExpense.subcategory,
+    verified: jsonExpense.verified,
+    // 'type' can be inferred or explicitly mapped if available in source JSON for expenses
+    // For now, assuming all in expense_transactions are 'expense' type.
+    // If income is also in this list, logic needs to handle jsonExpense.type or amount sign.
+    type: 'expense', // Defaulting, adjust if JSON provides type or based on amount
   };
 }
 
-// Maps your JSON vehicle structure to the Dexie 'Vehicle' interface
-function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicle): Omit<Vehicle, 'id'> {
-  let vehicleType: "motorcycle" | "car" = "car"; // Default
-  if (jsonVehicle.vehicle.toLowerCase().includes("fzs") || jsonVehicle.vehicle.toLowerCase().includes("cbr") || jsonVehicle.vehicle.toLowerCase().includes("shine")) {
-    vehicleType = "motorcycle";
-  } else if (jsonVehicle.vehicle.toLowerCase().includes("xylo")) {
-    vehicleType = "car";
+// Maps JsonIncomeCashFlow to IncomeSourceData for Dexie
+function mapJsonIncomeToDbIncomeSource(jsonIncome: JsonIncomeCashFlow): Omit<IncomeSourceData, 'id'> {
+  return {
+    source: jsonIncome.source,
+    amount: jsonIncome.amount,
+    amount_min: jsonIncome.amount_min,
+    amount_max: jsonIncome.amount_max,
+    frequency: jsonIncome.frequency,
+    account: jsonIncome.account,
+  };
+}
+
+// Maps JsonVehicleAsset to VehicleData for Dexie
+function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): Omit<VehicleData, 'id'> {
+  return {
+    // From JsonVehicleAsset interface
+    vehicle_name: jsonVehicle.vehicle, // JSON 'vehicle' field is the name
+    usage: jsonVehicle.usage,
+    insurance_premium: jsonVehicle.insurance?.premium,
+    insurance_provider: jsonVehicle.insurance?.provider,
+    insurance_frequency: jsonVehicle.insurance?.frequency,
+    insurance_next_renewal: jsonVehicle.insurance?.next_renewal,
+    tracking_type: jsonVehicle.tracking?.type,
+    tracking_last_service_odometer: jsonVehicle.tracking?.last_service_odometer,
+    tracking_next_pollution_check: jsonVehicle.tracking?.next_pollution_check,
+    owner: jsonVehicle.owner,
+    status: jsonVehicle.status,
+    location: jsonVehicle.location,
+    repair_estimate: jsonVehicle.repair_estimate,
+    // Ensure all fields from VehicleData (derived from JsonVehicleAsset) are covered
+  };
+}
+
+// Maps JsonLoan to LoanData for Dexie
+function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): Omit<LoanData, 'id'> {
+  return {
+    loan_name: jsonLoan.loan, // JSON 'loan' field is the name
+    amount: jsonLoan.amount,
+    emi: jsonLoan.emi,
+    account: jsonLoan.account,
+    purpose: jsonLoan.purpose,
+    interest_rate: jsonLoan.interest_rate,
+    lender: jsonLoan.lender,
+    notes: jsonLoan.notes,
+  };
+}
+
+// Maps JsonInvestmentMutualFund to InvestmentData for Dexie (Simplified MVP)
+function mapJsonInvestmentMFToDbInvestment(jsonMf: JsonInvestmentMutualFund): Omit<InvestmentData, 'id'> {
+  return {
+    investment_type: 'Mutual Fund', // Explicitly set type for MVP
+    fund_name: jsonMf.fund, // JSON 'fund' is the name
+    current_value: jsonMf.current_value,
+    invested_value: jsonMf.invested, // JSON 'invested' maps here
+    category: jsonMf.category,
+    risk_category: jsonMf.risk_category,
+  };
+}
+
+// Maps JsonCreditCard to CreditCardData for Dexie
+function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): Omit<CreditCardData, 'id'> {
+  return {
+    bank_name: jsonCard.bank_name,
+    card_name: jsonCard.card_name,
+    last_digits: jsonCard.last_digits,
+    due_date: typeof jsonCard.due_date === 'number' ? jsonCard.due_date.toString() : jsonCard.due_date, // Store as string for consistency
+    fee_waiver_details: typeof jsonCard.fee_waiver === 'number' ? jsonCard.fee_waiver.toString() : jsonCard.fee_waiver,
+    credit_limit: jsonCard.credit_limit,
+    anniversary_date: jsonCard.anniversary_date,
+    payment_method: jsonCard.payment_method,
+    status: jsonCard.status,
+  };
+}
+
+
+export async function preloadFinancialData(jsonData: unknown): Promise<{success: boolean; message: string; summary?: any}> {
+  Logger.info('Starting data preload process...');
+
+  const validationResult = validateFinancialData(jsonData);
+  if (!validationResult.success) {
+    Logger.error('JSON data failed validation for MVP sections.', validationResult.errors);
+    return { success: false, message: validationResult.message || 'JSON data structure is invalid for MVP sections. Please check required fields and formats.' };
   }
 
-  return {
-    name: jsonVehicle.vehicle,
-    type: vehicleType,
-    owner: jsonVehicle.owner,
-    initial_odometer: jsonVehicle.tracking?.last_service_odometer || 0, // Or a dedicated initial_odometer field if available
-    current_odometer: jsonVehicle.tracking?.last_service_odometer || 0,
-    insurance_provider: jsonVehicle.insurance?.provider,
-    insurance_premium: jsonVehicle.insurance?.premium,
-    insurance_renewal_date: jsonVehicle.insurance?.next_renewal,
-    // Add other relevant fields from jsonVehicle if they match Vehicle interface
-  };
-}
-
-
-export async function preloadFinancialData(jsonData: FinancialDataJson): Promise<{success: boolean; message: string; summary?: any}> {
-  Logger.info('Starting data preload process with validated data...');
+  const validatedData = validationResult.data; // Now this is typed JsonPreloadMVPData
 
   const importSummary = {
-    expenses: { added: 0, failed: 0, present: jsonData.expense_transactions?.transactions?.length || 0 },
-    vehicles: { added: 0, failed: 0, present: jsonData.assets?.vehicles?.length || 0 },
+    personal_profile: { processed: 0, status: "not_processed" },
+    expenses: { added: 0, failed: 0, found: 0 },
+    incomeSources: { added: 0, failed: 0, found: 0 },
+    vehicles: { added: 0, failed: 0, found: 0 },
+    loans: { added: 0, failed: 0, found: 0 },
+    investments: { added: 0, failed: 0, found: 0 },
+    creditCards: { added: 0, failed: 0, found: 0 },
   };
 
   try {
-    await db.transaction('rw', db.expenses, db.vehicles, async () => {
-      Logger.info('Clearing existing data from relevant tables...');
-      if (jsonData.expense_transactions?.transactions) {
-        await db.expenses.clear();
-      }
-      if (jsonData.assets?.vehicles) {
-        await db.vehicles.clear();
+    // Define all tables that will be written to in this transaction
+    const tablesToClearAndWrite: Dexie.Table[] = [
+      db.appSettings, // For personal_profile
+      db.expenses,
+      db.incomeSources,
+      db.vehicles,
+      db.loans,
+      db.investments,
+      db.creditCards
+    ];
+
+    await db.transaction('rw', tablesToClearAndWrite, async () => {
+      Logger.info('Clearing existing MVP data from relevant tables...');
+      await db.appSettings.where('key').equals('userPersonalProfile_v1').delete();
+      await db.expenses.clear();
+      await db.incomeSources.clear();
+      await db.vehicles.clear();
+      await db.loans.clear();
+      await db.investments.clear();
+      await db.creditCards.clear();
+
+      // Preload Personal Profile
+      if (validatedData.personal_profile) {
+        await db.appSettings.put({ key: 'userPersonalProfile_v1', value: validatedData.personal_profile as ProfileData });
+        importSummary.personal_profile = { processed: 1, status: "processed" };
+        Logger.info('Successfully processed personal_profile.');
       }
 
       // Preload Expenses
-      if (jsonData.expense_transactions?.transactions && Array.isArray(jsonData.expense_transactions.transactions)) {
-        const expensesToInsert: Expense[] = [];
-        for (const rawExpense of jsonData.expense_transactions.transactions) {
+      if (validatedData.expense_transactions?.transactions) {
+        const rawItems = validatedData.expense_transactions.transactions;
+        importSummary.expenses.found = rawItems.length;
+        const mappedItems: ExpenseData[] = [];
+        for (const item of rawItems) {
           try {
-            // Validation of individual items already done by Zod schema for the array
-            const mapped = mapJsonExpenseToDbExpense(rawExpense) as Expense;
-            expensesToInsert.push(mapped);
-          } catch (mapError) {
-            Logger.error('Error mapping expense item:', rawExpense, mapError);
-            importSummary.expenses.failed++;
-          }
+            mappedItems.push(mapJsonExpenseToDbExpense(item));
+          } catch (e) { Logger.error('Error mapping expense:', item, e); importSummary.expenses.failed++; }
         }
-        if (expensesToInsert.length > 0) {
-          await db.expenses.bulkAdd(expensesToInsert);
-          importSummary.expenses.added = expensesToInsert.length;
-          Logger.info(`Successfully added ${expensesToInsert.length} expenses to IndexedDB.`);
+        if (mappedItems.length > 0) { await db.expenses.bulkAdd(mappedItems); importSummary.expenses.added = mappedItems.length; }
+        Logger.info(`Expenses: Added ${importSummary.expenses.added}/${importSummary.expenses.found}. Failed: ${importSummary.expenses.failed}`);
+      }
+
+      // Preload Income Sources
+      if (validatedData.income_cash_flows) {
+        const rawItems = validatedData.income_cash_flows;
+        importSummary.incomeSources.found = rawItems.length;
+        const mappedItems: IncomeSourceData[] = [];
+        for (const item of rawItems) {
+          try {
+            mappedItems.push(mapJsonIncomeToDbIncomeSource(item));
+          } catch (e) { Logger.error('Error mapping income source:', item, e); importSummary.incomeSources.failed++; }
         }
-      } else {
-        Logger.warn('No "expense_transactions.transactions" array found in JSON data or it is not an array.');
+        if (mappedItems.length > 0) { await db.incomeSources.bulkAdd(mappedItems); importSummary.incomeSources.added = mappedItems.length; }
+        Logger.info(`IncomeSources: Added ${importSummary.incomeSources.added}/${importSummary.incomeSources.found}. Failed: ${importSummary.incomeSources.failed}`);
       }
 
       // Preload Vehicles
-      if (jsonData.assets?.vehicles && Array.isArray(jsonData.assets.vehicles)) {
-        const vehiclesToInsert: Vehicle[] = [];
-        for (const rawVehicle of jsonData.assets.vehicles) {
+      if (validatedData.assets?.vehicles) {
+        const rawItems = validatedData.assets.vehicles;
+        importSummary.vehicles.found = rawItems.length;
+        const mappedItems: VehicleData[] = [];
+        for (const item of rawItems) {
           try {
-            // Validation of individual items already done by Zod schema for the array
-            const mapped = mapJsonVehicleToDbVehicle(rawVehicle) as Vehicle;
-            vehiclesToInsert.push(mapped);
-          } catch (mapError) {
-            Logger.error('Error mapping vehicle item:', rawVehicle, mapError);
-            importSummary.vehicles.failed++;
-          }
+            mappedItems.push(mapJsonVehicleToDbVehicle(item));
+          } catch (e) { Logger.error('Error mapping vehicle:', item, e); importSummary.vehicles.failed++; }
         }
-        if (vehiclesToInsert.length > 0) {
-          await db.vehicles.bulkAdd(vehiclesToInsert);
-          importSummary.vehicles.added = vehiclesToInsert.length;
-          Logger.info(`Successfully added ${vehiclesToInsert.length} vehicles to IndexedDB.`);
+        if (mappedItems.length > 0) { await db.vehicles.bulkAdd(mappedItems); importSummary.vehicles.added = mappedItems.length; }
+        Logger.info(`Vehicles: Added ${importSummary.vehicles.added}/${importSummary.vehicles.found}. Failed: ${importSummary.vehicles.failed}`);
+      }
+
+      // Preload Loans
+      if (validatedData.liabilities) {
+        const rawItems = validatedData.liabilities;
+        importSummary.loans.found = rawItems.length;
+        const mappedItems: LoanData[] = [];
+        for (const item of rawItems) {
+          try {
+            mappedItems.push(mapJsonLoanToDbLoan(item));
+          } catch (e) { Logger.error('Error mapping loan:', item, e); importSummary.loans.failed++; }
         }
-      } else {
-        Logger.warn('No "assets.vehicles" array found in JSON data or it is not an array.');
+        if (mappedItems.length > 0) { await db.loans.bulkAdd(mappedItems); importSummary.loans.added = mappedItems.length; }
+        Logger.info(`Loans: Added ${importSummary.loans.added}/${importSummary.loans.found}. Failed: ${importSummary.loans.failed}`);
+      }
+
+      // Preload Investments (Simplified Mutual Funds)
+      if (validatedData.assets?.investments?.mutual_funds_breakdown) {
+        const rawItems = validatedData.assets.investments.mutual_funds_breakdown;
+        importSummary.investments.found = rawItems.length;
+        const mappedItems: InvestmentData[] = [];
+        for (const item of rawItems) {
+          try {
+            mappedItems.push(mapJsonInvestmentMFToDbInvestment(item));
+          } catch (e) { Logger.error('Error mapping investment (MF):', item, e); importSummary.investments.failed++; }
+        }
+        if (mappedItems.length > 0) { await db.investments.bulkAdd(mappedItems); importSummary.investments.added = mappedItems.length; }
+        Logger.info(`Investments (MF): Added ${importSummary.investments.added}/${importSummary.investments.found}. Failed: ${importSummary.investments.failed}`);
+      }
+
+      // Preload Credit Cards
+      if (validatedData.credit_card_management?.cards) {
+        const rawItems = validatedData.credit_card_management.cards;
+        importSummary.creditCards.found = rawItems.length;
+        const mappedItems: CreditCardData[] = [];
+        for (const item of rawItems) {
+          try {
+            mappedItems.push(mapJsonCreditCardToDbCreditCard(item));
+          } catch (e) { Logger.error('Error mapping credit card:', item, e); importSummary.creditCards.failed++; }
+        }
+        if (mappedItems.length > 0) { await db.creditCards.bulkAdd(mappedItems); importSummary.creditCards.added = mappedItems.length; }
+        Logger.info(`CreditCards: Added ${importSummary.creditCards.added}/${importSummary.creditCards.found}. Failed: ${importSummary.creditCards.failed}`);
       }
     });
 
-    const successMessage = `Data preload completed. Expenses: ${importSummary.expenses.added}/${importSummary.expenses.present} added (${importSummary.expenses.failed} failed). Vehicles: ${importSummary.vehicles.added}/${importSummary.vehicles.present} added (${importSummary.vehicles.failed} failed).`;
-    Logger.info(successMessage);
-    return { success: true, message: successMessage, summary: importSummary };
+    let successMessages: string[] = [];
+    if (importSummary.personal_profile.status === "processed") successMessages.push("Profile: processed.");
+    if (importSummary.expenses.found > 0) successMessages.push(`Expenses: ${importSummary.expenses.added}/${importSummary.expenses.found} added (${importSummary.expenses.failed} failed).`);
+    if (importSummary.vehicles.found > 0) successMessages.push(`Vehicles: ${importSummary.vehicles.added}/${importSummary.vehicles.found} added (${importSummary.vehicles.failed} failed).`);
+    // Add for other entities
+
+    const finalMessage = successMessages.length > 0 ? successMessages.join(' ') : "Data preload completed (no specific MVP data found or processed).";
+    Logger.info(finalMessage);
+    return { success: true, message: finalMessage, summary: importSummary };
 
   } catch (error: any) {
     Logger.error('Critical error during data preload transaction:', error);
-    return { success: false, message: `Data preload failed: ${error.message || 'Unknown error'}`, summary: importSummary };
+    const failMessage = `Data preload failed: ${error.message || 'Unknown error'}`;
+    Logger.error(failMessage); // Log the specific error message
+    return { success: false, message: failMessage, summary: importSummary };
   }
 }

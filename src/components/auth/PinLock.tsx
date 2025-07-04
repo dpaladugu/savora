@@ -1,15 +1,14 @@
-import React, { useState, useEffect } from 'react'; // Ensure useEffect is imported here
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { LockKeyhole } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Added Select
-import { Label } from "@/components/ui/label"; // Added Label
-import { useToast } from '@/hooks/use-toast'; // Ensure this is the correct path
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from '@/hooks/use-toast';
 import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
-// Removed the redundant/commented out useEffect import from below
 
 interface PinLockProps {
   onUnlockSuccess: () => void;
@@ -17,25 +16,47 @@ interface PinLockProps {
 
 type PinLockMode = 'loading' | 'setup' | 'unlock';
 
+const aiProviderOptions = [
+  { value: 'deepseek', label: 'DeepSeek API' },
+  { value: 'groq', label: 'Groq API' },
+  { value: 'ollama_local', label: 'Ollama (Local)' },
+  { value: 'google_gemini', label: 'Google Gemini API' },
+  // Add other providers here as needed, e.g.:
+  // { value: 'openai', label: 'OpenAI API' },
+];
+
 export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const [mode, setMode] = useState<PinLockMode>('loading');
   const [pin, setPin] = useState('');
-  const [confirmPin, setConfirmPin] = useState(''); // For setup mode
-  const [apiKeyInput, setApiKeyInput] = useState(''); // For API key input in setup mode
-  const [aiProvider, setAiProvider] = useState<string>('deepseek');
+  const [confirmPin, setConfirmPin] = useState('');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [aiProvider, setAiProvider] = useState<string>(aiProviderOptions[0].value); // Default to first provider
   const [aiBaseUrl, setAiBaseUrl] = useState<string>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const unlockApp = useAppStore((state) => state.unlockApp);
+
+  // Ensure useAppStore selectors are correctly typed for the new AI config fields
+  const { unlockApp, setDecryptedAiConfig } = useAppStore(state => ({ // Updated to use setDecryptedAiConfig
+    unlockApp: state.unlockApp, // Keep old unlockApp if it's still used elsewhere or phase it out
+    setDecryptedAiConfig: state.setDecryptedAiConfig,
+  }));
+
 
   React.useEffect(() => { // Changed to React.useEffect to be explicit if default import is preferred for React
     const checkPinSetup = async () => {
       try {
-        // We still check for encryptedApiKey to determine if setup has been done.
-        // The specific provider details will be loaded during unlock or re-verified.
-        const apiKeySetting = await db.appSettings.get('encryptedAiApiKey'); // Use new key name
-        if (apiKeySetting && apiKeySetting.value) {
+        const aiConfigSetting = await db.appSettings.get('encryptedAiConfig'); // Changed key name
+        if (aiConfigSetting && aiConfigSetting.value) {
+          // Also load provider and base URL if they are stored separately (for display before unlock)
+          const providerSetting = await db.appSettings.get('currentAiProvider');
+          if (providerSetting?.value) {
+            setAiProvider(providerSetting.value as string);
+          }
+          const baseUrlSetting = await db.appSettings.get('aiServiceBaseUrl');
+          if (baseUrlSetting?.value) {
+            setAiBaseUrl(baseUrlSetting.value as string);
+          }
           setMode('unlock');
         } else {
           setMode('setup');
@@ -43,7 +64,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
       } catch (e) {
         console.error("Error checking PIN setup:", e);
         setError("Could not verify PIN status. Please refresh.");
-        setMode('unlock'); // Default to unlock mode on error, though it will likely fail
+        setMode('unlock');
       }
     };
     checkPinSetup();
@@ -51,15 +72,15 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
 
   const handlePinChange = (value: string) => {
     const numericValue = value.replace(/[^0-9]/g, '');
-    if (numericValue.length <= 6) { // Assuming a 4 or 6 digit PIN
+    if (numericValue.length <= 6) {
       setPin(numericValue);
-      setError(''); // Clear error on new input
+      setError('');
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pin.length < 4) { // Basic validation
+    if (pin.length < 4) {
       setError('PIN must be at least 4 digits.');
       return;
     }
@@ -67,13 +88,6 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
     setError('');
 
     if (mode === 'setup') {
-      // PIN length and match validation already handled by button's disabled state logic implicitly
-      // but good to keep explicit checks too.
-      if (pin.length < 4) {
-        setError('PIN must be at least 4 digits.');
-        setLoading(false);
-        return;
-      }
       if (pin !== confirmPin) {
         setError('PINs do not match.');
         setLoading(false);
@@ -97,49 +111,51 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
       }
 
       try {
-        // For Ollama, if no API key is used, we still encrypt a placeholder (like the provider name or an empty string)
-        // to ensure the PIN verification mechanism works consistently. The actual API key field in the payload can be empty.
-        const apiKeyToStore = aiProvider === 'ollama_local' ? '' : currentApiKey;
-        const dataToEncrypt = { apiKey: apiKeyToStore, provider: aiProvider, baseUrl: currentBaseUrl, timestamp: new Date().toISOString() };
+        const apiKeyToStore = (aiProvider === 'ollama_local' || !currentApiKey) ? '' : currentApiKey;
+        const dataToEncrypt = {
+          apiKey: apiKeyToStore,
+          provider: aiProvider,
+          baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : '', // Store baseUrl only if ollama
+          timestamp: new Date().toISOString()
+        };
         const ciphertext = await EncryptionService.encryptData(dataToEncrypt, pin);
 
         if (ciphertext) {
           await db.transaction('rw', db.appSettings, async () => {
-            await db.appSettings.put({ key: 'encryptedAiApiKey', value: ciphertext }); // Generic key name
-            await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider });
+            await db.appSettings.put({ key: 'encryptedAiConfig', value: ciphertext }); // Store all config
+            await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider }); // Store for easy access
             if (aiProvider === 'ollama_local' && currentBaseUrl) {
               await db.appSettings.put({ key: 'aiServiceBaseUrl', value: currentBaseUrl });
             } else {
-              // Remove or nullify if not needed to avoid stale data
               await db.appSettings.delete('aiServiceBaseUrl');
             }
             await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() });
           });
 
-          unlockApp(apiKeyToStore, aiProvider, (aiProvider === 'ollama_local' ? currentBaseUrl : null));
+          setDecryptedAiConfig({ // Use the new Zustand action
+            apiKey: apiKeyToStore,
+            provider: aiProvider,
+            baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
+          });
           toast({ title: 'Success', description: 'PIN successfully set and application unlocked.' });
           onUnlockSuccess();
         } else {
           throw new Error('Encryption process failed during PIN setup.');
         }
-      } catch (e: any) {
-        console.error("PIN Setup Error:", e);
-        setError(e.message || 'PIN setup failed. Please try again.');
-        toast({ title: 'Error', description: e.message || 'PIN setup failed.', variant: 'destructive' });
+      } catch (err: any) {
+        console.error("PIN Setup Error:", err);
+        setError(err.message || 'PIN setup failed. Please try again.');
+        toast({ title: 'Error', description: err.message || 'PIN setup failed.', variant: 'destructive' });
       } finally {
         setLoading(false);
       }
     } else if (mode === 'unlock') {
-      setError('');
       try {
-        const encryptedSetting = await db.appSettings.get('encryptedAiApiKey'); // Use new key name
-        const providerSetting = await db.appSettings.get('currentAiProvider');
-        const baseUrlSetting = await db.appSettings.get('aiServiceBaseUrl');
-
+        const encryptedSetting = await db.appSettings.get('encryptedAiConfig');
         const encryptedCiphertext = encryptedSetting?.value as string | undefined;
 
         if (!encryptedCiphertext) {
-          console.warn('encryptedAiApiKey not found in unlock mode, switching to setup.');
+          console.warn('encryptedAiConfig not found in unlock mode, switching to setup.');
           toast({ title: 'Setup Required', description: 'Please set up your PIN and AI provider.', variant: 'default' });
           setMode('setup');
           setLoading(false);
@@ -148,21 +164,20 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
 
         const decryptedPayload = await EncryptionService.decryptData(encryptedCiphertext, pin);
 
-        // The payload now contains apiKey, provider, and baseUrl from the time of encryption
-        if (decryptedPayload && typeof decryptedPayload.apiKey === 'string') {
-          const storedProvider = providerSetting?.value as string || decryptedPayload.provider || 'deepseek'; // Fallback
-          const storedBaseUrl = baseUrlSetting?.value as string || decryptedPayload.baseUrl || null; // Fallback
-
-          unlockApp(decryptedPayload.apiKey, storedProvider, storedBaseUrl);
+        if (decryptedPayload && typeof decryptedPayload.apiKey === 'string' && decryptedPayload.provider) {
+           setDecryptedAiConfig({ // Use the new Zustand action
+            apiKey: decryptedPayload.apiKey,
+            provider: decryptedPayload.provider,
+            baseUrl: decryptedPayload.baseUrl || null,
+          });
           toast({ title: 'Success!', description: 'Application unlocked.' });
           onUnlockSuccess();
         } else {
-          setError('Invalid PIN. Please try again.');
-          toast({ title: 'Unlock Failed', description: 'Invalid PIN entered.', variant: 'destructive' });
+          setError('Invalid PIN or corrupted data. Please try again.');
+          toast({ title: 'Unlock Failed', description: 'Invalid PIN or data corruption.', variant: 'destructive' });
         }
-      } catch (e: any) {
-        // Catch any other errors during the process
-        console.error("PIN Unlock Process Error:", e);
+      } catch (err: any) {
+        console.error("PIN Unlock Process Error:", err);
         setError('An unexpected error occurred during unlock.');
         toast({ title: 'Error', description: 'Unlock failed due to an unexpected error.', variant: 'destructive' });
       } finally {
@@ -185,16 +200,16 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-xs p-8 bg-background dark:bg-slate-800/50 shadow-2xl rounded-xl border border-border/20 backdrop-blur-sm"
+        className="w-full max-w-md p-8 bg-background dark:bg-slate-800/50 shadow-2xl rounded-xl border border-border/20 backdrop-blur-sm" // Increased max-w-md
       >
         <div className="text-center mb-8">
           <LockKeyhole className="w-16 h-16 mx-auto text-primary mb-4" />
           <h2 className="text-2xl font-bold text-foreground">
-            {mode === 'setup' ? 'Set Up Security PIN' : 'Enter Security PIN'}
+            {mode === 'setup' ? 'Set Up Security PIN & AI' : 'Enter Security PIN'}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === 'setup'
-              ? 'Create a PIN to secure your application data.'
+              ? 'Secure your app and configure your AI provider.'
               : 'Unlock Savora to access your financial data.'}
           </p>
         </div>
@@ -223,9 +238,9 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
                 maxLength={6}
                 className="text-center text-2xl tracking-[0.3em] font-mono h-14"
               />
-              <div className="space-y-3">
+              <div className="space-y-4"> {/* Increased spacing */}
                 <div>
-                  <Label htmlFor="aiProviderSelect">AI Provider</Label>
+                  <Label htmlFor="aiProviderSelect" className="mb-1 block">AI Provider</Label>
                   <Select value={aiProvider} onValueChange={setAiProvider}>
                     <SelectTrigger id="aiProviderSelect" className="h-12">
                       <SelectValue placeholder="Select AI Provider" />
@@ -242,7 +257,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
 
                 {aiProvider === 'ollama_local' && (
                   <div>
-                    <Label htmlFor="aiBaseUrlInput">Ollama Base URL</Label>
+                    <Label htmlFor="aiBaseUrlInput" className="mb-1 block">Ollama Base URL</Label>
                     <Input
                       id="aiBaseUrlInput"
                       type="text"
@@ -257,29 +272,27 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
                   </div>
                 )}
 
-                <div>
-                  <Label htmlFor="apiKeyInput" className={aiProvider === 'ollama_local' ? 'sr-only' : ''}>API Key</Label>
-                  {aiProvider !== 'ollama_local' && (
+                {aiProvider !== 'ollama_local' && (
+                  <div>
+                    <Label htmlFor="apiKeyInput" className="mb-1 block">API Key</Label>
                     <Input
                       id="apiKeyInput"
-                      type="password" // Masked, but user is pasting
+                      type="password"
                       value={apiKeyInput}
                       onChange={(e) => setApiKeyInput(e.target.value)}
-                      placeholder="Paste API Key here"
+                      placeholder={`Paste ${aiProviderOptions.find(p=>p.value === aiProvider)?.label || ''} API Key`}
                       className="text-sm h-12"
                     />
-                  )}
-                  {aiProvider !== 'ollama_local' && (
                     <p className="text-xs text-muted-foreground mt-1 px-1">
                       This key will be encrypted with your PIN and stored locally.
                     </p>
-                  )}
-                   {aiProvider === 'ollama_local' && (
-                    <p className="text-xs text-muted-foreground mt-1 px-1">
+                  </div>
+                )}
+                 {aiProvider === 'ollama_local' && (
+                    <p className="text-sm text-muted-foreground mt-1 px-1">
                       Ollama (Local) typically does not require an API key. The Base URL is used.
                     </p>
                   )}
-                </div>
               </div>
             </>
           )}
@@ -293,7 +306,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
               loading ||
               pin.length < 4 ||
               (mode === 'setup' &&
-                (confirmPin.length < 4 ||
+                (pin !== confirmPin || confirmPin.length <4 || // ensure confirmPin is also valid
                  (aiProvider !== 'ollama_local' && apiKeyInput.trim() === '') ||
                  (aiProvider === 'ollama_local' && aiBaseUrl.trim() === '')
                 )
@@ -303,13 +316,13 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
             {loading ? (
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              mode === 'setup' ? 'Set PIN & Unlock' : "Unlock"
+              mode === 'setup' ? 'Set PIN & Configure AI' : "Unlock"
             )}
           </Button>
         </form>
       </motion.div>
       <p className="text-xs text-muted-foreground mt-8">
-        Your sensitive data (like API keys) is encrypted using this PIN and stored locally.
+        Your sensitive AI configuration is encrypted using this PIN and stored locally.
       </p>
     </div>
   );
