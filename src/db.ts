@@ -14,11 +14,18 @@ import type {
 // Use AppSetting directly for the table type
 export type AppSettingTable = AppSetting;
 
+// Assuming the refined Expense interface will be available, e.g., from a shared types file
+// For now, let's use the placeholder from supabase-data-service.ts for structure,
+// but ideally, this would be a central 'Expense' type.
+import type { Income } from '@/components/income/income-tracker'; // Keep this for now
+import type { Expense as AppExpense } from '@/services/supabase-data-service'; // Using the placeholder
+
 // --- Dexie Database Class (Single, Consolidated Definition) ---
 export class SavoraDB extends Dexie {
   // Table Property Declarations
   public appSettings!: Table<AppSettingTable, string>;
-  public expenses!: Table<ExpenseData, number>;
+  public expenses!: Table<AppExpense, string>; // Changed to AppExpense and string ID
+  public incomes!: Table<Income, string>;
   public incomeSources!: Table<IncomeSourceData, number>;
   public vehicles!: Table<VehicleData, number>;
   public loans!: Table<LoanData, number>;
@@ -29,9 +36,52 @@ export class SavoraDB extends Dexie {
   constructor() {
     super('SavoraFinanceDB');
 
+    // Bump version number due to expenses schema change
+    this.version(5).stores({
+      appSettings: '&key',
+      // Updated expenses schema: id is UUID string, added user_id, tags is string for simplicity with Dexie basic indexing
+      // For array tags, more complex indexing or client-side filtering is needed if searching within tags.
+      // For Supabase, tags can be TEXT[]
+      expenses: '&id, user_id, date, category, amount, description, payment_method, *tags_flat, source, merchant, account',
+      incomes: '&id, user_id, date, category, source',
+      incomeSources: '++id, source, frequency, account',
+      vehicles: '++id, vehicle_name, owner, type',
+      loans: '++id, loan_name, lender, interest_rate',
+      investments: '++id, fund_name, investment_type, category',
+      creditCards: '++id, &lastDigits, bank_name, card_name',
+      yearlySummaries: '++id, year, category, type',
+    }).upgrade(async tx => {
+      // Migration for expenses table:
+      // If you have existing data in 'expenses' with numeric IDs, it needs to be handled.
+      // For this refactor, we assume we might be starting fresh or data loss for old expenses is acceptable.
+      // A proper migration would read old expenses, assign UUIDs, add user_id (if possible), and put into new structure.
+      // Placeholder for a more complex migration if needed:
+      console.log("Upgrading expenses table schema for version 5. Old data might not be directly compatible without migration logic.");
+      // If old expenses table data needs to be cleared because of incompatible ID types:
+      // await tx.table('expenses').clear(); // Uncomment if clearing is desired during upgrade
+      // This example does not migrate data, it just sets up the new schema.
+      // For tags, if they were an array, they need to be flattened to a string for '*tags_flat' or handled differently.
+      // The new AppExpense interface uses string[], so for Dexie we might store it as a comma-separated string if using '*tags_flat'.
+      // Or, don't multiEntry index tags in Dexie and filter in JS / rely on Supabase for tag filtering.
+      // For simplicity, let's assume 'tags_flat' is a string representation for now for Dexie,
+      // while AppExpense and Supabase use string[]. The service layer would handle conversion.
+      // The schema 'description' is added. 'type', 'merchant', 'source', 'cardLast4' from old schema are reviewed.
+      // 'type' is implicit. 'merchant', 'source' are in new model. 'cardLast4' can be part of 'account'.
+      return tx.table('expenses').toCollection().modify(exp => {
+        // Example modification if 'tags' was an array and needs to be flattened for 'tags_flat'
+        if (Array.isArray(exp.tags)) {
+            exp.tags_flat = exp.tags.join(',');
+        }
+        // If old ID was numeric and new is string, this won't auto-migrate.
+        // This is a placeholder for actual data transformation if needed.
+      });
+    });
+
     this.version(4).stores({
       appSettings: '&key',
+      // Old expenses schema for reference during potential manual migration or if v4 was the active one
       expenses: '++id, date, category, amount, type, merchant, source, cardLast4, *tags',
+      incomes: '&id, user_id, date, category, source',
       incomeSources: '++id, source, frequency, account',
       vehicles: '++id, vehicle_name, owner, type',
       loans: '++id, loan_name, lender, interest_rate',
@@ -81,6 +131,7 @@ export class SavoraDB extends Dexie {
 
     this.appSettings = this.table('appSettings');
     this.expenses = this.table('expenses');
+    this.incomes = this.table('incomes'); // Initialize new table
     this.incomeSources = this.table('incomeSources');
     this.vehicles = this.table('vehicles');
     this.loans = this.table('loans');

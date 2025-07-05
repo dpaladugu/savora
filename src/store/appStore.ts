@@ -6,19 +6,21 @@ export interface DecryptedAiConfig {
   apiKey: string | null;
   provider: string | null;
   baseUrl: string | null;
+  model?: string | null; // Added model
 }
 
 // --- App State (combining Auth, UI, and new AI Config) ---
 interface AppState {
   isUnlocked: boolean;
-  decryptedAiApiKey: string | null;
-  currentAiProvider: string | null;
-  aiServiceBaseUrl: string | null;
+  decryptedAiApiKey: string | null; // Stores the raw API key in memory after decryption
+  currentAiProvider: string | null; // e.g., 'deepseek', 'ollama_local'
+  aiServiceBaseUrl: string | null;  // For providers like Ollama
+  currentAiModel: string | null;    // e.g., 'deepseek-chat', 'deepseek-coder'
   isLoadingGlobal: boolean;
 }
 
 interface AppActions {
-  setDecryptedAiConfig: (config: DecryptedAiConfig) => void;
+  setDecryptedAiConfig: (config: DecryptedAiConfig) => void; // Config now includes model
   lockApp: () => void;
   setGlobalLoading: (isLoading: boolean) => void;
 }
@@ -26,36 +28,39 @@ interface AppActions {
 const initialState: AppState = {
   isUnlocked: false,
   decryptedAiApiKey: null,
-  currentAiProvider: null, // Default to null or a sensible default like 'deepseek'
+  currentAiProvider: null,
   aiServiceBaseUrl: null,
+  currentAiModel: null, // Initialize new state
   isLoadingGlobal: false,
 };
 
 export const useAppStore = create<AppState & AppActions>()(
   persist(
-    (set) => ({
+    (set, get) => ({ // Added get for reading current state if needed inside actions
       ...initialState,
       setDecryptedAiConfig: (config) => {
-        console.log("appStore: setDecryptedAiConfig called with:", config); // DEBUG LOG
-        console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked, "currentAiProvider:", useAppStore.getState().currentAiProvider); // DEBUG LOG
+        // console.log("appStore: setDecryptedAiConfig called with:", config);
+        // console.log("appStore: Previous state - provider:", get().currentAiProvider, "model:", get().currentAiModel);
         set({
           isUnlocked: true,
           decryptedAiApiKey: config.apiKey,
           currentAiProvider: config.provider,
           aiServiceBaseUrl: config.baseUrl,
+          currentAiModel: config.model || null, // Set model, default to null
         });
-        console.log("appStore: New state - isUnlocked:", useAppStore.getState().isUnlocked, "currentAiProvider:", useAppStore.getState().currentAiProvider); // DEBUG LOG
+        // console.log("appStore: New state - provider:", get().currentAiProvider, "model:", get().currentAiModel);
       },
       lockApp: () => {
-        console.log("appStore: lockApp called"); // DEBUG LOG
-        console.log("appStore: Previous state - isUnlocked:", useAppStore.getState().isUnlocked); // DEBUG LOG
+        // console.log("appStore: lockApp called");
+        // console.log("appStore: Previous state - isUnlocked:", get().isUnlocked);
         set({
           isUnlocked: false,
           decryptedAiApiKey: null,
-          currentAiProvider: null, // Reset AI config on lock
+          currentAiProvider: null,
           aiServiceBaseUrl: null,
+          currentAiModel: null, // Reset model on lock
         });
-        console.log("appStore: New state - isUnlocked:", useAppStore.getState().isUnlocked); // DEBUG LOG
+        // console.log("appStore: New state - isUnlocked:", get().isUnlocked);
       },
       setGlobalLoading: (isLoading) => set({ isLoadingGlobal: isLoading }),
     }),
@@ -63,13 +68,10 @@ export const useAppStore = create<AppState & AppActions>()(
       name: 'savora-app-storage',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
-        // Persist only non-sensitive data.
-        // `currentAiProvider` might be okay to persist if user preference.
-        // `isUnlocked` could be persisted for session convenience if desired, but requires re-auth logic.
-        // For now, to be safe, not persisting these auth/session related states.
-        // Only persist things like theme or other non-sensitive UI preferences if added.
-        // Example: theme: state.theme (if theme was part of this store)
-        // currentAiProvider: state.currentAiProvider, // Persist preferred provider
+        // Persist user's preferred provider and model if set
+        currentAiProvider: state.currentAiProvider,
+        currentAiModel: state.currentAiModel,
+        // Do NOT persist isUnlocked, decryptedAiApiKey, or aiServiceBaseUrl (if it can be sensitive)
       }),
     }
   )
@@ -77,9 +79,17 @@ export const useAppStore = create<AppState & AppActions>()(
 
 // --- Selectors ---
 export const useIsUnlocked = () => useAppStore((state) => state.isUnlocked);
+export const useDecryptedAiConfigState = () => useAppStore((state) => ({ // Selector for the whole config object
+  apiKey: state.decryptedAiApiKey,
+  provider: state.currentAiProvider,
+  baseUrl: state.aiServiceBaseUrl,
+  model: state.currentAiModel,
+}));
+// Individual selectors can still be useful
 export const useDecryptedApiKey = () => useAppStore((state) => state.decryptedAiApiKey);
 export const useCurrentAiProvider = () => useAppStore((state) => state.currentAiProvider);
 export const useAiServiceBaseUrl = () => useAppStore((state) => state.aiServiceBaseUrl);
+export const useCurrentAiModel = () => useAppStore((state) => state.currentAiModel); // New selector
 export const useIsLoadingGlobal = () => useAppStore((state) => state.isLoadingGlobal);
 
 // --- Actions can be accessed directly or via hooks ---

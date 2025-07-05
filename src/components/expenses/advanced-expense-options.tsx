@@ -6,14 +6,31 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, Settings } from "lucide-react";
 
 interface AdvancedExpenseOptionsProps {
+interface AdvancedExpenseOptionsProps {
   formData: {
     merchant: string;
     note: string;
+    account: string;
+    tags: string[]; // Added for tag input, expects array from parent
   };
-  onFormDataChange: (updates: Partial<AdvancedExpenseOptionsProps['formData']>) => void;
+  // onFormDataChange needs to handle updates for 'tags' as string[]
+  onFormDataChange: (updates: Partial<Omit<AdvancedExpenseOptionsProps['formData'], 'tags'> & { tags?: string[] | string }>) => void;
 }
 
 export function AdvancedExpenseOptions({ formData, onFormDataChange }: AdvancedExpenseOptionsProps) {
+// Local state for the comma-separated tags input string
+  const [tagsInput, setTagsInput] = useState<string>(formData.tags.join(', '));
+
+  useEffect(() => {
+    // Sync local tagsInput when formData.tags from parent changes (e.g., on form reset or initialData load)
+    setTagsInput(formData.tags.join(', '));
+  }, [formData.tags]);
+
+  const handleTagsInputChange = (value: string) => {
+    setTagsInput(value);
+    const tagsArray = value.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
+    onFormDataChange({ tags: tagsArray });
+  };
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
 
   return (
@@ -39,14 +56,37 @@ export function AdvancedExpenseOptions({ formData, onFormDataChange }: AdvancedE
               placeholder="Merchant name..."
             />
           </div>
+          <div>
+            <label htmlFor="expenseAccount" className="text-sm font-medium text-foreground mb-2 block">
+              Account (Optional)
+            </label>
+            <Input
+              id="expenseAccount"
+              value={formData.account}
+              onChange={(e) => onFormDataChange({ account: e.target.value })}
+              placeholder="e.g., Checking, Credit Card X"
+            />
+          </div>
+          <div>
+            <label htmlFor="expenseTags" className="text-sm font-medium text-foreground mb-2 block">
+              Tags (Optional, comma-separated)
+            </label>
+            <Input
+              id="expenseTags"
+              value={tagsInput}
+              onChange={(e) => handleTagsInputChange(e.target.value)}
+              placeholder="e.g., work, personal, travel"
+            />
+          </div>
         </CollapsibleContent>
       </Collapsible>
       
       <div>
-        <label className="text-sm font-medium text-foreground mb-2 block">
+        <label htmlFor="expenseNote" className="text-sm font-medium text-foreground mb-2 block">
           Note (Optional)
         </label>
         <Input
+          id="expenseNote"
           value={formData.note}
           onChange={(e) => onFormDataChange({ note: e.target.value })}
           placeholder="Additional details..."

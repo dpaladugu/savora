@@ -96,54 +96,65 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
 
       const currentApiKey = apiKeyInput.trim();
       const currentBaseUrl = aiBaseUrl.trim();
+      let aiConfigured = false;
 
-      if (aiProvider !== 'ollama_local' && !currentApiKey) {
-        setError(`API Key is required for ${aiProviderOptions.find(p => p.value === aiProvider)?.label || 'selected provider'}.`);
-        toast({ title: 'Input Required', description: 'Please enter the API Key.', variant: 'destructive' });
-        setLoading(false);
-        return;
-      }
-      if (aiProvider === 'ollama_local' && !currentBaseUrl) {
-        setError('Base URL is required for Ollama (Local).');
-        toast({ title: 'Input Required', description: 'Please enter the Ollama Base URL.', variant: 'destructive' });
-        setLoading(false);
-        return;
+      // Check if user intends to configure AI
+      const intendsToConfigureOllama = aiProvider === 'ollama_local' && currentBaseUrl;
+      const intendsToConfigureCloudProvider = aiProvider !== 'ollama_local' && currentApiKey;
+
+      if (intendsToConfigureOllama || intendsToConfigureCloudProvider) {
+        aiConfigured = true;
       }
 
       try {
-        const apiKeyToStore = (aiProvider === 'ollama_local' || !currentApiKey) ? '' : currentApiKey;
-        const dataToEncrypt = {
-          apiKey: apiKeyToStore,
-          provider: aiProvider,
-          baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : '', // Store baseUrl only if ollama
-          timestamp: new Date().toISOString()
-        };
-        const ciphertext = await EncryptionService.encryptData(dataToEncrypt, pin);
-
-        if (ciphertext) {
-          await db.transaction('rw', db.appSettings, async () => {
-            await db.appSettings.put({ key: 'encryptedAiConfig', value: ciphertext }); // Store all config
-            await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider }); // Store for easy access
-            if (aiProvider === 'ollama_local' && currentBaseUrl) {
-              await db.appSettings.put({ key: 'aiServiceBaseUrl', value: currentBaseUrl });
-            } else {
-              await db.appSettings.delete('aiServiceBaseUrl');
-            }
-            await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() });
-          });
-
-          console.log("PinLock: Setup handleSubmit - Calling setDecryptedAiConfig with:", { apiKey: apiKeyToStore, provider: aiProvider, baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null }); // DEBUG LOG
-          setDecryptedAiConfig({
+        if (aiConfigured) {
+          const apiKeyToStore = (aiProvider === 'ollama_local' || !currentApiKey) ? '' : currentApiKey;
+          const dataToEncrypt = {
             apiKey: apiKeyToStore,
             provider: aiProvider,
-            baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
-          });
-          toast({ title: 'Success', description: 'PIN successfully set and application unlocked.' });
-          onUnlockSuccess();
+            baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : '',
+            timestamp: new Date().toISOString()
+          };
+          const ciphertext = await EncryptionService.encryptData(dataToEncrypt, pin);
+
+          if (ciphertext) {
+            await db.transaction('rw', db.appSettings, async () => {
+              await db.appSettings.put({ key: 'encryptedAiConfig', value: ciphertext });
+              await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider });
+              if (aiProvider === 'ollama_local' && currentBaseUrl) {
+                await db.appSettings.put({ key: 'aiServiceBaseUrl', value: currentBaseUrl });
+              } else {
+                // Ensure this key is removed if not Ollama or no URL, or if switching away from Ollama
+                await db.appSettings.delete('aiServiceBaseUrl');
+              }
+            });
+            console.log("PinLock: Setup handleSubmit (AI Configured) - Calling setDecryptedAiConfig with:", { apiKey: apiKeyToStore, provider: aiProvider, baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null }); // DEBUG LOG
+            setDecryptedAiConfig({
+              apiKey: apiKeyToStore,
+              provider: aiProvider,
+              baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
+            });
+          } else {
+            console.error("PinLock: Encryption process failed during PIN setup with AI config."); // DEBUG LOG
+            throw new Error('Encryption process failed for AI configuration.');
+          }
         } else {
-          console.error("PinLock: Encryption process failed during PIN setup."); // DEBUG LOG
-          throw new Error('Encryption process failed during PIN setup.');
+          // AI not configured, ensure any previous AI config is cleared from local Dexie store
+          await db.transaction('rw', db.appSettings, async () => {
+            await db.appSettings.delete('encryptedAiConfig');
+            await db.appSettings.delete('currentAiProvider');
+            await db.appSettings.delete('aiServiceBaseUrl');
+          });
+          console.log("PinLock: Setup handleSubmit (AI NOT Configured) - Calling setDecryptedAiConfig with null/empty values."); // DEBUG LOG
+          setDecryptedAiConfig({ apiKey: null, provider: null, baseUrl: null }); // Clear any existing config in app state
         }
+
+        // Always save that the PIN itself has been set
+        await db.appSettings.put({ key: 'pinLastSet', value: new Date().toISOString() });
+
+        toast({ title: 'Success', description: `PIN successfully set. ${aiConfigured ? 'AI provider configured.' : 'AI provider not configured.'}` });
+        onUnlockSuccess();
+
       } catch (err: any) {
         console.error("PIN Setup Error:", err);
         setError(err.message || 'PIN setup failed. Please try again.');
@@ -211,11 +222,11 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         <div className="text-center mb-8">
           <LockKeyhole className="w-16 h-16 mx-auto text-primary mb-4" />
           <h2 className="text-2xl font-bold text-foreground">
-            {mode === 'setup' ? 'Set Up Security PIN & AI' : 'Enter Security PIN'}
+            {mode === 'setup' ? 'Set Up Security PIN' : 'Enter Security PIN'}
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
             {mode === 'setup'
-              ? 'Secure your app and configure your AI provider.'
+              ? 'Secure your application with a PIN. AI provider can be configured later in settings.'
               : 'Unlock Savora to access your financial data.'}
           </p>
         </div>
@@ -311,24 +322,19 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
             disabled={
               loading ||
               pin.length < 4 ||
-              (mode === 'setup' &&
-                (pin !== confirmPin || confirmPin.length <4 || // ensure confirmPin is also valid
-                 (aiProvider !== 'ollama_local' && apiKeyInput.trim() === '') ||
-                 (aiProvider === 'ollama_local' && aiBaseUrl.trim() === '')
-                )
-              )
+              (mode === 'setup' && (pin !== confirmPin || confirmPin.length < 4))
             }
           >
             {loading ? (
               <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              mode === 'setup' ? 'Set PIN & Configure AI' : "Unlock"
+              mode === 'setup' ? 'Set PIN' : "Unlock"
             )}
           </Button>
         </form>
       </motion.div>
       <p className="text-xs text-muted-foreground mt-8">
-        Your sensitive AI configuration is encrypted using this PIN and stored locally.
+        {mode === 'setup' ? 'You can configure AI settings later. ' : ''}Your sensitive AI configuration, if provided, is encrypted using this PIN and stored locally.
       </p>
     </div>
   );
