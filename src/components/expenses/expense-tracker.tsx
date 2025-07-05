@@ -4,12 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, Search, Download } from "lucide-react";
-import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form"; // Or AddExpenseForm if preferred
+import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { ExpenseList } from "./expense-list";
-import { db, Expense } from "@/db"; // Import db and Expense type from Dexie ORM
-// import { ExpenseManager } from "@/services/expense-manager"; // To be replaced for categories
+// Use the AppExpense type that will align with Supabase (string id, user_id)
+// We'll need to ensure db.ts exports/uses this type for its 'expenses' table.
+// For now, assuming 'AppExpense' is the target type.
+import type { Expense as AppExpense } from "@/services/supabase-data-service";
+import { db } from "@/db";
+import { SupabaseDataService } from "@/services/supabase-data-service"; // Added
+import { useAuth } from "@/contexts/auth-context"; // Added
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
-// import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator"; // Review if needed or simplify
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
@@ -18,76 +22,157 @@ import { useSingleLoading } from "@/hooks/use-comprehensive-loading";
 import { useLiveQuery } from 'dexie-react-hooks';
 
 export function ExpenseTracker() {
-  // const [expenses, setExpenses] = useState<Expense[]>([]); // Replaced by useLiveQuery
+  const { user } = useAuth(); // Added
+  const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
-  // const { user } = useAuth(); // Removed useAuth
-  const { toast } = useToast();
-  const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading, error: mutationError, clearError: clearMutationError } = useSingleLoading(); // For add/delete operations
+  const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading, error: mutationError, clearError: clearMutationError } = useSingleLoading();
+  const [editingExpense, setEditingExpense] = useState<AppExpense | null>(null); // For editing
 
-  // Initialize notification service
   EnhancedNotificationService.setToastFunction(toast);
 
-  // Live query for expenses from Dexie
+  // Live query for expenses from Dexie, filtered by user_id
   const allExpenses = useLiveQuery(
     async () => {
-      // Add any default sorting or complex queries here if needed
-      // For now, just fetching all and sorting by date client-side later if needed, or let filtering handle it.
-      // Fetching sorted by date (descending) directly from Dexie
-      const expensesFromDB = await db.expenses.orderBy('date').reverse().toArray();
-      return expensesFromDB;
+      if (!user) return [];
+      // Assuming db.expenses schema is updated to '&id, user_id, date, ...'
+      // and AppExpense has user_id field.
+      const expensesFromDB = await db.expenses.where({ user_id: user.uid }).orderBy('date').reverse().toArray();
+      return expensesFromDB as AppExpense[]; // Cast to AppExpense
     },
-    [], // Dependencies array for useLiveQuery
+    [user], // Dependency: re-run query if user changes
     [] // Initial value
   );
 
-  const isLoading = allExpenses === undefined; // Loading state for useLiveQuery
+  const isDataLoading = allExpenses === undefined && user !== null; // More accurate loading state
   const expenses = allExpenses || [];
 
+  // Effect to fetch from Supabase and update Dexie
+  useEffect(() => {
+    const syncWithSupabase = async () => {
+      if (!user) {
+        // db.expenses.clear(); // Optionally clear Dexie if user logs out, or handle per user data separation carefully
+        return;
+      }
+      // No need to setIsLoading here as useLiveQuery handles its own loading state via `undefined`
+      try {
+        const supabaseExpenses = await SupabaseDataService.getExpenses(user.uid);
+        // Ensure user_id is part of the objects for Dexie if schema requires it for non-compound queries.
+        // Our schema is '&id, user_id,...' so user_id is available for where clause.
+        // The objects from SupabaseDataService.getExpenses should already include user_id if it's selected.
+        // For safety, ensure it's there before bulkPutting.
+        const expensesToCache = supabaseExpenses.map(exp => ({ ...exp, user_id: user.uid }));
+        await db.expenses.bulkPut(expensesToCache);
+        // useLiveQuery will automatically update the UI with these changes from Dexie.
+      } catch (error) {
+        console.error("Error syncing expenses with Supabase:", error);
+        toast({ title: "Sync Error", description: "Could not sync expenses with cloud.", variant: "destructive" });
+      }
+    };
+    syncWithSupabase();
+  }, [user, toast]);
 
-  const handleDeleteExpense = async (expenseId: number) => { // expenseId is number
+
+  }, [user, toast]);
+
+
+  const handleOpenEditForm = (expense: AppExpense) => {
+    setEditingExpense(expense);
+    setShowAddForm(true); // Show the form, which will now be in edit mode
+  };
+
+  const handleUpdateExpense = async (expenseId: string, updates: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return;
+    }
+    startMutationLoading("Updating expense...");
+    clearMutationError();
+    try {
+      const updatedExpenseFromSupabase = await SupabaseDataService.updateExpense(expenseId, updates);
+      // Ensure user_id is on the object for Dexie, though update just needs id.
+      const expenseForDexie = { ...updatedExpenseFromSupabase, user_id: user.uid };
+      await db.expenses.update(expenseId, expenseForDexie);
+      // useLiveQuery will handle UI update from Dexie change.
+
+      setShowAddForm(false); // Close form
+      setEditingExpense(null); // Clear editing state
+      toast({ title: "Success", description: "Expense updated." });
+      EnhancedNotificationService.operationCompleted("Expense updated");
+    } catch (error) {
+      console.error("Error updating expense:", error);
+      EnhancedNotificationService.error({
+        title: "Failed to update expense",
+        description: (error as Error).message || "Please try again."
+      });
+      stopMutationLoading(error as Error); // Keep form open on error if desired, or close. For now, stays open.
+    } finally {
+      stopMutationLoading();
+    }
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    if (!user) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return;
+    }
     startMutationLoading("Deleting expense...");
     clearMutationError();
     try {
+      await SupabaseDataService.deleteExpense(expenseId); // Call Supabase service
+      // Dexie will update automatically if useLiveQuery is observing a table that Supabase syncs to.
+      // However, for immediate UI feedback and offline consistency, explicitly delete from Dexie too.
       await db.expenses.delete(expenseId);
-      // loadExpenses(); // No longer needed, useLiveQuery handles updates
       EnhancedNotificationService.expenseDeleted();
       toast({ title: "Success", description: "Expense deleted." });
     } catch (error) {
+      console.error("Error deleting expense:", error);
       EnhancedNotificationService.error({
         title: "Failed to delete expense",
         description: (error as Error).message || "Please try again"
       });
       stopMutationLoading(error as Error);
+    } finally {
+      stopMutationLoading();
     }
-    stopMutationLoading();
   };
 
-  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // Expects data from form, conforming to Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>
+  const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (!user) {
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      return;
+    }
     startMutationLoading("Adding expense...");
     clearMutationError();
+
+    const expensePayload: Omit<AppExpense, 'id' | 'created_at' | 'updated_at'> & { user_id: string } = {
+      ...expenseFormData,
+      user_id: user.uid,
+      // Ensure 'tags' is an array, even if empty, if the form might send undefined/null
+      tags: expenseFormData.tags || [],
+    };
+
     try {
-      // Form should ideally enforce required fields.
-      // Additional validation can be re-introduced here if needed.
-      const newExpense: Expense = {
-        ...expenseData,
-        type: expenseData.type || 'expense',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      await db.expenses.add(newExpense);
+      const newExpenseFromSupabase = await SupabaseDataService.addExpense(expensePayload);
+      // Add to Dexie. Ensure the object for Dexie includes user_id if your queries rely on it.
+      // newExpenseFromSupabase should include id and user_id.
+      await db.expenses.add(newExpenseFromSupabase);
+
       setShowAddForm(false);
       toast({ title: "Success", description: "Expense added." });
       EnhancedNotificationService.operationCompleted("Expense added");
     } catch (error) {
+      console.error("Error adding expense:", error);
       EnhancedNotificationService.error({
         title: "Failed to add expense",
         description: (error as Error).message || "Please try again."
       });
       stopMutationLoading(error as Error);
+    } finally {
+      stopMutationLoading();
     }
-    stopMutationLoading();
   };
 
   const exportExpenses = () => {
@@ -134,13 +219,26 @@ export function ExpenseTracker() {
 
   const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + (expense.amount || 0), 0);
 
+  // Combined submit handler for the form
+  const handleSubmitExpenseForm = async (formData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    if (editingExpense) {
+      await handleUpdateExpense(editingExpense.id, formData);
+    } else {
+      await handleAddExpense(formData);
+    }
+  };
+
   if (showAddForm) {
     return (
       <CriticalErrorBoundary>
         <div className="space-y-4">
           <EnhancedAddExpenseForm
-            onSubmit={handleAddExpense}
-            onCancel={() => setShowAddForm(false)}
+            initialData={editingExpense}
+            onSubmit={handleSubmitExpenseForm}
+            onCancel={() => {
+              setShowAddForm(false);
+              setEditingExpense(null); // Clear editing state
+            }}
           />
         </div>
       </CriticalErrorBoundary>
@@ -215,6 +313,7 @@ export function ExpenseTracker() {
               <ExpenseList 
                 expenses={filteredExpenses}
                 onDelete={handleDeleteExpense}
+                onEdit={handleOpenEditForm} // Pass the edit handler
               />
             </CardContent>
           </Card>

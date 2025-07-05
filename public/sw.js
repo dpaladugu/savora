@@ -1,14 +1,23 @@
-const CACHE_NAME = 'fintrack-cache-v1';
+// IMPORTANT: This is a very basic service worker.
+// For robust PWA capabilities with Vite, including pre-caching of hashed assets,
+// it is STRONGLY recommended to use a plugin like 'vite-plugin-pwa'.
+// This plugin will auto-generate a more sophisticated service worker.
+// The 'urlsToCache' list below is INCOMPLETE for a full offline app shell
+// because it cannot know the hashed names of JS/CSS bundles from Vite's build.
+
+const CACHE_NAME = 'savora-cache-v1'; // Updated cache name to match app
 const urlsToCache = [
-  '/',
-  '/index.html',
-  // Add paths to your main JS and CSS bundles here
-  // e.g., '/assets/index.js', '/assets/index.css'
-  // Add other static assets like images, fonts
+  '/', // The main entry point, often serves index.html
+  '/index.html', // Explicitly cache index.html
+  // Key static assets (ensure these paths are correct and files exist in public/)
   '/favicon.ico',
-  '/logo192.png', // Assuming these are actual icon names
-  '/logo512.png'  // Assuming these are actual icon names
-  // Add more assets as needed
+  '/logo192.png',
+  '/logo512.png',
+  // Other important public assets can be added here, e.g., manifest.json if not automatically handled
+  '/manifest.json'
+  // NOTE: Main JS and CSS bundles (e.g., /assets/index-XXXX.js) are NOT listed here
+  // because their names are hashed. vite-plugin-pwa handles this automatically.
+  // The current network-first-then-cache strategy in 'fetch' will cache them after first load.
 ];
 
 self.addEventListener('install', (event) => {

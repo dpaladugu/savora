@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Settings, User, Palette, Database, LogOut, Shield, FileJson } from "lucide-react"; // Added FileJson
+import { Settings, User, Palette, Database, LogOut, Shield, FileJson, BrainCircuit } from "lucide-react"; // Added FileJson, BrainCircuit
 import { useState } from "react";
 import { Logger } from "@/services/logger";
 import { DataImport } from "./DataImport"; // Import DataImport component
+import { LLMSettingsForm } from "./llm-settings-form"; // Import LLMSettingsForm
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -110,6 +111,19 @@ export function SettingsScreen() {
                 </div>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* LLM Configuration */}
+        <Card className="metric-card border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <BrainCircuit className="w-5 h-5 text-primary" />
+              LLM Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <LLMSettingsForm />
           </CardContent>
         </Card>
 

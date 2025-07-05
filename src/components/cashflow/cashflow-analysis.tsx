@@ -3,10 +3,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, ArrowUpDown } from "lucide-react";
-// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
-import { FirestoreService } from "@/services/firestore";
+import { SupabaseDataService } from "@/services/supabase-data-service"; // Changed
 import { useAuth } from "@/contexts/auth-context";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+// Assuming Income and Expense types from SupabaseDataService will be compatible or we'll import them
+// For now, the internal processing relies on .date and .amount which should be common.
 
 interface CashflowChartEntry {
   month: string;
@@ -36,12 +37,17 @@ export function CashflowAnalysis() {
 
   const loadCashflowData = async () => {
     if (!user) return;
+    setLoading(true); // Ensure loading is true at the start of data fetching
     
     try {
-      const [expenses, investments] = await Promise.all([
-        FirestoreService.getExpenses(user.uid),
-        FirestoreService.getInvestments(user.uid)
+      // Fetch incomes and expenses from SupabaseDataService
+      // Commenting out investments for now as it's not part of SupabaseDataService yet
+      const [incomes, expenses /*, investments */] = await Promise.all([
+        SupabaseDataService.getIncomes(user.uid),
+        SupabaseDataService.getExpenses(user.uid),
+        // Promise.resolve([]) // Placeholder for investments if needed for array structure
       ]);
+      const investments: any[] = []; // Mock empty investments
 
       // Calculate date range based on filter
       const endDate = new Date();
@@ -75,13 +81,22 @@ export function CashflowAnalysis() {
         }
       });
 
-      // FIXME: Income is currently a rough estimation.
-      // For accurate cashflow, integrate with actual income data if available,
-      // or provide a way for users to input their income.
-      // Current estimation: Income = (Expenses + Investments) * 1.2 (implies a 20% savings/surplus rate on top of E+I)
+      incomes.forEach(income => {
+        const incomeDate = new Date(income.date);
+        if (incomeDate >= startDate && incomeDate <= endDate) {
+          const month = income.date.substring(0, 7); // YYYY-MM
+          if (!monthlyData[month]) {
+            monthlyData[month] = { expenses: 0, investments: 0, income: 0 };
+          }
+          monthlyData[month].income += income.amount;
+        }
+      });
+
+      // Ensure all months have a default income of 0 if no income was recorded
       Object.keys(monthlyData).forEach(month => {
-        const data = monthlyData[month];
-        data.income = (data.expenses + data.investments) * 1.2;
+        if (monthlyData[month].income === undefined) {
+          monthlyData[month].income = 0;
+        }
       });
 
       const chartData = Object.entries(monthlyData)

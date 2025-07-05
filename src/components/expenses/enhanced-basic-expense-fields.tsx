@@ -7,11 +7,11 @@ interface EnhancedBasicExpenseFieldsProps {
   formData: {
     amount: string;
     date: string;
-    tag: string;
+    description: string; // Changed from tag
   };
   onFormDataChange: (updates: Partial<EnhancedBasicExpenseFieldsProps['formData']>) => void;
-  onFieldBlur: (fieldName: string, value: string) => void;
-  errors: ValidationErrors;
+  onFieldBlur: (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData'], value: string) => void; // fieldName is now typed
+  errors: Pick<ValidationErrors, 'amount' | 'date' | 'description'>; // Errors specific to these fields
 }
 
 export function EnhancedBasicExpenseFields({ 
@@ -20,15 +20,15 @@ export function EnhancedBasicExpenseFields({
   onFieldBlur,
   errors 
 }: EnhancedBasicExpenseFieldsProps) {
-  const getFieldStatus = (fieldName: string) => {
+  const getFieldStatus = (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData']) => {
     const hasError = !!errors[fieldName];
-    const hasValue = !!formData[fieldName as keyof typeof formData];
+    const hasValue = !!formData[fieldName];
     const isValid = hasValue && !hasError;
     
     return { hasError, hasValue, isValid };
   };
 
-  const renderFieldIcon = (fieldName: string) => {
+  const renderFieldIcon = (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData']) => {
     const { hasError, isValid } = getFieldStatus(fieldName);
     
     if (hasError) {
@@ -44,12 +44,14 @@ export function EnhancedBasicExpenseFields({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {/* Amount Field */}
       <div>
-        <label className="text-sm font-medium text-foreground mb-2 block">
+        <label htmlFor="expenseAmount" className="text-sm font-medium text-foreground mb-2 block">
           Amount (₹) *
         </label>
         <div className="relative">
           <Input
+            id="expenseAmount"
             type="number"
             step="0.01"
             value={formData.amount}
@@ -69,7 +71,7 @@ export function EnhancedBasicExpenseFields({
             {errors.amount}
           </p>
         )}
-        {!errors.amount && formData.amount && (
+        {!errors.amount && getFieldStatus('amount').isValid && ( // Show valid message only if validated and no error
           <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             Valid amount
@@ -77,12 +79,14 @@ export function EnhancedBasicExpenseFields({
         )}
       </div>
       
+      {/* Date Field */}
       <div>
-        <label className="text-sm font-medium text-foreground mb-2 block">
+        <label htmlFor="expenseDate" className="text-sm font-medium text-foreground mb-2 block">
           Date *
         </label>
         <div className="relative">
           <Input
+            id="expenseDate"
             type="date"
             value={formData.date}
             onChange={(e) => onFormDataChange({ date: e.target.value })}
@@ -100,7 +104,7 @@ export function EnhancedBasicExpenseFields({
             {errors.date}
           </p>
         )}
-        {!errors.date && formData.date && (
+        {!errors.date && getFieldStatus('date').isValid && (
           <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             Valid date
@@ -108,37 +112,39 @@ export function EnhancedBasicExpenseFields({
         )}
       </div>
       
+      {/* Description Field (formerly Tag/Merchant) */}
       <div className="md:col-span-2">
-        <label className="text-sm font-medium text-foreground mb-2 block">
-          Tag/Merchant *
+        <label htmlFor="expenseDescription" className="text-sm font-medium text-foreground mb-2 block">
+          Description *
         </label>
         <div className="relative">
           <Input
-            value={formData.tag}
-            onChange={(e) => onFormDataChange({ tag: e.target.value })}
-            onBlur={(e) => onFieldBlur('tag', e.target.value)}
-            placeholder="e.g., Zomato, Amazon"
+            id="expenseDescription"
+            value={formData.description} // Changed from formData.tag
+            onChange={(e) => onFormDataChange({ description: e.target.value })} // Changed from tag
+            onBlur={(e) => onFieldBlur('description', e.target.value)} // Changed from tag
+            placeholder="e.g., Lunch with client, Groceries"
             required
-            className={`pr-10 ${errors.tag ? "border-red-500 focus:ring-red-500" : getFieldStatus('tag').isValid ? "border-green-500" : ""}`}
+            className={`pr-10 ${errors.description ? "border-red-500 focus:ring-red-500" : getFieldStatus('description').isValid ? "border-green-500" : ""}`}
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-            {renderFieldIcon('tag')}
+            {renderFieldIcon('description')}
           </div>
         </div>
-        {errors.tag && (
+        {errors.description && (
           <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
-            {errors.tag}
+            {errors.description}
           </p>
         )}
-        {!errors.tag && formData.tag && (
+        {!errors.description && getFieldStatus('description').isValid && (
           <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
-            Valid tag
+            Valid description
           </p>
         )}
         <p className="text-xs text-muted-foreground mt-1">
-          Enter a descriptive name for this expense (2-100 characters)
+          Enter a clear description for this expense (2-100 characters).
         </p>
       </div>
     </div>
