@@ -31,7 +31,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold flex items-center">
                 {vehicle.type === 'car' ? <Car className="w-5 h-5 mr-2 text-primary" /> : <Bike className="w-5 h-5 mr-2 text-primary" />}
-                {vehicle.name}
+                {vehicle.vehicle_name}
               </CardTitle>
               <div className="flex items-center space-x-1">
                 {onEdit && vehicle.id && (
@@ -70,18 +70,6 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
               <Tag className="w-4 h-4 mr-2 text-gray-400" />
               Type: <span className="text-foreground ml-1 capitalize">{vehicle.type}</span>
             </div>
-            {vehicle.current_odometer !== undefined && (
-              <div className="flex items-center text-muted-foreground">
-                <Gauge className="w-4 h-4 mr-2 text-gray-400" />
-                Odometer: <span className="text-foreground ml-1">{vehicle.current_odometer.toLocaleString()} km</span>
-              </div>
-            )}
-            {vehicle.initial_odometer !== undefined && vehicle.initial_odometer !== vehicle.current_odometer && (
-              <div className="flex items-center text-muted-foreground">
-                <Gauge className="w-4 h-4 mr-2 text-gray-400" />
-                Initial Odo: <span className="text-foreground ml-1">{vehicle.initial_odometer.toLocaleString()} km</span>
-              </div>
-            )}
             {vehicle.insurance_provider && (
               <div className="flex items-center text-muted-foreground">
                 <ShieldCheck className="w-4 h-4 mr-2 text-gray-400" />
@@ -94,10 +82,10 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 Premium: <span className="text-foreground ml-1">{DataValidator.formatCurrency(vehicle.insurance_premium)}</span>
               </div>
             )}
-            {vehicle.insurance_renewal_date && (
+            {vehicle.insurance_next_renewal && (
               <div className="flex items-center text-muted-foreground">
                 <CalendarDays className="w-4 h-4 mr-2 text-gray-400" />
-                Renewal: <span className="text-foreground ml-1">{DataValidator.formatDate(vehicle.insurance_renewal_date)}</span>
+                Renewal: <span className="text-foreground ml-1">{DataValidator.formatDate(vehicle.insurance_next_renewal)}</span>
               </div>
             )}
           </CardContent>

@@ -100,3 +100,11 @@ export class SavoraDB extends Dexie {
 }
 
 export const db = new SavoraDB();
+
+// Export type aliases for backward compatibility
+export type Expense = ExpenseData;
+export type Vehicle = VehicleData;
+export type Investment = InvestmentData;
+export type Loan = LoanData;
+export type CreditCard = CreditCardData;
+export { YearlySummary };

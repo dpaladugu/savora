@@ -1,152 +1,180 @@
-import { db, Expense, MaintenanceRecord, FuelRecord, YearlySummary } from '@/db'; // Assuming @ is src
+import { db, Expense, YearlySummary } from '@/db';
+import { Logger } from './logger';
 
-export const applyDataRetention = async (): Promise<void> => {
-  const retentionYears = 2;
-  const cutoffDate = new Date();
-  cutoffDate.setFullYear(cutoffDate.getFullYear() - retentionYears);
-  const cutoffDateString = cutoffDate.toISOString().split('T')[0]; // Format as YYYY-MM-DD for comparison if dates are stored as strings
+// Note: This service handles data retention for cleaned up version
+// MaintenanceRecord and FuelRecord are not part of the current schema
 
-  console.log(`Applying data retention policy: Archiving records older than ${cutoffDateString}`);
+/**
+ * Data Retention Service
+ * Manages automatic cleanup of old data based on retention policies
+ */
 
-  // --- Archive Old Expenses ---
-  try {
-    const oldExpenses = await db.expenses
-      .where('date')
-      .below(cutoffDateString) // Assumes date is stored as YYYY-MM-DD or ISO string compatible with string comparison
-      .toArray();
-
-    if (oldExpenses.length > 0) {
-      console.log(`Found ${oldExpenses.length} old expenses to archive.`);
-      const yearlySummariesMap: { [key: string]: YearlySummary } = {};
-
-      oldExpenses.forEach((expense: Expense) => {
-        const year = new Date(expense.date).getFullYear();
-        const expenseType = expense.type || 'expense'; // Default to 'expense' if type is not set
-        const key = `${year}-${expense.category}-${expenseType}`;
-
-        if (!yearlySummariesMap[key]) {
-          yearlySummariesMap[key] = {
-            year: year,
-            category: expense.category,
-            type: expenseType,
-            totalAmount: 0,
-            transactionCount: 0,
-          };
-        }
-        yearlySummariesMap[key].totalAmount += expense.amount;
-        yearlySummariesMap[key].transactionCount++;
-      });
-
-      const summariesToPut = Object.values(yearlySummariesMap);
-      if (summariesToPut.length > 0) {
-        await db.yearlySummaries.bulkPut(summariesToPut);
-        console.log(`Put ${summariesToPut.length} yearly expense summaries into DB.`);
-      }
-
-      // Delete the old expenses
-      const expenseIdsToDelete = oldExpenses.map(e => e.id).filter(id => id !== undefined) as number[];
-      if (expenseIdsToDelete.length > 0) {
-        await db.expenses.bulkDelete(expenseIdsToDelete);
-        console.log(`Deleted ${expenseIdsToDelete.length} old expenses.`);
-      }
-    } else {
-      console.log("No old expenses found to archive.");
-    }
-  } catch (error) {
-    console.error("Error during expense data retention:", error);
-  }
-
-  // --- Apply to Maintenance Records ---
-  // Spec: await db.maintenance.where('date').below(cutoffDate).delete();
-  try {
-    const oldMaintenanceRecords = await db.maintenanceRecords
-      .where('date')
-      .below(cutoffDateString)
-      .toArray();
-
-    if (oldMaintenanceRecords.length > 0) {
-      const idsToDelete = oldMaintenanceRecords.map(mr => mr.id).filter(id => id !== undefined) as number[];
-      await db.maintenanceRecords.bulkDelete(idsToDelete);
-      console.log(`Deleted ${idsToDelete.length} old maintenance records.`);
-    } else {
-      console.log("No old maintenance records found to delete.");
-    }
-  } catch (error) {
-    console.error("Error during maintenance data retention:", error);
-  }
-
-  // --- Apply to Fuel Records ---
-  // Spec: await db.fuel.where('date').below(cutoffDate).delete();
-  try {
-    const oldFuelRecords = await db.fuelRecords
-      .where('date')
-      .below(cutoffDateString)
-      .toArray();
-
-    if (oldFuelRecords.length > 0) {
-      const idsToDelete = oldFuelRecords.map(fr => fr.id).filter(id => id !== undefined) as number[];
-      await db.fuelRecords.bulkDelete(idsToDelete);
-      console.log(`Deleted ${idsToDelete.length} old fuel records.`);
-    } else {
-      console.log("No old fuel records found to delete.");
-    }
-  } catch (error) {
-    console.error("Error during fuel data retention:", error);
-  }
-
-  console.log("Data retention policy application finished.");
-};
-
-// Example of how to call it (e.g., on app startup or a settings page)
-/*
-async function testDataRetention() {
-  // Pre-populate some data for testing
-  const today = new Date();
-  const threeYearsAgo = new Date(today);
-  threeYearsAgo.setFullYear(today.getFullYear() - 3);
-  const threeYearsAgoStr = threeYearsAgo.toISOString().split('T')[0];
-
-  const oneYearAgo = new Date(today);
-  oneYearAgo.setFullYear(today.getFullYear() - 1);
-  const oneYearAgoStr = oneYearAgo.toISOString().split('T')[0];
-
-  await db.expenses.bulkPut([
-    { date: threeYearsAgoStr, category: 'Food', amount: 100, type: 'expense', description: 'Old food' },
-    { date: threeYearsAgoStr, category: 'Travel', amount: 200, type: 'expense', description: 'Old travel' },
-    { date: oneYearAgoStr, category: 'Food', amount: 150, type: 'expense', description: 'Recent food' },
-  ]);
-
-  await db.maintenanceRecords.bulkPut([
-     { vehicleId: 1, date: threeYearsAgoStr, type: 'Old Checkup', description: 'checkup', cost:100 },
-     { vehicleId: 1, date: oneYearAgoStr, type: 'New Checkup', description: 'checkup', cost:100 },
-  ]);
-
-  await db.fuelRecords.bulkPut([
-      { vehicleId: 1, date: threeYearsAgoStr, odometer: 1000, quantityLiters: 10, costPerLiter:10, totalCost:100 },
-      { vehicleId: 1, date: oneYearAgoStr, odometer: 2000, quantityLiters: 10, costPerLiter:10, totalCost:100 },
-  ]);
-
-  console.log("Initial expenses count:", await db.expenses.count());
-  console.log("Initial maintenance count:", await db.maintenanceRecords.count());
-  console.log("Initial fuel records count:", await db.fuelRecords.count());
-  console.log("Initial yearly summaries count:", await db.yearlySummaries.count());
-
-  await applyDataRetention();
-
-  console.log("Final expenses count:", await db.expenses.count()); // Should be 1
-  console.log("Final maintenance count:", await db.maintenanceRecords.count()); // Should be 1
-  console.log("Final fuel records count:", await db.fuelRecords.count()); // Should be 1
-  console.log("Final yearly summaries count:", await db.yearlySummaries.count()); // Should be 2 (Food, Travel for 3 years ago)
-
-  const summaries = await db.yearlySummaries.toArray();
-  console.log("Summaries:", JSON.stringify(summaries, null, 2));
-
-  // Clean up test data
-  // await db.expenses.clear();
-  // await db.maintenanceRecords.clear();
-  // await db.fuelRecords.clear();
-  // await db.yearlySummaries.clear();
+interface RetentionPolicy {
+  table: string;
+  retentionMonths: number;
+  enabled: boolean;
 }
 
-// testDataRetention();
-*/
+export class DataRetentionService {
+  private static policies: RetentionPolicy[] = [
+    { table: 'expenses', retentionMonths: 36, enabled: true }, // Keep 3 years of expenses
+    { table: 'yearlySummaries', retentionMonths: 60, enabled: true }, // Keep 5 years of summaries
+  ];
+
+  /**
+   * Execute all enabled retention policies
+   */
+  static async executeRetentionPolicies(): Promise<void> {
+    Logger.info('Starting data retention process...');
+    
+    for (const policy of this.policies) {
+      if (policy.enabled) {
+        try {
+          await this.executePolicy(policy);
+        } catch (error) {
+          Logger.error(`Failed to execute retention policy for ${policy.table}:`, error);
+        }
+      }
+    }
+    
+    Logger.info('Data retention process completed.');
+  }
+
+  /**
+   * Execute a specific retention policy
+   */
+  private static async executePolicy(policy: RetentionPolicy): Promise<void> {
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - policy.retentionMonths);
+    
+    Logger.info(`Executing retention policy for ${policy.table} (keeping ${policy.retentionMonths} months)`);
+    
+    try {
+      let deletedCount = 0;
+      
+      switch (policy.table) {
+        case 'expenses':
+          deletedCount = await this.cleanupExpenses(cutoffDate);
+          break;
+        case 'yearlySummaries':
+          deletedCount = await this.cleanupYearlySummaries(cutoffDate);
+          break;
+        default:
+          Logger.warn(`Unknown table in retention policy: ${policy.table}`);
+          return;
+      }
+      
+      Logger.info(`Retention policy for ${policy.table}: removed ${deletedCount} records`);
+    } catch (error) {
+      Logger.error(`Error executing retention policy for ${policy.table}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clean up old expense records
+   */
+  private static async cleanupExpenses(cutoffDate: Date): Promise<number> {
+    const cutoffDateString = cutoffDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    const oldExpenses = await db.expenses
+      .where('date')
+      .below(cutoffDateString)
+      .toArray();
+    
+    if (oldExpenses.length > 0) {
+      await db.expenses
+        .where('date')
+        .below(cutoffDateString)
+        .delete();
+    }
+    
+    return oldExpenses.length;
+  }
+
+  /**
+   * Clean up old yearly summary records
+   */
+  private static async cleanupYearlySummaries(cutoffDate: Date): Promise<number> {
+    const cutoffYear = cutoffDate.getFullYear();
+    
+    const oldSummaries = await db.yearlySummaries
+      .where('year')
+      .below(cutoffYear)
+      .toArray();
+    
+    if (oldSummaries.length > 0) {
+      await db.yearlySummaries
+        .where('year')
+        .below(cutoffYear)
+        .delete();
+    }
+    
+    return oldSummaries.length;
+  }
+
+  /**
+   * Get retention policy for a specific table
+   */
+  static getPolicy(tableName: string): RetentionPolicy | undefined {
+    return this.policies.find(policy => policy.table === tableName);
+  }
+
+  /**
+   * Update retention policy for a table
+   */
+  static updatePolicy(tableName: string, retentionMonths: number, enabled: boolean): void {
+    const policyIndex = this.policies.findIndex(policy => policy.table === tableName);
+    
+    if (policyIndex !== -1) {
+      this.policies[policyIndex] = { table: tableName, retentionMonths, enabled };
+    } else {
+      this.policies.push({ table: tableName, retentionMonths, enabled });
+    }
+    
+    Logger.info(`Updated retention policy for ${tableName}: ${retentionMonths} months, enabled: ${enabled}`);
+  }
+
+  /**
+   * Get statistics about data that would be affected by retention policies
+   */
+  static async getRetentionStats(): Promise<{[table: string]: {totalRecords: number, eligibleForDeletion: number}}> {
+    const stats: {[table: string]: {totalRecords: number, eligibleForDeletion: number}} = {};
+    
+    for (const policy of this.policies) {
+      if (!policy.enabled) continue;
+      
+      const cutoffDate = new Date();
+      cutoffDate.setMonth(cutoffDate.getMonth() - policy.retentionMonths);
+      
+      try {
+        let totalRecords = 0;
+        let eligibleForDeletion = 0;
+        
+        switch (policy.table) {
+          case 'expenses':
+            totalRecords = await db.expenses.count();
+            eligibleForDeletion = await db.expenses
+              .where('date')
+              .below(cutoffDate.toISOString().split('T')[0])
+              .count();
+            break;
+          case 'yearlySummaries':
+            totalRecords = await db.yearlySummaries.count();
+            eligibleForDeletion = await db.yearlySummaries
+              .where('year')
+              .below(cutoffDate.getFullYear())
+              .count();
+            break;
+        }
+        
+        stats[policy.table] = { totalRecords, eligibleForDeletion };
+      } catch (error) {
+        Logger.error(`Error getting retention stats for ${policy.table}:`, error);
+        stats[policy.table] = { totalRecords: 0, eligibleForDeletion: 0 };
+      }
+    }
+    
+    return stats;
+  }
+}

@@ -16,7 +16,7 @@ export function VehicleManager() {
   const { toast } = useToast();
 
   const vehicles = useLiveQuery(async () => {
-    return await db.vehicles.orderBy('name').toArray();
+    return await db.vehicles.orderBy('vehicle_name').toArray();
   }, [], []); // Initial empty array
 
   const isLoading = vehicles === undefined;
@@ -24,7 +24,7 @@ export function VehicleManager() {
   const handleAddVehicle = async (vehicleData: Omit<Vehicle, 'id'>) => {
     try {
       await db.vehicles.add(vehicleData);
-      toast({ title: "Vehicle Added", description: `${vehicleData.name} has been successfully added.` });
+      toast({ title: "Vehicle Added", description: `${vehicleData.vehicle_name} has been successfully added.` });
       setShowAddForm(false);
       setEditingVehicle(null);
     } catch (error) {
@@ -57,7 +57,7 @@ export function VehicleManager() {
   const handleEditVehicle = (vehicle: Vehicle) => {
     // setEditingVehicle(vehicle);
     // setShowAddForm(true);
-    toast({ title: "Edit Action", description: `Editing ${vehicle.name} (not implemented yet).`});
+    toast({ title: "Edit Action", description: `Editing ${vehicle.vehicle_name} (not implemented yet).`});
   };
 
 

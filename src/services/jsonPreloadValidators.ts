@@ -26,7 +26,7 @@ export const personalProfileSchema: z.ZodType<JsonPersonalProfile> = z.object({
 }).strict(); // Use .strict() if no extra fields are allowed
 
 // Zod schema for JsonExpenseTransaction
-export const expenseTransactionSchema: z.ZodType<JsonExpenseTransaction> = z.object({
+export const expenseTransactionSchema = z.object({
   date: z.string().refine(val => /^\d{4}-\d{2}-\d{2}$/.test(val), { message: "Date must be in YYYY-MM-DD format" }),
   amount: z.number(),
   description: z.string(),
@@ -47,7 +47,7 @@ export const expenseTransactionSchema: z.ZodType<JsonExpenseTransaction> = z.obj
 }).strict();
 
 // Zod schema for JsonIncomeCashFlow (simplified for MVP)
-export const incomeCashFlowSchema: z.ZodType<JsonIncomeCashFlow> = z.object({
+export const incomeCashFlowSchema = z.object({
   source: z.string(),
   amount: z.number(),
   amount_min: z.number().optional(),
@@ -57,7 +57,7 @@ export const incomeCashFlowSchema: z.ZodType<JsonIncomeCashFlow> = z.object({
 }).strict();
 
 // Zod schema for JsonVehicleAsset
-export const vehicleAssetSchema: z.ZodType<JsonVehicleAsset> = z.object({
+export const vehicleAssetSchema = z.object({
   vehicle: z.string(), // Name of the vehicle
   usage: z.string().optional(),
   insurance: z.object({
@@ -78,7 +78,7 @@ export const vehicleAssetSchema: z.ZodType<JsonVehicleAsset> = z.object({
 }).strict();
 
 // Zod schema for JsonLoan
-export const loanSchema: z.ZodType<JsonLoan> = z.object({
+export const loanSchema = z.object({
   loan: z.string(), // Name of the loan
   amount: z.number(),
   emi: z.number(),
@@ -90,7 +90,7 @@ export const loanSchema: z.ZodType<JsonLoan> = z.object({
 }).strict();
 
 // Zod schema for JsonInvestmentMutualFund (Simplified for MVP)
-export const investmentMutualFundSchema: z.ZodType<JsonInvestmentMutualFund> = z.object({
+export const investmentMutualFundSchema = z.object({
   fund: z.string(),
   current_value: z.number().optional(),
   invested: z.number().optional(),
@@ -99,7 +99,7 @@ export const investmentMutualFundSchema: z.ZodType<JsonInvestmentMutualFund> = z
 }).strict();
 
 // Zod schema for JsonCreditCard
-export const creditCardSchema: z.ZodType<JsonCreditCard> = z.object({
+export const creditCardSchema = z.object({
   bank_name: z.string(),
   card_name: z.string(),
   last_digits: z.string(),

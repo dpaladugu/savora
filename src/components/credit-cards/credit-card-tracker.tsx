@@ -208,7 +208,7 @@ function AddCreditCardForm({ onSubmit, onCancel }: {
     feeWaiverRule: '',
     dueDate: '',
     anniversaryDate: '',
-    paymentMethod: 'UPI' as const,
+    paymentMethod: 'UPI' as 'UPI' | 'NEFT' | 'In App',
     isActive: true
   });
 

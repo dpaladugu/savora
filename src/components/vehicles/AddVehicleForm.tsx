@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Vehicle } from '@/db';
+import { VehicleData } from '@/types/jsonPreload';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -8,9 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { useToast } from '@/hooks/use-toast';
 
 interface AddVehicleFormProps {
-  onSubmit: (vehicle: Omit<Vehicle, 'id'>) => void;
+  onSubmit: (vehicle: Omit<VehicleData, 'id'>) => void;
   onCancel: () => void;
-  existingVehicle?: Vehicle | null; // For editing later
+  existingVehicle?: VehicleData | null; // For editing later
 }
 
 const vehicleTypeOptions = [
@@ -24,14 +24,14 @@ const ownerOptions = [
 ];
 
 export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: AddVehicleFormProps) {
-  const [name, setName] = useState(existingVehicle?.name || '');
-  const [type, setType] = useState<"car" | "motorcycle">(existingVehicle?.type || 'car');
-  const [owner, setOwner] = useState<"self" | "brother" | undefined>(existingVehicle?.owner);
-  const [initialOdometer, setInitialOdometer] = useState<string>(existingVehicle?.initial_odometer?.toString() || '');
-  const [currentOdometer, setCurrentOdometer] = useState<string>(existingVehicle?.current_odometer?.toString() || '');
+  const [name, setName] = useState(existingVehicle?.vehicle_name || '');
+  const [type, setType] = useState<"car" | "motorcycle">((existingVehicle?.type as "car" | "motorcycle") || 'car');
+  const [owner, setOwner] = useState<"self" | "brother" | undefined>((existingVehicle?.owner as "self" | "brother") || undefined);
+  const [initialOdometer, setInitialOdometer] = useState<string>('');
+  const [currentOdometer, setCurrentOdometer] = useState<string>('');
   const [insuranceProvider, setInsuranceProvider] = useState(existingVehicle?.insurance_provider || '');
   const [insurancePremium, setInsurancePremium] = useState<string>(existingVehicle?.insurance_premium?.toString() || '');
-  const [insuranceRenewalDate, setInsuranceRenewalDate] = useState(existingVehicle?.insurance_renewal_date || '');
+  const [insuranceRenewalDate, setInsuranceRenewalDate] = useState(existingVehicle?.insurance_next_renewal || '');
 
   const { toast } = useToast();
 
@@ -46,15 +46,13 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
       return;
     }
 
-    const vehicleData: Omit<Vehicle, 'id'> = {
-      name,
+    const vehicleData: Omit<VehicleData, 'id'> = {
+      vehicle_name: name,
       type,
-      owner: owner || undefined, // Ensure it's undefined if empty, not ''
-      initial_odometer: initialOdometer ? parseInt(initialOdometer, 10) : undefined,
-      current_odometer: currentOdometer ? parseInt(currentOdometer, 10) : undefined,
+      owner: owner || undefined,
       insurance_provider: insuranceProvider || undefined,
       insurance_premium: insurancePremium ? parseFloat(insurancePremium) : undefined,
-      insurance_renewal_date: insuranceRenewalDate || undefined,
+      insurance_next_renewal: insuranceRenewalDate || undefined,
     };
     onSubmit(vehicleData);
   };

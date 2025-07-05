@@ -1,3 +1,4 @@
+import Dexie, { Table } from 'dexie';
 import { db } from '@/db'; // Import Dexie db instance
 import { Logger } from './logger';
 
@@ -64,7 +65,7 @@ function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): Omit<Ex
     source: jsonExpense.source,
     geotag: jsonExpense.geotag,
     merchant_code: jsonExpense.merchant_code,
-    cardLast4: jsonExpense.card_last4,
+    card_last4: jsonExpense.card_last4,
     vehicle_id_json: jsonExpense.vehicle_id, // Store JSON vehicle_id, map to FK later if needed
     part_details: jsonExpense.part_details,
     odometer: jsonExpense.odometer,
