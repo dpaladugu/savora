@@ -38,9 +38,10 @@ export function CashflowAnalysis() {
     if (!user) return;
     
     try {
-      const [expenses, investments] = await Promise.all([
+      const [expenses, investments, incomes] = await Promise.all([
         FirestoreService.getExpenses(user.uid),
-        FirestoreService.getInvestments(user.uid)
+        FirestoreService.getInvestments(user.uid),
+        FirestoreService.getIncomes(user.uid) // Added this line
       ]);
 
       // Calculate date range based on filter
@@ -75,13 +76,22 @@ export function CashflowAnalysis() {
         }
       });
 
-      // FIXME: Income is currently a rough estimation.
-      // For accurate cashflow, integrate with actual income data if available,
-      // or provide a way for users to input their income.
-      // Current estimation: Income = (Expenses + Investments) * 1.2 (implies a 20% savings/surplus rate on top of E+I)
+      incomes.forEach(income => {
+        const incomeDate = new Date(income.date);
+        if (incomeDate >= startDate && incomeDate <= endDate) {
+          const month = income.date.substring(0, 7); // YYYY-MM
+          if (!monthlyData[month]) {
+            monthlyData[month] = { expenses: 0, investments: 0, income: 0 };
+          }
+          monthlyData[month].income += income.amount;
+        }
+      });
+
+      // Ensure all months have a default income of 0 if no income was recorded
       Object.keys(monthlyData).forEach(month => {
-        const data = monthlyData[month];
-        data.income = (data.expenses + data.investments) * 1.2;
+        if (monthlyData[month].income === undefined) {
+          monthlyData[month].income = 0;
+        }
       });
 
       const chartData = Object.entries(monthlyData)
