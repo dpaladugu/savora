@@ -36,6 +36,19 @@ export interface FirestoreInvestment {
   updatedAt?: string;
 }
 
+export interface FirestoreIncome {
+  id?: string;
+  amount: number;
+  source: string;
+  category: 'salary' | 'rental' | 'side-business' | 'investment' | 'other';
+  date: string; // YYYY-MM-DD
+  frequency: 'one-time' | 'monthly' | 'quarterly' | 'yearly';
+  userId: string;
+  note?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export class FirestoreService {
   static async getExpenses(userId: string): Promise<FirestoreExpense[]> {
     if (!userId) {
@@ -71,6 +84,75 @@ export class FirestoreService {
         tags: 'fuel, transport',
         account: 'Main Account',
         source: 'manual',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    ];
+  }
+
+  static async getIncomes(userId: string): Promise<FirestoreIncome[]> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    // Mock data for development, ensuring varied dates for testing
+    const today = new Date();
+    const oneMonthAgo = new Date(new Date().setMonth(today.getMonth() - 1)).toISOString().split('T')[0];
+    const twoMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 2)).toISOString().split('T')[0];
+    const sixMonthsAgo = new Date(new Date().setMonth(today.getMonth() - 6)).toISOString().split('T')[0];
+
+    return [
+      {
+        id: 'inc1',
+        amount: 75000,
+        source: 'Monthly Salary',
+        category: 'salary',
+        date: twoMonthsAgo, // Approx 2 months ago
+        frequency: 'monthly',
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'inc2',
+        amount: 12000,
+        source: 'Freelance Project A',
+        category: 'side-business',
+        date: oneMonthAgo, // Approx 1 month ago
+        frequency: 'one-time',
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'inc3',
+        amount: 75000,
+        source: 'Monthly Salary',
+        category: 'salary',
+        date: oneMonthAgo, // Approx 1 month ago
+        frequency: 'monthly',
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+      {
+        id: 'inc4',
+        amount: 5000,
+        source: 'Stock Dividends',
+        category: 'investment',
+        date: sixMonthsAgo, // Approx 6 months ago
+        frequency: 'quarterly', // This would imply it repeats, but for cashflow we care about the specific date it hit
+        userId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      },
+       {
+        id: 'inc5',
+        amount: 75000,
+        source: 'Monthly Salary',
+        category: 'salary',
+        date: today.toISOString().split('T')[0], // Current month
+        frequency: 'monthly',
+        userId,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       }

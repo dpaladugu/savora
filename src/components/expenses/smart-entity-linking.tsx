@@ -6,7 +6,7 @@ import { Link as LinkIcon, Car, Shield, CreditCard, Home, Target } from "lucide-
 
 interface EntityLinkingProps {
   category: string;
-  tag: string;
+  description: string; // Changed from tag
   onLinkChange: (entityType: string, entityId: string) => void;
   linkedEntities: Record<string, string>;
 }
@@ -37,15 +37,16 @@ const mockGoals = [
   { id: '2', name: 'Car Insurance Renewal', type: 'Recurring' }
 ];
 
-export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities }: EntityLinkingProps) {
+export function SmartEntityLinking({ category, description, onLinkChange, linkedEntities }: EntityLinkingProps) {
   const [suggestions, setSuggestions] = useState<Array<{ type: string; entities: any[]; icon: any; label: string }>>([]);
 
   useEffect(() => {
     const newSuggestions = [];
+    const descLower = description.toLowerCase(); // Use description
 
     // Vehicle-related categories
     if (['Fuel', 'Maintenance', 'Servicing', 'RTO', 'Vehicle Insurance'].includes(category) || 
-        tag.toLowerCase().includes('vehicle') || tag.toLowerCase().includes('car') || tag.toLowerCase().includes('bike')) {
+        descLower.includes('vehicle') || descLower.includes('car') || descLower.includes('bike')) {
       newSuggestions.push({
         type: 'vehicle',
         entities: mockVehicles,
@@ -55,7 +56,7 @@ export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities
     }
 
     // Insurance-related
-    if (category === 'Insurance' || tag.toLowerCase().includes('insurance')) {
+    if (category === 'Insurance' || descLower.includes('insurance')) {
       newSuggestions.push({
         type: 'insurance',
         entities: mockInsurance,
@@ -66,7 +67,7 @@ export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities
 
     // Property-related
     if (['Water Tax', 'Property Tax', 'Repairs', 'Rent', 'Maintenance'].includes(category) ||
-        tag.toLowerCase().includes('property') || tag.toLowerCase().includes('rent')) {
+        descLower.includes('property') || descLower.includes('rent')) {
       newSuggestions.push({
         type: 'property',
         entities: mockProperties,
@@ -77,7 +78,7 @@ export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities
 
     // Credit Card related
     if (['Annual Fee', 'Joining Fee', 'Cashback', 'Rewards'].includes(category) ||
-        tag.toLowerCase().includes('card') || tag.toLowerCase().includes('credit')) {
+        descLower.includes('card') || descLower.includes('credit')) {
       newSuggestions.push({
         type: 'creditCard',
         entities: mockCreditCards,
@@ -87,7 +88,7 @@ export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities
     }
 
     // Recurring/Goal related
-    if (category === 'Recurring' || tag.toLowerCase().includes('recurring') || tag.toLowerCase().includes('goal')) {
+    if (category === 'Recurring' || descLower.includes('recurring') || descLower.includes('goal')) {
       newSuggestions.push({
         type: 'goal',
         entities: mockGoals,
@@ -97,7 +98,7 @@ export function SmartEntityLinking({ category, tag, onLinkChange, linkedEntities
     }
 
     setSuggestions(newSuggestions);
-  }, [category, tag]);
+  }, [category, description]); // Dependency array updated to description
 
   if (suggestions.length === 0) return null;
 

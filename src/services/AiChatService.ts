@@ -129,19 +129,31 @@ export class AiChatService {
   }
 
   public initializeProvider(): void {
-    const { decryptedAiApiKey, currentAiProvider, aiServiceBaseUrl } = useAppStore.getState();
+    // Use the new selector for the whole config object
+    const { apiKey, provider, baseUrl, model } = useAppStore.getState().decryptedAiConfigState();
 
-    if (!decryptedAiApiKey) {
-      console.warn('AI Service: API key not available. Provider not initialized.');
+    if (!apiKey && provider !== 'ollama_local') { // Ollama might not need an API key
+      console.warn('AI Service: API key not available for cloud provider. Provider not initialized.');
+      this.provider = null;
+      return;
+    }
+    if (provider === 'ollama_local' && !baseUrl) {
+      console.warn('AI Service: Base URL not available for Ollama. Provider not initialized.');
       this.provider = null;
       return;
     }
 
+
     // Later, we will use aiServiceBaseUrl for providers like Ollama
-    switch (currentAiProvider) {
+    switch (provider) {
       case 'deepseek':
-        this.provider = new DeepSeekProvider(decryptedAiApiKey);
-        console.log('AI Service: Initialized with DeepSeekProvider.');
+        if (!apiKey) { // Explicit check for apiKey for deepseek
+             console.warn('AI Service: API key required for DeepSeek. Provider not initialized.');
+             this.provider = null;
+             return;
+        }
+        this.provider = new DeepSeekProvider(apiKey, model || DEEPSEEK_MODEL_NAME); // Pass model
+        console.log(`AI Service: Initialized with DeepSeekProvider (Model: ${model || DEEPSEEK_MODEL_NAME}).`);
         break;
       // case 'groq':
       //   this.provider = new GroqProvider(decryptedAiApiKey, aiServiceBaseUrl); // Assuming GroqProvider might also need a base URL or model specifier

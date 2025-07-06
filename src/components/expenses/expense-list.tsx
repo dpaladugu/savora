@@ -1,16 +1,17 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Calendar, CreditCard, Repeat } from "lucide-react"; // Import Repeat
-import { Expense } from "@/db"; // Changed to use Expense type from db.ts
+import { Trash2, Edit, Calendar, CreditCard, Repeat } from "lucide-react";
+import type { Expense as AppExpense } from "@/types/entities"; // Changed to import from central types
 import { DataValidator } from "@/services/data-validator";
 
 interface ExpenseListProps {
-  expenses: Expense[];
+  expenses: AppExpense[];
   onDelete?: (expenseId: string) => void;
+  onEdit?: (expense: AppExpense) => void; // Added onEdit prop
 }
 
-export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
+export function ExpenseList({ expenses, onDelete, onEdit }: ExpenseListProps) {
   if (expenses.length === 0) {
     return (
       <Card>
@@ -58,16 +59,28 @@ export function ExpenseList({ expenses, onDelete }: ExpenseListProps) {
                 </div>
               </div>
               
-              {onDelete && expense.id && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onDelete(expense.id!)}
-                  className="text-destructive hover:text-destructive/80 ml-2"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              )}
+              <div className="flex items-center ml-2"> {/* Container for buttons */}
+                {onEdit && expense.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onEdit(expense)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                )}
+                {onDelete && expense.id && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDelete(expense.id)} // id is now non-optional string
+                    className="text-destructive hover:text-destructive/80"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
