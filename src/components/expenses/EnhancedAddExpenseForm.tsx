@@ -4,35 +4,32 @@ import { Expense as FormExpenseType } from '@/types/expense'; // Original type f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { AlertTriangleIcon } from 'lucide-react'; // Import the icon
 import { AdvancedExpenseOptions } from './AdvancedExpenseOptions';
 import { db } from "@/db"; // Dexie DB instance
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/auth-context'; // Assuming we might need user_id
+import { useAuth } from '@/contexts/auth-context';
 
-// Interface aligning with SavoraDB's 'expenses' table schema (version 5)
-// Schema: '&id, user_id, date, category, amount, description, payment_method, *tags_flat, source, merchant, account'
 interface DexieExpenseRecord {
-  id: string; // UUID
+  id: string;
   user_id?: string;
   date: string;
   category: string;
   amount: number;
   description: string;
   payment_method: string;
-  tags_flat: string; // Comma-separated for Dexie
+  tags_flat: string;
   source: string;
   merchant: string;
   account: string;
-  created_at?: Date;
-  updated_at?: Date;
+  created_at?: string; // Changed to string
+  updated_at?: string; // Changed to string
 }
 
-// Extended form state type to include all fields for Dexie
 type ExtendedFormExpense = FormExpenseType & {
   payment_method: string;
   merchant: string;
   account: string;
-  // 'source' is already in FormExpenseType
   user_id?: string;
 };
 
@@ -53,7 +50,7 @@ const initialFormState: ExtendedFormExpense = {
 
 export const EnhancedAddExpenseForm: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user for user_id
+  const { user } = useAuth();
   const {
     expense,
     errors,
@@ -64,19 +61,15 @@ export const EnhancedAddExpenseForm: React.FC = () => {
   } = useEnhancedExpenseValidation(initialFormState);
 
   const [formMessage, setFormMessage] = useState<string | null>(null);
-
-  // Type assertion for 'expense' to ensure all fields are accessible
   const currentExpense = expense as ExtendedFormExpense;
 
   const performResetForm = () => {
-    // Ensure the user_id is preserved or reset as intended
     const resetState = { ...initialFormState, user_id: user?.uid || 'default_user' };
     resetValidationForm(resetState);
     setFormMessage(null);
   };
 
   useEffect(() => {
-    // Set user_id when user context changes, if not already set by initial state
     if (user && (!currentExpense.user_id || currentExpense.user_id === 'default_user')) {
       handleChange('user_id' as any, user.uid);
     }
@@ -92,19 +85,18 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
         const expenseToSave: DexieExpenseRecord = {
           id: newId,
-          user_id: currentExpense.user_id || user?.uid || "default_user", // Prioritize form state, then auth user
+          user_id: currentExpense.user_id || user?.uid || "default_user",
           amount: Number(currentExpense.amount) || 0,
           date: currentExpense.date || new Date().toISOString().split('T')[0],
           category: currentExpense.category || '',
           description: currentExpense.description || '',
           payment_method: currentExpense.payment_method || '',
-          // Tags are now lowercase from TagsInput, join them for tags_flat
           tags_flat: (currentExpense.tags || []).join(','),
           source: currentExpense.source || '',
           merchant: currentExpense.merchant || '',
           account: currentExpense.account || '',
-          created_at: new Date(),
-          updated_at: new Date(),
+          created_at: new Date().toISOString(), // Convert to ISO string
+          updated_at: new Date().toISOString(), // Convert to ISO string
         };
 
         await db.expenses.add(expenseToSave);
@@ -245,7 +237,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         <Label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source (Optional)</Label>
         <Input
           id="source" name="source" type="text"
-          value={currentExpense.source || ''} // source is in FormExpenseType
+          value={currentExpense.source || ''}
           onChange={(e) => handleFormInputChange('source', e.target.value)}
           onBlur={() => handleBlur('source' as any)}
           className="mt-1 block w-full"
@@ -255,16 +247,15 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
       <AdvancedExpenseOptions
         tags={currentExpense.tags || []}
-        userId={user?.uid || 'default_user'} // Pass userId to TagsInput
+        userId={user?.uid || 'default_user'}
         onTagsChange={(newTags) => handleFormInputChange('tags', newTags)}
       />
-      {/* TODO: Add error display for tags if validation is added for them in useEnhancedExpenseValidation */}
 
       {formMessage && (
         <p
           className={`mt-3 text-sm ${formMessage.toLowerCase().includes('failed') || (errors && Object.keys(errors).filter(k => !!(errors as any)[k]).length > 0) ? 'text-red-600' : 'text-green-600'}`}
           role={formMessage.toLowerCase().includes('failed') || (errors && Object.keys(errors).filter(k => !!(errors as any)[k]).length > 0) ? 'alert' : 'status'}
-          aria-live="polite" // Ensures updates are announced
+          aria-live="polite"
         >
           {formMessage}
         </p>
