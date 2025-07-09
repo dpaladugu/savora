@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, Target, PiggyBank, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { DashboardData } from "@/types/dashboard";
-import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
+import { DataValidator } from "@/services/data-validator"; // Changed import
 
 interface EnhancedDashboardMetricsProps {
   dashboardData: DashboardData | null;
@@ -37,7 +37,7 @@ export function EnhancedDashboardMetrics({ dashboardData, loading }: EnhancedDas
   const metrics = [
     {
       title: "Monthly Expenses",
-      value: ComprehensiveDataValidator.formatCurrency(dashboardData.monthlyExpenses),
+      value: DataValidator.formatCurrency(dashboardData.monthlyExpenses),
       change: budgetUsed > 100 ? "Over Budget" : `${budgetUsed.toFixed(0)}% of budget`,
       changeType: budgetUsed > 100 ? "negative" : "neutral",
       icon: DollarSign,
@@ -46,7 +46,7 @@ export function EnhancedDashboardMetrics({ dashboardData, loading }: EnhancedDas
     },
     {
       title: "Total Investments",
-      value: ComprehensiveDataValidator.formatCurrency(dashboardData.totalInvestments),
+      value: DataValidator.formatCurrency(dashboardData.totalInvestments),
       change: `${dashboardData.investmentCount} investments`,
       changeType: "positive",
       icon: TrendingUp,
@@ -55,7 +55,7 @@ export function EnhancedDashboardMetrics({ dashboardData, loading }: EnhancedDas
     },
     {
       title: "Emergency Fund",
-      value: ComprehensiveDataValidator.formatCurrency(dashboardData.emergencyFundCurrent),
+      value: DataValidator.formatCurrency(dashboardData.emergencyFundCurrent),
       change: `${emergencyFundProgress.toFixed(0)}% of target`,
       changeType: emergencyFundProgress >= 100 ? "positive" : "neutral",
       icon: PiggyBank,

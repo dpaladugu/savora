@@ -1,14 +1,16 @@
-
 import { QuickActions } from "./quick-actions";
-import { DashboardMetrics } from "./dashboard-metrics";
+import { EnhancedDashboardMetrics } from "./enhanced-dashboard-metrics"; // Changed to Enhanced
 import { DashboardCharts } from "./dashboard-charts";
-import { AiTokenUsageDisplay } from "./ai-token-usage-display"; // Import the new component
+import { AiTokenUsageDisplay } from "./ai-token-usage-display";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 import { useOptimizedDashboardData } from "@/hooks/use-optimized-dashboard-data";
-import { memo } from "react";
+import { memo, useEffect } from "react";
 import { Logger } from "@/services/logger";
 import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card"; // For Financial Insights
+import { TrendingUp, Target, CreditCard } from "lucide-react"; // For Financial Insights
+import { DataValidator } from "@/services/data-validator"; // For Financial Insights
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -19,6 +21,16 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
   const { dashboardData, loading, error, refetch } = useOptimizedDashboardData();
 
   Logger.debug('Dashboard render', { loading, error: !!error, hasData: !!dashboardData });
+
+  useEffect(() => {
+    // Auto-refresh data every 5 minutes
+    const interval = setInterval(() => {
+      if (!loading) {
+        refetch();
+      }
+    }, 5 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [loading, refetch]);
 
   const handleQuickActions = {
     onAddExpense: () => {
@@ -39,51 +51,94 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
     }
   };
 
+  const financialInsights = dashboardData ? [
+    {
+      icon: TrendingUp, // Note: This was TrendUp in enhanced-dashboard, assuming TrendingUp is correct from lucide
+      title: "Monthly Expenses Trend", // Example title
+      value: DataValidator.formatCurrency(dashboardData.monthlyExpenses),
+      trend: dashboardData.monthlyExpenses > (dashboardData.monthlyIncome * 0.5) ? "Spending high vs income" : "Spending moderate", // Example trend
+      color: dashboardData.monthlyExpenses > (dashboardData.monthlyIncome * 0.5) ? "text-orange-600" : "text-green-600"
+    },
+    {
+      icon: Target,
+      title: "Emergency Fund Progress",
+      value: DataValidator.formatPercentage((dashboardData.emergencyFundCurrent / dashboardData.emergencyFundTarget) * 100),
+      trend: dashboardData.emergencyFundCurrent < dashboardData.emergencyFundTarget ? "Below target" : "Target met/exceeded",
+      color: dashboardData.emergencyFundCurrent < dashboardData.emergencyFundTarget ? "text-red-600" : "text-green-600"
+    },
+    {
+      icon: CreditCard,
+      title: "Credit Card Utilization", // Example
+      value: DataValidator.formatCurrency(dashboardData.creditCardDebt), // Assuming creditCardDebt is total utilization
+      trend: dashboardData.creditCardDebt > 0 ? "Debt present" : "No CC debt",
+      color: dashboardData.creditCardDebt > 0 ? "text-red-600" : "text-green-600"
+    }
+  ] : [];
+
+
   return (
     <ErrorBoundary>
-      {/* The outer div (min-h-screen, bg-gradient, pb-24) and content padding (px-4, py-4)
-          are expected to be handled by MainContentRouter now that ModuleHeader is shown.
-          This component should just return its direct content.
-      */}
-      <div className="space-y-6"> {/* Simplified top-level div, specific padding/margins handled by router's structure */}
-          {/* Removed inline title/subtitle - ModuleHeader will provide this */}
-          {/*
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6" // This margin might still be useful if QuickActions is the first visible thing
-          >
-            <h1 className="text-2xl font-bold text-foreground mb-1">Dashboard</h1>
-            <p className="text-slate-600 dark:text-slate-300 text-sm">
-              Your financial overview
-            </p>
-          </motion.div>
-          */}
-          
-          <QuickActions {...handleQuickActions} />
+      <div className="space-y-6">
+        <QuickActions {...handleQuickActions} />
 
-          <EnhancedLoadingWrapper 
-            loading={loading} 
-            loadingText="Loading dashboard data..."
-            error={error}
-            onRetry={() => {
-              Logger.info('Dashboard retry requested');
-              refetch();
-            }}
-          >
-            <DashboardMetrics
-              dashboardData={dashboardData}
-              loading={loading}
-              onTabChange={onTabChange}
-              onMoreNavigation={onMoreNavigation}
-            />
-            <DashboardCharts />
-            {/* Add the AI Token Usage Display */}
-            <div className="mt-6"> {/* Added some margin-top */}
-              <AiTokenUsageDisplay />
-            </div>
-          </EnhancedLoadingWrapper>
-        {/* Removed the extra closing div tag that was here */}
+        <EnhancedLoadingWrapper
+          loading={loading}
+          loadingText="Loading dashboard data..."
+          error={error}
+          onRetry={() => {
+            Logger.info('Dashboard retry requested');
+            refetch();
+          }}
+        >
+          {/* Use EnhancedDashboardMetrics */}
+          <EnhancedDashboardMetrics
+            dashboardData={dashboardData}
+            loading={loading}
+            // Removed onTabChange and onMoreNavigation if EnhancedDashboardMetrics doesn't use them
+            // If it does, they should be passed, but the read file didn't show them as props for EnhancedDashboardMetrics
+          />
+          
+          {/* Financial Insights Section from enhanced-dashboard */}
+          {dashboardData && financialInsights.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }} // Adjust delay as needed
+              className="mb-6" // Original class from enhanced-dashboard
+            >
+              <h2 className="text-lg font-semibold text-foreground mb-4">Financial Insights</h2>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {financialInsights.map((insight, index) => (
+                  <Card key={index} className="metric-card"> {/* Assuming metric-card for consistent styling */}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <insight.icon aria-hidden="true" className="w-4 h-4 text-muted-foreground" />
+                            <span className="text-sm font-medium text-muted-foreground">
+                              {insight.title}
+                            </span>
+                          </div>
+                          <div className="text-xl font-bold text-foreground mb-1">
+                            {insight.value}
+                          </div>
+                          <div className={`text-xs ${insight.color}`}>
+                            {insight.trend}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          <DashboardCharts />
+          <div className="mt-6">
+            <AiTokenUsageDisplay />
+          </div>
+        </EnhancedLoadingWrapper>
       </div>
     </ErrorBoundary>
   );

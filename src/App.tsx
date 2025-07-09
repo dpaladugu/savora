@@ -1,9 +1,8 @@
-
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/auth-context";
 import { ThemeProvider } from "@/contexts/theme-context";
-import { GlobalErrorBoundary } from "@/components/error/global-error-boundary";
+import { ErrorBoundary } from "@/components/error/error-boundary"; // Changed import
 import { Toaster } from "@/components/ui/toaster";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
@@ -25,7 +24,7 @@ function App() {
   Logger.info('App initialized');
 
   return (
-    <GlobalErrorBoundary>
+    <ErrorBoundary> {/* Changed component */}
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
@@ -41,7 +40,7 @@ function App() {
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
-    </GlobalErrorBoundary>
+    </ErrorBoundary>
   );
 }
 
