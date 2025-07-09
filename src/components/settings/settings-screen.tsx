@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Settings, User, Palette, Database, LogOut, Shield, FileJson, BrainCircuit } from "lucide-react"; // Added FileJson, BrainCircuit
+import { Settings, User, Palette, Database, LogOut, Shield, FileJson, BrainCircuit, Tag as TagIcon } from "lucide-react"; // Added TagIcon
 import { useState } from "react";
 import { Logger } from "@/services/logger";
-import { DataImport } from "./DataImport"; // Import DataImport component
-import { LLMSettingsForm } from "./llm-settings-form"; // Import LLMSettingsForm
+import { DataImport } from "./DataImport";
+import { LLMSettingsForm } from "./llm-settings-form";
+import { TagManager } from "@/components/tags/TagManager"; // Import TagManager
 
 export function SettingsScreen() {
   const { user, signOut } = useAuth();
@@ -63,7 +65,7 @@ export function SettingsScreen() {
       <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <User className="w-5 h-5 text-primary" />
+              <User aria-hidden="true" className="w-5 h-5 text-primary" />
               Account
             </CardTitle>
           </CardHeader>
@@ -91,7 +93,7 @@ export function SettingsScreen() {
         <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Palette className="w-5 h-5 text-primary" />
+              <Palette aria-hidden="true" className="w-5 h-5 text-primary" />
               Appearance
             </CardTitle>
           </CardHeader>
@@ -118,7 +120,7 @@ export function SettingsScreen() {
         <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <BrainCircuit className="w-5 h-5 text-primary" />
+              <BrainCircuit aria-hidden="true" className="w-5 h-5 text-primary" />
               LLM Configuration
             </CardTitle>
           </CardHeader>
@@ -127,11 +129,24 @@ export function SettingsScreen() {
           </CardContent>
         </Card>
 
+        {/* Tag Management */}
+        <Card className="metric-card border-border/50">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-3">
+              <TagIcon aria-hidden="true" className="w-5 h-5 text-primary" />
+              Manage Tags
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TagManager />
+          </CardContent>
+        </Card>
+
         {/* Data & Privacy */}
         <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Database className="w-5 h-5 text-primary" />
+              <Database aria-hidden="true" className="w-5 h-5 text-primary" />
               Data & Backup
             </CardTitle>
           </CardHeader>
@@ -161,7 +176,7 @@ export function SettingsScreen() {
         <Card className="metric-card border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-3">
-              <Shield className="w-5 h-5 text-primary" />
+              <Shield aria-hidden="true" className="w-5 h-5 text-primary" />
               Security
             </CardTitle>
           </CardHeader>
@@ -197,7 +212,7 @@ export function SettingsScreen() {
                 disabled={isSigningOut}
                 className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
               >
-                <LogOut className="w-4 h-4 mr-2" />
+                <LogOut aria-hidden="true" className="w-4 h-4 mr-2" />
                 {isSigningOut ? 'Signing Out...' : 'Sign Out'}
               </Button>
             </div>

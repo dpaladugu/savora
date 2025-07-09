@@ -1,98 +1,116 @@
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Plus, Coins, Search, Trash2, Edit } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Coins, Search, Trash2, Edit, Loader2, AlertTriangle } from "lucide-react"; // Added Loader2, AlertTriangle
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Purity and Form
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"; // For Date Picker
+import { Calendar } from "@/components/ui/calendar"; // For Date Picker
+import { CalendarIcon } from "lucide-react"; // For Date Picker
 import { useToast } from "@/hooks/use-toast";
+import { db, DexieGoldInvestmentRecord } from "@/db"; // Import Dexie db and record type
+import { useLiveQuery } from "dexie-react-hooks";
+import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export interface GoldInvestment {
-  id: string;
-  weight: number; // in grams
-  purity: '995' | '999' | '916' | '750' | 'other';
-  purchasePrice: number;
-  currentPrice?: number;
-  purchaseDate: string;
-  paymentMethod: string;
-  storageLocation: string;
-  form: 'coins' | 'bars' | 'jewelry' | 'etf' | 'other';
-  vendor?: string;
-  note?: string;
-}
 
-const mockGoldInvestments: GoldInvestment[] = [
-  {
-    id: '1',
-    weight: 10,
-    purity: '999',
-    purchasePrice: 65000,
-    currentPrice: 68000,
-    purchaseDate: '2023-12-15',
-    paymentMethod: 'Bank Transfer',
-    storageLocation: 'Bank Locker',
-    form: 'coins',
-    vendor: 'MMTC-PAMP'
-  },
-  {
-    id: '2',
-    weight: 50,
-    purity: '995',
-    purchasePrice: 320000,
-    currentPrice: 335000,
-    purchaseDate: '2023-10-20',
-    paymentMethod: 'Cash',
-    storageLocation: 'Home Safe',
-    form: 'bars',
-    vendor: 'Local Jeweller'
-  }
-];
+// Define types for form select options
+const GOLD_PURITY_OPTIONS = ['999', '995', '916', '750', 'other'] as const;
+type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
+
+const GOLD_FORM_OPTIONS = ['coins', 'bars', 'jewelry', 'etf', 'other'] as const;
+type GoldForm = typeof GOLD_FORM_OPTIONS[number];
+
+// Form data can be a partial of DexieGoldInvestmentRecord, with some fields as string for input
+export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'>> & {
+  weight: string;
+  purchasePrice: string;
+  currentPrice?: string;
+  purity: GoldPurity; // Use specific types
+  form: GoldForm;     // Use specific types
+};
+
 
 export function GoldTracker() {
-  const [investments, setInvestments] = useState<GoldInvestment[]>(mockGoldInvestments);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingInvestment, setEditingInvestment] = useState<DexieGoldInvestmentRecord | null>(null);
+  const [investmentToDelete, setInvestmentToDelete] = useState<DexieGoldInvestmentRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const handleAddInvestment = (newInvestment: Omit<GoldInvestment, 'id'>) => {
-    const investment: GoldInvestment = {
-      ...newInvestment,
-      id: Date.now().toString()
-    };
-    
-    setInvestments([investment, ...investments]);
-    setShowAddForm(false);
-    
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save gold investment to Firestore:', investment);
-    
-    toast({
-      title: "Gold investment added",
-      description: `${newInvestment.weight}g of ${newInvestment.purity} purity gold`,
-    });
-  };
-
-  const handleDeleteInvestment = (id: string) => {
-    setInvestments(investments.filter(inv => inv.id !== id));
-    // TODO: Firebase integration - delete from Firestore
-    console.log('TODO: Delete gold investment from Firestore:', id);
-    toast({
-      title: "Investment deleted",
-    });
-  };
-
-  const filteredInvestments = investments.filter(investment =>
-    investment.form.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    investment.vendor?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    investment.storageLocation.toLowerCase().includes(searchTerm.toLowerCase())
+  const liveInvestments = useLiveQuery(
+    async () => {
+      let query = db.goldInvestments.orderBy('purchaseDate').reverse(); // Show newest first
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        query = query.filter(inv =>
+          inv.form.toLowerCase().includes(lowerSearchTerm) ||
+          inv.storageLocation.toLowerCase().includes(lowerSearchTerm) ||
+          (inv.vendor && inv.vendor.toLowerCase().includes(lowerSearchTerm)) ||
+          (inv.note && inv.note.toLowerCase().includes(lowerSearchTerm))
+        );
+      }
+      return await query.toArray();
+    },
+    [searchTerm],
+    []
   );
 
-  const totalWeight = investments.reduce((sum, inv) => sum + inv.weight, 0);
-  const totalInvestment = investments.reduce((sum, inv) => sum + inv.purchasePrice, 0);
-  const totalCurrentValue = investments.reduce((sum, inv) => sum + (inv.currentPrice || inv.purchasePrice), 0);
-  const totalGainLoss = totalCurrentValue - totalInvestment;
+  const investments = liveInvestments || [];
 
-  const getFormColor = (form: string) => {
+
+  const handleAddNew = () => {
+    setEditingInvestment(null);
+    setShowAddForm(true);
+  };
+
+  const handleOpenEditForm = (investment: DexieGoldInvestmentRecord) => {
+    setEditingInvestment(investment);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (investment: DexieGoldInvestmentRecord) => {
+    setInvestmentToDelete(investment);
+  };
+
+  const handleDeleteInvestmentExecute = async () => {
+    if (!investmentToDelete || !investmentToDelete.id) return;
+    try {
+      await db.goldInvestments.delete(investmentToDelete.id);
+      toast({
+        title: "Investment Deleted",
+        description: `Gold investment "${investmentToDelete.weight}g ${investmentToDelete.form}" has been deleted.`,
+      });
+    } catch (error) {
+      console.error("Error deleting gold investment:", error);
+      toast({
+        title: "Error",
+        description: "Could not delete gold investment.",
+        variant: "destructive",
+      });
+    } finally {
+        setInvestmentToDelete(null);
+    }
+  };
+
+  const totalWeight = investments.reduce((sum, inv) => sum + Number(inv.weight || 0), 0);
+  const totalInvestmentValue = investments.reduce((sum, inv) => sum + Number(inv.purchasePrice || 0), 0);
+  const totalCurrentValue = investments.reduce((sum, inv) => sum + (Number(inv.currentPrice) || Number(inv.purchasePrice) || 0), 0);
+  const totalGainLoss = totalCurrentValue - totalInvestmentValue;
+
+
+  const getFormColor = (formType: string) => {
     const colors: Record<string, string> = {
       'coins': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
       'bars': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
@@ -242,7 +260,9 @@ export function GoldTracker() {
                         <span className="text-muted-foreground">Storage:</span>
                         <span className="font-medium text-foreground">{investment.storageLocation}</span>
                         <span className="text-muted-foreground">•</span>
-                        <span className="text-muted-foreground">{new Date(investment.purchaseDate).toLocaleDateString('en-IN')}</span>
+                        <span className="text-muted-foreground">
+                          {investment.purchaseDate && isValidDate(parseISO(investment.purchaseDate)) ? format(parseISO(investment.purchaseDate), 'PPP') : 'N/A'}
+                        </span>
                       </div>
                       {investment.vendor && (
                         <p className="text-xs text-muted-foreground">Vendor: {investment.vendor}</p>
@@ -293,42 +313,144 @@ export function GoldTracker() {
   );
 }
 
-function AddGoldForm({ onSubmit, onCancel }: {
-  onSubmit: (investment: Omit<GoldInvestment, 'id'>) => void;
-  onCancel: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    weight: '',
-    purity: '999' as GoldInvestment['purity'],
-    purchasePrice: '',
-    currentPrice: '',
-    purchaseDate: new Date().toISOString().split('T')[0],
-    paymentMethod: 'Bank Transfer',
-    storageLocation: '',
-    form: 'coins' as GoldInvestment['form'],
-    vendor: '',
-    note: ''
-  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+function AddGoldForm({ initialData, onClose }: {
+  initialData?: DexieGoldInvestmentRecord | null;
+  onClose: () => void;
+}) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<GoldInvestmentFormData>(() => {
+    if (initialData) {
+      return {
+        ...initialData,
+        weight: initialData.weight.toString(),
+        purchasePrice: initialData.purchasePrice.toString(),
+        currentPrice: initialData.currentPrice?.toString() || '',
+        purity: initialData.purity as GoldPurity, // Ensure type alignment
+        form: initialData.form as GoldForm,       // Ensure type alignment
+        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      };
+    }
+    return { // Default for new investment
+      weight: '',
+      purity: '999',
+      purchasePrice: '',
+      currentPrice: '',
+      purchaseDate: format(new Date(), 'yyyy-MM-dd'),
+      paymentMethod: 'Bank Transfer',
+      storageLocation: '',
+      form: 'coins',
+      vendor: '',
+      note: '',
+      user_id: 'default_user', // Placeholder
+    };
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        weight: initialData.weight.toString(),
+        purchasePrice: initialData.purchasePrice.toString(),
+        currentPrice: initialData.currentPrice?.toString() || '',
+        purity: initialData.purity as GoldPurity,
+        form: initialData.form as GoldForm,
+        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+      });
+    } else {
+      setFormData({
+        weight: '',
+        purity: '999',
+        purchasePrice: '',
+        currentPrice: '',
+        purchaseDate: format(new Date(), 'yyyy-MM-dd'),
+        paymentMethod: 'Bank Transfer',
+        storageLocation: '',
+        form: 'coins',
+        vendor: '',
+        note: '',
+        user_id: 'default_user',
+      });
+    }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: keyof GoldInvestmentFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      setFormData(prev => ({ ...prev, purchaseDate: format(date, 'yyyy-MM-dd') }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!formData.weight || !formData.purchasePrice || !formData.storageLocation) {
+    setIsSaving(true);
+
+    if (!formData.weight || !formData.purchasePrice || !formData.storageLocation || !formData.paymentMethod || !formData.purchaseDate) {
+      toast({ title: "Validation Error", description: "Please fill all required fields (*).", variant: "destructive" });
+      setIsSaving(false);
       return;
     }
 
-    onSubmit({
-      weight: parseFloat(formData.weight),
-      purity: formData.purity,
-      purchasePrice: parseFloat(formData.purchasePrice),
-      currentPrice: formData.currentPrice ? parseFloat(formData.currentPrice) : undefined,
-      purchaseDate: formData.purchaseDate,
-      paymentMethod: formData.paymentMethod,
-      storageLocation: formData.storageLocation,
-      form: formData.form,
-      vendor: formData.vendor || undefined,
-      note: formData.note || undefined
-    });
+    const weightNum = parseFloat(formData.weight);
+    const purchasePriceNum = parseFloat(formData.purchasePrice);
+    const currentPriceNum = formData.currentPrice ? parseFloat(formData.currentPrice) : undefined;
+
+    if (isNaN(weightNum) || weightNum <= 0 || isNaN(purchasePriceNum) || purchasePriceNum <=0) {
+        toast({ title: "Validation Error", description: "Weight and Purchase Price must be valid positive numbers.", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+    if (formData.currentPrice && (isNaN(currentPriceNum!) || currentPriceNum! < 0)) {
+        toast({ title: "Validation Error", description: "Current Price must be a valid number if provided.", variant: "destructive" });
+        setIsSaving(false);
+        return;
+    }
+
+    const recordData: Omit<DexieGoldInvestmentRecord, 'id' | 'created_at' | 'updated_at'> = {
+      weight: weightNum,
+      purity: formData.purity!,
+      purchasePrice: purchasePriceNum,
+      currentPrice: currentPriceNum,
+      purchaseDate: formData.purchaseDate!,
+      paymentMethod: formData.paymentMethod!,
+      storageLocation: formData.storageLocation!,
+      form: formData.form!,
+      vendor: formData.vendor || '',
+      note: formData.note || '',
+      user_id: formData.user_id || 'default_user',
+    };
+
+    try {
+      if (formData.id) { // Update existing
+        await db.goldInvestments.update(formData.id, { ...recordData, updated_at: new Date() });
+        toast({ title: "Success", description: "Gold investment updated." });
+      } else { // Add new
+        const newId = self.crypto.randomUUID();
+        await db.goldInvestments.add({
+            ...recordData,
+            id: newId,
+            created_at: new Date(),
+            updated_at: new Date()
+        });
+        toast({ title: "Success", description: "Gold investment added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save gold investment:", error);
+      toast({ title: "Database Error", description: "Could not save gold investment.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -361,18 +483,14 @@ function AddGoldForm({ onSubmit, onCancel }: {
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Purity *
                 </label>
-                <select
-                  value={formData.purity}
-                  onChange={(e) => setFormData({ ...formData, purity: e.target.value as GoldInvestment['purity'] })}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
-                  required
-                >
-                  <option value="999">999 (99.9%)</option>
-                  <option value="995">995 (99.5%)</option>
-                  <option value="916">916 (91.6%)</option>
-                  <option value="750">750 (75.0%)</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select name="purity" value={formData.purity} onValueChange={v => handleSelectChange('purity', v as GoldPurity)} required>
+                  <SelectTrigger className="w-full h-10 px-3 rounded-md border">
+                    <SelectValue placeholder="Select purity..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GOLD_PURITY_OPTIONS.map(p => <SelectItem key={p} value={p}>{p === 'other' ? 'Other' : p}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
@@ -406,18 +524,14 @@ function AddGoldForm({ onSubmit, onCancel }: {
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Form *
                 </label>
-                <select
-                  value={formData.form}
-                  onChange={(e) => setFormData({ ...formData, form: e.target.value as GoldInvestment['form'] })}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
-                  required
-                >
-                  <option value="coins">Coins</option>
-                  <option value="bars">Bars</option>
-                  <option value="jewelry">Jewelry</option>
-                  <option value="etf">ETF</option>
-                  <option value="other">Other</option>
-                </select>
+                <Select name="form" value={formData.form} onValueChange={v => handleSelectChange('form', v as GoldForm)} required>
+                   <SelectTrigger className="w-full h-10 px-3 rounded-md border">
+                    <SelectValue placeholder="Select form..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GOLD_FORM_OPTIONS.map(f => <SelectItem key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               
               <div>
@@ -448,12 +562,25 @@ function AddGoldForm({ onSubmit, onCancel }: {
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Purchase Date *
                 </label>
-                <Input
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                  required
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal h-10 px-3 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {(formData.purchaseDate && isValidDate(parseISO(formData.purchaseDate))) ? format(parseISO(formData.purchaseDate), 'PPP') : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.purchaseDate ? parseISO(formData.purchaseDate) : undefined}
+                      onSelect={handleDateChange}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               
               <div>

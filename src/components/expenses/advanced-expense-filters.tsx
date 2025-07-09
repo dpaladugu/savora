@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,11 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Filter, CalendarIcon, X, Search, RotateCcw } from "lucide-react";
-import { format } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { ExpenseManager } from "@/services/expense-manager";
 
-interface ExpenseFilter {
+// Define a more precise type for filters state and callback
+export interface ExpenseFilterCriteria {
   searchTerm: string;
   category: string;
   paymentMethod: string;
@@ -21,17 +20,24 @@ interface ExpenseFilter {
   dateTo: Date | null;
   minAmount: string;
   maxAmount: string;
-  type: string;
+  type: string; // 'All', 'expense', 'income'
 }
 
 interface AdvancedExpenseFiltersProps {
-  onFiltersChange: (filters: ExpenseFilter) => void;
+  onFiltersChange: (filters: ExpenseFilterCriteria) => void;
   totalResults: number;
+  availableCategories: string[]; // To be passed from parent
+  availablePaymentMethods: string[]; // To be passed from parent
 }
 
-export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: AdvancedExpenseFiltersProps) {
+export function AdvancedExpenseFilters({
+  onFiltersChange,
+  totalResults,
+  availableCategories,
+  availablePaymentMethods
+}: AdvancedExpenseFiltersProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [filters, setFilters] = useState<ExpenseFilter>({
+  const [filters, setFilters] = useState<ExpenseFilterCriteria>({
     searchTerm: "",
     category: "All",
     paymentMethod: "All",
@@ -39,20 +45,22 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
     dateTo: null,
     minAmount: "",
     maxAmount: "",
-    type: "All",
+    type: "All", // Default to show all types; can be 'expense' if page is expense-specific
   });
 
-  const categories = ["All", ...ExpenseManager.getPopularCategories()];
-  const paymentMethods = ["All", ...ExpenseManager.getPaymentMethods()];
+  // Ensure "All" is an option
+  const categories = ["All", ...availableCategories.filter(c => c !== "All")];
+  const paymentMethods = ["All", ...availablePaymentMethods.filter(pm => pm !== "All")];
 
-  const updateFilters = (newFilters: Partial<ExpenseFilter>) => {
+
+  const updateFilters = (newFilters: Partial<ExpenseFilterCriteria>) => {
     const updatedFilters = { ...filters, ...newFilters };
     setFilters(updatedFilters);
     onFiltersChange(updatedFilters);
   };
 
   const resetFilters = () => {
-    const resetFilters: ExpenseFilter = {
+    const resetState: ExpenseFilterCriteria = {
       searchTerm: "",
       category: "All",
       paymentMethod: "All",
@@ -62,8 +70,9 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
       maxAmount: "",
       type: "All",
     };
-    setFilters(resetFilters);
-    onFiltersChange(resetFilters);
+    setFilters(resetState);
+    onFiltersChange(resetState);
+    setIsExpanded(false); // Optionally collapse on reset
   };
 
   const getActiveFiltersCount = () => {
@@ -87,7 +96,7 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CardTitle className="flex items-center gap-2">
-              <Filter className="w-5 h-5" />
+              <Filter aria-hidden="true" className="w-5 h-5" />
               Filters
             </CardTitle>
             {activeFiltersCount > 0 && (
@@ -98,12 +107,13 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">
-              {totalResults} results
+              {totalResults} result(s)
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsExpanded(!isExpanded)}
+              aria-expanded={isExpanded}
             >
               {isExpanded ? "Less" : "More"} Filters
             </Button>
@@ -112,15 +122,14 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {/* Always visible: Search and Category */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="search">Search</Label>
+            <Label htmlFor="search-expenses">Search</Label>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+              <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
               <Input
-                id="search"
-                placeholder="Search descriptions..."
+                id="search-expenses"
+                placeholder="Search descriptions, categories..."
                 value={filters.searchTerm}
                 onChange={(e) => updateFilters({ searchTerm: e.target.value })}
                 className="pl-10"
@@ -129,12 +138,12 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
           </div>
 
           <div>
-            <Label>Category</Label>
+            <Label htmlFor="category-filter">Category</Label>
             <Select
               value={filters.category}
               onValueChange={(value) => updateFilters({ category: value })}
             >
-              <SelectTrigger>
+              <SelectTrigger id="category-filter">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -155,34 +164,33 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3 }}
-              className="space-y-4"
+              className="space-y-4 pt-4 border-t"
             >
-              {/* Advanced filters */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <Label>Type</Label>
+                  <Label htmlFor="type-filter">Type</Label>
                   <Select
                     value={filters.type}
                     onValueChange={(value) => updateFilters({ type: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="type-filter">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="All">All Types</SelectItem>
-                      <SelectItem value="expense">Expenses</SelectItem>
-                      <SelectItem value="income">Income</SelectItem>
+                      <SelectItem value="expense">Expenses Only</SelectItem>
+                      <SelectItem value="income">Income Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label>Payment Method</Label>
+                  <Label htmlFor="paymentMethod-filter">Payment Method</Label>
                   <Select
                     value={filters.paymentMethod}
                     onValueChange={(value) => updateFilters({ paymentMethod: value })}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger id="paymentMethod-filter">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -195,21 +203,23 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
                   </Select>
                 </div>
 
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <Label>Min Amount</Label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label htmlFor="minAmount-filter">Min Amount</Label>
                     <Input
+                      id="minAmount-filter"
                       type="number"
                       placeholder="0.00"
                       value={filters.minAmount}
                       onChange={(e) => updateFilters({ minAmount: e.target.value })}
                     />
                   </div>
-                  <div className="flex-1">
-                    <Label>Max Amount</Label>
+                  <div>
+                    <Label htmlFor="maxAmount-filter">Max Amount</Label>
                     <Input
+                      id="maxAmount-filter"
                       type="number"
-                      placeholder="1000.00"
+                      placeholder="e.g. 1000"
                       value={filters.maxAmount}
                       onChange={(e) => updateFilters({ maxAmount: e.target.value })}
                     />
@@ -217,65 +227,47 @@ export function AdvancedExpenseFilters({ onFiltersChange, totalResults }: Advanc
                 </div>
               </div>
 
-              {/* Date Range */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label>From Date</Label>
+                  <Label htmlFor="dateFrom-filter">From Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                      <Button id="dateFrom-filter" variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4" />
                         {filters.dateFrom ? format(filters.dateFrom, "PPP") : "Select date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={filters.dateFrom || undefined}
-                        onSelect={(date) => updateFilters({ dateFrom: date || null })}
-                        initialFocus
-                      />
+                      <Calendar mode="single" selected={filters.dateFrom} onSelect={(date) => updateFilters({ dateFrom: date || null })} initialFocus />
                     </PopoverContent>
                   </Popover>
                 </div>
 
                 <div>
-                  <Label>To Date</Label>
+                  <Label htmlFor="dateTo-filter">To Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className="w-full justify-start text-left font-normal"
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
+                      <Button id="dateTo-filter" variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon aria-hidden="true" className="mr-2 h-4 w-4" />
                         {filters.dateTo ? format(filters.dateTo, "PPP") : "Select date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={filters.dateTo || undefined}
-                        onSelect={(date) => updateFilters({ dateTo: date || null })}
-                        initialFocus
-                      />
+                      <Calendar mode="single" selected={filters.dateTo} onSelect={(date) => updateFilters({ dateTo: date || null })} initialFocus />
                     </PopoverContent>
                   </Popover>
                 </div>
               </div>
 
-              {/* Reset button */}
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-2">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={resetFilters}
                   disabled={activeFiltersCount === 0}
-                  className="flex items-center gap-2"
+                  className="flex items-center gap-2 text-sm"
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  Reset Filters
+                  <RotateCcw aria-hidden="true" className="w-4 h-4" />
+                  Reset All Filters
                 </Button>
               </div>
             </motion.div>

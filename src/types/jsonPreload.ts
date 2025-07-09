@@ -129,9 +129,18 @@ export interface ExpenseData extends Omit<JsonExpenseTransaction, 'id'> {
   json_id?: string;
 }
 
-export interface IncomeSourceData extends JsonIncomeCashFlow {
-  id?: number;
+export interface IncomeSourceData extends Omit<JsonIncomeCashFlow, 'amount'> { // amount in JsonIncomeCashFlow is the actual transaction amount, here it's a default/expected
+  id: string; // Changed to string for UUID
+  user_id?: string; // Added for consistency
+  name: string; // This will be the 'source' name, making it more explicit
+  defaultAmount?: number; // Expected amount from this source
+  // frequency and account are inherited from JsonIncomeCashFlow
+  created_at?: Date; // Added
+  updated_at?: Date; // Added
+  // Note: JsonIncomeCashFlow has 'source: string'. We'll use 'name' as the primary identifier for the source.
+  // The 'source' field from JsonIncomeCashFlow can be mapped to 'name' when creating IncomeSourceData.
 }
+
 
 export interface VehicleData {
   id?: number;
@@ -164,13 +173,19 @@ export interface LoanData {
 }
 
 export interface InvestmentData {
-  id?: number;
+  id: string; // Changed to string for UUID
+  user_id?: string; // Added for consistency
   fund_name: string;
-  investment_type: 'Mutual Fund' | string;
-  category?: string;
-  current_value?: number;
-  invested_value?: number;
-  risk_category?: string;
+  investment_type: 'Mutual Fund' | 'PPF' | 'EPF' | 'NPS' | 'Gold' | 'Stock' | 'Other' | string; // Expanded options
+  category?: string; // e.g., Equity, Debt, Hybrid, Real Estate, Commodity
+  invested_value?: number; // Amount invested
+  current_value?: number; // Current market value
+  purchaseDate?: string; // ISO YYYY-MM-DD - Added
+  quantity?: number; // e.g., number of units/shares
+  notes?: string; // Added
+  created_at?: Date; // Added
+  updated_at?: Date; // Added
+  // risk_category?: string; // Can be kept if used
 }
 
 export interface CreditCardData extends Omit<JsonCreditCard, 'due_date' | 'fee_waiver'> {

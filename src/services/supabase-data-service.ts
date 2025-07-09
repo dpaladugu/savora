@@ -1,10 +1,13 @@
 import { supabase } from '@/integrations/supabase/client';
 import type { Income } from '@/components/income/income-tracker'; // Assuming Income interface is here
-// TODO: Define a similar interface for Expense, e.g., from an expense tracker component if it exists
-// For now, we'll use a placeholder.
-export interface Expense {
+
+// This interface defines the structure for expenses when interacting with the Supabase backend.
+// It should align with the 'expenses' table schema in Supabase.
+// Local app components might use a slightly different structure (e.g., for forms or Dexie),
+// and this service will handle mapping between those structures and this Supabase-specific one if needed during sync.
+export interface Expense { // Renaming to SupabaseExpense for clarity if a global AppExpense type is defined elsewhere
   id?: string; // UUID from Supabase will be string
-  user_id?: string;
+  user_id?: string; // Foreign key to your users table in Supabase
   amount: number;
   description: string;
   category: string;

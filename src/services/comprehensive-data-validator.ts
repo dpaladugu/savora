@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 import { Logger } from "./logger";
 
 // Comprehensive validation schemas
@@ -88,31 +88,6 @@ export class ComprehensiveDataValidator {
     });
   }
 
-  static formatCurrency(amount: number, currency: string = '₹'): string {
-    if (typeof amount !== 'number' || isNaN(amount)) {
-      return `${currency}0`;
-    }
-    return `${currency}${amount.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
-  }
-
-  static formatPercentage(value: number): string {
-    if (typeof value !== 'number' || isNaN(value)) {
-      return '0%';
-    }
-    return `${value.toFixed(1)}%`;
-  }
-
-  static sanitizeInput(input: string): string {
-    return input.trim().replace(/[<>]/g, '');
-  }
-
-  static isValidDate(dateString: string): boolean {
-    const date = new Date(dateString);
-    const matchesFormat = /^\d{4}-\d{2}-\d{2}$/.test(dateString);
-    return !isNaN(date.getTime()) && matchesFormat;
-  }
-
-  static isValidAmount(amount: unknown): boolean {
-    return typeof amount === 'number' && !isNaN(amount) && amount > 0 && amount <= 10000000;
-  }
+  // Utility methods like formatCurrency, formatPercentage, sanitizeInput, isValidDate, isValidAmount
+  // have been removed from here. They should be used from DataValidator.ts or a similar utility file.
 }

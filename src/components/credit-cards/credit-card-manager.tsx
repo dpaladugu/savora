@@ -1,147 +1,145 @@
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react"; // Added useEffect, useCallback
+import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2 } from "lucide-react"; // Added Loader2
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
+import { db, DexieCreditCardRecord } from "@/db"; // Import Dexie db and record type
+import { useLiveQuery } from "dexie-react-hooks";
+import { format, parseISO, isValid } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
-export interface CreditCardData {
-  id: string;
-  name: string;
-  limit: number;
-  issuer: string;
-  billCycle: number; // day of month
-  autoDebit: boolean;
-  currentBalance: number;
-  dueDate: string;
-}
 
-const mockCreditCards: CreditCardData[] = [
-  {
-    id: '1',
-    name: 'ICICI Amazon Pay',
-    limit: 200000,
-    issuer: 'ICICI Bank',
-    billCycle: 15,
-    autoDebit: true,
-    currentBalance: 45000,
-    dueDate: '2024-02-15'
-  },
-  {
-    id: '2',
-    name: 'HDFC Millennia',
-    limit: 150000,
-    issuer: 'HDFC Bank',
-    billCycle: 5,
-    autoDebit: false,
-    currentBalance: 23000,
-    dueDate: '2024-02-05'
-  }
-];
+// Form data can be a partial of DexieCreditCardRecord, with some fields as string for input
+export type CreditCardFormData = Partial<Omit<DexieCreditCardRecord, 'limit' | 'currentBalance' | 'billCycleDay' | 'created_at' | 'updated_at'>> & {
+  limit: string;
+  currentBalance: string;
+  billCycleDay: string;
+};
+
 
 export function CreditCardManager() {
-  const [cards, setCards] = useState<CreditCardData[]>(mockCreditCards);
-  const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddFormDialog, setShowAddFormDialog] = useState(false); // Renamed for clarity
+  const [editingCard, setEditingCard] = useState<DexieCreditCardRecord | null>(null);
+  const [cardToDelete, setCardToDelete] = useState<DexieCreditCardRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const handleAddCard = (newCard: Omit<CreditCardData, 'id'>) => {
-    const card: CreditCardData = {
-      ...newCard,
-      id: Date.now().toString()
-    };
-    
-    setCards([card, ...cards]);
-    setShowAddForm(false);
-    
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save credit card to Firestore:', card);
-    
-    toast({
-      title: "Credit card added successfully",
-      description: `${newCard.name} has been added to your wallet`,
-    });
-  };
-
-  const handleDeleteCard = (id: string) => {
-    setCards(cards.filter(card => card.id !== id));
-    // TODO: Firebase integration - delete from Firestore
-    console.log('TODO: Delete credit card from Firestore:', id);
-    toast({
-      title: "Card removed",
-    });
-  };
-
-  const filteredCards = cards.filter(card =>
-    card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    card.issuer.toLowerCase().includes(searchTerm.toLowerCase())
+  const cards = useLiveQuery(
+    () => db.creditCards.orderBy('name').filter(card =>
+      card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.issuer.toLowerCase().includes(searchTerm.toLowerCase())
+    ).toArray(),
+    [searchTerm], // Rerun query if searchTerm changes
+    [] // Initial value
   );
 
-  const totalLimit = cards.reduce((sum, card) => sum + card.limit, 0);
-  const totalUsed = cards.reduce((sum, card) => sum + card.currentBalance, 0);
+  const handleAddNew = () => {
+    setEditingCard(null);
+    setShowAddForm(true);
+  };
+
+  const handleEdit = (card: DexieCreditCardRecord) => {
+    setEditingCard(card);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (card: DexieCreditCardRecord) => {
+    setCardToDelete(card);
+  };
+
+  const handleDeleteCard = async () => {
+    if (!cardToDelete || !cardToDelete.id) return;
+    try {
+      await db.creditCards.delete(cardToDelete.id);
+      toast({
+        title: "Card Removed",
+        description: `Credit card "${cardToDelete.name}" has been removed.`,
+      });
+    } catch (error) {
+      console.error("Error deleting credit card:", error);
+      toast({
+        title: "Error",
+        description: "Could not remove credit card.",
+        variant: "destructive",
+      });
+    } finally {
+        setCardToDelete(null);
+    }
+  };
+
+  const totalLimit = cards?.reduce((sum, card) => sum + card.limit, 0) || 0;
+  const totalUsed = cards?.reduce((sum, card) => sum + card.currentBalance, 0) || 0;
   const utilization = totalLimit > 0 ? (totalUsed / totalLimit) * 100 : 0;
 
+  if (cards === undefined) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-12 h-12 text-muted-foreground animate-spin" />
+        <p className="ml-4 text-lg text-muted-foreground">Loading credit cards...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header section removed. Title/subtitle should be provided by ModuleHeader via router. */}
-      {/* The "Add Card" button might be passed as an 'action' to ModuleHeader,
-          or exist as a primary action button within this component's layout.
-          For now, let's place it visibly if not in a header.
-      */}
-      <div className="flex justify-end"> {/* Simple placement for the button for now */}
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Credit Card Manager</h1>
         <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-gradient-blue hover:opacity-90"
+          onClick={handleAddNew}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Plus className="w-4 h-4 mr-2" />
-          Add Card
+          Add New Card
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-blue text-white">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Limit</p>
-                <p className="text-lg font-bold text-foreground">₹{totalLimit.toLocaleString()}</p>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Credit Limit</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalLimit.toLocaleString()}</div>
           </CardContent>
         </Card>
         
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg text-white ${utilization > 70 ? 'bg-gradient-red' : 'bg-gradient-green'}`}>
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Utilization</p>
-                <p className="text-lg font-bold text-foreground">{utilization.toFixed(1)}%</p>
-              </div>
+        <Card className="shadow">
+           <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Overall Utilization</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold ${utilization > 70 ? 'text-red-600' : utilization > 30 ? 'text-orange-500' : 'text-green-600'}`}>
+                {utilization.toFixed(1)}%
             </div>
+            <p className="text-xs text-muted-foreground">
+                Total Balance: ₹{totalUsed.toLocaleString()}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Add Card Form */}
       {showAddForm && (
         <AddCreditCardForm 
-          onSubmit={handleAddCard}
-          onCancel={() => setShowAddForm(false)}
+          onClose={() => setShowAddForm(false)}
+          initialData={editingCard}
         />
       )}
 
-      {/* Search */}
-      <div className="flex gap-3">
+      <div className="mt-6 flex gap-3">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
@@ -187,9 +185,11 @@ export function CreditCardManager() {
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Due:</span>
-                        <span className="font-medium text-foreground">{new Date(card.dueDate).toLocaleDateString('en-IN')}</span>
+                        <span className="font-medium text-foreground">
+                          {card.dueDate && isValid(parseISO(card.dueDate)) ? format(parseISO(card.dueDate), 'PPP') : 'N/A'}
+                        </span>
                         <span className="text-muted-foreground">•</span>
-                        <span className="text-muted-foreground">Bill Cycle: {card.billCycle}th</span>
+                        <span className="text-muted-foreground">Bill Cycle: {card.billCycleDay}th</span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2 mt-2">
                         <div 
@@ -242,156 +242,195 @@ export function CreditCardManager() {
   );
 }
 
-function AddCreditCardForm({ onSubmit, onCancel }: {
-  onSubmit: (card: Omit<CreditCardData, 'id'>) => void;
-  onCancel: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    name: '',
-    limit: '',
-    issuer: '',
-    billCycle: '',
-    autoDebit: true,
-    currentBalance: '',
-    dueDate: new Date().toISOString().split('T')[0]
-  });
+interface AddCreditCardFormProps {
+  initialData?: DexieCreditCardRecord | null;
+  onClose: () => void;
+  // userId?: string; // Already part of DexieCreditCardRecord or formData
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.limit || !formData.issuer || !formData.billCycle) {
-      return;
+function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
+  const { toast } = useToast();
+  const { user } = useAuth(); // Get user for user_id default
+  const [formData, setFormData] = useState<CreditCardFormData>(() => {
+    const defaults: CreditCardFormData = {
+      name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
+      currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
+      last4Digits: '', user_id: user?.uid || 'default_user',
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        limit: initialData.limit.toString(),
+        currentBalance: initialData.currentBalance.toString(),
+        billCycleDay: initialData.billCycleDay.toString(),
+        dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : defaults.dueDate,
+      };
     }
+    return defaults;
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreditCardFormData, string>>>({});
 
-    onSubmit({
-      name: formData.name,
-      limit: parseFloat(formData.limit),
-      issuer: formData.issuer,
-      billCycle: parseInt(formData.billCycle),
-      autoDebit: formData.autoDebit,
-      currentBalance: formData.currentBalance ? parseFloat(formData.currentBalance) : 0,
-      dueDate: formData.dueDate
-    });
+  useEffect(() => {
+    const defaults: CreditCardFormData = {
+      name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
+      currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
+      last4Digits: '', user_id: user?.uid || 'default_user',
+    };
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        limit: initialData.limit.toString(),
+        currentBalance: initialData.currentBalance.toString(),
+        billCycleDay: initialData.billCycleDay.toString(),
+        dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : defaults.dueDate,
+      });
+    } else {
+      setFormData(defaults);
+    }
+    setFormErrors({});
+  }, [initialData, user]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if(formErrors[name as keyof CreditCardFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
   };
 
+  const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+     setFormData(prev => ({ ...prev, autoDebit: !!checked }));
+  };
+
+  const handleDateChange = (date?: Date) => {
+    setFormData(prev => ({ ...prev, dueDate: date ? format(date, 'yyyy-MM-dd') : undefined }));
+    if(formErrors.dueDate) setFormErrors(prev => ({...prev, dueDate: undefined}));
+  };
+
+  const validateCurrentForm = (): boolean => {
+    const newErrors: Partial<Record<keyof CreditCardFormData, string>> = {};
+    if (!formData.name?.trim()) newErrors.name = "Card Name is required.";
+    if (!formData.issuer?.trim()) newErrors.issuer = "Issuer is required.";
+    if (!formData.limit?.trim() || isNaN(parseFloat(formData.limit)) || parseFloat(formData.limit) <=0) newErrors.limit = "Valid Credit Limit is required.";
+    if (!formData.billCycleDay?.trim() || isNaN(parseInt(formData.billCycleDay)) || parseInt(formData.billCycleDay) < 1 || parseInt(formData.billCycleDay) > 31) newErrors.billCycleDay = "Bill Cycle Day (1-31) is required.";
+    if (!formData.dueDate || !isValidDate(parseISO(formData.dueDate))) newErrors.dueDate = "Valid Due Date is required.";
+    if (formData.currentBalance && isNaN(parseFloat(formData.currentBalance))) newErrors.currentBalance = "Current Balance must be a valid number.";
+     if (formData.last4Digits && (isNaN(parseInt(formData.last4Digits)) || formData.last4Digits.length !== 4)) newErrors.last4Digits = "Last 4 digits must be a 4-digit number.";
+
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!validateCurrentForm()) {
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
+      return;
+    }
+    setIsSaving(true);
+
+    const cardRecord: Omit<DexieCreditCardRecord, 'id' | 'created_at' | 'updated_at'> = {
+      name: formData.name!,
+      issuer: formData.issuer!,
+      limit: parseFloat(formData.limit!),
+      currentBalance: parseFloat(formData.currentBalance || '0'),
+      billCycleDay: parseInt(formData.billCycleDay!, 10),
+      dueDate: formData.dueDate!,
+      autoDebit: formData.autoDebit || false,
+      last4Digits: formData.last4Digits || '',
+      user_id: formData.user_id || user?.uid || 'default_user',
+    };
+
+    try {
+      if (formData.id) {
+        await db.creditCards.update(formData.id, { ...cardRecord, updated_at: new Date() });
+        toast({ title: "Success", description: `Card "${cardRecord.name}" updated.` });
+      } else {
+        const newId = self.crypto.randomUUID();
+        await db.creditCards.add({ ...cardRecord, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: `Card "${cardRecord.name}" added.` });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save credit card:", error);
+      toast({ title: "Database Error", description: "Could not save credit card details.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const FieldError: React.FC<{ field: keyof CreditCardFormData }> = ({ field }) =>
+    formErrors[field] ? <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon className="w-3 h-3 mr-1"/> {formErrors[field]}</p> : null;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <Card className="metric-card border-border/50">
-        <CardHeader>
-          <CardTitle>Add Credit Card</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Card Name *
-                </label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="ICICI Amazon Pay"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Credit Limit (₹) *
-                </label>
-                <Input
-                  type="number"
-                  value={formData.limit}
-                  onChange={(e) => setFormData({ ...formData, limit: e.target.value })}
-                  placeholder="200000"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Issuer *
-                </label>
-                <Input
-                  value={formData.issuer}
-                  onChange={(e) => setFormData({ ...formData, issuer: e.target.value })}
-                  placeholder="ICICI Bank"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Bill Cycle Day *
-                </label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={formData.billCycle}
-                  onChange={(e) => setFormData({ ...formData, billCycle: e.target.value })}
-                  placeholder="15"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Current Balance (₹)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.currentBalance}
-                  onChange={(e) => setFormData({ ...formData, currentBalance: e.target.value })}
-                  placeholder="0"
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Next Due Date
-                </label>
-                <Input
-                  type="date"
-                  value={formData.dueDate}
-                  onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-                />
-              </div>
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-semibold">{formData.id ? 'Edit' : 'Add New'} Credit Card</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Card Nickname *</Label>
+              <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required className={formErrors.name ? 'border-red-500' : ''}/>
+              <FieldError field="name"/>
             </div>
-            
-            <div className="flex items-center space-x-2 pt-2"> {/* Added pt-2 for spacing */}
-              <Checkbox
-                id="autoDebit"
-                checked={formData.autoDebit}
-                onCheckedChange={(checked) => setFormData({ ...formData, autoDebit: !!checked })}
-              />
-              <label
-                htmlFor="autoDebit"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Auto-debit enabled
-              </label>
+            <div>
+              <Label htmlFor="issuer" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Issuer (Bank) *</Label>
+              <Input id="issuer" name="issuer" value={formData.issuer || ''} onChange={handleChange} required className={formErrors.issuer ? 'border-red-500' : ''}/>
+              <FieldError field="issuer"/>
             </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                Add Card
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="limit" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credit Limit (₹) *</Label>
+              <Input id="limit" name="limit" type="number" step="0.01" value={formData.limit || ''} onChange={handleChange} required className={formErrors.limit ? 'border-red-500' : ''}/>
+              <FieldError field="limit"/>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-    </motion.div>
+            <div>
+              <Label htmlFor="currentBalance" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Outstanding Balance (₹)</Label>
+              <Input id="currentBalance" name="currentBalance" type="number" step="0.01" value={formData.currentBalance || ''} onChange={handleChange} className={formErrors.currentBalance ? 'border-red-500' : ''}/>
+              <FieldError field="currentBalance"/>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="billCycleDay" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Bill Cycle Day (1-31) *</Label>
+              <Input id="billCycleDay" name="billCycleDay" type="number" min="1" max="31" value={formData.billCycleDay || ''} onChange={handleChange} required className={formErrors.billCycleDay ? 'border-red-500' : ''}/>
+              <FieldError field="billCycleDay"/>
+            </div>
+            <div>
+              <Label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Next Payment Due Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.dueDate ? 'border-red-500' : ''}`}>
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {(formData.dueDate && isValid(parseISO(formData.dueDate))) ? format(parseISO(formData.dueDate), 'PPP') : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.dueDate ? parseISO(formData.dueDate) : undefined} onSelect={handleDateChange} initialFocus /></PopoverContent>
+              </Popover>
+              <FieldError field="dueDate"/>
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="last4Digits" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last 4 Digits (Optional)</Label>
+            <Input id="last4Digits" name="last4Digits" value={formData.last4Digits || ''} onChange={handleChange} maxLength={4} className={formErrors.last4Digits ? 'border-red-500' : ''}/>
+            <FieldError field="last4Digits"/>
+          </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox id="autoDebit" checked={formData.autoDebit} onCheckedChange={handleCheckboxChange} />
+            <Label htmlFor="autoDebit" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-300">Auto-debit enabled</Label>
+          </div>
+          <DialogFooter className="pt-5">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Card' : 'Save Card')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all access to any path not explicitly matched
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // User-specific data
+    // All user data is stored under /users/{userId}/<collectionName>/<docId>
+    match /users/{userId}/{userCollection}/{docId} {
+      // Allow read, write, delete only if the authenticated user's UID matches the {userId} in the path.
+      // This covers create, update, delete as well due to 'write'.
+      allow read, write, delete: if request.auth != null && request.auth.uid == userId;
+
+      // If you need more granular control (e.g., allow create for anyone authenticated, but only self-update/delete)
+      // you can break down 'write' into 'create', 'update', 'delete':
+      // allow create: if request.auth != null; // Example: if any authenticated user could create a doc in another user's subcollection (less common)
+      // allow update, delete: if request.auth != null && request.auth.uid == userId;
+      // allow read: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Example for a potential shared/public collection (if you ever need one)
+    // match /publicData/{docId} {
+    //   allow read: if true; // Everyone can read
+    //   allow write: if false; // No one can write (or specific admin/role)
+    // }
+
+    // Note on specific collections:
+    // The rule for /users/{userId}/{userCollection}/{docId} above is generic and will apply to:
+    // - appSettings
+    // - expenses
+    // - incomes
+    // - incomeSources
+    // - vehicles
+    // - loans (EMIs)
+    // - investments (generic)
+    // - creditCards
+    // - recurringTransactions
+    // - goldInvestments
+    // - insurancePolicies
+    // - accounts (if you create this collection for user bank accounts etc.)
+    // - And any other collection you create under /users/{userId}/
+
+    // If you have a collection directly for user profiles, e.g., /userProfiles/{userId}
+    // where the document ID IS the user's UID:
+    // match /userProfiles/{userId} {
+    //   allow read: if request.auth != null; // Any authenticated user can read any profile (adjust if needed)
+    //   allow write: if request.auth != null && request.auth.uid == userId; // Only owner can write/update their profile
+    // }
+  }
+}
