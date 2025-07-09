@@ -1,101 +1,100 @@
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Plus, Car, Search, Trash2, Edit, AlertTriangle, Shield, Receipt } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Car, Search, Trash2, Edit, AlertTriangle as AlertIcon, Loader2, CalendarDays, ChevronDown, Shield, Receipt } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Textarea } from "@/components/ui/textarea"; // For notes
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { db, DexieVehicleRecord } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export interface Vehicle {
-  id: string;
-  name: string;
-  number: string;
-  engineNumber: string;
-  chassisNumber: string;
-  fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'CNG';
-  color: string;
-  mileage: number;
-  purchaseDate: string;
-  insuranceExpiry: string;
-  make: string;
-  model: string;
-}
+// Define types for form select options
+const FUEL_TYPES = ['Petrol', 'Diesel', 'Electric', 'CNG', 'Hybrid', 'Other'] as const;
+type FuelType = typeof FUEL_TYPES[number];
 
-const mockVehicles: Vehicle[] = [
-  {
-    id: '1',
-    name: 'My Swift',
-    number: 'TS09AB1234',
-    engineNumber: 'ABC123456',
-    chassisNumber: 'DEF789012',
-    fuelType: 'Petrol',
-    color: 'White',
-    mileage: 22,
-    purchaseDate: '2022-03-15',
-    insuranceExpiry: '2024-03-14',
-    make: 'Maruti Suzuki',
-    model: 'Swift VXI'
-  }
-];
-
-// Mock data for related expenses and insurance
-const mockRelatedExpenses: Record<string, Array<{ id: string; amount: number; date: string; category: string; tag: string; }>> = {
-  '1': [
-    { id: 'e1', amount: 1200, date: '2024-01-13', category: 'Fuel', tag: 'Shell Petrol Pump' },
-    { id: 'e2', amount: 3500, date: '2024-01-05', category: 'Servicing', tag: 'Service Center' },
-    { id: 'e3', amount: 15000, date: '2023-12-15', category: 'Vehicle Insurance', tag: 'ICICI Lombard' }
-  ]
+// Form data can be a partial of DexieVehicleRecord, with some fields as string for input
+export type VehicleFormData = Partial<Omit<DexieVehicleRecord, 'year' | 'mileage' | 'purchasePrice' | 'created_at' | 'updated_at'>> & {
+  year?: string;
+  mileage?: string;
+  purchasePrice?: string;
 };
 
-const mockInsurancePolicies: Record<string, Array<{ id: string; policyNumber: string; insurer: string; premium: number; expiryDate: string; }>> = {
-  '1': [
-    { id: 'i1', policyNumber: 'POL123456', insurer: 'ICICI Lombard', premium: 15000, expiryDate: '2024-03-14' }
-  ]
-};
 
 export function VehicleManager() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>(mockVehicles);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState<DexieVehicleRecord | null>(null);
+  const [vehicleToDelete, setVehicleToDelete] = useState<DexieVehicleRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [expandedVehicle, setExpandedVehicle] = useState<string | null>(null);
+  const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const handleAddVehicle = (newVehicle: Omit<Vehicle, 'id'>) => {
-    const vehicle: Vehicle = {
-      ...newVehicle,
-      id: Date.now().toString()
-    };
-    
-    setVehicles([vehicle, ...vehicles]);
-    setShowAddForm(false);
-    
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save vehicle to Firestore:', vehicle);
-    
-    toast({
-      title: "Vehicle added successfully",
-      description: `${newVehicle.name} has been added`,
-    });
-  };
-
-  const handleDeleteVehicle = (id: string) => {
-    setVehicles(vehicles.filter(vehicle => vehicle.id !== id));
-    // TODO: Firebase integration - delete from Firestore
-    console.log('TODO: Delete vehicle from Firestore:', id);
-    toast({
-      title: "Vehicle removed",
-    });
-  };
-
-  const filteredVehicles = vehicles.filter(vehicle =>
-    vehicle.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    vehicle.make.toLowerCase().includes(searchTerm.toLowerCase())
+  const liveVehicles = useLiveQuery(
+    async () => {
+      let query = db.vehicles.orderBy('name');
+      if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        query = query.filter(v =>
+          v.name.toLowerCase().includes(lowerSearchTerm) ||
+          v.registrationNumber.toLowerCase().includes(lowerSearchTerm) ||
+          (v.make && v.make.toLowerCase().includes(lowerSearchTerm)) ||
+          (v.model && v.model.toLowerCase().includes(lowerSearchTerm))
+        );
+      }
+      return await query.toArray();
+    },
+    [searchTerm],
+    []
   );
+  const vehicles = liveVehicles || [];
 
-  const isInsuranceExpiring = (expiryDate: string) => {
+  const handleAddNew = () => {
+    setEditingVehicle(null);
+    setShowAddForm(true);
+  };
+
+  const handleOpenEditForm = (vehicle: DexieVehicleRecord) => {
+    setEditingVehicle(vehicle);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (vehicle: DexieVehicleRecord) => {
+    setVehicleToDelete(vehicle);
+  };
+
+  const handleDeleteVehicleExecute = async () => {
+    if (!vehicleToDelete || !vehicleToDelete.id) return;
+    try {
+      await db.vehicles.delete(vehicleToDelete.id);
+      toast({
+        title: "Vehicle Deleted",
+        description: `Vehicle "${vehicleToDelete.name}" has been deleted.`,
+      });
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      toast({ title: "Error", description: "Could not delete vehicle.", variant: "destructive" });
+    } finally {
+      setVehicleToDelete(null);
+    }
+  };
+
+  const isInsuranceExpiringSoon = (expiryDate?: string): boolean => {
+    if (!expiryDate || !isValidDate(parseISO(expiryDate))) return false;
     const expiry = new Date(expiryDate);
     const today = new Date();
     const diffTime = expiry.getTime() - today.getTime();
@@ -114,24 +113,20 @@ export function VehicleManager() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Vehicles</h2>
-          <p className="text-muted-foreground">Manage your vehicles</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Vehicle Manager</h1>
+          <p className="text-muted-foreground">Track and manage your vehicles.</p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-gradient-blue hover:opacity-90"
-        >
+        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Vehicle
         </Button>
       </div>
 
       {/* Summary */}
-      <Card className="metric-card border-border/50">
+      <Card className="shadow">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-blue text-white">
@@ -209,8 +204,8 @@ export function VehicleManager() {
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Insurance Expires:</span>
-                        <span className={`font-medium ${isInsuranceExpiring(vehicle.insuranceExpiry) ? 'text-orange-600' : 'text-foreground'}`}>
-                          {new Date(vehicle.insuranceExpiry).toLocaleDateString('en-IN')}
+                        <span className={`font-medium ${isInsuranceExpiringSoon(vehicle.insuranceExpiryDate) ? 'text-orange-600' : 'text-foreground'}`}>
+                          {vehicle.insuranceExpiryDate && isValidDate(parseISO(vehicle.insuranceExpiryDate)) ? format(parseISO(vehicle.insuranceExpiryDate), 'PPP') : 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -306,48 +301,241 @@ export function VehicleManager() {
   );
 }
 
-function AddVehicleForm({ onSubmit, onCancel }: {
-  onSubmit: (vehicle: Omit<Vehicle, 'id'>) => void;
-  onCancel: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    name: '',
-    number: '',
-    engineNumber: '',
-    chassisNumber: '',
-    fuelType: 'Petrol' as Vehicle['fuelType'],
-    color: '',
-    mileage: '',
-    purchaseDate: '',
-    insuranceExpiry: '',
-    make: '',
-    model: ''
-  });
+// --- AddVehicleForm Sub-Component ---
+interface AddVehicleFormProps {
+  initialData?: DexieVehicleRecord | null;
+  onClose: () => void;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.number || !formData.make || !formData.model) {
-      return;
+function AddVehicleForm({ initialData, onClose }: AddVehicleFormProps) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<VehicleFormData>(() => {
+    const defaults: VehicleFormData = {
+      name: '', registrationNumber: '', make: '', model: '', fuelType: 'Petrol',
+      purchaseDate: format(new Date(), 'yyyy-MM-dd'), user_id: 'default_user',
+      year: '', mileage: '', purchasePrice: '', color: '', engineNumber: '', chassisNumber: '',
+      insurancePolicyNumber: '', insuranceExpiryDate: '', notes: ''
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        id: initialData.id,
+        year: initialData.year?.toString() || '',
+        mileage: initialData.mileage?.toString() || '',
+        purchasePrice: initialData.purchasePrice?.toString() || '',
+        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : defaults.purchaseDate,
+        insuranceExpiryDate: initialData.insuranceExpiryDate ? format(parseISO(initialData.insuranceExpiryDate), 'yyyy-MM-dd') : defaults.insuranceExpiryDate,
+        fuelType: initialData.fuelType as FuelType || defaults.fuelType,
+      };
     }
+    return defaults;
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof VehicleFormData, string>>>({});
 
-    onSubmit({
-      name: formData.name,
-      number: formData.number.toUpperCase(),
-      engineNumber: formData.engineNumber,
-      chassisNumber: formData.chassisNumber,
-      fuelType: formData.fuelType,
-      color: formData.color,
-      mileage: parseFloat(formData.mileage) || 0,
+
+  useEffect(() => {
+    const defaults: VehicleFormData = {
+      name: '', registrationNumber: '', make: '', model: '', fuelType: 'Petrol',
+      purchaseDate: format(new Date(), 'yyyy-MM-dd'), user_id: 'default_user',
+      year: '', mileage: '', purchasePrice: '', color: '', engineNumber: '', chassisNumber: '',
+      insurancePolicyNumber: '', insuranceExpiryDate: '', notes: ''
+    };
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        year: initialData.year?.toString() || '',
+        mileage: initialData.mileage?.toString() || '',
+        purchasePrice: initialData.purchasePrice?.toString() || '',
+        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : defaults.purchaseDate,
+        insuranceExpiryDate: initialData.insuranceExpiryDate ? format(parseISO(initialData.insuranceExpiryDate), 'yyyy-MM-dd') : defaults.insuranceExpiryDate,
+        fuelType: initialData.fuelType as FuelType || defaults.fuelType,
+      });
+    } else {
+      setFormData(defaults);
+    }
+    setFormErrors({}); // Clear errors on open/initialData change
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const {name, value} = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof VehicleFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+  };
+  const handleSelectChange = (name: keyof VehicleFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof VehicleFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+  };
+  const handleDateChange = (name: keyof VehicleFormData, date?: Date) => {
+    setFormData(prev => ({ ...prev, [name]: date ? format(date, 'yyyy-MM-dd') : undefined }));
+     if (formErrors[name as keyof VehicleFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+  };
+
+  const validateCurrentForm = (): boolean => {
+    const newErrors: Partial<Record<keyof VehicleFormData, string>> = {};
+    if (!formData.name?.trim()) newErrors.name = "Vehicle Name is required.";
+    if (!formData.registrationNumber?.trim()) newErrors.registrationNumber = "Registration No. is required.";
+    if (!formData.make?.trim()) newErrors.make = "Make is required.";
+    if (!formData.model?.trim()) newErrors.model = "Model is required.";
+    if (formData.year && (isNaN(parseInt(formData.year)) || formData.year.length !== 4)) newErrors.year = "Enter a valid 4-digit year.";
+    if (formData.mileage && isNaN(parseFloat(formData.mileage))) newErrors.mileage = "Mileage must be a number.";
+    if (formData.purchasePrice && isNaN(parseFloat(formData.purchasePrice))) newErrors.purchasePrice = "Purchase Price must be a number.";
+    if (formData.purchaseDate && !isValidDate(parseISO(formData.purchaseDate))) newErrors.purchaseDate = "Invalid Purchase Date.";
+    if (formData.insuranceExpiryDate && !isValidDate(parseISO(formData.insuranceExpiryDate))) newErrors.insuranceExpiryDate = "Invalid Insurance Expiry Date.";
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!validateCurrentForm()){
+        toast({ title: "Validation Error", description: "Please correct the form errors.", variant: "destructive"});
+        return;
+    }
+    setIsSaving(true);
+
+    const yearNum = formData.year ? parseInt(formData.year) : undefined;
+    const mileageNum = formData.mileage ? parseFloat(formData.mileage) : undefined;
+    const purchasePriceNum = formData.purchasePrice ? parseFloat(formData.purchasePrice) : undefined;
+
+    const record: Omit<DexieVehicleRecord, 'id' | 'created_at' | 'updated_at'> = {
+      name: formData.name!,
+      registrationNumber: formData.registrationNumber!.toUpperCase(),
+      make: formData.make || '',
+      model: formData.model || '',
+      year: yearNum,
+      fuelType: formData.fuelType || 'Other',
+      color: formData.color || '',
+      mileage: mileageNum,
       purchaseDate: formData.purchaseDate,
-      insuranceExpiry: formData.insuranceExpiry,
-      make: formData.make,
-      model: formData.model
-    });
+      purchasePrice: purchasePriceNum,
+      insurancePolicyNumber: formData.insurancePolicyNumber || '',
+      insuranceExpiryDate: formData.insuranceExpiryDate,
+      engineNumber: formData.engineNumber || '',
+      chassisNumber: formData.chassisNumber || '',
+      notes: formData.notes || '',
+      user_id: formData.user_id || 'default_user',
+    };
+
+    try {
+      if (formData.id) {
+        await db.vehicles.update(formData.id, { ...record, updated_at: new Date() });
+        toast({ title: "Success", description: "Vehicle details updated." });
+      } else {
+        const newId = self.crypto.randomUUID();
+        await db.vehicles.add({ ...record, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: "Vehicle added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save vehicle:", error);
+      toast({ title: "Database Error", description: "Could not save vehicle details.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <motion.div
+    // The form is now a Dialog itself, triggered by parent's showAddForm state
+    <Dialog open={true} onOpenChange={onClose}>
+    <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <DialogHeader>
+        <DialogTitle className="text-xl font-semibold">{formData.id ? 'Edit' : 'Add New'} Vehicle</DialogTitle>
+      </DialogHeader>
+      <form onSubmit={handleSubmit} className="space-y-4 py-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name *</Label>
+            <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required className={formErrors.name ? 'border-red-500' : ''}/>
+            {formErrors.name && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.name}</p>}
+          </div>
+          <div>
+            <Label htmlFor="registrationNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration No. *</Label>
+            <Input id="registrationNumber" name="registrationNumber" value={formData.registrationNumber || ''} onChange={handleChange} required className={formErrors.registrationNumber ? 'border-red-500' : ''}/>
+            {formErrors.registrationNumber && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.registrationNumber}</p>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="make" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Make *</Label>
+            <Input id="make" name="make" value={formData.make || ''} onChange={handleChange} required className={formErrors.make ? 'border-red-500' : ''}/>
+            {formErrors.make && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.make}</p>}
+          </div>
+          <div>
+            <Label htmlFor="model" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model *</Label>
+            <Input id="model" name="model" value={formData.model || ''} onChange={handleChange} required className={formErrors.model ? 'border-red-500' : ''}/>
+            {formErrors.model && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.model}</p>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="year" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Year (Mfg.)</Label>
+            <Input id="year" name="year" type="number" value={formData.year || ''} onChange={handleChange} className={formErrors.year ? 'border-red-500' : ''}/>
+            {formErrors.year && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.year}</p>}
+          </div>
+          <div>
+            <Label htmlFor="fuelType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Fuel Type</Label>
+            <Select name="fuelType" value={formData.fuelType || 'Petrol'} onValueChange={v => handleSelectChange('fuelType', v as string)}>
+              <SelectTrigger className={formErrors.fuelType ? 'border-red-500' : ''}><SelectValue /></SelectTrigger>
+              <SelectContent>{FUEL_TYPES.map(ft => <SelectItem key={ft} value={ft}>{ft}</SelectItem>)}</SelectContent>
+            </Select>
+            {formErrors.fuelType && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.fuelType}</p>}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Color</Label>
+            <Input id="color" name="color" value={formData.color || ''} onChange={handleChange} />
+          </div>
+          <div>
+            <Label htmlFor="mileage" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Mileage (km/unit)</Label>
+            <Input id="mileage" name="mileage" type="number" step="0.1" value={formData.mileage || ''} onChange={handleChange} className={formErrors.mileage ? 'border-red-500' : ''}/>
+            {formErrors.mileage && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.mileage}</p>}
+          </div>
+        </div>
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <Label htmlFor="purchaseDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Date</Label>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.purchaseDate ? 'border-red-500' : ''}`}><CalendarDays className="mr-2 h-4 w-4" />{formData.purchaseDate && isValidDate(parseISO(formData.purchaseDate)) ? format(parseISO(formData.purchaseDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.purchaseDate ? parseISO(formData.purchaseDate) : undefined} onSelect={d => handleDateChange('purchaseDate', d)} /></PopoverContent></Popover>
+                {formErrors.purchaseDate && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.purchaseDate}</p>}
+            </div>
+            <div>
+                <Label htmlFor="purchasePrice" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Price (₹)</Label>
+                <Input id="purchasePrice" name="purchasePrice" type="number" step="0.01" value={formData.purchasePrice || ''} onChange={handleChange} className={formErrors.purchasePrice ? 'border-red-500' : ''}/>
+                {formErrors.purchasePrice && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.purchasePrice}</p>}
+            </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <Label htmlFor="insurancePolicyNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Insurance Policy No.</Label>
+                <Input id="insurancePolicyNumber" name="insurancePolicyNumber" value={formData.insurancePolicyNumber || ''} onChange={handleChange} />
+            </div>
+            <div>
+                <Label htmlFor="insuranceExpiryDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Insurance Expiry</Label>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.insuranceExpiryDate ? 'border-red-500' : ''}`}><CalendarDays className="mr-2 h-4 w-4" />{formData.insuranceExpiryDate && isValidDate(parseISO(formData.insuranceExpiryDate)) ? format(parseISO(formData.insuranceExpiryDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.insuranceExpiryDate ? parseISO(formData.insuranceExpiryDate) : undefined} onSelect={d => handleDateChange('insuranceExpiryDate', d)} /></PopoverContent></Popover>
+                {formErrors.insuranceExpiryDate && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.insuranceExpiryDate}</p>}
+            </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><Label htmlFor="engineNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Engine No.</Label><Input id="engineNumber" name="engineNumber" value={formData.engineNumber || ''} onChange={handleChange} /></div>
+            <div><Label htmlFor="chassisNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Chassis No.</Label><Input id="chassisNumber" name="chassisNumber" value={formData.chassisNumber || ''} onChange={handleChange} /></div>
+        </div>
+        <div>
+            <Label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</Label>
+            <Textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Any additional notes..."/>
+        </div>
+
+        <DialogFooter className="pt-5">
+          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Vehicle' : 'Save Vehicle')}</Button>
+        </DialogFooter>
+      </form>
+    </DialogContent>
+    </Dialog>
+  );
+}
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
     >

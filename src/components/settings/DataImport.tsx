@@ -112,7 +112,7 @@ export function DataImport() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <FileJson className="w-5 h-5 text-primary" />
+          <FileJson aria-hidden="true" className="w-5 h-5 text-primary" />
           Preload Financial Data
         </CardTitle>
         <CardDescription>
@@ -135,12 +135,12 @@ export function DataImport() {
         >
           {isImporting ? (
             <>
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> {/* Used actual RefreshCw */}
+              <RefreshCw aria-hidden="true" className="mr-2 h-4 w-4 animate-spin" /> {/* Used actual RefreshCw */}
               Importing...
             </>
           ) : (
             <>
-              <UploadCloud className="mr-2 h-4 w-4" />
+              <UploadCloud aria-hidden="true" className="mr-2 h-4 w-4" />
               Import Data & Replace All
             </>
           )}

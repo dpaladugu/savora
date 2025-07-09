@@ -1,15 +1,883 @@
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Plus, Shield, Search, Trash2, Edit, AlertCircle } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, Shield, Search, Trash2, Edit, AlertCircle as AlertIcon, Loader2, CalendarDays } from "lucide-react"; // Renamed AlertCircle to avoid conflict, Added Loader2, CalendarDays
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
+import { db, DexieInsurancePolicyRecord, DexieLoanEMIRecord } from "@/db";
+import { useLiveQuery } from "dexie-react-hooks";
+import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export interface Insurance {
-  id: string;
-  policyName: string;
+
+// Form Data Types (derived from Dexie Record Types)
+export type InsuranceFormData = Partial<Omit<DexieInsurancePolicyRecord, 'premium' | 'coverageAmount' | 'created_at' | 'updated_at'>> & {
+  premium?: string; // For form input
+  coverageAmount?: string; // For form input
+};
+
+export type EMIFormData = Partial<Omit<DexieLoanEMIRecord, 'principalAmount' | 'emiAmount' | 'interestRate' | 'tenureMonths' | 'remainingAmount' | 'created_at' | 'updated_at'>> & {
+  principalAmount?: string;
+  emiAmount?: string;
+  interestRate?: string;
+  tenureMonths?: string;
+  remainingAmount?: string;
+};
+
+// Options for Select components
+const INSURANCE_TYPES = ['life', 'health', 'vehicle', 'home', 'other'] as const;
+const INSURANCE_FREQUENCIES = ['monthly', 'quarterly', 'yearly'] as const;
+const INSURANCE_STATUSES = ['active', 'expired', 'cancelled'] as const;
+const EMI_STATUSES = ['active', 'completed', 'defaulted'] as const;
+
+
+export function InsuranceTracker() {
+  const [activeTab, setActiveTab] = useState<'insurance' | 'emi'>('insurance');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingItem, setEditingItem] = useState<DexieInsurancePolicyRecord | DexieLoanEMIRecord | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<DexieInsurancePolicyRecord | DexieLoanEMIRecord | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const { toast } = useToast();
+
+  const liveInsurances = useLiveQuery(
+    async () => {
+      if (!db.insurancePolicies) return []; // Table might not be initialized on first load if schema changed
+      let query = db.insurancePolicies.orderBy('policyName');
+      if (searchTerm && activeTab === 'insurance') {
+        query = query.filter(p =>
+            p.policyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.insurer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.policyNumber && p.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+        );
+      }
+      return await query.toArray();
+    },
+    [searchTerm, activeTab],
+    []
+  );
+
+  const liveEMIs = useLiveQuery(
+    async () => {
+      if (!db.loans) return [];
+      let query = db.loans.orderBy('loanType');
+       if (searchTerm && activeTab === 'emi') {
+        query = query.filter(e =>
+            e.loanType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.lender.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      return await query.toArray();
+    },
+    [searchTerm, activeTab],
+    []
+  );
+
+  const insurances = liveInsurances || [];
+  const emis = liveEMIs || [];
+
+  const handleAddNew = () => {
+    setEditingItem(null);
+    setShowAddForm(true);
+  };
+
+  const handleOpenEditForm = (item: DexieInsurancePolicyRecord | DexieLoanEMIRecord) => {
+    setEditingItem(item);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (item: DexieInsurancePolicyRecord | DexieLoanEMIRecord) => {
+    setItemToDelete(item);
+  };
+
+  const handleDeleteExecute = async () => {
+    if (!itemToDelete || !itemToDelete.id) return;
+
+    try {
+      if (activeTab === 'insurance') {
+        await db.insurancePolicies.delete(itemToDelete.id);
+        toast({ title: "Success", description: `Insurance policy "${(itemToDelete as DexieInsurancePolicyRecord).policyName}" deleted.` });
+      } else {
+        await db.loans.delete(itemToDelete.id);
+        toast({ title: "Success", description: `EMI for "${(itemToDelete as DexieLoanEMIRecord).loanType}" deleted.` });
+      }
+    } catch (error) {
+      console.error(`Failed to delete ${activeTab} item:`, error);
+      toast({ title: "Error", description: `Failed to delete ${activeTab === 'insurance' ? 'policy' : 'EMI'}.`, variant: "destructive" });
+    } finally {
+      setItemToDelete(null);
+    }
+  };
+
+  // Summary calculations
+  const totalMonthlyPremiums = insurances
+    .filter(ins => ins.frequency === 'monthly' && ins.status === 'active')
+    .reduce((sum, ins) => sum + ins.premium, 0);
+
+  const totalMonthlyEMIs = emis
+    .filter(emi => emi.status === 'active')
+    .reduce((sum, emi) => sum + emi.emiAmount, 0);
+
+
+  if (liveInsurances === undefined || liveEMIs === undefined) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="w-12 h-12 text-muted-foreground animate-spin" />
+        <p className="ml-4 text-lg text-muted-foreground">Loading data...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 p-4 md:p-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Insurance & EMI Tracker</h1>
+          <p className="text-muted-foreground">Manage your policies and loan installments.</p>
+        </div>
+        <Button
+          onClick={handleAddNew}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Add {activeTab === 'insurance' ? 'Insurance' : 'EMI / Loan'}
+        </Button>
+      </div>
+
+      {/* Tab Switcher */}
+      <div className="flex border-b">
+        <button
+          onClick={() => setActiveTab('insurance')}
+          className={`px-4 py-3 text-sm font-medium transition-colors focus:outline-none ${
+            activeTab === 'insurance'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent'
+          }`}
+        >
+          Insurance Policies ({insurances.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('emi')}
+          className={`px-4 py-3 text-sm font-medium transition-colors focus:outline-none ${
+            activeTab === 'emi'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-muted-foreground hover:text-foreground border-b-2 border-transparent'
+          }`}
+        >
+          EMIs / Loans ({emis.length})
+        </button>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <Card className="shadow">
+           <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Monthly Premiums</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalMonthlyPremiums.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Monthly EMIs</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">₹{totalMonthlyEMIs.toLocaleString()}</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Add Forms - Conditionally rendered in a Dialog within the respective form components */}
+      {showAddForm && activeTab === 'insurance' && (
+        <AddInsuranceForm
+          initialData={editingItem as DexieInsurancePolicyRecord | null} // Cast based on activeTab
+          onClose={() => { setShowAddForm(false); setEditingItem(null); }}
+        />
+      )}
+
+      {showAddForm && activeTab === 'emi' && (
+        <AddEMIForm
+          initialData={editingItem as DexieLoanEMIRecord | null} // Cast based on activeTab
+          onClose={() => { setShowAddForm(false); setEditingItem(null); }}
+        />
+      )}
+
+      {/* Search */}
+      <div className="mt-6">
+        <Label htmlFor="search-insurance-emi" className="sr-only">Search</Label>
+        <Input
+          id="search-insurance-emi"
+          placeholder={`Search ${activeTab === 'insurance' ? 'insurance policies' : 'EMIs / loans'}...`}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+          icon={<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />}
+        />
+      </div>
+
+      {/* Content based on active tab */}
+      {activeTab === 'insurance' ? (
+        <InsuranceList
+            insurances={insurances}
+            onEdit={handleOpenEditForm as (item: DexieInsurancePolicyRecord) => void}
+            onDelete={openDeleteConfirm as (item: DexieInsurancePolicyRecord) => void}
+        />
+      ) : (
+        <EMIList
+            emis={emis}
+            onEdit={handleOpenEditForm as (item: DexieLoanEMIRecord) => void}
+            onDelete={openDeleteConfirm as (item: DexieLoanEMIRecord) => void}
+        />
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {itemToDelete && (
+        <AlertDialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center"><AlertTriangle aria-hidden="true" className="w-5 h-5 mr-2 text-destructive"/>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the record for
+                "{activeTab === 'insurance' ? (itemToDelete as DexieInsurancePolicyRecord).policyName : (itemToDelete as DexieLoanEMIRecord).loanType}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteExecute} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+    </div>
+  );
+}
+
+// --- InsuranceList Sub-Component ---
+interface InsuranceListProps {
+  insurances: DexieInsurancePolicyRecord[];
+  onEdit: (insurance: DexieInsurancePolicyRecord) => void;
+  onDelete: (insurance: DexieInsurancePolicyRecord) => void;
+}
+function InsuranceList({ insurances, onEdit, onDelete }: InsuranceListProps) {
+  const getTypeColor = (type: string) => {
+    // ... (same as original)
+    const colors: Record<string, string> = {
+      'life': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'health': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'vehicle': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      'home': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+    };
+    return colors[type.toLowerCase()] || colors['other'];
+  };
+
+  if (insurances.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">No insurance policies found.</p>;
+  }
+
+  return (
+    <div className="space-y-4">
+      {insurances.map((insurance) => (
+        <Card key={insurance.id} className={`shadow-sm transition-all hover:shadow-md ${insurance.status !== 'active' ? 'opacity-70' : ''}`}>
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div className="flex-grow">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="font-semibold text-lg text-foreground">{insurance.policyName}</h3>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getTypeColor(insurance.type)}`}>
+                    {insurance.type}
+                  </span>
+                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        insurance.status === 'active' ? 'bg-green-100 text-green-800' :
+                        insurance.status === 'expired' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {insurance.status}
+                    </span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">{insurance.insurer} - {insurance.policyNumber}</p>
+
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-2">
+                  <div><span className="font-medium">Premium:</span> ₹{insurance.premium.toLocaleString()}/{insurance.frequency}</div>
+                  {insurance.coverageAmount && <div><span className="font-medium">Coverage:</span> ₹{insurance.coverageAmount.toLocaleString()}</div>}
+                  {insurance.startDate && <div><span className="font-medium">Starts:</span> {format(parseISO(insurance.startDate), 'PPP')}</div>}
+                  {insurance.endDate && <div><span className="font-medium">Ends:</span> {format(parseISO(insurance.endDate), 'PPP')}</div>}
+                  {insurance.nextDueDate && <div><span className="font-medium">Next Due:</span> {format(parseISO(insurance.nextDueDate), 'PPP')}</div>}
+                </div>
+                {insurance.note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">Note: {insurance.note}</p>}
+              </div>
+
+              <div className="flex sm:flex-col items-end sm:items-center gap-2 sm:gap-1 shrink-0 pt-2 sm:pt-0">
+                <Button size="icon" variant="ghost" onClick={() => onEdit(insurance)} className="h-8 w-8" aria-label={`Edit policy ${insurance.policyName}`}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => onDelete(insurance)} className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete policy ${insurance.policyName}`}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+// --- EMIList Sub-Component ---
+interface EMIListProps {
+  emis: DexieLoanEMIRecord[];
+  onEdit: (emi: DexieLoanEMIRecord) => void;
+  onDelete: (emi: DexieLoanEMIRecord) => void;
+}
+function EMIList({ emis, onEdit, onDelete }: EMIListProps) {
+   if (emis.length === 0) {
+    return <p className="text-center text-muted-foreground py-8">No EMIs or loans found.</p>;
+  }
+  return (
+    <div className="space-y-4">
+      {emis.map((emi) => (
+         <Card key={emi.id} className={`shadow-sm transition-all hover:shadow-md ${emi.status !== 'active' ? 'opacity-70' : ''}`}>
+          <CardContent className="p-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div className="flex-grow">
+                <div className="flex items-center gap-3 mb-1">
+                  <h3 className="font-semibold text-lg text-foreground">{emi.loanType}</h3>
+                   <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                        emi.status === 'active' ? 'bg-green-100 text-green-800' :
+                        emi.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                        'bg-red-100 text-red-800'
+                    }`}>
+                      {emi.status}
+                    </span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-1">{emi.lender}</p>
+                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-2">
+                    <div><span className="font-medium">EMI:</span> ₹{emi.emiAmount.toLocaleString()}/month</div>
+                    {emi.principalAmount && <div><span className="font-medium">Principal:</span> ₹{emi.principalAmount.toLocaleString()}</div>}
+                    {emi.remainingAmount !== undefined && <div><span className="font-medium">Remaining:</span> ₹{emi.remainingAmount.toLocaleString()}</div>}
+                    {emi.interestRate !== undefined && <div><span className="font-medium">Rate:</span> {emi.interestRate}% p.a.</div>}
+                    {emi.tenureMonths && <div><span className="font-medium">Tenure:</span> {emi.tenureMonths} months</div>}
+                    {emi.nextDueDate && <div><span className="font-medium">Next Due:</span> {format(parseISO(emi.nextDueDate), 'PPP')}</div>}
+                    {emi.startDate && <div><span className="font-medium">Starts:</span> {format(parseISO(emi.startDate), 'PPP')}</div>}
+                    {emi.endDate && <div><span className="font-medium">Ends:</span> {format(parseISO(emi.endDate), 'PPP')}</div>}
+                 </div>
+                 {emi.note && <p className="text-xs text-muted-foreground mt-2 pt-2 border-t border-dashed">Note: {emi.note}</p>}
+              </div>
+              <div className="flex sm:flex-col items-end sm:items-center gap-2 sm:gap-1 shrink-0 pt-2 sm:pt-0">
+                <Button size="icon" variant="ghost" onClick={() => onEdit(emi)} className="h-8 w-8" aria-label={`Edit EMI for ${emi.loanType}`}>
+                  <Edit className="w-4 h-4" />
+                </Button>
+                <Button size="icon" variant="ghost" onClick={() => onDelete(emi)} className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive" aria-label={`Delete EMI for ${emi.loanType}`}>
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+
+// --- AddInsuranceForm Sub-Component ---
+interface AddInsuranceFormProps {
+  initialData?: DexieInsurancePolicyRecord | null;
+  onClose: () => void;
+}
+function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<InsuranceFormData>(() => {
+    const defaults: InsuranceFormData = {
+        policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', coverageAmount: '',
+        nextDueDate: '', status: 'active', note: '', user_id: 'default_user'
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        premium: initialData.premium?.toString() || '',
+        coverageAmount: initialData.coverageAmount?.toString() || '',
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+      };
+    }
+    return defaults;
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => { // Repopulate form if initialData changes (e.g. opening edit after add)
+     const defaults: InsuranceFormData = {
+        policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', coverageAmount: '',
+        nextDueDate: '', status: 'active', note: '', user_id: 'default_user'
+    };
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        premium: initialData.premium?.toString() || '',
+        coverageAmount: initialData.coverageAmount?.toString() || '',
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+      });
+    } else {
+      setFormData(defaults);
+    }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+  const handleSelectChange = (name: keyof InsuranceFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  const handleDateChange = (name: keyof InsuranceFormData, date?: Date) => {
+    setFormData(prev => ({ ...prev, [name]: date ? format(date, 'yyyy-MM-dd') : undefined }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    // Basic Validation
+    if (!formData.policyName || !formData.insurer || !formData.type || !formData.premium || !formData.frequency || !formData.status) {
+      toast({ title: "Validation Error", description: "Please fill all required fields for insurance.", variant: "destructive" });
+      setIsSaving(false); return;
+    }
+    const premiumNum = parseFloat(formData.premium);
+    const coverageNum = formData.coverageAmount ? parseFloat(formData.coverageAmount) : undefined;
+    if (isNaN(premiumNum) || premiumNum <= 0 || (formData.coverageAmount && (isNaN(coverageNum!) || coverageNum! <=0 ))) {
+      toast({ title: "Validation Error", description: "Premium and Coverage Amount must be valid positive numbers.", variant: "destructive" });
+      setIsSaving(false); return;
+    }
+
+    const record: Omit<DexieInsurancePolicyRecord, 'id' | 'created_at' | 'updated_at'> = {
+        policyName: formData.policyName!, insurer: formData.insurer!, type: formData.type!,
+        premium: premiumNum, frequency: formData.frequency! as DexieInsurancePolicyRecord['frequency'],
+        startDate: formData.startDate, endDate: formData.endDate, coverageAmount: coverageNum,
+        nextDueDate: formData.nextDueDate, status: formData.status! as DexieInsurancePolicyRecord['status'],
+        note: formData.note || '', user_id: formData.user_id || 'default_user',
+        policyNumber: formData.policyNumber || ''
+    };
+
+    try {
+      if (formData.id) {
+        await db.insurancePolicies.update(formData.id, { ...record, updated_at: new Date() });
+        toast({ title: "Success", description: "Insurance policy updated." });
+      } else {
+        const newId = self.crypto.randomUUID();
+        await db.insurancePolicies.add({ ...record, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: "Insurance policy added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save insurance policy:", error);
+      toast({ title: "Database Error", description: "Could not save insurance policy.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={true} onOpenChange={onClose}> {/* Form is now a dialog itself */}
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{formData.id ? 'Edit' : 'Add'} Insurance Policy</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Policy Name, Number, Insurer */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="policyName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Name *</Label>
+              <Input id="policyName" name="policyName" value={formData.policyName || ''} onChange={handleChange} required
+                     className={formErrors.policyName ? 'border-red-500': ''}
+                     aria-invalid={!!formErrors.policyName}
+                     aria-describedby={formErrors.policyName ? "policyName-error-insurance" : undefined}
+              />
+              {formErrors.policyName && <p id="policyName-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.policyName}</p>}
+            </div>
+            <div>
+              <Label htmlFor="policyNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Policy Number</Label>
+              <Input id="policyNumber" name="policyNumber" value={formData.policyNumber || ''} onChange={handleChange} />
+            </div>
+          </div>
+          <div>
+            <Label htmlFor="insurer" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Insurer *</Label>
+            <Input id="insurer" name="insurer" value={formData.insurer || ''} onChange={handleChange} required
+                   className={formErrors.insurer ? 'border-red-500': ''}
+                   aria-invalid={!!formErrors.insurer}
+                   aria-describedby={formErrors.insurer ? "insurer-error-insurance" : undefined}
+            />
+            {formErrors.insurer && <p id="insurer-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.insurer}</p>}
+          </div>
+
+          {/* Type, Premium, Frequency */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</Label>
+              <Select name="type" value={formData.type || 'other'} onValueChange={v => handleSelectChange('type', v as string)}>
+                <SelectTrigger className={formErrors.type ? 'border-red-500': ''}
+                               aria-invalid={!!formErrors.type}
+                               aria-describedby={formErrors.type ? "type-error-insurance" : undefined}
+                ><SelectValue /></SelectTrigger>
+                <SelectContent>{INSURANCE_TYPES.map(t => <SelectItem key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</SelectItem>)}</SelectContent>
+              </Select>
+              {formErrors.type && <p id="type-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.type}</p>}
+            </div>
+            <div>
+              <Label htmlFor="premium" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Premium (₹) *</Label>
+              <Input id="premium" name="premium" type="number" step="0.01" value={formData.premium || ''} onChange={handleChange} required
+                     className={formErrors.premium ? 'border-red-500': ''}
+                     aria-invalid={!!formErrors.premium}
+                     aria-describedby={formErrors.premium ? "premium-error-insurance" : undefined}
+              />
+              {formErrors.premium && <p id="premium-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.premium}</p>}
+            </div>
+            <div>
+              <Label htmlFor="frequency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency *</Label>
+              <Select name="frequency" value={formData.frequency || 'yearly'} onValueChange={v => handleSelectChange('frequency', v as string)}>
+                <SelectTrigger className={formErrors.frequency ? 'border-red-500': ''}
+                               aria-invalid={!!formErrors.frequency}
+                               aria-describedby={formErrors.frequency ? "frequency-error-insurance" : undefined}
+                ><SelectValue /></SelectTrigger>
+                <SelectContent>{INSURANCE_FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</SelectItem>)}</SelectContent>
+              </Select>
+              {formErrors.frequency && <p id="frequency-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.frequency}</p>}
+            </div>
+          </div>
+
+          {/* Start Date, End Date, Coverage Amount */}
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <Label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</Label>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.startDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate ? "startDate-error-insurance" : undefined}
+                ><CalendarDays className="mr-2 h-4 w-4" />{formData.startDate && isValidDate(parseISO(formData.startDate)) ? format(parseISO(formData.startDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.startDate ? parseISO(formData.startDate) : undefined} onSelect={d => handleDateChange('startDate', d)} /></PopoverContent></Popover>
+                {formErrors.startDate && <p id="startDate-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.startDate}</p>}
+            </div>
+            <div>
+                <Label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</Label>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.endDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate ? "endDate-error-insurance" : undefined}
+                ><CalendarDays className="mr-2 h-4 w-4" />{formData.endDate && isValidDate(parseISO(formData.endDate)) ? format(parseISO(formData.endDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.endDate ? parseISO(formData.endDate) : undefined} onSelect={d => handleDateChange('endDate', d)} /></PopoverContent></Popover>
+                {formErrors.endDate && <p id="endDate-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.endDate}</p>}
+            </div>
+            <div>
+              <Label htmlFor="coverageAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Coverage (₹)</Label>
+              <Input id="coverageAmount" name="coverageAmount" type="number" step="0.01" value={formData.coverageAmount || ''} onChange={handleChange}
+                     className={formErrors.coverageAmount ? 'border-red-500': ''}
+                     aria-invalid={!!formErrors.coverageAmount}
+                     aria-describedby={formErrors.coverageAmount ? "coverageAmount-error-insurance" : undefined}
+              />
+              {formErrors.coverageAmount && <p id="coverageAmount-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.coverageAmount}</p>}
+            </div>
+          </div>
+
+          {/* Next Due Date, Status */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <Label htmlFor="nextDueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Next Due Date</Label>
+                <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.nextDueDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.nextDueDate} aria-describedby={formErrors.nextDueDate ? "nextDueDate-error-insurance" : undefined}
+                ><CalendarDays className="mr-2 h-4 w-4" />{formData.nextDueDate && isValidDate(parseISO(formData.nextDueDate)) ? format(parseISO(formData.nextDueDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.nextDueDate ? parseISO(formData.nextDueDate) : undefined} onSelect={d => handleDateChange('nextDueDate', d)} /></PopoverContent></Popover>
+                {formErrors.nextDueDate && <p id="nextDueDate-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.nextDueDate}</p>}
+            </div>
+            <div>
+              <Label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status *</Label>
+              <Select name="status" value={formData.status || 'active'} onValueChange={v => handleSelectChange('status', v as string)}>
+                <SelectTrigger className={formErrors.status ? 'border-red-500': ''}
+                               aria-invalid={!!formErrors.status}
+                               aria-describedby={formErrors.status ? "status-error-insurance" : undefined}
+                ><SelectValue /></SelectTrigger>
+                <SelectContent>{INSURANCE_STATUSES.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}</SelectContent>
+              </Select>
+              {formErrors.status && <p id="status-error-insurance" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.status}</p>}
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</Label>
+            <Textarea id="note" name="note" value={formData.note || ''} onChange={handleChange} placeholder="Any additional notes..."/>
+          </div>
+
+          <DialogFooter className="pt-5">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Policy' : 'Save Policy')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// --- AddEMIForm Sub-Component ---
+interface AddEMIFormProps {
+  initialData?: DexieLoanEMIRecord | null;
+  onClose: () => void;
+}
+function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
+   const { toast } = useToast();
+  const [formData, setFormData] = useState<EMIFormData>(() => {
+    const defaults: EMIFormData = {
+        loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', nextDueDate: '', remainingAmount: '',
+        status: 'active', account: '', note: '', user_id: 'default_user'
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        principalAmount: initialData.principalAmount?.toString() || '',
+        emiAmount: initialData.emiAmount?.toString() || '',
+        interestRate: initialData.interestRate?.toString() || '',
+        tenureMonths: initialData.tenureMonths?.toString() || '',
+        remainingAmount: initialData.remainingAmount?.toString() || '',
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+      };
+    }
+    return defaults;
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
+   useEffect(() => { // Repopulate form if initialData changes
+    const defaults: EMIFormData = {
+        loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', nextDueDate: '', remainingAmount: '',
+        status: 'active', account: '', note: '', user_id: 'default_user'
+    };
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        principalAmount: initialData.principalAmount?.toString() || '',
+        emiAmount: initialData.emiAmount?.toString() || '',
+        interestRate: initialData.interestRate?.toString() || '',
+        tenureMonths: initialData.tenureMonths?.toString() || '',
+        remainingAmount: initialData.remainingAmount?.toString() || '',
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+      });
+    } else {
+      setFormData(defaults);
+    }
+  }, [initialData]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+  const handleSelectChange = (name: keyof EMIFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+   const handleDateChange = (name: keyof EMIFormData, date?: Date) => {
+    setFormData(prev => ({ ...prev, [name]: date ? format(date, 'yyyy-MM-dd') : undefined }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    // Basic Validation
+    if (!formData.loanType || !formData.lender || !formData.principalAmount || !formData.emiAmount || !formData.status) {
+      toast({ title: "Validation Error", description: "Please fill all required EMI fields.", variant: "destructive" });
+      setIsSaving(false); return;
+    }
+    const principalNum = parseFloat(formData.principalAmount);
+    const emiNum = parseFloat(formData.emiAmount);
+    const interestNum = formData.interestRate ? parseFloat(formData.interestRate) : undefined;
+    const tenureNum = formData.tenureMonths ? parseInt(formData.tenureMonths) : undefined;
+    const remainingNum = formData.remainingAmount ? parseFloat(formData.remainingAmount) : undefined;
+
+    if (isNaN(principalNum) || principalNum <= 0 || isNaN(emiNum) || emiNum <= 0) {
+         toast({ title: "Validation Error", description: "Principal and EMI Amount must be valid positive numbers.", variant: "destructive" });
+         setIsSaving(false); return;
+    }
+    // Add more specific validations as needed
+
+    const record: Omit<DexieLoanEMIRecord, 'id' | 'created_at' | 'updated_at'> = {
+        loanType: formData.loanType!, lender: formData.lender!, principalAmount: principalNum,
+        emiAmount: emiNum, interestRate: interestNum, tenureMonths: tenureNum!,
+        startDate: formData.startDate, endDate: formData.endDate, nextDueDate: formData.nextDueDate,
+        remainingAmount: remainingNum, status: formData.status! as DexieLoanEMIRecord['status'],
+        account: formData.account || '', note: formData.note || '', user_id: formData.user_id || 'default_user'
+    };
+
+    try {
+      if (formData.id) {
+        await db.loans.update(formData.id, { ...record, updated_at: new Date() });
+        toast({ title: "Success", description: "EMI/Loan details updated." });
+      } else {
+        const newId = self.crypto.randomUUID();
+        await db.loans.add({ ...record, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: "EMI/Loan added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save EMI/Loan:", error);
+      toast({ title: "Database Error", description: "Could not save EMI/Loan details.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+     <Dialog open={true} onOpenChange={onClose}> {/* Form is now a dialog itself */}
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{formData.id ? 'Edit' : 'Add'} EMI / Loan</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          {/* Loan Type, Lender */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="loanType" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Loan Type *</Label>
+              <Input id="loanType" name="loanType" value={formData.loanType || ''} onChange={handleChange} required
+                     className={formErrors.loanType ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.loanType}
+                     aria-describedby={formErrors.loanType ? "loanType-error-emi" : undefined}
+              />
+              {formErrors.loanType && <p id="loanType-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.loanType}</p>}
+            </div>
+            <div>
+              <Label htmlFor="lender" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Lender *</Label>
+              <Input id="lender" name="lender" value={formData.lender || ''} onChange={handleChange} required
+                     className={formErrors.lender ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.lender}
+                     aria-describedby={formErrors.lender ? "lender-error-emi" : undefined}
+              />
+              {formErrors.lender && <p id="lender-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.lender}</p>}
+            </div>
+          </div>
+
+          {/* Principal, EMI Amount, Interest Rate, Tenure */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="principalAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Principal (₹) *</Label>
+              <Input id="principalAmount" name="principalAmount" type="number" step="0.01" value={formData.principalAmount || ''} onChange={handleChange} required
+                     className={formErrors.principalAmount ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.principalAmount}
+                     aria-describedby={formErrors.principalAmount ? "principalAmount-error-emi" : undefined}
+              />
+              {formErrors.principalAmount && <p id="principalAmount-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.principalAmount}</p>}
+            </div>
+            <div>
+              <Label htmlFor="emiAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">EMI Amount (₹) *</Label>
+              <Input id="emiAmount" name="emiAmount" type="number" step="0.01" value={formData.emiAmount || ''} onChange={handleChange} required
+                     className={formErrors.emiAmount ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.emiAmount}
+                     aria-describedby={formErrors.emiAmount ? "emiAmount-error-emi" : undefined}
+              />
+              {formErrors.emiAmount && <p id="emiAmount-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.emiAmount}</p>}
+            </div>
+          </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="interestRate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Interest Rate (%)</Label>
+              <Input id="interestRate" name="interestRate" type="number" step="0.01" value={formData.interestRate || ''} onChange={handleChange}
+                     className={formErrors.interestRate ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.interestRate}
+                     aria-describedby={formErrors.interestRate ? "interestRate-error-emi" : undefined}
+              />
+              {formErrors.interestRate && <p id="interestRate-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.interestRate}</p>}
+            </div>
+            <div>
+              <Label htmlFor="tenureMonths" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tenure (Months)</Label>
+              <Input id="tenureMonths" name="tenureMonths" type="number" value={formData.tenureMonths || ''} onChange={handleChange}
+                     className={formErrors.tenureMonths ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.tenureMonths}
+                     aria-describedby={formErrors.tenureMonths ? "tenureMonths-error-emi" : undefined}
+              />
+              {formErrors.tenureMonths && <p id="tenureMonths-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.tenureMonths}</p>}
+            </div>
+          </div>
+
+          {/* Start Date, End Date, Next Due Date */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="startDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</Label>
+              <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.startDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.startDate} aria-describedby={formErrors.startDate ? "startDate-error-emi" : undefined}
+              ><CalendarDays className="mr-2 h-4 w-4" />{formData.startDate && isValidDate(parseISO(formData.startDate)) ? format(parseISO(formData.startDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.startDate ? parseISO(formData.startDate) : undefined} onSelect={d => handleDateChange('startDate',d)}/></PopoverContent></Popover>
+              {formErrors.startDate && <p id="startDate-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.startDate}</p>}
+            </div>
+            <div>
+              <Label htmlFor="endDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</Label>
+              <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.endDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.endDate} aria-describedby={formErrors.endDate ? "endDate-error-emi" : undefined}
+              ><CalendarDays className="mr-2 h-4 w-4" />{formData.endDate && isValidDate(parseISO(formData.endDate)) ? format(parseISO(formData.endDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.endDate ? parseISO(formData.endDate) : undefined} onSelect={d => handleDateChange('endDate',d)}/></PopoverContent></Popover>
+              {formErrors.endDate && <p id="endDate-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.endDate}</p>}
+            </div>
+            <div>
+              <Label htmlFor="nextDueDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Next Due Date</Label>
+              <Popover><PopoverTrigger asChild><Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.nextDueDate ? 'border-red-500' : ''}`}
+                                                         aria-invalid={!!formErrors.nextDueDate} aria-describedby={formErrors.nextDueDate ? "nextDueDate-error-emi" : undefined}
+              ><CalendarDays className="mr-2 h-4 w-4" />{formData.nextDueDate && isValidDate(parseISO(formData.nextDueDate)) ? format(parseISO(formData.nextDueDate), 'PPP') : "Pick date"}</Button></PopoverTrigger><PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.nextDueDate ? parseISO(formData.nextDueDate) : undefined} onSelect={d => handleDateChange('nextDueDate',d)}/></PopoverContent></Popover>
+              {formErrors.nextDueDate && <p id="nextDueDate-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.nextDueDate}</p>}
+            </div>
+          </div>
+
+          {/* Remaining Amount, Status, Account */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="remainingAmount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Remaining (₹)</Label>
+              <Input id="remainingAmount" name="remainingAmount" type="number" step="0.01" value={formData.remainingAmount || ''} onChange={handleChange}
+                     className={formErrors.remainingAmount ? 'border-red-500' : ''}
+                     aria-invalid={!!formErrors.remainingAmount}
+                     aria-describedby={formErrors.remainingAmount ? "remainingAmount-error-emi" : undefined}
+              />
+              {formErrors.remainingAmount && <p id="remainingAmount-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.remainingAmount}</p>}
+            </div>
+            <div>
+              <Label htmlFor="status" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status *</Label>
+              <Select name="status" value={formData.status || 'active'} onValueChange={v => handleSelectChange('status', v as string)}>
+                <SelectTrigger className={formErrors.status ? 'border-red-500' : ''}
+                               aria-invalid={!!formErrors.status}
+                               aria-describedby={formErrors.status ? "status-error-emi" : undefined}
+                ><SelectValue /></SelectTrigger>
+                <SelectContent>{EMI_STATUSES.map(s => <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>)}</SelectContent>
+              </Select>
+              {formErrors.status && <p id="status-error-emi" className="mt-1 text-xs text-red-600 flex items-center"><AlertIcon className="w-3 h-3 mr-1"/>{formErrors.status}</p>}
+            </div>
+            <div>
+              <Label htmlFor="account" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account (Optional)</Label>
+              <Input id="account" name="account" value={formData.account || ''} onChange={handleChange} />
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</Label>
+            <Textarea id="note" name="note" value={formData.note || ''} onChange={handleChange} placeholder="Any additional notes..."/>
+          </div>
+
+          <DialogFooter className="pt-5">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update EMI/Loan' : 'Save EMI/Loan')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
   policyNumber: string;
   insurer: string;
   type: 'life' | 'health' | 'vehicle' | 'home' | 'other';

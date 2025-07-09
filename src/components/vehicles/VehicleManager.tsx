@@ -87,7 +87,7 @@ export function VehicleManager() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-2">
-              <Car className="w-6 h-6 text-primary" />
+              <Car className="w-6 h-6 text-primary" aria-hidden="true" />
               <CardTitle>Manage Vehicles</CardTitle>
             </div>
             <Button onClick={() => { setEditingVehicle(null); setShowAddForm(true); }} size="sm">

@@ -116,71 +116,97 @@ class DeepSeekProvider implements AiChatProvider {
 }
 
 // --- Generic AI Chat Service ---
-// This service will be responsible for selecting and using the configured AI provider.
-// For now, it's a basic structure. It will be enhanced to read configuration from Zustand.
-
 export class AiChatService {
   private provider: AiChatProvider | null = null;
+  private currentProviderConfig: { apiKey?: string; provider?: string; baseUrl?: string; model?: string } | null = null;
 
   constructor() {
-    // This constructor will be updated to initialize the provider based on stored settings.
-    // For now, it doesn't initialize any provider automatically.
-    // The user/app will need to call a method to set up the provider.
+    this.initializeProvider(); // Initialize based on current store state
   }
 
-  public initializeProvider(): void {
-    // Use the new selector for the whole config object
-    const { apiKey, provider, baseUrl, model } = useAppStore.getState().decryptedAiConfigState();
+  // Initialize or re-initialize the provider if settings have changed
+  private initializeProvider(): boolean {
+    const { apiKey, provider: providerName, baseUrl, model } = useAppStore.getState().decryptedAiConfigState();
 
-    if (!apiKey && provider !== 'ollama_local') { // Ollama might not need an API key
-      console.warn('AI Service: API key not available for cloud provider. Provider not initialized.');
-      this.provider = null;
-      return;
+    // Check if configuration has actually changed to prevent unnecessary re-initialization
+    if (
+      this.provider &&
+      this.currentProviderConfig &&
+      this.currentProviderConfig.apiKey === apiKey &&
+      this.currentProviderConfig.provider === providerName &&
+      this.currentProviderConfig.baseUrl === baseUrl &&
+      this.currentProviderConfig.model === model
+    ) {
+      return true; // Already configured with the same settings
     }
-    if (provider === 'ollama_local' && !baseUrl) {
-      console.warn('AI Service: Base URL not available for Ollama. Provider not initialized.');
-      this.provider = null;
-      return;
-    }
 
+    this.provider = null; // Reset provider before attempting to initialize
+    this.currentProviderConfig = { apiKey, provider: providerName, baseUrl, model }; // Store current config
 
-    // Later, we will use aiServiceBaseUrl for providers like Ollama
-    switch (provider) {
+    switch (providerName) {
       case 'deepseek':
-        if (!apiKey) { // Explicit check for apiKey for deepseek
-             console.warn('AI Service: API key required for DeepSeek. Provider not initialized.');
-             this.provider = null;
-             return;
+        if (!apiKey) {
+          console.warn('AI Service: API key required for DeepSeek. Provider not initialized.');
+          return false;
         }
-        this.provider = new DeepSeekProvider(apiKey, model || DEEPSEEK_MODEL_NAME); // Pass model
+        this.provider = new DeepSeekProvider(apiKey, model || DEEPSEEK_MODEL_NAME);
         console.log(`AI Service: Initialized with DeepSeekProvider (Model: ${model || DEEPSEEK_MODEL_NAME}).`);
         break;
-      // case 'groq':
-      //   this.provider = new GroqProvider(decryptedAiApiKey, aiServiceBaseUrl); // Assuming GroqProvider might also need a base URL or model specifier
-      //   console.log('AI Service: Initialized with GroqProvider.');
-      //   break;
-      // case 'ollama_local':
-      //   this.provider = new OllamaProvider(aiServiceBaseUrl || 'http://localhost:11434'); // Ollama typically doesn't need an API key but needs a base URL
-      //   console.log('AI Service: Initialized with OllamaProvider.');
-      //   break;
+      case 'groq':
+        if (!apiKey) {
+          console.warn('AI Service: API key required for Groq. Provider not initialized.');
+          return false;
+        }
+        this.provider = new GroqProvider(apiKey, model || GROQ_DEFAULT_MODEL_NAME);
+        console.log(`AI Service: Initialized with GroqProvider (Model: ${model || GROQ_DEFAULT_MODEL_NAME}).`);
+        break;
+      case 'ollama_local':
+        // Ollama typically uses a base URL and model, API key might not be needed.
+        this.provider = new OllamaProvider(baseUrl || OLLAMA_DEFAULT_BASE_URL, model || OLLAMA_DEFAULT_MODEL_NAME);
+        console.log(`AI Service: Initialized with OllamaProvider (BaseURL: ${baseUrl || OLLAMA_DEFAULT_BASE_URL}, Model: ${model || OLLAMA_DEFAULT_MODEL_NAME}).`);
+        break;
       default:
-        console.warn(`AI Service: Unknown or unsupported provider "${currentAiProvider}". Provider not initialized.`);
-        this.provider = null;
+        console.warn(`AI Service: Unknown or unsupported provider "${providerName}". Provider not initialized.`);
+        return false;
     }
-  }
-
-  public isConfigured(): boolean {
-    this.initializeProvider(); // Ensure provider is current with store state
     return !!this.provider;
   }
 
-  public async getFinancialAdvice(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
-    this.initializeProvider(); // Re-initialize/check provider on each call to ensure it's current
+  public isConfigured(): boolean {
+    // Re-check initialization. This will also update the provider if settings changed.
+    return this.initializeProvider();
+  }
 
-    if (!this.provider) {
-      throw new Error('AI Service Provider not configured or API key missing. Please check settings.');
+  public async getFinancialAdvice(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
+    // Ensure the provider is initialized with the latest settings.
+    // This also handles cases where settings might change after initial instantiation of AiChatService.
+    if (!this.isConfigured() || !this.provider) {
+      // Attempt to re-initialize if not configured. This helps if settings are updated after service creation.
+      if (!this.initializeProvider() || !this.provider) {
+         throw new Error('AI Service Provider not configured, API key/Base URL missing, or provider is unsupported. Please check settings.');
+      }
     }
-    return this.provider.getChatCompletion(prompt, systemContext);
+
+    // Timeout handling (e.g., 30 seconds)
+    const timeoutPromise = new Promise<AiAdviceResponse>((_, reject) =>
+      setTimeout(() => reject(new Error('AI request timed out')), 30000)
+    );
+
+    try {
+      // Perform the API call with timeout
+      return await Promise.race([
+        this.provider.getChatCompletion(prompt, systemContext),
+        timeoutPromise,
+      ]);
+    } catch (error) {
+      console.error('AI Service Error:', error);
+      // Simple error fallback: re-throw the error for now.
+      // More sophisticated fallback (e.g., retry, switch provider) could be implemented here.
+      if (error instanceof Error) {
+        throw new Error(`Failed to get financial advice: ${error.message}`);
+      }
+      throw new Error('An unknown error occurred while fetching financial advice.');
+    }
   }
 
   // Add other methods like getChatCompletionStream if needed, delegating to this.provider
@@ -205,25 +231,157 @@ export default aiChatServiceInstance;
 // Or, more directly if configuration is expected to be handled at app start / PIN unlock:
 // const { advice } = await aiChatServiceInstance.getFinancialAdvice("My prompt");
 
-// Placeholder for GroqProvider - to be implemented if chosen
-// class GroqProvider implements AiChatProvider {
-//   constructor(private apiKey: string, private model?: string) {}
-//   async getChatCompletion(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
-//     // Implementation for Groq API
-//     console.log("GroqProvider called with prompt:", prompt, "systemContext:", systemContext, "apiKey:", this.apiKey, "model:", this.model);
-//     return { advice: "Groq response placeholder", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }};
-//   }
-// }
+// --- Groq Provider Implementation ---
+const GROQ_API_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
+const GROQ_DEFAULT_MODEL_NAME = 'mixtral-8x7b-32768'; // A common Groq model
 
-// Placeholder for OllamaProvider - to be implemented if chosen
-// class OllamaProvider implements AiChatProvider {
-//   constructor(private baseUrl: string, private model?: string) {}
-//   async getChatCompletion(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
-//     // Implementation for Ollama API
-//     console.log("OllamaProvider called with prompt:", prompt, "systemContext:", systemContext, "baseUrl:", this.baseUrl, "model:", this.model);
-//     return { advice: "Ollama response placeholder", usage: { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 }};
-//   }
-// }
+class GroqProvider implements AiChatProvider {
+  private apiKey: string;
+  private model: string;
+
+  constructor(apiKey: string, model: string = GROQ_DEFAULT_MODEL_NAME) {
+    if (!apiKey) {
+      throw new Error('GroqProvider: API key is required.');
+    }
+    this.apiKey = apiKey;
+    this.model = model;
+  }
+
+  async getChatCompletion(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
+    const messages: AiChatMessage[] = [];
+    if (systemContext) {
+      messages.push({ role: 'system', content: systemContext });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    const requestBody = { // Groq uses a similar structure to OpenAI
+      model: this.model,
+      messages: messages,
+      max_tokens: 1500,
+      temperature: 0.3,
+    };
+
+    try {
+      const response = await fetch(GROQ_API_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('Groq API Error:', response.status, errorBody);
+        throw new Error(`Groq API request failed with status ${response.status}: ${errorBody}`);
+      }
+
+      const responseData = await response.json(); // Assuming similar to Deepseek/OpenAI structure
+
+      if (responseData.choices && responseData.choices.length > 0 && responseData.choices[0].message) {
+        const adviceContent = responseData.choices[0].message.content.trim();
+        const usageData = responseData.usage; // Groq also provides usage data
+
+        if (usageData && typeof usageData.total_tokens === 'number') {
+          TokenUsageService.addUsage(usageData.total_tokens);
+        }
+
+        return {
+          advice: adviceContent,
+          usage: usageData,
+        };
+      } else {
+        console.error('Groq API response does not contain expected data:', responseData);
+        throw new Error('Invalid response structure from Groq API.');
+      }
+    } catch (error) {
+      console.error('Error calling Groq API:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while fetching AI advice from Groq.');
+    }
+  }
+}
+
+// --- Ollama Provider Implementation ---
+const OLLAMA_DEFAULT_BASE_URL = 'http://localhost:11434';
+const OLLAMA_DEFAULT_MODEL_NAME = 'llama2'; // A common default model for Ollama
+
+class OllamaProvider implements AiChatProvider {
+  private baseUrl: string;
+  private model: string;
+
+  constructor(baseUrl: string = OLLAMA_DEFAULT_BASE_URL, model: string = OLLAMA_DEFAULT_MODEL_NAME) {
+    this.baseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl; // Ensure no trailing slash
+    this.model = model;
+  }
+
+  async getChatCompletion(prompt: string, systemContext?: string): Promise<AiAdviceResponse> {
+    const messages: AiChatMessage[] = [];
+    if (systemContext) {
+      messages.push({ role: 'system', content: systemContext });
+    }
+    messages.push({ role: 'user', content: prompt });
+
+    // Ollama's /api/chat endpoint expects a slightly different format
+    const requestBody = {
+      model: this.model,
+      messages: messages,
+      stream: false, // For non-streaming response
+    };
+
+    try {
+      const response = await fetch(`${this.baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('Ollama API Error:', response.status, errorBody);
+        throw new Error(`Ollama API request failed with status ${response.status}: ${errorBody}`);
+      }
+
+      const responseData = await response.json();
+
+      // Ollama's response structure for non-streaming chat
+      if (responseData.message && responseData.message.content) {
+        const adviceContent = responseData.message.content.trim();
+        // Ollama's /api/chat response includes usage details like "total_duration", "load_duration", "prompt_eval_count", "prompt_eval_duration", "eval_count", "eval_duration"
+        // We need to map these to TokenUsage if possible, or decide how to handle them.
+        // For simplicity, we'll map eval_count (output tokens) and prompt_eval_count (input tokens) if available.
+        const usageData: TokenUsage | undefined = responseData.prompt_eval_count && responseData.eval_count ? {
+          prompt_tokens: responseData.prompt_eval_count,
+          completion_tokens: responseData.eval_count,
+          total_tokens: responseData.prompt_eval_count + responseData.eval_count,
+        } : undefined;
+
+        if (usageData && typeof usageData.total_tokens === 'number') {
+            TokenUsageService.addUsage(usageData.total_tokens);
+        }
+
+        return {
+          advice: adviceContent,
+          usage: usageData,
+        };
+      } else {
+        console.error('Ollama API response does not contain expected data:', responseData);
+        throw new Error('Invalid response structure from Ollama API.');
+      }
+    } catch (error) {
+      console.error('Error calling Ollama API:', error);
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('An unexpected error occurred while fetching AI advice from Ollama.');
+    }
+  }
+}
 
 // The TokenUsageService import and usage within DeepSeekProvider is maintained.
 // The new AiChatService class will use Zustand store for API key and provider choice.
