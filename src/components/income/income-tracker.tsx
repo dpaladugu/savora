@@ -1,182 +1,114 @@
 
 import { motion } from "framer-motion";
-import { useState, useEffect } from "react"; // Added useEffect
-import { Plus, DollarSign, Search, Filter, Trash2, Edit } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, DollarSign, Search, Filter, Trash2, Edit, Loader2, AlertTriangle as AlertTriangleIcon, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context"; // Added
-import { SupabaseDataService } from "@/services/supabase-data-service"; // Added
-import { db } from "@/db"; // Added Dexie db instance
+import { useAuth } from "@/contexts/auth-context";
+import { db } from "@/db";
+import { Income as AppIncome } from '@/components/income/income-tracker'; // Using self-defined AppIncome
+import { useLiveQuery } from "dexie-react-hooks";
+import { format, parseISO, isValidDate } from 'date-fns';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle as AlertDialogTitleComponent,
+} from "@/components/ui/alert-dialog";
 
-// It's better to move this interface to a shared types file (e.g., src/types/income.ts)
-// and import it here, in supabase-data-service.ts, and db.ts.
-// For now, keeping it here for directness of this refactor step.
-export interface Income {
-  id: string; // Should be UUID from Supabase
-  user_id?: string; // Will be added when sending to Supabase, but not always part of UI model
-  amount: number;
-  source: string;
-  category: 'salary' | 'rental' | 'side-business' | 'investment' | 'other';
-  date: string;
-  frequency: 'one-time' | 'monthly' | 'quarterly' | 'yearly';
-  note?: string;
-}
+// This is the type for records in db.incomes (defined in SavoraDB class in db.ts)
+// It should align with AppIncome interface if AppIncome is the intended structure for Dexie.
+// Assuming AppIncome is the structure for db.incomes.
+// export interface AppIncome {
+//   id: string;
+//   user_id?: string;
+//   amount: number;
+//   source: string;
+//   category: 'salary' | 'rental' | 'side-business' | 'investment' | 'other' | string;
+//   date: string; // ISO YYYY-MM-DD
+//   frequency: 'one-time' | 'monthly' | 'quarterly' | 'yearly' | string;
+//   note?: string;
+//   created_at?: Date;
+//   updated_at?: Date;
+// }
 
-const mockIncomes: Income[] = [
-  {
-    id: '1',
-    amount: 85000,
-    source: 'Software Engineer Salary',
-    category: 'salary',
-    date: '2024-01-01',
-    frequency: 'monthly'
-  },
-  {
-    id: '2',
-    amount: 15000,
-    source: 'Apartment Rent',
-    category: 'rental',
-    date: '2024-01-05',
-    frequency: 'monthly'
-  }
-]; // mockIncomes will be removed
+// Form data type
+type IncomeFormData = Partial<Omit<AppIncome, 'amount' | 'created_at' | 'updated_at'>> & {
+  amount?: string; // Amount as string for form input
+};
+
+const INCOME_CATEGORIES = ['salary', 'rental', 'side-business', 'investment', 'freelance', 'dividends', 'gifts', 'other'] as const;
+const INCOME_FREQUENCIES = ['one-time', 'monthly', 'quarterly', 'yearly', 'bi-weekly', 'weekly'] as const;
+
 
 export function IncomeTracker() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [incomes, setIncomes] = useState<Income[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+
   const [showAddForm, setShowAddForm] = useState(false);
-  const [editingIncome, setEditingIncome] = useState<Income | null>(null); // State for income being edited
+  const [editingIncome, setEditingIncome] = useState<AppIncome | null>(null);
+  const [incomeToDelete, setIncomeToDelete] = useState<AppIncome | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-
-  useEffect(() => {
-    const loadIncomes = async () => {
-      if (!user) {
-        setIncomes([]);
-        setIsLoading(false);
-        return;
-      }
-      setIsLoading(true);
-      try {
-        // 1. Try loading from Dexie first for speed
-        const dexieIncomes = await db.incomes.where({ user_id: user.uid }).sortBy('date');
-        // Dexie sort by date might not be directly available, might need to sort after fetching all by user_id
-        // For now, let's assume a simple fetch and then sort, or rely on Supabase order for the fresh fetch.
-        // const dexieIncomes = await db.incomes.where('user_id').equals(user.uid).reverse().sortBy('date');
-        // Simpler: fetch all for user, then sort in JS if needed, or rely on Supabase for primary order.
-
-        let userIncomes = await db.incomes.where({ user_id: user.uid }).toArray();
-        userIncomes.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // Sort descending by date
-
-        if (userIncomes.length > 0) {
-          setIncomes(userIncomes);
-        }
-
-        // 2. Fetch from Supabase to get latest and update Dexie
-        const supabaseIncomes = await SupabaseDataService.getIncomes(user.uid);
-        setIncomes(supabaseIncomes); // Update state with fresh data from Supabase
-
-        // 3. Update Dexie with Supabase data (bulkPut for efficiency)
-        // Ensure user_id is part of the objects being put into Dexie if schema requires it for query
-        const incomesToCache = supabaseIncomes.map(inc => ({ ...inc, user_id: user.uid }));
-        await db.incomes.bulkPut(incomesToCache);
-
-      } catch (error) {
-        console.error("Error loading incomes:", error);
-        toast({ title: "Error", description: "Could not load income data.", variant: "destructive" });
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadIncomes();
-  }, [user, toast]);
-
-  const handleAddIncome = async (newIncomeData: Omit<Income, 'id' | 'user_id'>) => {
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in to add income.", variant: "destructive" });
-      return;
-    }
+  // Fetch incomes using useLiveQuery
+  const liveIncomes = useLiveQuery(async () => {
+    const userIdToQuery = user?.uid || 'default_user'; // Fallback for local-only if user is null
+    let query = db.incomes.where({ user_id: userIdToQuery });
     
-    const incomePayload = { ...newIncomeData, user_id: user.uid };
-
-    try {
-      const addedIncome = await SupabaseDataService.addIncome(incomePayload);
-      await db.incomes.add(addedIncome); // Add to Dexie
-      setIncomes(prev => [addedIncome, ...prev].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-      setShowAddForm(false);
-      toast({
-        title: "Income Added",
-        description: `₹${addedIncome.amount.toLocaleString()} from ${addedIncome.source} added successfully.`,
-      });
-    } catch (error) {
-      console.error("Error adding income:", error);
-      toast({ title: "Error", description: "Failed to add income.", variant: "destructive" });
+    if (searchTerm) {
+      query = query.filter(income =>
+        income.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        income.category.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
+    // Sort by date descending after filtering
+    const result = await query.toArray();
+    return result.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [user?.uid, searchTerm], []); // Dependencies
+
+  const incomes = liveIncomes || [];
+
+  const handleAddNew = () => {
+    setEditingIncome(null);
+    setShowAddForm(true);
   };
 
-  const handleDeleteIncome = async (incomeId: string) => {
-    if (!user) return;
+  const handleOpenEditForm = (income: AppIncome) => {
+    setEditingIncome(income);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (income: AppIncome) => {
+    setIncomeToDelete(income);
+  };
+
+  const handleDeleteIncomeExecute = async () => {
+    if (!incomeToDelete || !incomeToDelete.id) return;
     try {
-      await SupabaseDataService.deleteIncome(incomeId);
-      await db.incomes.delete(incomeId); // Delete from Dexie
-      setIncomes(prev => prev.filter(inc => inc.id !== incomeId));
-      toast({ title: "Income Deleted", description: "Income record deleted successfully." });
+      await db.incomes.delete(incomeToDelete.id);
+      toast({ title: "Success", description: `Income "${incomeToDelete.source}" deleted.` });
     } catch (error) {
       console.error("Error deleting income:", error);
-      toast({ title: "Error", description: "Failed to delete income.", variant: "destructive" });
+      toast({ title: "Error", description: "Could not delete income.", variant: "destructive" });
+    } finally {
+      setIncomeToDelete(null);
     }
   };
-
-  const handleOpenEditForm = (income: Income) => {
-    setEditingIncome(income);
-    setShowAddForm(true); // Re-use the add form for editing, or trigger a separate edit modal
-  };
-
-  const handleUpdateIncome = async (incomeId: string, updatedData: Omit<Income, 'id' | 'user_id'>) => {
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in to update income.", variant: "destructive" });
-      return;
-    }
-    // Note: updatedData should not contain user_id as it's not updatable and defined by the record owner.
-    // The service method also doesn't expect user_id in the 'updates' partial.
-    try {
-      const updatedIncomeFromSupabase = await SupabaseDataService.updateIncome(incomeId, updatedData);
-
-      // Ensure the updated object from Supabase has the user_id for Dexie if your Dexie schema needs it for queries
-      // (though for db.incomes.update, only id is strictly needed for the key).
-      // SupabaseDataService.updateIncome should return the full updated record including id.
-      const incomeForDexie = { ...updatedIncomeFromSupabase, user_id: user.uid };
-      await db.incomes.update(incomeId, incomeForDexie);
-
-      setIncomes(prevIncomes =>
-        prevIncomes.map(inc => inc.id === incomeId ? updatedIncomeFromSupabase : inc)
-                   .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      );
-      setShowAddForm(false);
-      setEditingIncome(null);
-      toast({
-        title: "Income Updated",
-        description: `₹${updatedIncomeFromSupabase.amount.toLocaleString()} from ${updatedIncomeFromSupabase.source} updated.`,
-      });
-    } catch (error) {
-      console.error("Error updating income:", error);
-      toast({ title: "Error", description: "Failed to update income.", variant: "destructive" });
-    }
-  };
-
-  const filteredIncomes = incomes.filter(income =>
-    income.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    income.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   const totalMonthlyIncome = incomes
-    .filter(inc => inc.frequency === 'monthly')
-    .reduce((sum, inc) => sum + inc.amount, 0);
+    .filter(inc => inc.frequency === 'monthly') // Consider only active if status field is added
+    .reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
@@ -190,28 +122,24 @@ export function IncomeTracker() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Income</h2>
-          <p className="text-muted-foreground">Track your income sources</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Income Tracker</h1>
+          <p className="text-muted-foreground">Manage and review your income entries.</p>
         </div>
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-gradient-blue hover:opacity-90"
-        >
+        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Income
         </Button>
       </div>
 
       {/* Summary Card */}
-      <Card className="metric-card border-border/50">
+      <Card className="shadow">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-gradient-green text-white">
-              <DollarSign className="w-4 h-4" />
+              <DollarSign aria-hidden="true" className="w-4 h-4" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Monthly Income</p>
@@ -242,22 +170,23 @@ export function IncomeTracker() {
       {/* Search */}
       <div className="flex gap-3">
         <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           <Input
             placeholder="Search income sources..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
+            aria-label="Search income by source or category"
           />
         </div>
-        <Button variant="outline">
+        <Button variant="outline" aria-label="Filter income entries">
           <Filter className="w-4 h-4" />
         </Button>
       </div>
 
       {/* Income List */}
       <div className="space-y-3">
-        {filteredIncomes.map((income, index) => (
+        {incomes.map((income, index) => ( // Changed filteredIncomes to incomes to match state
           <motion.div
             key={income.id}
             initial={{ opacity: 0, y: 20 }}
@@ -283,7 +212,7 @@ export function IncomeTracker() {
                     <div className="space-y-1">
                       <p className="font-medium text-foreground">{income.source}</p>
                       <p className="text-sm text-muted-foreground">
-                        Since {new Date(income.date).toLocaleDateString('en-IN')}
+                        Date: {income.date && isValidDate(parseISO(income.date)) ? format(parseISO(income.date), 'PPP') : 'N/A'}
                       </p>
                       {income.note && (
                         <p className="text-sm text-muted-foreground">{income.note}</p>
@@ -296,7 +225,8 @@ export function IncomeTracker() {
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      onClick={() => handleOpenEditForm(income)} // Wire up edit button
+                      onClick={() => handleOpenEditForm(income)}
+                      aria-label={`Edit income from ${income.source}`}
                     >
                       <Edit className="w-3 h-3" />
                     </Button>
@@ -304,7 +234,8 @@ export function IncomeTracker() {
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      onClick={() => handleDeleteIncome(income.id)}
+                      onClick={() => openDeleteConfirm(income)}
+                      aria-label={`Delete income from ${income.source}`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -315,189 +246,235 @@ export function IncomeTracker() {
           </motion.div>
         ))}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      {incomeToDelete && (
+        <AlertDialog open={!!incomeToDelete} onOpenChange={() => setIncomeToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitleComponent className="flex items-center">
+                <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 mr-2 text-destructive"/>Are you sure?
+              </AlertDialogTitleComponent>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the income from "{incomeToDelete.source}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteIncomeExecute} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
 
+// --- AddIncomeForm Sub-Component ---
 interface AddIncomeFormProps {
-  onSubmit: (income: Omit<Income, 'id' | 'user_id'>) => void; // user_id is handled by parent
-  onCancel: () => void;
-  initialData?: Income | null; // For editing
+  initialData?: AppIncome | null;
+  onClose: () => void;
+  userId?: string; // Pass userId for saving
 }
 
-function AddIncomeForm({ onSubmit, onCancel, initialData }: AddIncomeFormProps) {
-  const [formData, setFormData] = useState({
-    amount: initialData?.amount.toString() || '',
-    source: initialData?.source || '',
-    category: initialData?.category || 'salary' as Income['category'],
-    date: initialData?.date || new Date().toISOString().split('T')[0],
-    frequency: initialData?.frequency || 'monthly' as Income['frequency'],
-    note: initialData?.note || ''
+function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<IncomeFormData>(() => {
+    const defaults: IncomeFormData = {
+        amount: '', source: '', category: 'salary',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        frequency: 'monthly', note: '', user_id: userId || 'default_user'
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        amount: initialData.amount?.toString() || '',
+        date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : defaults.date,
+      };
+    }
+    return defaults;
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof IncomeFormData, string>>>({});
 
-  const isEditMode = !!initialData;
 
-  // Effect to reset form when initialData changes (e.g. opening edit form for different item or closing it)
   useEffect(() => {
+    const defaults: IncomeFormData = {
+        amount: '', source: '', category: 'salary',
+        date: format(new Date(), 'yyyy-MM-dd'),
+        frequency: 'monthly', note: '', user_id: userId || 'default_user'
+    };
     if (initialData) {
       setFormData({
-        amount: initialData.amount.toString(),
-        source: initialData.source,
-        category: initialData.category,
-        date: initialData.date,
-        frequency: initialData.frequency,
-        note: initialData.note || ''
+        ...initialData,
+        id: initialData.id,
+        amount: initialData.amount?.toString() || '',
+        date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : defaults.date,
       });
     } else {
-      // Reset to default for add mode if initialData becomes null (e.g. after editing)
-      setFormData({
-        amount: '',
-        source: '',
-        category: 'salary',
-        date: new Date().toISOString().split('T')[0],
-        frequency: 'monthly',
-        note: ''
-      });
+      setFormData(defaults);
     }
-  }, [initialData]);
+    setFormErrors({}); // Clear errors when initialData changes or form opens for new
+  }, [initialData, userId]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof IncomeFormData]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleSelectChange = (name: keyof IncomeFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value as any }));
+     if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const handleDateChange = (date?: Date) => {
+    setFormData(prev => ({ ...prev, date: date ? format(date, 'yyyy-MM-dd') : undefined }));
+    if (formErrors.date) {
+      setFormErrors(prev => ({ ...prev, date: undefined }));
+    }
+  };
+
+  const validateCurrentForm = (): boolean => {
+    const newErrors: Partial<Record<keyof IncomeFormData, string>> = {};
+    if (!formData.source?.trim()) newErrors.source = "Source name is required.";
+    if (!formData.amount?.trim()) newErrors.amount = "Amount is required.";
+    else {
+        const amountNum = parseFloat(formData.amount);
+        if (isNaN(amountNum) || amountNum <= 0) newErrors.amount = "Amount must be a positive number.";
+    }
+    if (!formData.date) newErrors.date = "Date is required.";
+    else if (!isValidDate(parseISO(formData.date))) newErrors.date = "Invalid date format.";
+    if (!formData.category) newErrors.category = "Category is required.";
+    if (!formData.frequency) newErrors.frequency = "Frequency is required.";
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.amount || !formData.source) {
-      // Basic validation, can be enhanced with Zod or similar
-      // Consider using react-hook-form for more complex forms
-      alert("Amount and Source are required."); // Replace with toast or better UI feedback
+    if (!validateCurrentForm()) {
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive", duration: 2000 });
       return;
     }
+    setIsSaving(true);
 
-    onSubmit({
-      amount: parseFloat(formData.amount),
-      source: formData.source.trim(),
-      category: formData.category,
-      date: formData.date,
-      frequency: formData.frequency,
-      note: formData.note?.trim() || undefined
-    });
+    const amountNum = parseFloat(formData.amount!); // Already validated
+
+    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'> = {
+      amount: amountNum,
+      source: formData.source!,
+      category: formData.category! as AppIncome['category'],
+      date: formData.date!,
+      frequency: formData.frequency! as AppIncome['frequency'],
+      note: formData.note || '',
+      user_id: userId || 'default_user',
+    };
+
+    try {
+      if (formData.id) { // Update
+        await db.incomes.update(formData.id, { ...recordData, updated_at: new Date() });
+        toast({ title: "Success", description: "Income record updated." });
+      } else { // Add
+        const newId = self.crypto.randomUUID();
+        await db.incomes.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: "Income record added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save income record:", error);
+      toast({ title: "Database Error", description: "Could not save income record.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      // Add exit animation if needed, ensure key changes if form instance needs full reset
-    >
-      <Card className="metric-card border-border/50">
-        <CardHeader>
-          <CardTitle>{isEditMode ? 'Edit Income' : 'Add New Income'}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Input fields remain largely the same, but value and onChange are bound to formData */}
-            {/* Amount */}
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{formData.id ? 'Edit' : 'Add New'} Income</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (₹) *</Label>
+            <Input id="amount" name="amount" type="number" step="0.01" value={formData.amount || ''} onChange={handleChange} required
+                   className={formErrors.amount ? 'border-red-500' : ''}
+                   aria-required="true"
+                   aria-invalid={!!formErrors.amount}
+                   aria-describedby={formErrors.amount ? "amount-error-income" : undefined}
+            />
+            {formErrors.amount && <p id="amount-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.amount}</p>}
+          </div>
+          <div>
+            <Label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source *</Label>
+            <Input id="source" name="source" value={formData.source || ''} onChange={handleChange} placeholder="e.g., Salary, Freelance Project" required
+                   className={formErrors.source ? 'border-red-500' : ''}
+                   aria-required="true"
+                   aria-invalid={!!formErrors.source}
+                   aria-describedby={formErrors.source ? "source-error-income" : undefined}
+            />
+            {formErrors.source && <p id="source-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.source}</p>}
+          </div>
+           <div>
+            <Label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</Label>
+            <Select name="category" value={formData.category || 'salary'} onValueChange={v => handleSelectChange('category', v as string)}>
+              <SelectTrigger className={formErrors.category ? 'border-red-500' : ''}
+                             aria-required="true"
+                             aria-invalid={!!formErrors.category}
+                             aria-describedby={formErrors.category ? "category-error-income" : undefined}
+              ><SelectValue /></SelectTrigger>
+              <SelectContent>{INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}</SelectContent>
+            </Select>
+            {formErrors.category && <p id="category-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.category}</p>}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="incomeAmount" className="text-sm font-medium text-foreground mb-1 block">Amount (₹) *</Label>
-              <Input
-                id="incomeAmount"
-                type="number"
-                step="0.01"
-                value={formData.amount}
-                onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                placeholder="50000"
-                required
-              />
+              <Label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.date ? 'border-red-500' : ''}`}
+                          aria-required="true"
+                          aria-invalid={!!formErrors.date}
+                          aria-describedby={formErrors.date ? "date-error-income" : undefined}
+                  >
+                    <CalendarDays className="mr-2 h-4 w-4" />
+                    {(formData.date && isValidDate(parseISO(formData.date))) ? format(parseISO(formData.date), 'PPP') : "Pick date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.date ? parseISO(formData.date) : undefined} onSelect={handleDateChange} initialFocus /></PopoverContent>
+              </Popover>
+              {formErrors.date && <p id="date-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.date}</p>}
             </div>
-
-            {/* Source */}
             <div>
-              <Label htmlFor="incomeSource" className="text-sm font-medium text-foreground mb-1 block">Source *</Label>
-              <Input
-                id="incomeSource"
-                value={formData.source}
-                onChange={(e) => setFormData({ ...formData, source: e.target.value })}
-                placeholder="e.g., Salary, Freelance"
-                required
-              />
-            </div>
-
-            {/* Category */}
-            <div>
-              <Label htmlFor="incomeCategory" className="text-sm font-medium text-foreground mb-1 block">Category *</Label>
-              <Select
-                value={formData.category}
-                onValueChange={(value) => setFormData({ ...formData, category: value as Income['category']})}
-              >
-                <SelectTrigger id="incomeCategory" className="h-10">
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="salary">Salary</SelectItem>
-                  <SelectItem value="rental">Rental</SelectItem>
-                  <SelectItem value="side-business">Side Business</SelectItem>
-                  <SelectItem value="investment">Investment</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
+              <Label htmlFor="frequency" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Frequency *</Label>
+              <Select name="frequency" value={formData.frequency || 'monthly'} onValueChange={v => handleSelectChange('frequency', v as string)}>
+                <SelectTrigger className={formErrors.frequency ? 'border-red-500' : ''}
+                               aria-required="true"
+                               aria-invalid={!!formErrors.frequency}
+                               aria-describedby={formErrors.frequency ? "frequency-error-income" : undefined}
+                ><SelectValue /></SelectTrigger>
+                <SelectContent>{INCOME_FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</SelectItem>)}</SelectContent>
               </Select>
+              {formErrors.frequency && <p id="frequency-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.frequency}</p>}
             </div>
-
-            {/* Frequency */}
-            <div>
-              <Label htmlFor="incomeFrequency" className="text-sm font-medium text-foreground mb-1 block">Frequency *</Label>
-               <Select
-                value={formData.frequency}
-                onValueChange={(value) => setFormData({ ...formData, frequency: value as Income['frequency']})}
-              >
-                <SelectTrigger id="incomeFrequency" className="h-10">
-                  <SelectValue placeholder="Select Frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="quarterly">Quarterly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
-                  <SelectItem value="one-time">One-time</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Date */}
-            <div>
-              <Label htmlFor="incomeDate" className="text-sm font-medium text-foreground mb-1 block">Date *</Label>
-              <Input
-                id="incomeDate"
-                type="date"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                required
-              />
-            </div>
-            
-            {/* Note */}
-            <div>
-              <Label htmlFor="incomeNote" className="text-sm font-medium text-foreground mb-1 block">Note (Optional)</Label>
-              <Input
-                id="incomeNote"
-                value={formData.note}
-                onChange={(e) => setFormData({ ...formData, note: e.target.value })}
-                placeholder="Additional details..."
-              />
-            </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                {isEditMode ? 'Update Income' : 'Add Income'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-    </motion.div>
+          </div>
+          <div>
+            <Label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</Label>
+            <Textarea id="note" name="note" value={formData.note || ''} onChange={handleChange} placeholder="Additional details..."/>
+          </div>
+          <DialogFooter className="pt-5">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Income' : 'Save Income')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

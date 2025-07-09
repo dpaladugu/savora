@@ -1,173 +1,172 @@
 
 import { useQuery } from "@tanstack/react-query";
-import { DashboardData } from "@/types/dashboard"; // This type might need adjustment based on data from IndexedDB
+import { DashboardData, Goal } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-// import { SupabaseExpenseManager } from "@/services/supabase-expense-manager"; // Will be replaced by IndexedDB
-// import { SupabaseInvestmentManager } from "@/services/supabase-investment-manager"; // Will be replaced by IndexedDB
-import { useAuth } from "@/contexts/auth-context"; // Keep for now, might simplify if no backend auth
-import { db, Expense } from "@/db"; // Import Dexie db and Expense type
-// Assuming Investment type will be defined in db.ts later or we use a placeholder
-// For now, investments will be mocked or zeroed.
+import { useAuth } from "@/contexts/auth-context";
+import {
+  db,
+  AppSettingTable, // Type for appSettings records
+  // Expense as DbExpenseType, // This is ExpenseData from jsonPreload
+  // Income as DbIncomeType, // This is from income-tracker component
+  InvestmentData as DbInvestmentType,
+  CreditCardData as DbCreditCardType
+} from "@/db";
+// Use AppExpense for expenses table as defined in SavoraDB
+import type { Expense as AppExpense } from '@/services/supabase-data-service';
+// Use Income from income-tracker for incomes table as defined in SavoraDB
+import type { Income as AppIncome } from '@/components/income/income-tracker';
 
-// Enhanced mock data for development - will be mostly replaced by calculations from DB
-const mockDashboardData: DashboardData = {
-  totalExpenses: 45230,
-  monthlyExpenses: 15430,
-  totalInvestments: 230000,
-  expenseCount: 42,
-  investmentCount: 8,
-  emergencyFundTarget: 150000,
-  emergencyFundCurrent: 120000,
-  monthlyIncome: 85000,
-  savingsRate: 25,
-  investmentValue: 230000,
-  creditCardDebt: 12500,
-  emergencyFund: 150000,
-  goals: [
-    {
-      id: "1",
-      title: "House Down Payment",
-      targetAmount: 500000,
-      currentAmount: 150000,
-      deadline: "2025-12-31",
-      category: "Housing"
-    }
-  ],
-  recentTransactions: [
-    {
-      id: "1",
-      amount: -2500,
-      description: "Grocery Shopping",
-      category: "Food",
-      date: "2024-01-15",
-      type: "expense"
-    },
-    {
-      id: "2",
-      amount: -800,
-      description: "Gas Station",
-      category: "Transport",
-      date: "2024-01-14",
-      type: "expense"
-    }
-  ],
-  categoryBreakdown: [
-    {
-      category: "Food",
-      amount: 15000,
-      percentage: 33,
-      color: "#3b82f6"
-    },
-    {
-      category: "Transport",
-      amount: 8000,
-      percentage: 18,
-      color: "#ef4444"
-    },
-    {
-      category: "Entertainment",
-      amount: 5000,
-      percentage: 11,
-      color: "#10b981"
-    },
-    {
-      category: "Shopping",
-      amount: 12000,
-      percentage: 26,
-      color: "#f59e0b"
-    },
-    {
-      category: "Others",
-      amount: 5430,
-      percentage: 12,
-      color: "#8b5cf6"
-    }
-  ]
+
+// Default AppSetting for Emergency Fund if not found in DB
+const DEFAULT_EF_MONTHS = 6;
+const EF_SETTING_KEY = 'emergencyFundSettings_v1';
+
+interface EmergencyFundSetting {
+  key: string; // Should be EF_SETTING_KEY
+  value: {
+    efMonths: number;
+    // could add targetAmount manually if preferred over calculation
+    // manualTargetAmount?: number;
+  };
+}
+
+
+// Keep mock for structure reference, but aim to replace all fields with real data or null/empty.
+const fallbackDashboardData: DashboardData = {
+  totalExpenses: 0,
+  monthlyExpenses: 0,
+  totalInvestments: 0,
+  expenseCount: 0,
+  investmentCount: 0,
+  emergencyFundTarget: 0,
+  emergencyFundCurrent: 0, // Placeholder - requires specific tracking
+  monthlyIncome: 0,
+  savingsRate: 0,
+  investmentValue: 0, // Same as totalInvestments
+  creditCardDebt: 0,
+  emergencyFund: 0, // Same as emergencyFundTarget
+  goals: [], // Placeholder - requires goal tracking feature
+  recentTransactions: [],
+  categoryBreakdown: []
 };
 
-async function fetchDashboardData(userId: string): Promise<DashboardData> {
-  // Removed the outer try-catch that returns mockDashboardData.
-  // Let react-query handle errors and retries.
-  // If fetchDashboardData throws, react-query will set the error state.
+async function fetchDashboardData(userId?: string): Promise<DashboardData> { // userId can be optional for local-first
+  Logger.info('Fetching dashboard data from Dexie for user (optional):', userId);
 
-  Logger.info('Fetching dashboard data for user:', userId);
+  // Fetch all necessary data concurrently
+  const [
+    allDexieExpenses,
+    allDexieIncomes,
+    allDexieInvestments,
+    allDexieCreditCards,
+    efSettingsData
+  ] = await Promise.all([
+    db.expenses.toArray(), // Assuming AppExpense type from Dexie table
+    db.incomes.toArray(),   // Assuming AppIncome type from Dexie table
+    db.investments.toArray(), // DbInvestmentType
+    db.creditCards.toArray(), // DbCreditCardType
+    db.appSettings.get(EF_SETTING_KEY) as Promise<EmergencyFundSetting | AppSettingTable | undefined>
+  ]);
 
-  // Simulate API delay for realistic loading experience - consider removing for production or making it dev-only
-  // await new Promise(resolve => setTimeout(resolve, 800));
+  // Cast to correct types after fetch for clarity in calculations
+  const allExpenses = allDexieExpenses as AppExpense[];
+  const allIncomes = allDexieIncomes as AppIncome[];
+  const allInvestments = allDexieInvestments as DbInvestmentType[];
+  const allCreditCards = allDexieCreditCards as DbCreditCardType[];
 
-  // Fetch real data from IndexedDB
-  // The userId parameter might be optional if all data in IndexedDB is for the current user.
-  // For now, we'll assume db.expenses.toArray() gets all relevant expenses.
-  const allExpenses: Expense[] = await db.expenses.toArray();
 
-  // TODO: Fetch investments from IndexedDB once the 'investments' table is defined and populated
-  const allInvestments: any[] = []; // Placeholder
-
-  // Calculate real metrics
-  const currentMonth = new Date().toISOString().substring(0, 7);
+  // Calculate Expense Metrics
+  const currentMonthStr = format(new Date(), 'yyyy-MM');
   const monthlyExpenses = allExpenses
-    .filter(expense => expense.date?.startsWith(currentMonth) && expense.type === 'expense')
-    .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    .filter(e => e.date?.startsWith(currentMonthStr)) // No type filter, assuming db.expenses only stores expenses
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const totalExpenses = allExpenses
-    .filter(expense => expense.type === 'expense')
-    .reduce((sum, expense) => sum + (expense.amount || 0), 0);
+    .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-  // Placeholder for investments - replace with actual calculation from allInvestments
-  const totalInvestments = allInvestments.reduce((sum, investment) => sum + (investment.currentValue || investment.amount || 0), 0);
+  const expenseCount = allExpenses.length;
+
+  // Calculate Income Metrics
+  const monthlyIncome = allIncomes
+    .filter(i => i.date?.startsWith(currentMonthStr))
+    .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+
+  // Calculate Investment Metrics
+  // Assuming DbInvestmentType has 'currentValue' or 'investedAmount'
+  const totalInvestments = allInvestments.reduce((sum, inv) => sum + (Number(inv.currentValue) || Number(inv.investedAmount) || 0), 0);
   const investmentCount = allInvestments.length;
 
-  // Calculate category breakdown from IndexedDB expenses
+  // Calculate Category Breakdown for Expenses
   const categoryTotals: { [key: string]: number } = {};
-  allExpenses
-    .filter(expense => expense.type === 'expense')
-    .forEach(expense => {
-      const category = expense.category || 'Uncategorized';
-      categoryTotals[category] = (categoryTotals[category] || 0) + (expense.amount || 0);
-    });
+  allExpenses.forEach(e => {
+    const category = e.category || 'Uncategorized';
+    categoryTotals[category] = (categoryTotals[category] || 0) + (Number(e.amount) || 0);
+  });
 
-  const categoryBreakdownArray = Object.entries(categoryTotals)
-    .sort(([, a], [, b]) => b - a) // Sort by amount descending
+  const categoryBreakdown = Object.entries(categoryTotals)
+    .sort(([, a], [, b]) => b - a)
     .map(([category, amount], index) => ({
       category,
       amount,
       percentage: totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0,
-      // Consistent colors, or generate dynamically based on more categories
-      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#ec4899'][index % 7]
+      color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#ec4899'][index % 7] || '#6b7280'
     }));
 
-  // Calculate emergency fund - using placeholders for now
-  // TODO: This needs to be based on actual user settings for EF months and potentially liquid savings
-  const avgMonthlyExpensesForEF = monthlyExpenses || (totalExpenses / 6) || 30000; // More robust fallback
-  const emergencyFundTarget = avgMonthlyExpensesForEF * 6; // Default 6 months
-  // Placeholder: current emergency fund might be a specific account type or goal
-  const emergencyFundCurrent = Math.min(totalInvestments * 0.1, emergencyFundTarget); // Highly speculative
+  // Calculate Emergency Fund
+  const efMonths = (efSettingsData?.value as EmergencyFundSetting['value'])?.efMonths || DEFAULT_EF_MONTHS;
+  // More robust average monthly expenses (e.g., last 3-6 months average)
+  // For simplicity, using current month's expenses, or total if current is zero.
+  const avgMonthlyExpensesForEF = monthlyExpenses > 0 ? monthlyExpenses : (expenseCount > 0 ? totalExpenses / Math.max(1, new Date(allExpenses[0].date).getMonth() +1 ) : 30000 ) ; // Fallback if no expenses
+  const emergencyFundTarget = avgMonthlyExpensesForEF * efMonths;
+  const emergencyFundCurrent = 0; // Placeholder: Requires specific accounts/investments tagged as EF
 
-  // Build the DashboardData object
-  // We use some parts of mockDashboardData as fallbacks or for structure if not yet calculated
+  // Calculate Savings Rate
+  const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
+
+  // Calculate Credit Card Debt
+  // Assuming DbCreditCardType has 'outstandingBalance' or similar
+  const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number(card.outstandingBalance) || 0), 0);
+
+  // Prepare Recent Transactions (mix of expenses and incomes)
+  // Sort all transactions by date to get the most recent ones
+  const allTransactions = [
+    ...allExpenses.map(e => ({ ...e, type: 'expense' as const, date: e.date || ''})), // Ensure date is string
+    ...allIncomes.map(i => ({ ...i, type: 'income' as const, date: i.date || ''}))    // Ensure date is string
+  ];
+
+  const recentTransactions = allTransactions
+    .filter(t => t.date) // Ensure date exists for sorting
+    .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
+    .slice(0, 5)
+    .map(t => ({
+      id: String(t.id || self.crypto.randomUUID()),
+      amount: t.type === 'expense' ? -(Number(t.amount) || 0) : (Number(t.amount) || 0),
+      description: t.description || 'N/A',
+      category: t.category || 'Uncategorized',
+      date: t.date,
+      type: t.type
+    }));
+
   const realData: DashboardData = {
-    ...mockDashboardData, // Spread mock first, then override with real calculated values
-      totalExpenses,
-      monthlyExpenses,
-      totalInvestments,
-      expenseCount: allExpenses.filter(e => e.type === 'expense').length, // Changed to allExpenses
-      investmentCount: investmentCount, // Correctly uses investmentCount calculated above
-      emergencyFundTarget,
-      emergencyFundCurrent,
-      categoryBreakdown: categoryBreakdownArray.length > 0 ? categoryBreakdownArray : mockDashboardData.categoryBreakdown, // Fallback to mock if empty
-      recentTransactions: allExpenses.slice(0, 5).map(expense => ({ // Changed to allExpenses
-        id: expense.id?.toString() || '', // Ensure id is string
-        amount: expense.type === 'expense' ? -(expense.amount || 0) : (expense.amount || 0),
-        description: expense.description || 'Unknown',
-        category: expense.category || 'Other',
-        date: expense.date || new Date().toISOString().split('T')[0],
-        type: expense.type as 'expense' | 'income'
-      }))
-    };
+    totalExpenses,
+    monthlyExpenses,
+    totalInvestments,
+    expenseCount,
+    investmentCount,
+    emergencyFundTarget,
+    emergencyFundCurrent, // Placeholder
+    monthlyIncome,
+    savingsRate,
+    investmentValue: totalInvestments, // Typically same as totalInvestments unless defined differently
+    creditCardDebt,
+    emergencyFund: emergencyFundTarget, // DashboardData might expect 'emergencyFund' to be the target
+    goals: [], // Placeholder - needs goal feature & Dexie table
+    recentTransactions,
+    categoryBreakdown,
+  };
 
-    Logger.info('Dashboard data calculated:', realData);
-    return realData;
-// Removed the orphaned catch block.
+  Logger.info('Dashboard data calculated from Dexie:', realData);
+  return realData;
 }
 
 export function useOptimizedDashboardData() {

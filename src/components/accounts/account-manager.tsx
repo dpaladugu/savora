@@ -1,110 +1,118 @@
 
 import { motion } from "framer-motion";
-import { useState } from "react";
-import { Plus, CreditCard, Wallet, Search, Trash2, Edit } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, CreditCard, Wallet, Search, Trash2, Edit, Loader2, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { db, DexieAccountRecord } from "@/db"; // Import Dexie db and record type
+import { useLiveQuery } from "dexie-react-hooks";
+import { useAuth } from "@/contexts/auth-context"; // For user_id
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle as AlertDialogTitleComponent,
+} from "@/components/ui/alert-dialog";
 
-export interface Account {
-  id: string;
-  name: string;
-  type: 'Bank' | 'Wallet';
-  balance: number;
-  accountNumber?: string;
-  provider: string; // Bank name or Wallet provider
-  isActive: boolean;
-}
+// Form data type
+type AccountFormData = Partial<Omit<DexieAccountRecord, 'balance' | 'created_at' | 'updated_at'>> & {
+  balance?: string; // For form input
+};
 
-const mockAccounts: Account[] = [
-  {
-    id: '1',
-    name: 'ICICI Savings',
-    type: 'Bank',
-    balance: 125000,
-    accountNumber: '****1234',
-    provider: 'ICICI Bank',
-    isActive: true
-  },
-  {
-    id: '2',
-    name: 'PhonePe Wallet',
-    type: 'Wallet',
-    balance: 5000,
-    provider: 'PhonePe',
-    isActive: true
-  },
-  {
-    id: '3',
-    name: 'Paytm Wallet',
-    type: 'Wallet',
-    balance: 2500,
-    provider: 'Paytm',
-    isActive: true
-  }
-];
+const ACCOUNT_TYPES = ['Bank', 'Wallet', 'Cash', 'Other'] as const;
+type AccountType = typeof ACCOUNT_TYPES[number];
+
 
 export function AccountManager() {
-  const [accounts, setAccounts] = useState<Account[]>(mockAccounts);
+  const { user } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<DexieAccountRecord | null>(null);
+  const [accountToDelete, setAccountToDelete] = useState<DexieAccountRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const handleAddAccount = (newAccount: Omit<Account, 'id'>) => {
-    const account: Account = {
-      ...newAccount,
-      id: Date.now().toString()
-    };
-    
-    setAccounts([account, ...accounts]);
-    setShowAddForm(false);
-    
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save account to Firestore:', account);
-    
-    toast({
-      title: "Account added successfully",
-      description: `${newAccount.name} has been added`,
-    });
-  };
+  const userIdToQuery = user?.uid || 'default_user';
 
-  const handleDeleteAccount = (id: string) => {
-    setAccounts(accounts.filter(account => account.id !== id));
-    // TODO: Firebase integration - delete from Firestore
-    console.log('TODO: Delete account from Firestore:', id);
-    toast({
-      title: "Account removed",
-    });
-  };
-
-  const filteredAccounts = accounts.filter(account =>
-    account.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    account.provider.toLowerCase().includes(searchTerm.toLowerCase())
+  const liveAccounts = useLiveQuery(
+    async () => {
+      let query = db.accounts.where({ user_id: userIdToQuery });
+      if (searchTerm) {
+        query = query.filter(acc =>
+          acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          acc.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (acc.accountNumber && acc.accountNumber.includes(searchTerm))
+        );
+      }
+      return await query.orderBy('name').toArray();
+    },
+    [searchTerm, userIdToQuery],
+    []
   );
+  const accounts = liveAccounts || [];
 
-  const totalBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
-  const bankAccounts = accounts.filter(acc => acc.type === 'Bank');
-  const walletAccounts = accounts.filter(acc => acc.type === 'Wallet');
+  const handleAddNew = () => {
+    setEditingAccount(null);
+    setShowAddForm(true);
+  };
+
+  const handleOpenEditForm = (account: DexieAccountRecord) => {
+    setEditingAccount(account);
+    setShowAddForm(true);
+  };
+
+  const openDeleteConfirm = (account: DexieAccountRecord) => {
+    setAccountToDelete(account);
+  };
+
+  const handleDeleteExecute = async () => {
+    if (!accountToDelete || !accountToDelete.id) return;
+    try {
+      await db.accounts.delete(accountToDelete.id);
+      toast({ title: "Success", description: `Account "${accountToDelete.name}" deleted.` });
+    } catch (error) {
+      console.error("Error deleting account:", error);
+      toast({ title: "Error", description: "Could not delete account.", variant: "destructive" });
+    } finally {
+      setAccountToDelete(null);
+    }
+  };
+
+  const totalBalance = accounts.reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
+  // const bankAccounts = accounts.filter(acc => acc.type === 'Bank');
+  // const walletAccounts = accounts.filter(acc => acc.type === 'Wallet');
+
+  if (liveAccounts === undefined) {
+     return (
+      <div className="flex justify-center items-center h-64 p-4">
+        <Loader2 className="w-12 h-12 text-muted-foreground animate-spin" />
+        <p className="ml-4 text-lg text-muted-foreground">Loading accounts...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Header section removed. Title/subtitle should be provided by ModuleHeader via router. */}
-      {/* The "Add Account" button might be passed as an 'action' to ModuleHeader,
-          or exist as a primary action button within this component's layout.
-          For now, let's place it visibly if not in a header.
-      */}
-      <div className="flex justify-end"> {/* Simple placement for the button for now */}
-        <Button
-          onClick={() => setShowAddForm(true)}
-          className="bg-gradient-blue hover:opacity-90"
-        >
+    <div className="space-y-6 p-4 md:p-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">Accounts</h1>
+          <p className="text-muted-foreground">Manage your bank accounts, wallets, and cash.</p>
+        </div>
+        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Add Account
         </Button>
       </div>
 
-      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="grid grid-cols-2 gap-4">
         <Card className="metric-card border-border/50">
           <CardContent className="p-4">
@@ -216,16 +224,17 @@ export function AccountManager() {
                   </div>
                   
                   <div className="flex gap-1 ml-4">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
-                      <Edit className="w-3 h-3" />
+                    <Button size="icon" variant="ghost" onClick={() => handleOpenEditForm(account)} className="h-8 w-8 p-0" aria-label={`Edit account ${account.name}`}>
+                      <Edit className="w-4 h-4" />
                     </Button>
                     <Button
-                      size="sm"
+                      size="icon"
                       variant="ghost"
-                      className="h-8 w-8 p-0"
-                      onClick={() => handleDeleteAccount(account.id)}
+                      className="h-8 w-8 p-0 hover:text-destructive"
+                      onClick={() => openDeleteConfirm(account)}
+                      aria-label={`Delete account ${account.name}`}
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
@@ -255,143 +264,180 @@ export function AccountManager() {
   );
 }
 
-function AddAccountForm({ onSubmit, onCancel }: {
-  onSubmit: (account: Omit<Account, 'id'>) => void;
-  onCancel: () => void;
-}) {
-  const [formData, setFormData] = useState({
-    name: '',
-    type: 'Bank' as Account['type'],
-    balance: '',
-    accountNumber: '',
-    provider: '',
-    isActive: true
-  });
+// --- AddAccountForm Sub-Component ---
+interface AddAccountFormProps {
+  initialData?: DexieAccountRecord | null;
+  onClose: () => void;
+  userId?: string;
+}
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.provider) {
-      return;
+function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
+  const { toast } = useToast();
+  const [formData, setFormData] = useState<AccountFormData>(() => {
+    const defaults: AccountFormData = {
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        balance: initialData.balance?.toString() || '0',
+        type: initialData.type as AccountType, // Ensure type alignment
+      };
     }
+    return defaults;
+  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof AccountFormData, string>>>({});
 
-    onSubmit({
-      name: formData.name,
-      type: formData.type,
-      balance: parseFloat(formData.balance) || 0,
-      accountNumber: formData.accountNumber || undefined,
-      provider: formData.provider,
-      isActive: formData.isActive
-    });
+  useEffect(() => {
+    const defaults: AccountFormData = {
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
+    };
+    if (initialData) {
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        balance: initialData.balance?.toString() || '0',
+        type: initialData.type as AccountType,
+      });
+    } else {
+      setFormData(defaults);
+    }
+    setFormErrors({});
+  }, [initialData, userId]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof AccountFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+  };
+  const handleSelectChange = (name: keyof AccountFormData, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value as any }));
+     if (formErrors[name as keyof AccountFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+  };
+   const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+    setFormData(prev => ({ ...prev, isActive: !!checked }));
   };
 
+  const validateCurrentForm = (): boolean => {
+    const newErrors: Partial<Record<keyof AccountFormData, string>> = {};
+    if (!formData.name?.trim()) newErrors.name = "Account Name is required.";
+    if (!formData.provider?.trim()) newErrors.provider = "Provider/Bank Name is required.";
+    if (!formData.type) newErrors.type = "Account Type is required.";
+    if (formData.balance) {
+        const balNum = parseFloat(formData.balance);
+        if (isNaN(balNum)) newErrors.balance = "Balance must be a valid number.";
+    }
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if(!validateCurrentForm()){
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
+      return;
+    }
+    setIsSaving(true);
+
+    const balanceNum = parseFloat(formData.balance || '0');
+
+    const recordData: Omit<DexieAccountRecord, 'id' | 'created_at' | 'updated_at'> = {
+      name: formData.name!,
+      type: formData.type!,
+      balance: balanceNum,
+      accountNumber: formData.accountNumber || '',
+      provider: formData.provider!,
+      isActive: formData.isActive !== undefined ? formData.isActive : true,
+      notes: formData.notes || '',
+      user_id: userId || 'default_user',
+    };
+
+    try {
+      if (formData.id) { // Update
+        await db.accounts.update(formData.id, { ...recordData, updated_at: new Date() });
+        toast({ title: "Success", description: "Account updated." });
+      } else { // Add
+        const newId = self.crypto.randomUUID();
+        await db.accounts.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
+        toast({ title: "Success", description: "Account added." });
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save account:", error);
+      toast({ title: "Database Error", description: "Could not save account.", variant: "destructive"});
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const FieldError: React.FC<{ field: keyof AccountFormData }> = ({ field }) =>
+    formErrors[field] ? <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon className="w-3 h-3 mr-1"/> {formErrors[field]}</p> : null;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <Card className="metric-card border-border/50">
-        <CardHeader>
-          <CardTitle>Add Account</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Account Name *
-                </label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="ICICI Savings"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Type *
-                </label>
-                <select
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value as Account['type'] })}
-                  className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
-                  required
-                >
-                  <option value="Bank">Bank Account</option>
-                  <option value="Wallet">Digital Wallet</option>
-                </select>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Provider *
-                </label>
-                <Input
-                  value={formData.provider}
-                  onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                  placeholder="ICICI Bank / PhonePe"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium text-foreground mb-2 block">
-                  Current Balance (₹)
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={formData.balance}
-                  onChange={(e) => setFormData({ ...formData, balance: e.target.value })}
-                  placeholder="125000"
-                />
-              </div>
-              
-              {formData.type === 'Bank' && (
-                <div>
-                  <label className="text-sm font-medium text-foreground mb-2 block">
-                    Account Number
-                  </label>
-                  <Input
-                    value={formData.accountNumber}
-                    onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
-                    placeholder="****1234"
-                  />
-                </div>
-              )}
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{formData.id ? 'Edit' : 'Add New'} Account</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 py-4">
+          <div>
+            <Label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account Name *</Label>
+            <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required
+                   className={formErrors.name ? 'border-red-500' : ''}/>
+            <FieldError field="name"/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</Label>
+              <Select name="type" value={formData.type || 'Bank'} onValueChange={v => handleSelectChange('type', v as string)}>
+                <SelectTrigger className={formErrors.type ? 'border-red-500' : ''}><SelectValue /></SelectTrigger>
+                <SelectContent>{ACCOUNT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+              </Select>
+              <FieldError field="type"/>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="isActive"
-                checked={formData.isActive}
-                onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                className="rounded border-border"
-              />
-              <label htmlFor="isActive" className="text-sm font-medium text-foreground">
-                Account is active
-              </label>
+            <div>
+              <Label htmlFor="provider" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Provider/Bank *</Label>
+              <Input id="provider" name="provider" value={formData.provider || ''} onChange={handleChange} required
+                     className={formErrors.provider ? 'border-red-500' : ''}/>
+              <FieldError field="provider"/>
             </div>
-            
-            <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                Add Account
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="balance" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Balance (₹)</Label>
+              <Input id="balance" name="balance" type="number" step="0.01" value={formData.balance || ''} onChange={handleChange}
+                     className={formErrors.balance ? 'border-red-500' : ''}/>
+              <FieldError field="balance"/>
             </div>
-          </form>
-        </CardContent>
-      </Card>
-    </motion.div>
+            {formData.type === 'Bank' && (
+              <div>
+                <Label htmlFor="accountNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account Number</Label>
+                <Input id="accountNumber" name="accountNumber" value={formData.accountNumber || ''} onChange={handleChange} />
+              </div>
+            )}
+          </div>
+           <div>
+            <Label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</Label>
+            <Textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Optional notes..."/>
+          </div>
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox
+              id="isActive"
+              name="isActive"
+              checked={formData.isActive}
+              onCheckedChange={handleCheckboxChange}
+            />
+            <Label htmlFor="isActive" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 dark:text-gray-300">
+              Account is active
+            </Label>
+          </div>
+          <DialogFooter className="pt-5">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Account' : 'Save Account')}</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

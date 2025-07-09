@@ -27,6 +27,7 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
   const [name, setName] = useState(existingVehicle?.vehicle_name || '');
   const [type, setType] = useState<"car" | "motorcycle">((existingVehicle?.type as "car" | "motorcycle") || 'car');
   const [owner, setOwner] = useState<"self" | "brother" | undefined>((existingVehicle?.owner as "self" | "brother") || undefined);
+  const [formErrors, setFormErrors] = useState<{ name?: string; type?: string }>({});
   const [initialOdometer, setInitialOdometer] = useState<string>('');
   const [currentOdometer, setCurrentOdometer] = useState<string>('');
   const [insuranceProvider, setInsuranceProvider] = useState(existingVehicle?.insurance_provider || '');
@@ -37,10 +38,20 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !type) {
+    const errors: { name?: string; type?: string } = {};
+    if (!name.trim()) {
+      errors.name = "Vehicle Name is required.";
+    }
+    if (!type) { // Type should always have a value due to default
+      errors.type = "Vehicle Type is required.";
+    }
+
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length > 0) {
       toast({
         title: "Validation Error",
-        description: "Vehicle Name and Type are required.",
+        description: "Please fill all required fields.",
         variant: "destructive",
       });
       return;
@@ -72,16 +83,37 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
             <Input
               id="vehicleName"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (formErrors.name) setFormErrors(prev => ({ ...prev, name: undefined }));
+              }}
               placeholder="e.g., Yamaha FZS, Honda City"
               required
+              aria-required="true"
+              aria-invalid={!!formErrors.name}
+              aria-describedby={formErrors.name ? "vehicleName-error" : undefined}
+              className={formErrors.name ? 'border-red-500' : ''}
             />
+            {formErrors.name && <p id="vehicleName-error" className="mt-1 text-xs text-red-600">{formErrors.name}</p>}
           </div>
 
           <div>
             <Label htmlFor="vehicleType">Type*</Label>
-            <Select value={type} onValueChange={(value: "car" | "motorcycle") => setType(value)} required>
-              <SelectTrigger id="vehicleType">
+            <Select
+              value={type}
+              onValueChange={(value: "car" | "motorcycle") => {
+                setType(value);
+                if (formErrors.type) setFormErrors(prev => ({ ...prev, type: undefined }));
+              }}
+              required
+            >
+              <SelectTrigger
+                id="vehicleType"
+                aria-required="true"
+                aria-invalid={!!formErrors.type}
+                aria-describedby={formErrors.type ? "vehicleType-error" : undefined}
+                className={formErrors.type ? 'border-red-500' : ''}
+              >
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>

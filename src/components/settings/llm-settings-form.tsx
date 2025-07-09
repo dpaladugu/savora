@@ -4,18 +4,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from '@/hooks/use-toast';
-import { db } from '@/db'; // For local Dexie storage
+import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
-import { useAppStore } from '@/store/appStore'; // To update global state
-import { PinEntryModal } from './pin-entry-modal'; // Import the PIN modal
-import { supabase } from '@/integrations/supabase/client'; // Import Supabase client
-import { useAuth } from '@/contexts/auth-context'; // To get current user ID
+import { useAppStore } from '@/store/appStore';
+import { PinEntryModal } from './pin-entry-modal';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth-context';
 
-// Re-using the options from PinLock for consistency
 const aiProviderOptions = [
   { value: 'deepseek', label: 'DeepSeek API' },
-  { value: 'groq', label: 'Groq API' }, // Assuming Groq might be added later
+  { value: 'groq', label: 'Groq API' },
   { value: 'ollama_local', label: 'Ollama (Local)' },
   { value: 'google_gemini', label: 'Google Gemini API' },
 ];
@@ -24,14 +24,13 @@ const deepSeekModels = [
   { value: 'deepseek-chat', label: 'DeepSeek Chat (General)' },
   { value: 'deepseek-coder', label: 'DeepSeek Coder (Programming)' },
 ];
-// Add other provider-specific models here if needed e.g.
-// const groqModels = [ { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B'} ];
+
+// Default model for Ollama if none is specified by user (can be overridden in form)
+const OLLAMA_DEFAULT_FORM_MODEL = 'llama2';
 
 export function LLMSettingsForm() {
   const { toast } = useToast();
-  // Ensure appStore's DecryptedAiConfig includes 'model'
-  const { currentAiProvider, decryptedAiConfig, setDecryptedAiConfig } = useAppStore(state => ({
-    currentAiProvider: state.currentAiProvider,
+  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(state => ({
     decryptedAiConfig: state.decryptedAiConfig,
     setDecryptedAiConfig: state.setDecryptedAiConfig,
   }));
@@ -40,432 +39,401 @@ export function LLMSettingsForm() {
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
   const [baseUrlInput, setBaseUrlInput] = useState<string>('');
-  const [selectedModel, setSelectedModel] = useState<string>(''); // New state for selected model
+  const [selectedModel, setSelectedModel] = useState<string>('');
+  const [useLocalLLM, setUseLocalLLM] = useState<boolean>(false);
 
   const [isPinModalOpen, setIsPinModalOpen] = useState<boolean>(false);
   const [dataToSave, setDataToSave] = useState<any>(null);
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isConfigLoaded, setIsConfigLoaded] = useState<boolean>(false);
-  const [isApiKeyCurrentlySet, setIsApiKeyCurrentlySet] = useState<boolean>(false); // Track if an API key is already configured
+  const [isApiKeyCurrentlySet, setIsApiKeyCurrentlySet] = useState<boolean>(false);
 
   useEffect(() => {
     const loadConfig = async () => {
       setIsLoading(true);
-      setIsConfigLoaded(false); // Ensure loading state is accurate
+      setIsConfigLoaded(false);
 
-      if (!user) {
-        // Attempt to load from Dexie if no user (e.g., initial load before auth context resolves, though unlikely here)
-        // Or, more likely, auth hasn't kicked in yet or this screen is somehow shown pre-auth.
-        // For robust multi-device sync, we primarily care about when user *is* present.
-        // If user is null, it implies a state where synced settings aren't relevant yet.
+      let initialProvider = aiProviderOptions[0].value;
+      let initialBaseUrl = '';
+      let initialModel = '';
+      let initialUseLocalLLM = false;
+      let initialApiKeySet = false;
+
+      if (!user) { // No user, load from Dexie only
         try {
-          const localProvider = await db.appSettings.get('currentAiProvider');
-          if (localProvider?.value) {
-            setSelectedProvider(localProvider.value as string);
-            if (localProvider.value === 'ollama_local') {
-              const localBaseUrl = await db.appSettings.get('aiServiceBaseUrl');
-              setBaseUrlInput(localBaseUrl?.value as string || '');
+          const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
+          const providerSetting = settings[0];
+          const useLocalLLMSetting = settings[1];
+          const baseUrlSetting = settings[2];
+          const encryptedConfigSetting = settings[3];
+
+          if (providerSetting?.value) initialProvider = providerSetting.value as string;
+          initialUseLocalLLM = useLocalLLMSetting?.value === true;
+          initialApiKeySet = !!encryptedConfigSetting?.value;
+
+          if (initialUseLocalLLM || initialProvider === 'ollama_local') {
+            initialProvider = 'ollama_local';
+            initialUseLocalLLM = true;
+            initialBaseUrl = baseUrlSetting?.value as string || '';
+            // For model, if Ollama, try to get from decrypted store, else default form model for Ollama
+            if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
+                initialModel = decryptedAiConfig.model;
+            } else {
+                initialModel = OLLAMA_DEFAULT_FORM_MODEL;
             }
-            const localEncryptedConfig = await db.appSettings.get('encryptedAiConfig');
-            setIsApiKeyCurrentlySet(!!localEncryptedConfig?.value);
-          } else {
-            setSelectedProvider(aiProviderOptions[0].value); // Default if nothing in Dexie
-            setIsApiKeyCurrentlySet(false);
+          } else if (initialProvider === 'deepseek') {
+            // If Deepseek, try to get from decrypted store, else default deepseek model
+             if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
+                initialModel = decryptedAiConfig.model;
+            } else {
+                initialModel = deepSeekModels[0].value;
+            }
           }
+
         } catch (dexieError) {
           console.error("Error loading LLM settings from Dexie (no user):", dexieError);
-          setSelectedProvider(aiProviderOptions[0].value); // Default
-        } finally {
-          setIsLoading(false);
-          setIsConfigLoaded(true);
         }
-        return;
-      }
-
-      // User is authenticated, try loading from Supabase first
-      try {
-        const { data: supabaseConfig, error: supabaseError } = await supabase
-          .from('user_llm_configurations')
-          // Add 'model_id' to select list
-          .select('provider_id, encrypted_config, base_url, model_id')
-          .eq('user_id', user.uid)
-          .single();
-
-        if (supabaseError && supabaseError.code !== 'PGRST116') { // PGRST116: 'No rows found'
-          throw supabaseError;
-        }
-
-        if (supabaseConfig) {
-          const provider = supabaseConfig.provider_id || aiProviderOptions[0].value;
-          setSelectedProvider(provider);
-          setBaseUrlInput(supabaseConfig.base_url || '');
-          setIsApiKeyCurrentlySet(!!supabaseConfig.encrypted_config);
-          // Set selected model based on provider and stored model_id
-          if (provider === 'deepseek') {
-            setSelectedModel(supabaseConfig.model_id || deepSeekModels[0].value);
-          } else {
-            setSelectedModel(''); // Reset if provider doesn't use this model list
-          }
-
-          // Update Dexie cache (Dexie doesn't store model_id directly, it's part of encryptedAiConfig)
-          await db.transaction('rw', db.appSettings, async () => {
-            await db.appSettings.put({ key: 'currentAiProvider', value: provider });
-            if (supabaseConfig.encrypted_config) {
-              await db.appSettings.put({ key: 'encryptedAiConfig', value: supabaseConfig.encrypted_config });
-            } else {
-              await db.appSettings.delete('encryptedAiConfig');
-            }
-            if (supabaseConfig.base_url && provider === 'ollama_local') {
-              await db.appSettings.put({ key: 'aiServiceBaseUrl', value: supabaseConfig.base_url });
-            } else {
-              await db.appSettings.delete('aiServiceBaseUrl');
-            }
-          });
-          // Decrypted config in Zustand is updated when PIN is entered or on app load by PinLock
-          // Here we are just setting the form's display state.
-        } else {
-          // No config in Supabase, try Dexie as a fallback
-          const localProviderSetting = await db.appSettings.get('currentAiProvider');
-          const localEncryptedConfig = await db.appSettings.get('encryptedAiConfig');
-
-          if (localProviderSetting?.value) {
-            const localProvider = localProviderSetting.value as string;
-            setSelectedProvider(localProvider);
-            setIsApiKeyCurrentlySet(!!localEncryptedConfig?.value);
-            if (localProvider === 'ollama_local') {
-              const localBaseUrl = await db.appSettings.get('aiServiceBaseUrl');
-              setBaseUrlInput(localBaseUrl?.value as string || '');
-            }
-            // Try to get model from decrypted config if available (e.g., from previous session)
-            if (localProvider === 'deepseek' && decryptedAiConfig?.provider === 'deepseek') {
-              setSelectedModel(decryptedAiConfig.model || deepSeekModels[0].value);
-            } else {
-              setSelectedModel('');
-            }
-          } else {
-            setSelectedProvider(aiProviderOptions[0].value); // Default provider
-            setIsApiKeyCurrentlySet(false);
-            setSelectedModel(deepSeekModels[0].value); // Default model for default provider if it's deepseek
-          }
-        }
-      } catch (error) {
-        console.error("Error loading LLM settings:", error);
-        toast({ title: "Error", description: "Could not load LLM settings from cloud. Displaying local cache if available.", variant: "destructive" });
-        // Fallback to Dexie if Supabase fails for reasons other than 'no row'
+      } else { // User is authenticated
         try {
-          const localProvider = await db.appSettings.get('currentAiProvider');
-          if (localProvider?.value) {
-            setSelectedProvider(localProvider.value as string);
-             if (localProvider.value === 'ollama_local') {
-              const localBaseUrl = await db.appSettings.get('aiServiceBaseUrl');
-              setBaseUrlInput(localBaseUrl?.value as string || '');
+          const { data: supabaseConfig, error: supabaseError } = await supabase
+            .from('user_llm_configurations')
+            .select('provider_id, encrypted_config, base_url, model_id')
+            .eq('user_id', user.uid)
+            .single();
+
+          if (supabaseError && supabaseError.code !== 'PGRST116') throw supabaseError;
+
+          if (supabaseConfig) {
+            initialProvider = supabaseConfig.provider_id || initialProvider;
+            initialBaseUrl = supabaseConfig.base_url || '';
+            initialApiKeySet = !!supabaseConfig.encrypted_config;
+            initialUseLocalLLM = initialProvider === 'ollama_local';
+            initialModel = supabaseConfig.model_id || ''; // Load model_id from Supabase
+
+            if(initialUseLocalLLM && !initialModel) initialModel = OLLAMA_DEFAULT_FORM_MODEL;
+            if(initialProvider === 'deepseek' && !initialModel) initialModel = deepSeekModels[0].value;
+
+          } else { // No config in Supabase, try Dexie
+             const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
+            const providerSetting = settings[0];
+            const useLocalLLMSetting = settings[1];
+            const baseUrlSetting = settings[2];
+            const encryptedConfigSetting = settings[3];
+
+            if (providerSetting?.value) initialProvider = providerSetting.value as string;
+            initialUseLocalLLM = useLocalLLMSetting?.value === true;
+            initialApiKeySet = !!encryptedConfigSetting?.value;
+
+            if (initialUseLocalLLM || initialProvider === 'ollama_local') {
+                initialProvider = 'ollama_local';
+                initialUseLocalLLM = true;
+                initialBaseUrl = baseUrlSetting?.value as string || '';
+                 if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
+                    initialModel = decryptedAiConfig.model;
+                } else {
+                    initialModel = OLLAMA_DEFAULT_FORM_MODEL;
+                }
+            } else if (initialProvider === 'deepseek') {
+                 if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
+                    initialModel = decryptedAiConfig.model;
+                } else {
+                    initialModel = deepSeekModels[0].value;
+                }
             }
-            const localEncryptedConfig = await db.appSettings.get('encryptedAiConfig');
-            setIsApiKeyCurrentlySet(!!localEncryptedConfig?.value);
-          } else {
-            setSelectedProvider(aiProviderOptions[0].value);
           }
-        } catch (dexieError) {
-          console.error("Error loading LLM settings from Dexie (after Supabase fail):", dexieError);
-          setSelectedProvider(aiProviderOptions[0].value); // Final fallback
+        } catch (error) {
+          console.error("Error loading LLM settings (with user):", error);
+          toast({ title: "Error", description: "Cloud sync for LLM settings failed. Using local cache.", variant: "destructive" });
+          // Fallback to Dexie
+          const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
+          const providerSetting = settings[0];
+          const useLocalLLMSetting = settings[1];
+          const baseUrlSetting = settings[2];
+          const encryptedConfigSetting = settings[3];
+
+          if (providerSetting?.value) initialProvider = providerSetting.value as string;
+          initialUseLocalLLM = useLocalLLMSetting?.value === true;
+          initialApiKeySet = !!encryptedConfigSetting?.value;
+
+          if (initialUseLocalLLM || initialProvider === 'ollama_local') {
+              initialProvider = 'ollama_local';
+              initialUseLocalLLM = true;
+              initialBaseUrl = baseUrlSetting?.value as string || '';
+              if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
+                  initialModel = decryptedAiConfig.model;
+              } else {
+                  initialModel = OLLAMA_DEFAULT_FORM_MODEL;
+              }
+          } else if (initialProvider === 'deepseek') {
+              if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
+                  initialModel = decryptedAiConfig.model;
+              } else {
+                  initialModel = deepSeekModels[0].value;
+              }
+          }
         }
-      } finally {
-        setIsLoading(false);
-        setIsConfigLoaded(true);
       }
+
+      setSelectedProvider(initialProvider);
+      setBaseUrlInput(initialBaseUrl);
+      setSelectedModel(initialModel);
+      setUseLocalLLM(initialUseLocalLLM);
+      setIsApiKeyCurrentlySet(initialApiKeySet);
+
+      setIsLoading(false);
+      setIsConfigLoaded(true);
     };
     loadConfig();
-  }, [user, toast]); // Depend on user to re-load if user context changes
+  }, [user?.uid, toast]); // Removed decryptedAiConfig from deps to avoid re-triggering on its own update
 
   const performSave = async (pin: string) => {
-    if (!dataToSave) return; // Should not happen if modal was triggered correctly
+    if (!dataToSave) return;
 
     setIsLoading(true);
-    // dataToSave now includes 'model'
-    const { provider, apiKey, baseUrl, model } = dataToSave;
-    const isOllamaProvider = provider === 'ollama_local';
+    const { provider, apiKey, baseUrl, model, useLocalLLMFlag } = dataToSave;
+
+    const actualProviderToSave = useLocalLLMFlag ? 'ollama_local' : provider;
+    const isActualOllama = actualProviderToSave === 'ollama_local';
+    // Model to save: if it's Ollama, use the model from form; if Deepseek, use model from form; else null
+    const modelToSaveForSupabase =
+        isActualOllama ? model :
+        actualProviderToSave === 'deepseek' ? model :
+        null;
 
     if (!user) {
-      toast({ title: "Error", description: "User not authenticated. Cannot save settings.", variant: "destructive" });
-      setIsLoading(false);
-      setIsPinModalOpen(false);
-      return;
+      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
+      setIsLoading(false); setIsPinModalOpen(false); return;
     }
 
     try {
       const configToUpsertSupabase: any = {
         user_id: user.uid,
-        provider_id: provider,
-        base_url: isOllamaProvider ? baseUrl : null,
-        model_id: (provider === 'deepseek' && model) ? model : null, // Store model_id if deepseek
+        provider_id: actualProviderToSave,
+        base_url: isActualOllama ? baseUrl : null,
+        model_id: modelToSaveForSupabase,
         encrypted_config: null,
       };
 
-      // Logic for handling API key and encryption (remains largely the same)
-      if (!apiKey && !isOllamaProvider) { // Clearing API key
+      if (!apiKey && !isActualOllama && !useLocalLLMFlag) { // Clearing API key for a cloud provider
         await db.transaction('rw', db.appSettings, async () => {
-          await db.appSettings.put({ key: 'currentAiProvider', value: provider });
-          await db.appSettings.delete('encryptedAiConfig');
-          await db.appSettings.delete('aiServiceBaseUrl');
+          await db.appSettings.put({ key: 'currentAiProvider', value: actualProviderToSave });
+          await db.appSettings.delete('encryptedAiConfig'); // Clear encrypted blob
+          if (!isActualOllama) await db.appSettings.delete('aiServiceBaseUrl');
+          await db.appSettings.put({ key: 'useLocalLLM', value: false }); // Explicitly false
         });
-      } else { // Setting/changing API key or Ollama (which doesn't use apiKey in encryption)
-        // Ensure dataToEncrypt includes the model for all providers if set
+        configToUpsertSupabase.encrypted_config = null; // Ensure it's null for Supabase
+      } else {
         const dataToEncrypt = {
-          apiKey: isOllamaProvider ? '' : apiKey,
-          provider: provider, // Store provider in encrypted blob for consistency
-          baseUrl: isOllamaProvider ? baseUrl : '', // Store baseUrl in encrypted blob
-          model: model || null, // Store model in encrypted blob
+          apiKey: isActualOllama ? '' : apiKey, // Don't encrypt API key for Ollama
+          provider: actualProviderToSave,
+          baseUrl: isActualOllama ? baseUrl : '',
+          model: model || null, // Always include model in encrypted blob
           timestamp: new Date().toISOString()
         };
 
-        const ciphertext = (isOllamaProvider || !apiKey) ? null : await EncryptionService.encryptData(dataToEncrypt, pin);
+        const ciphertext = (isActualOllama || !apiKey) ? null : await EncryptionService.encryptData(dataToEncrypt, pin);
 
-        if (!isOllamaProvider && apiKey && !ciphertext) {
-          throw new Error("Encryption failed. Please check your PIN or try again.");
+        if (!isActualOllama && apiKey && !ciphertext) {
+          throw new Error("Encryption failed.");
         }
         configToUpsertSupabase.encrypted_config = ciphertext;
 
-        // Dexie update
         await db.transaction('rw', db.appSettings, async () => {
           if (ciphertext) {
             await db.appSettings.put({ key: 'encryptedAiConfig', value: ciphertext });
           } else {
+             // If no ciphertext (Ollama or clearing API key for cloud provider if API key field was empty but not explicitly clearing an old one)
             await db.appSettings.delete('encryptedAiConfig');
           }
-          await db.appSettings.put({ key: 'currentAiProvider', value: provider });
-          if (isOllamaProvider) {
+          await db.appSettings.put({ key: 'currentAiProvider', value: actualProviderToSave });
+          if (isActualOllama) {
             await db.appSettings.put({ key: 'aiServiceBaseUrl', value: baseUrl });
           } else {
             await db.appSettings.delete('aiServiceBaseUrl');
           }
-          // Note: Dexie doesn't have a separate 'model' field; it's inside encryptedConfig
+          await db.appSettings.put({ key: 'useLocalLLM', value: useLocalLLMFlag });
         });
       }
 
-      // Upsert to Supabase
       const { error: supabaseError } = await supabase
         .from('user_llm_configurations')
         .upsert(configToUpsertSupabase, { onConflict: 'user_id' });
 
-      if (supabaseError) {
-        console.error("Supabase save error:", supabaseError);
-        throw new Error(`Failed to save settings to cloud: ${supabaseError.message}`);
-      }
+      if (supabaseError) throw new Error(`Cloud sync failed: ${supabaseError.message}`);
 
-      // Update Zustand store, now including model
-      setDecryptedAiConfig({
-        apiKey: isOllamaProvider ? null : apiKey,
-        provider: provider,
-        baseUrl: isOllamaProvider ? baseUrl : null,
-        model: model || null, // Add model to Zustand store
+      setDecryptedAiConfig({ // Update Zustand store
+        apiKey: isActualOllama ? null : apiKey,
+        provider: actualProviderToSave,
+        baseUrl: isActualOllama ? baseUrl : null,
+        model: model || null,
       });
-      setIsApiKeyCurrentlySet(!isOllamaProvider && !!apiKey);
-      if (apiKey) setApiKeyInput('');
+      setIsApiKeyCurrentlySet(!isActualOllama && !!apiKey);
+      if (apiKey && !isActualOllama) setApiKeyInput('');
 
       toast({ title: "Settings Saved", description: "LLM configuration updated and synced." });
 
     } catch (error: any) {
-      console.error("Error saving LLM settings:", error);
-      toast({ title: "Error", description: `Could not save LLM settings: ${error.message}`, variant: "destructive" });
-      throw error; // Re-throw to be caught by PinEntryModal if desired
+      toast({ title: "Error", description: `Save failed: ${error.message}`, variant: "destructive" });
+      throw error;
     } finally {
-      setIsLoading(false);
-      setIsPinModalOpen(false); // Close modal regardless of success/failure here
-      setDataToSave(null); // Clear temporary data
+      setIsLoading(false); setIsPinModalOpen(false); setDataToSave(null);
     }
   };
 
   const handleSaveSettings = () => {
-    if (!selectedProvider) {
-      toast({ title: "Error", description: "Please select an AI provider.", variant: "destructive" });
-      return;
+    const effectiveProvider = useLocalLLM ? 'ollama_local' : selectedProvider;
+
+    if (!effectiveProvider) {
+        toast({ title: "Validation Error", description: "Please select or enable an AI provider.", variant: "destructive" });
+        return;
     }
 
-    const isOllama = selectedProvider === 'ollama_local';
+    const isOllamaEffective = effectiveProvider === 'ollama_local';
     const apiKeyToSave = apiKeyInput.trim();
     const baseUrlToSave = baseUrlInput.trim();
+    const modelToSave = selectedModel.trim();
 
-    if (isOllama && !baseUrlToSave) {
-      toast({ title: "Error", description: "Please enter the Base URL for Ollama.", variant: "destructive" });
-      return;
+
+    if (isOllamaEffective && !baseUrlToSave) {
+      toast({ title: "Validation Error", description: "Ollama Base URL is required.", variant: "destructive" }); return;
     }
+    if (isOllamaEffective && !modelToSave) {
+      toast({ title: "Validation Error", description: "Ollama Model Name is required.", variant: "destructive" }); return;
+    }
+    if (effectiveProvider === 'deepseek' && !modelToSave) {
+      toast({ title: "Validation Error", description: "DeepSeek Model is required.", variant: "destructive" }); return;
+    }
+    // Note: API key is not strictly "required" if one is already set and user doesn't want to change it.
+    // The `needsPin` logic handles when encryption/re-encryption is necessary.
 
     const newConfig = {
-      provider: selectedProvider,
+      provider: effectiveProvider,
       apiKey: apiKeyToSave,
       baseUrl: baseUrlToSave,
-      model: selectedModel, // Include selectedModel in the config to save
+      model: modelToSave,
+      useLocalLLMFlag: useLocalLLM,
     };
 
-    // If it's not Ollama and an API key is provided, or if an API key was set and now it's being cleared
-    // for a cloud provider, then we need PIN.
-    const needsPin = (!isOllama && apiKeyToSave) || (!isOllama && isApiKeyCurrentlySet && !apiKeyToSave);
+    const needsPin = (!isOllamaEffective && apiKeyToSave) || (!isOllamaEffective && isApiKeyCurrentlySet && !apiKeyToSave);
 
     if (needsPin) {
       setDataToSave(newConfig);
       setIsPinModalOpen(true);
     } else {
-      // No PIN needed (e.g. setting Ollama, or changing provider to Ollama from nothing,
-      // or changing provider from cloud to cloud without changing key - though this path is less common without re-encrypt)
-      // This direct save path without PIN is primarily for Ollama or clearing config IF no API key was involved.
-      // For simplicity here, we assume if no API key is being *set*, and it's not Ollama, it means clearing.
-      // A more robust check for "clearing an existing encrypted key" would be better.
-
-      // Let's refine: if it's not Ollama and no API key is input, and no key was set, just save provider.
-      // If it's not Ollama and no API key is input, BUT a key WAS set, this is a "clear" operation, needs PIN.
-      // The `needsPin` logic above covers the "setting a new key" and "clearing an existing key".
-      // So, if `needsPin` is false, it means:
-      // 1. Setting Ollama (baseUrlToSave might be empty or not, handled by validation)
-      // 2. Changing to a cloud provider WITHOUT providing an API key AND no API key was previously set.
-      // 3. (Less likely) Switching between cloud providers without changing the key (not handled by this simple form)
-
-      if(isOllama){
-         setDataToSave(newConfig); // Store data
-         performSave("DUMMY_PIN_FOR_OLLAMA_OR_NO_KEY_SAVE"); // Ollama doesn't need PIN for its data, but service expects it.
-                                                        // Or if we're just saving the provider choice without a key.
-      } else if (!apiKeyToSave && !isApiKeyCurrentlySet) {
-        // Cloud provider selected, no new API key, no old API key. Just save provider preference.
-         setDataToSave({ ...newConfig, apiKey: '' }); // Ensure API key is empty string
-         performSave("DUMMY_PIN_FOR_OLLAMA_OR_NO_KEY_SAVE");
+      // This path is for:
+      // 1. Ollama configuration (always, as API key isn't encrypted via PIN in the same way)
+      // 2. Cloud provider selected, but no NEW API key entered AND no API key was previously set.
+      //    (Essentially just saving provider preference without key)
+      // 3. Cloud provider selected, no NEW API key, but one IS set (this means no change to encrypted key)
+      if (isOllamaEffective || (!apiKeyToSave && !isApiKeyCurrentlySet) || (!apiKeyToSave && isApiKeyCurrentlySet) ) {
+         setDataToSave(newConfig);
+         performSave("DUMMY_PIN_FOR_NON_SENSITIVE_SAVE");
       } else {
-         // This case should ideally be covered by needsPin, but as a fallback:
-         toast({title: "Info", description: "No changes requiring PIN detected for this configuration."});
+         // This case should ideally not be reached if logic is correct
+         toast({title: "Info", description: "No changes requiring PIN detected, or API key unchanged."});
+      }
+    }
+  };
+
+  const handleUseLocalLLMChange = (checked: boolean) => {
+    setUseLocalLLM(checked);
+    if (checked) {
+      setSelectedProvider('ollama_local');
+      setSelectedModel(baseUrlInput ? selectedModel || OLLAMA_DEFAULT_FORM_MODEL : OLLAMA_DEFAULT_FORM_MODEL); // Keep existing if baseUrl is set, else default
+    } else {
+      const firstCloudProvider = aiProviderOptions.find(p => p.value !== 'ollama_local')?.value || aiProviderOptions[0].value;
+      setSelectedProvider(firstCloudProvider);
+      if (firstCloudProvider === 'deepseek') {
+        setSelectedModel(decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model ? decryptedAiConfig.model : deepSeekModels[0].value);
+      } else {
+        setSelectedModel('');
       }
     }
   };
 
   if (!isConfigLoaded) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>LLM Configuration</CardTitle>
-          <CardDescription>Manage your Large Language Model provider and API settings.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-24">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-          </div>
-        </CardContent>
+      <Card><CardHeader><CardTitle>LLM Configuration</CardTitle><CardDescription>Manage your LLM provider and API settings.</CardDescription></CardHeader>
+        <CardContent><div className="flex items-center justify-center h-24"><div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div></div></CardContent>
       </Card>
     );
   }
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>LLM Configuration</CardTitle>
-        <CardDescription>
-          Manage your Large Language Model provider and API settings. API keys are encrypted and stored locally.
-        </CardDescription>
-      </CardHeader>
+      <CardHeader><CardTitle>LLM Configuration</CardTitle><CardDescription>Manage your LLM provider and API settings. API keys are encrypted with your PIN and stored locally and synced if cloud backup is enabled.</CardDescription></CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="aiProviderSelect">AI Provider</Label>
-          <Select value={selectedProvider} onValueChange={setSelectedProvider}>
-            <SelectTrigger id="aiProviderSelect">
-              <SelectValue placeholder="Select AI Provider" />
-            </SelectTrigger>
-            <SelectContent>
-              {aiProviderOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="space-y-2 border-b pb-4">
+          <div className="flex items-center justify-between">
+            <div><Label htmlFor="useLocalLLMSwitch" className="text-base font-semibold">Use Local LLM Provider (Ollama)</Label>
+              <p className="text-xs text-muted-foreground">Overrides cloud provider selection if enabled.</p>
+            </div>
+            <Switch id="useLocalLLMSwitch" checked={useLocalLLM} onCheckedChange={handleUseLocalLLMChange} aria-label="Toggle local LLM provider"/>
+          </div>
         </div>
 
-        {/* Conditional Model Selection for DeepSeek */}
-        {selectedProvider === 'deepseek' && (
+        {!useLocalLLM && (
           <div className="space-y-2">
-            <Label htmlFor="deepseekModelSelect">DeepSeek Model</Label>
-            <Select value={selectedModel || deepSeekModels[0].value} onValueChange={setSelectedModel}>
-              <SelectTrigger id="deepseekModelSelect">
-                <SelectValue placeholder="Select DeepSeek Model" />
-              </SelectTrigger>
+            <Label htmlFor="aiProviderSelect">Cloud AI Provider</Label>
+            <Select value={selectedProvider} onValueChange={provider => {
+                setSelectedProvider(provider);
+                if(provider === 'deepseek') setSelectedModel(deepSeekModels[0].value); else setSelectedModel('');
+            }}>
+              <SelectTrigger id="aiProviderSelect" aria-required={!useLocalLLM}><SelectValue placeholder="Select Cloud AI Provider" /></SelectTrigger>
               <SelectContent>
-                {deepSeekModels.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
+                {aiProviderOptions.filter(p => p.value !== 'ollama_local').map(option => (
+                  <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
         )}
 
-        {selectedProvider === 'ollama_local' && (
+        {selectedProvider === 'deepseek' && !useLocalLLM && (
           <div className="space-y-2">
-            <Label htmlFor="ollamaBaseUrl">Ollama Base URL</Label>
-            <Input
-              id="ollamaBaseUrl"
-              type="text"
-              value={baseUrlInput}
-              onChange={(e) => setBaseUrlInput(e.target.value)}
-              placeholder="e.g., http://localhost:11434"
-            />
-            <p className="text-xs text-muted-foreground">
-              Enter the base URL for your local Ollama service.
-            </p>
+            <Label htmlFor="deepseekModelSelect">DeepSeek Model</Label>
+            <Select value={selectedModel || deepSeekModels[0].value} onValueChange={setSelectedModel}>
+              <SelectTrigger id="deepseekModelSelect" aria-required={selectedProvider === 'deepseek' && !useLocalLLM}>
+                <SelectValue placeholder="Select DeepSeek Model" />
+              </SelectTrigger>
+              <SelectContent>{deepSeekModels.map(option => (<SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>))}</SelectContent>
+            </Select>
           </div>
         )}
 
-        {selectedProvider && selectedProvider !== 'ollama_local' && (
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
-            <Input
-              id="apiKey"
-              type="password"
-              value={apiKeyInput}
-              onChange={(e) => setApiKeyInput(e.target.value)}
-              placeholder={isApiKeyCurrentlySet && !apiKeyInput ? "API Key is set (Enter new key to change)" : `Enter ${aiProviderOptions.find(p => p.value === selectedProvider)?.label || ''} API Key`}
-            />
-             {isApiKeyCurrentlySet && !apiKeyInput && (
-                <p className="text-xs text-muted-foreground">
-                    An API key is currently set. To change it, enter a new key. To clear it, leave this field blank and save (you will be prompted for your PIN).
-                </p>
-            )}
-             {!isApiKeyCurrentlySet && (
-                <p className="text-xs text-muted-foreground">
-                    Enter your API key. It will be encrypted with your PIN.
-                </p>
-            )}
-          </div>
-        )}
-        {/* Message for when Ollama is selected (no API key needed) */}
-        {selectedProvider && selectedProvider === 'ollama_local' && (
-             <p className="text-sm text-muted-foreground">
-                Ollama (Local) uses a Base URL and does not require an API key.
-             </p>
-        )}
-        {/* Message for when no provider is selected (should ideally not happen if defaulted) */}
-         {!selectedProvider && (
-            <p className="text-sm text-muted-foreground">
-                Please select an AI provider to see configuration options.
-            </p>
+        {(useLocalLLM || selectedProvider === 'ollama_local') && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="ollamaBaseUrl">Ollama Base URL</Label>
+              <Input id="ollamaBaseUrl" aria-required={useLocalLLM || selectedProvider === 'ollama_local'} type="text" value={baseUrlInput} onChange={(e) => setBaseUrlInput(e.target.value)} placeholder="e.g., http://localhost:11434"/>
+              <p className="text-xs text-muted-foreground">Enter the base URL for your local Ollama service.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="ollamaModelName">Ollama Model Name</Label>
+              <Input id="ollamaModelName" aria-required={useLocalLLM || selectedProvider === 'ollama_local'} type="text" value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} placeholder="e.g., llama2, mistral, codellama"/>
+              <p className="text-xs text-muted-foreground">Enter the name of the model to use with Ollama (must be pulled locally).</p>
+            </div>
+          </>
         )}
 
+        {selectedProvider && !useLocalLLM && selectedProvider !== 'ollama_local' && (
+          <div className="space-y-2">
+            <Label htmlFor="apiKey">API Key ({aiProviderOptions.find(p=>p.value === selectedProvider)?.label})</Label>
+            <Input id="apiKey" aria-required={selectedProvider && !useLocalLLM && selectedProvider !== 'ollama_local'} type="password" value={apiKeyInput} onChange={(e) => setApiKeyInput(e.target.value)} placeholder={isApiKeyCurrentlySet && !apiKeyInput ? "API Key is set (Enter new to change or blank to clear)" : `Enter API Key`}/>
+            {isApiKeyCurrentlySet && !apiKeyInput && (<p className="text-xs text-muted-foreground">An API key is currently set. To change it, enter a new key. To clear it, leave this field blank and save (PIN required).</p>)}
+            {!isApiKeyCurrentlySet && (<p className="text-xs text-muted-foreground">Enter your API key. It will be encrypted with your PIN.</p>)}
+          </div>
+        )}
       </CardContent>
       <CardFooter>
-        <Button onClick={handleSaveSettings} disabled={isLoading || !selectedProvider}>
-          {isLoading ? (
-            <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-          ) : null}
+        <Button onClick={handleSaveSettings} disabled={isLoading || (!useLocalLLM && !selectedProvider) || (useLocalLLM && (!baseUrlInput.trim() || !selectedModel.trim()))}>
+          {isLoading && <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />}
           Save Configuration
         </Button>
       </CardFooter>
 
-      <PinEntryModal
-        isOpen={isPinModalOpen}
-        onClose={() => {
-          setIsPinModalOpen(false);
-          setDataToSave(null); // Clear data if modal is cancelled
-        }}
-        onSubmit={performSave}
-        title="Confirm AI Configuration"
-        description="Please enter your application PIN to encrypt and save your AI settings."
-      />
+      <PinEntryModal isOpen={isPinModalOpen} onClose={() => { setIsPinModalOpen(false); setDataToSave(null); }} onSubmit={performSave} title="Confirm AI Configuration" description="Please enter your application PIN to encrypt and save your AI settings."/>
     </Card>
   );
 }
