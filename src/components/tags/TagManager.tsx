@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Tag as TagIcon, Edit2, Trash2, Palette, AlertTriangleIcon, Loader2 } from 'lucide-react';
+import { PlusCircle, Tag as TagIcon, Edit2, Trash2, Palette, AlertTriangle as AlertTriangleIcon, Loader2 } from 'lucide-react'; // Renamed AlertTriangle
 import { useToast } from "@/hooks/use-toast";
-import { db, DexieTagRecord } from "@/db"; // Using DexieTagRecord from db.ts
+import { db, DexieTagRecord } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'; // Removed DialogClose as not used
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,24 +18,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
+import { Label } from '@/components/ui/label'; // Import Label
 
-// Form Data Type for Tag
-type TagFormData = Partial<Omit<DexieTagRecord, 'created_at' | 'updated_at'>> & {
-  // name is required for saving
+type TagFormData = Partial<Omit<DexieTagRecord, 'created_at' | 'updated_at' | 'name'>> & {
+  name: string; // Name is always required for form, even if initially empty
 };
 
 export function TagManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingTag, setEditingTag] = useState<DexieTagRecord | null>(null);
   const [tagToDelete, setTagToDelete] = useState<DexieTagRecord | null>(null);
-  // const [searchTerm, setSearchTerm] = useState(""); // For future search/filter
+  const [deleteUsageCount, setDeleteUsageCount] = useState<number | null>(null);
   const { toast } = useToast();
 
-  // Fetch tags live from Dexie, ordered by name
   const tags = useLiveQuery(
     () => db.tags.orderBy('name').toArray(),
-    [], // dependencies
-    []  // initial value
+    [],
+    []
   );
 
   const handleAddNew = () => {
@@ -48,29 +47,42 @@ export function TagManager() {
     setShowForm(true);
   };
 
-  const openDeleteConfirm = (tag: DexieTagRecord) => {
+  const openDeleteConfirm = async (tag: DexieTagRecord) => {
     setTagToDelete(tag);
+    // Check usage count
+    try {
+      const expensesWithTag = await db.expenses.where('tags_flat').includesIgnoreCase(tag.name.toLowerCase()).count();
+      // Add counts from other tables if tags are used elsewhere (e.g., incomes, recurring transactions)
+      setDeleteUsageCount(expensesWithTag);
+    } catch (e) {
+      console.error("Failed to get tag usage count", e);
+      setDeleteUsageCount(null); // Indicate unknown
+    }
   };
 
   const handleDeleteExecute = async () => {
     if (!tagToDelete || !tagToDelete.id) return;
     try {
-      // TODO: Check if tag is in use by expenses before deleting, or handle orphaned tags.
-      // For now, direct delete.
       await db.tags.delete(tagToDelete.id);
+      // If tags were stored as an array of IDs/refs in expenses, this would be more complex.
+      // Since they are in tags_flat (string), we might need to update those records.
+      // For now, just deleting the tag. Orphaned tag strings in expenses might remain.
+      // A more robust solution would be a batch update to remove the tag string from relevant expenses.
+      // This is a larger task.
       toast({ title: "Success", description: `Tag "${tagToDelete.name}" deleted.` });
     } catch (error) {
       console.error("Error deleting tag:", error);
       toast({ title: "Error", description: "Could not delete tag.", variant: "destructive" });
     } finally {
       setTagToDelete(null);
+      setDeleteUsageCount(null);
     }
   };
 
   if (tags === undefined) {
      return (
         <div className="flex justify-center items-center h-64 p-4">
-            <Loader2 className="w-12 h-12 text-muted-foreground animate-spin" />
+            <Loader2 aria-hidden="true" className="w-12 h-12 text-muted-foreground animate-spin" />
             <p className="ml-4 text-lg text-muted-foreground">Loading tags...</p>
         </div>
     );
@@ -81,29 +93,29 @@ export function TagManager() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Manage Tags</h1>
         <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white">
-          <PlusCircle className="w-5 h-5 mr-2" />
+          <PlusCircle aria-hidden="true" className="w-5 h-5 mr-2" />
           Add New Tag
         </Button>
       </div>
 
-      {/* Form will be rendered here when showForm is true */}
       {showForm && (
         <AddEditTagForm
           initialData={editingTag}
           onClose={() => { setShowForm(false); setEditingTag(null); }}
+          userId={tags && tags.length > 0 ? tags[0].user_id : 'default_user'} // Pass a userId
         />
       )}
 
       {tags.length === 0 && !showForm ? (
         <Card className="border-dashed mt-6">
           <CardContent className="p-6 text-center">
-            <TagIcon className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+            <TagIcon aria-hidden="true" className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
             <h3 className="text-lg font-semibold text-foreground mb-2">No Tags Created Yet</h3>
             <p className="text-muted-foreground text-sm mb-4">
               Create tags to categorize your expenses and other items.
             </p>
             <Button onClick={handleAddNew}>
-              <PlusCircle className="w-4 h-4 mr-2" /> Create First Tag
+              <PlusCircle aria-hidden="true" className="w-4 h-4 mr-2" /> Create First Tag
             </Button>
           </CardContent>
         </Card>
@@ -114,14 +126,14 @@ export function TagManager() {
               <CardContent className="p-4 flex-grow flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     {tag.color && <div className="w-4 h-4 rounded-full" style={{ backgroundColor: tag.color }} aria-label={`Color ${tag.color}`}></div>}
-                    <span className="font-medium text-foreground">{tag.name}</span>
+                    <span className="font-medium text-foreground capitalize">{tag.name}</span> {/* Capitalize for display */}
                 </div>
                 <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(tag)} className="h-8 w-8">
-                        <Edit2 className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(tag)} className="h-8 w-8" aria-label={`Edit tag ${tag.name}`}>
+                        <Edit2 aria-hidden="true" className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => openDeleteConfirm(tag)} className="h-8 w-8 hover:text-destructive">
-                        <Trash2 className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" onClick={() => openDeleteConfirm(tag)} className="h-8 w-8 hover:text-destructive" aria-label={`Delete tag ${tag.name}`}>
+                        <Trash2 aria-hidden="true" className="w-4 h-4" />
                     </Button>
                 </div>
               </CardContent>
@@ -130,15 +142,22 @@ export function TagManager() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       {tagToDelete && (
-        <AlertDialog open={!!tagToDelete} onOpenChange={() => setTagToDelete(null)}>
+        <AlertDialog open={!!tagToDelete} onOpenChange={() => { setTagToDelete(null); setDeleteUsageCount(null);}}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitleComponent className="flex items-center"><AlertTriangleIcon className="w-5 h-5 mr-2 text-destructive"/>Are you sure?</AlertDialogTitleComponent>
+              <AlertDialogTitleComponent className="flex items-center">
+                <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 mr-2 text-destructive"/>Are you sure?
+              </AlertDialogTitleComponent>
               <AlertDialogDescription>
-                This will permanently delete the tag: "{tagToDelete.name}".
-                This might affect existing items using this tag.
+                This will permanently delete the tag: "<strong>{tagToDelete.name}</strong>".
+                {deleteUsageCount === null && <span className="block mt-2">Checking usage... <Loader2 className="inline w-3 h-3 animate-spin ml-1" /></span>}
+                {deleteUsageCount !== null && deleteUsageCount > 0 &&
+                  <span className="block mt-2 font-semibold text-destructive">This tag is currently used by {deleteUsageCount} expense(s). Deleting it will remove it from these items.</span>
+                }
+                 {deleteUsageCount !== null && deleteUsageCount === 0 &&
+                  <span className="block mt-2">This tag is not currently used in any expenses.</span>
+                }
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -152,63 +171,90 @@ export function TagManager() {
   );
 }
 
-
-// --- AddEditTagForm Sub-Component (Placeholder for now, will be implemented in next step) ---
 interface AddEditTagFormProps {
   initialData?: DexieTagRecord | null;
   onClose: () => void;
+  userId?: string; // Added userId prop
 }
 
-function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
+function AddEditTagForm({ initialData, onClose, userId = 'default_user' }: AddEditTagFormProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<TagFormData>(() => {
-    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: 'default_user' };
-    return initialData ? { ...initialData } : defaults;
+    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: userId };
+    return initialData ? { ...initialData, name: initialData.name } : defaults;
   });
+  const [formErrors, setFormErrors] = useState<Partial<Record<keyof TagFormData, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: 'default_user' };
+    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: userId };
     if (initialData) {
-      setFormData({ ...initialData, id: initialData.id });
+      setFormData({ ...initialData, id: initialData.id, name: initialData.name });
     } else {
       setFormData(defaults);
     }
-  }, [initialData]);
+    setFormErrors({});
+  }, [initialData, userId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (formErrors[name as keyof TagFormData]) {
+        setFormErrors(prev => ({ ...prev, [name]: undefined }));
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Partial<Record<keyof TagFormData, string>> = {};
+    if (!formData.name?.trim()) {
+      newErrors.name = "Tag Name is required.";
+    } else if (formData.name.includes(',')) {
+      newErrors.name = "Tag Name cannot contain commas.";
+    }
+    // Basic hex color validation (optional)
+    if (formData.color && !/^#([0-9A-Fa-f]{3}){1,2}$/.test(formData.color)) {
+        newErrors.color = "Invalid hex color format (e.g., #RRGGBB or #RGB).";
+    }
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!validateForm()) {
+        toast({ title: "Validation Error", description: "Please correct the errors.", variant: "destructive", duration: 2000 });
+        return;
+    }
     setIsSaving(true);
 
-    if (!formData.name?.trim()) {
-      toast({ title: "Validation Error", description: "Tag Name is required.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
+    const normalizedName = formData.name!.trim().toLowerCase();
 
     const recordData: Omit<DexieTagRecord, 'id' | 'created_at' | 'updated_at'> = {
-      name: formData.name!.trim(),
+      name: normalizedName,
       color: formData.color || undefined,
-      user_id: formData.user_id || 'default_user',
+      user_id: formData.user_id || userId, // Ensure userId is set
     };
 
     try {
-      if (formData.id) { // Update
-        await db.tags.update(formData.id, { ...recordData, name: recordData.name.toLowerCase(), updated_at: new Date() }); // Ensure name is stored consistently
+      if (formData.id) {
+        // Check if name changed and if new name conflicts (excluding self)
+        if (normalizedName !== initialData?.name.toLowerCase()) {
+            const existingTag = await db.tags.where({user_id: recordData.user_id, name: normalizedName}).first();
+            if (existingTag && existingTag.id !== formData.id) {
+                 toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
+                 setIsSaving(false); return;
+            }
+        }
+        await db.tags.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Tag updated." });
-      } else { // Add
-        // Check for uniqueness (name per user_id) before adding
-        const existingTag = await db.tags.where({user_id: recordData.user_id, name: recordData.name.toLowerCase()}).first();
+      } else {
+        const existingTag = await db.tags.where({user_id: recordData.user_id, name: normalizedName}).first();
         if (existingTag) {
-            toast({ title: "Duplicate Tag", description: `Tag "${recordData.name}" already exists.`, variant: "warning" });
-            setIsSaving(false);
-            return;
+            toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
+            setIsSaving(false); return;
         }
         const newId = self.crypto.randomUUID();
-        await db.tags.add({ ...recordData, name: recordData.name.toLowerCase(), id: newId, created_at: new Date(), updated_at: new Date() });
+        await db.tags.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
         toast({ title: "Success", description: "Tag added." });
       }
       onClose();
@@ -220,6 +266,10 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
     }
   };
 
+  const FieldError: React.FC<{ field: keyof TagFormData }> = ({ field }) =>
+    formErrors[field] ? <p id={`${field}-error-tag`} className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/> {formErrors[field]}</p> : null;
+
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
@@ -230,16 +280,24 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
           <div>
             <Label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag Name *</Label>
             <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required
-                   className={formErrors.name ? 'border-red-500' : ''}/>
-            {formErrors.name && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon className="w-3 h-3 mr-1"/>{formErrors.name}</p>}
+                   className={formErrors.name ? 'border-red-500' : ''}
+                   aria-required="true"
+                   aria-invalid={!!formErrors.name}
+                   aria-describedby={formErrors.name ? "name-error-tag" : undefined}
+            />
+            <FieldError field="name"/>
           </div>
           <div>
-            <Label htmlFor="color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag Color (Optional)</Label>
+            <Label htmlFor="color" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag Color</Label>
             <div className="flex items-center gap-2">
-                <Input id="color" name="color" type="color" value={formData.color || '#cccccc'} onChange={handleChange} className="w-16 h-10 p-1 rounded-md border" />
-                <Input value={formData.color || '#cccccc'} onChange={handleChange} name="color" placeholder="#RRGGBB" className="flex-grow"/>
+                <Input id="color" name="color" type="color" value={formData.color || '#cccccc'} onChange={handleChange} className="w-16 h-10 p-1 rounded-md border" aria-label="Tag color picker"/>
+                <Input value={formData.color || '#cccccc'} onChange={handleChange} name="color" placeholder="#RRGGBB"
+                       className={`flex-grow ${formErrors.color ? 'border-red-500' : ''}`}
+                       aria-invalid={!!formErrors.color}
+                       aria-describedby={formErrors.color ? "color-error-tag" : undefined}
+                />
             </div>
-            {formErrors.color && <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon className="w-3 h-3 mr-1"/>{formErrors.color}</p>}
+            <FieldError field="color"/>
           </div>
           <DialogFooter className="pt-5">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
