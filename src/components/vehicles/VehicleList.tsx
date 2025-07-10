@@ -1,16 +1,17 @@
-import React, { useState } from 'react'; // Added useState
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Trash2, Edit3, ShieldCheck, Gauge, UserCircle, Tag, CalendarDays, Car, Bike, ChevronDown, Shield, Receipt } from "lucide-react"; // Added ChevronDown, Shield, Receipt
-import { Vehicle } from "@/db";
-import { DataValidator } from "@/services/data-validator";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"; // Added Collapsible
-import { motion } from "framer-motion"; // For item animation
-import { format, parseISO, isValid } from 'date-fns'; // For date formatting
+import { Trash2, Edit3, ShieldCheck, Gauge, UserCircle, CalendarDays, Car, ChevronDown, Shield, Receipt, Package } from "lucide-react"; // Removed Bike, Tag. Added Package for Make/Model.
+import { Vehicle } from "@/db"; // Vehicle is DexieVehicleRecord
+// import { DataValidator } from "@/services/data-validator"; // DataValidator.formatCurrency might be needed if insurance_premium comes back
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { motion } from "framer-motion";
+import { format, parseISO, isValid } from 'date-fns';
+import { Badge } from "@/components/ui/badge"; // Import Badge
 
 interface VehicleListProps {
-  vehicles: Vehicle[];
-  onDelete?: (vehicleId: string) => void; // Changed to string for UUID
+  vehicles: Vehicle[]; // Now DexieVehicleRecord[]
+  onDelete?: (vehicleId: string) => void;
   onEdit?: (vehicle: Vehicle) => void;
 }
 
@@ -44,7 +45,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
     const today = new Date();
     const diffTime = expiry.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays <= 30 && diffDays >= 0; // Ensure it's not already past
+    return diffDays <= 30 && diffDays >= 0;
   };
 
   const getFuelTypeColor = (fuelType?: string) => {
@@ -64,7 +65,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
     <div className="space-y-4">
       {vehicles.map((vehicle, index) => (
         <motion.div
-            key={vehicle.id}
+            key={vehicle.id} // id is string
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
@@ -73,9 +74,10 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
           <CardHeader className="pb-3 pt-4 px-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                {vehicle.type === 'car' ? <Car aria-hidden="true" className="w-6 h-6 text-primary" /> : <Bike aria-hidden="true" className="w-6 h-6 text-primary" />}
+                {/* vehicle.type (car/motorcycle) is not in DexieVehicleRecord v10. Defaulting to Car icon. */}
+                <Car aria-hidden="true" className="w-6 h-6 text-primary" />
                 <CardTitle className="text-lg font-semibold">
-                  {vehicle.vehicle_name}
+                  {vehicle.name} {/* Use vehicle.name */}
                 </CardTitle>
                  {vehicle.fuelType && (
                     <Badge variant="outline" className={`${getFuelTypeColor(vehicle.fuelType)} border-none`}>
@@ -85,12 +87,12 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
               </div>
               <div className="flex items-center space-x-1">
                 {onEdit && vehicle.id && (
-                  <Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)} className="text-muted-foreground hover:text-primary h-8 w-8" aria-label={`Edit ${vehicle.vehicle_name}`}>
+                  <Button variant="ghost" size="icon" onClick={() => onEdit(vehicle)} className="text-muted-foreground hover:text-primary h-8 w-8" aria-label={`Edit ${vehicle.name}`}>
                     <Edit3 aria-hidden="true" className="w-4 h-4" />
                   </Button>
                 )}
                 {onDelete && vehicle.id && (
-                  <Button variant="ghost" size="icon" onClick={() => onDelete(vehicle.id!)} className="text-destructive hover:text-destructive/80 h-8 w-8" aria-label={`Delete ${vehicle.vehicle_name}`}>
+                  <Button variant="ghost" size="icon" onClick={() => onDelete(vehicle.id!)} className="text-destructive hover:text-destructive/80 h-8 w-8" aria-label={`Delete ${vehicle.name}`}>
                     <Trash2 aria-hidden="true" className="w-4 h-4" />
                   </Button>
                 )}
@@ -101,35 +103,45 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
           <CardContent className="px-4 pb-4 space-y-2">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-sm">
               {vehicle.make && vehicle.model && (
-                <div className="flex items-center text-muted-foreground"><Car aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Make/Model: <span className="text-foreground ml-1">{vehicle.make} {vehicle.model}</span></div>
+                <div className="flex items-center text-muted-foreground"><Package aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Make/Model: <span className="text-foreground ml-1">{vehicle.make} {vehicle.model}</span></div>
               )}
+              {/* vehicle.year is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.year && (
                 <div className="flex items-center text-muted-foreground"><CalendarDays aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Year: <span className="text-foreground ml-1">{vehicle.year}</span></div>
               )}
+              */}
+              {/* vehicle.mileage is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.mileage !== undefined && (
                 <div className="flex items-center text-muted-foreground"><Gauge aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Mileage: <span className="text-foreground ml-1">{vehicle.mileage} {vehicle.fuelType === 'Electric' ? 'km/charge' : 'km/l'}</span></div>
               )}
+              */}
+              {/* vehicle.owner is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.owner && (
                 <div className="flex items-center text-muted-foreground"><UserCircle aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Owner: <span className="text-foreground ml-1">{vehicle.owner}</span></div>
               )}
+              */}
+              {/* vehicle.insurance_provider is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.insurance_provider && (
                 <div className="flex items-center text-muted-foreground"><ShieldCheck aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Insurer: <span className="text-foreground ml-1">{vehicle.insurance_provider}</span></div>
               )}
+              */}
+              {/* vehicle.insurance_premium is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.insurance_premium !== undefined && (
                 <div className="flex items-center text-muted-foreground"><ShieldCheck aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />Premium: <span className="text-foreground ml-1">{DataValidator.formatCurrency(vehicle.insurance_premium)}</span></div>
               )}
-              {vehicle.insurance_next_renewal && (
-                <div className={`flex items-center text-muted-foreground ${isInsuranceExpiringSoon(vehicle.insurance_next_renewal) ? 'font-semibold text-orange-600 dark:text-orange-400' : ''}`}>
+              */}
+              {vehicle.insuranceExpiryDate && ( // Use vehicle.insuranceExpiryDate
+                <div className={`flex items-center text-muted-foreground ${isInsuranceExpiringSoon(vehicle.insuranceExpiryDate) ? 'font-semibold text-orange-600 dark:text-orange-400' : ''}`}>
                     <CalendarDays aria-hidden="true" className="w-4 h-4 mr-2 text-gray-400" />
-                    Renewal: <span className="ml-1">{isValid(parseISO(vehicle.insurance_next_renewal)) ? format(parseISO(vehicle.insurance_next_renewal), 'PPP') : 'N/A'}</span>
-                    {isInsuranceExpiringSoon(vehicle.insurance_next_renewal) && <Badge variant="destructive" className="ml-2 text-xs">Expiring Soon</Badge>}
+                    Renewal: <span className="ml-1">{isValid(parseISO(vehicle.insuranceExpiryDate)) ? format(parseISO(vehicle.insuranceExpiryDate), 'PPP') : 'N/A'}</span>
+                    {isInsuranceExpiringSoon(vehicle.insuranceExpiryDate) && <Badge variant="destructive" className="ml-2 text-xs">Expiring Soon</Badge>}
                 </div>
               )}
             </div>
 
-            {/* Related Data Collapsible Section */}
+            {/* Related Data Collapsible Section - vehicle.id is now string */}
             <div className="mt-3 pt-2 border-t border-dashed">
-              <Collapsible open={expandedVehicleId === vehicle.id} onOpenChange={(open) => setExpandedVehicleId(open ? vehicle.id : null)}>
+              <Collapsible open={expandedVehicleId === vehicle.id} onOpenChange={(open) => setExpandedVehicleId(open ? vehicle.id! : null)}>
                 <CollapsibleTrigger asChild>
                   <Button variant="ghost" size="sm" className="h-8 p-2 w-full justify-start text-xs text-muted-foreground hover:bg-muted/50">
                     View Related Data
@@ -137,22 +149,25 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-3 space-y-3 text-xs pl-2">
-                  {/* Related Insurance (Mock) */}
+                  {/* Related Insurance (Mock) - Keyed by string vehicle.id */}
                   {(mockInsurancePolicies[vehicle.id!] && mockInsurancePolicies[vehicle.id!].length > 0) ? (
                     <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-2">
                       <div className="flex items-center gap-2 mb-1">
                         <Shield aria-hidden="true" className="w-3 h-3 text-blue-600" />
                         <span className="text-xs font-medium text-blue-800 dark:text-blue-200">Insurance Policies</span>
                       </div>
+                      {/* Ensure DataValidator.formatCurrency is available or remove if insurance_premium is not used
                       {mockInsurancePolicies[vehicle.id!]?.map(policy => (
                         <div key={policy.id} className="text-blue-700 dark:text-blue-300">
                           {policy.insurer} - {DataValidator.formatCurrency(policy.premium)} (Exp: {format(parseISO(policy.expiryDate), 'PP')})
                         </div>
                       ))}
+                      */}
+                       <p className="text-muted-foreground italic">Mock policy display needs review.</p>
                     </div>
                   ) : <p className="text-muted-foreground italic">No linked insurance policies (mock).</p>}
 
-                  {/* Recent Expenses (Mock) */}
+                  {/* Recent Expenses (Mock) - Keyed by string vehicle.id */}
                   {(mockRelatedExpenses[vehicle.id!] && mockRelatedExpenses[vehicle.id!].length > 0) ? (
                     <div className="bg-green-50 dark:bg-green-900/20 rounded-md p-2">
                       <div className="flex items-center gap-2 mb-1">
@@ -160,12 +175,15 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                         <span className="text-xs font-medium text-green-800 dark:text-green-200">Recent Expenses</span>
                       </div>
                       <div className="space-y-0.5">
+                        {/* Ensure DataValidator.formatCurrency is available
                         {mockRelatedExpenses[vehicle.id!]?.slice(0, 3).map(expense => (
                           <div key={expense.id} className="text-green-700 dark:text-green-300 flex justify-between">
                             <span>{expense.tag}</span>
                             <span>{DataValidator.formatCurrency(expense.amount)}</span>
                           </div>
                         ))}
+                        */}
+                        <p className="text-muted-foreground italic">Mock expense display needs review.</p>
                       </div>
                     </div>
                   ) : <p className="text-muted-foreground italic">No linked expenses (mock).</p>}
