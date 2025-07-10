@@ -204,6 +204,8 @@ export const db = new SavoraDB();
 
 export type Expense = ExpenseData;
 export { YearlySummary };
+export type Vehicle = DexieVehicleRecord; // Exporting DexieVehicleRecord as Vehicle
+
 // Note on other *Data types from jsonPreload:
 // IncomeSourceData and InvestmentData are now the primary types for their respective tables.
 // VehicleData, LoanData, CreditCardData from jsonPreload are effectively superseded by
