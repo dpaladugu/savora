@@ -40,7 +40,7 @@ This log tracks the development progress, insights, and actions performed by Jul
 **Summary of Sub-Phase:** Key hooks and components verified. `TagManager` enhanced. Conceptual groundwork laid for data services.
 
 ---
-### Sub-Phase: Codebase Cleanup & Refactoring (Current Focus)
+### Sub-Phase: Codebase Cleanup & Refactoring (Previous Focus)
 
 **Objective:** Reduce redundancy, consolidate similar components/services, and standardize approaches based on previous findings.
 
@@ -50,26 +50,67 @@ This log tracks the development progress, insights, and actions performed by Jul
 
 1.  **Scan for Redundant/Similar Files:**
     *   **Actions:** Performed a recursive file listing (`ls -R`) and analyzed the output. Read content of multiple files across expense management, dashboards, vehicle management, auth screens, data validators, and UI wrappers.
-    *   **Findings:** Identified significant areas of potential redundancy and differing implementations for similar functionalities, particularly in:
-        *   Expense Forms (multiple versions with different validation and features).
-        *   Expense Trackers (multiple versions with different data strategies and UIs).
-        *   Expense Validation (custom hook vs. Zod-based hook).
-        *   Data Services for Expenses (Firestore-based vs. Supabase-based, and general Supabase service).
-        *   Dashboard components (standard vs. "enhanced" versions).
-        *   Vehicle Manager (filename casing variants).
-        *   Auth Screens (standard vs. "enhanced").
-        *   Error Boundaries (general vs. global vs. critical).
-        *   Loading Wrappers (basic vs. enhanced vs. granular state components).
-        *   Data Validators (utility class vs. Zod-based comprehensive validator).
+    *   **Findings:** Identified significant areas of potential redundancy and differing implementations for similar functionalities.
     *   **State:** Scan complete. Detailed understanding of overlaps achieved.
 
-**Pending Tasks (Cleanup & Refactoring):**
-*   Task 2: Plan and Execute Cleanup/Refactoring (currently active).
-    *   Sub-Task 2.1: Formulate Detailed Cleanup Sub-Plan.
-    *   Sub-Task 2.2 onwards: Execute deletions, merges, and refactoring actions based on the sub-plan.
-*   Task 3: Implement `ExpenseService.ts`.
-*   Task 4: Implement `RecurringTransactionService.ts`.
-*   Task 5: Update Progress Log & Submit.
+**Pending Tasks (Cleanup & Refactoring):** Were superseded by more specific refactoring tasks.
+
+---
+### Sub-Phase: Vehicle Module Refactor & User ID Implementation (COMPLETED)
+
+**Objective:** Resolve critical TypeScript errors in the vehicle management module, standardize vehicle data types, expand the vehicle data model based on user requirements, and implement consistent `user_id` handling across all relevant Dexie tables and UI components.
+
+**Date: July 10, 2025**
+
+**Tasks Completed:**
+
+1.  **Data Model Reconciliation for Vehicles (Follow-up):**
+    *   Collaborated with the user to define a comprehensive list of fields for the `vehicles` table.
+    *   Updated `DexieVehicleRecord` interface in `src/db.ts`.
+    *   Created a new Dexie schema version (v15) for the `vehicles` table, including all new fields (e.g., `year`, `owner`, `color`, `purchaseDate`, `purchasePrice`, `currentOdometer`, `fuelEfficiency`, detailed insurance and tracking fields, `notes`, `status`).
+    *   Updated `VehicleData` type in `src/types/jsonPreload.ts` to align.
+    *   Significantly updated `AddVehicleForm.tsx` to include inputs for all new fields and manage their state.
+    *   Updated `VehicleManager.tsx` to map all new fields for add/edit operations.
+    *   Updated `VehicleList.tsx` to display all new vehicle fields with appropriate formatting.
+    *   Resolved initial TypeScript errors related to `Vehicle` type and `id` mismatches.
+
+2.  **Implement `user_id` Population for Dexie Tables:**
+    *   Identified `user.uid` from `AuthContext` as the source for `user_id`.
+    *   Updated the following components (and their sub-components/forms where applicable) to:
+        *   Filter Dexie `useLiveQuery` lists by the authenticated `user.uid`.
+        *   Correctly set `user_id` when adding new records.
+        *   Prevent data saving operations if the user is not authenticated.
+        *   Removed `'default_user'` fallbacks.
+    *   **Affected components/modules:**
+        *   `VehicleManager.tsx`
+        *   `EnhancedAddExpenseForm.tsx`
+        *   `IncomeSourceManager.tsx`
+        *   `TagManager.tsx`
+        *   `AccountManager.tsx`
+        *   `CreditCardManager.tsx`
+        *   `GoldTracker.tsx`
+        *   `InsuranceTracker.tsx` (covering Insurance Policies and Loans/EMIs)
+        *   `InvestmentsTracker.tsx` (the Dexie-based one)
+
+3.  **Review Other Dexie Table Schemas vs. Component Usage (Focused on `incomes`):**
+    *   Identified critical missing fields (especially `amount`) in the `incomes` table schema (v4).
+    *   Updated `db.ts` with a new schema version (v16) for `incomes`, adding `amount`, `description`, `frequency`, `tags_flat`, `account_id`, and renaming `source` to `source_name` for clarity.
+    *   Updated `src/components/income/income-tracker.tsx`:
+        *   Aligned its local `AppIncome` interface with the new v16 schema.
+        *   Modified `AddIncomeForm` to use the new fields, handle `user_id` correctly (removing `userId` prop and using `useAuth` directly).
+        *   Updated list display to use `source_name` and show `description`.
+
+4.  **Investigate `DataValidator` Service:**
+    *   Reviewed `src/services/data-validator.ts`.
+    *   Reintegrated `DataValidator.formatCurrency` into `VehicleList.tsx` and `income-tracker.tsx`, removing local helper functions. Noted that other validation methods in `DataValidator` are available for future use.
+
+5.  **Address TODOs/FIXMEs and General Code Quality:**
+    *   Used `grep` to find TODOs. Most were related to Firestore integration (deemed out of current scope).
+    *   Addressed the TODO in `income-tracker.tsx` by integrating the existing `TagsInput.tsx` component into the `AddIncomeForm`.
+    *   General code quality improvements (consistency, removal of fallbacks) were made throughout the `user_id` and schema reconciliation work.
+
+**Summary of Sub-Phase:**
+The vehicle management module is now significantly more robust and feature-rich, with a comprehensive data model stored in Dexie. Critical TypeScript errors have been resolved. Crucially, `user_id` handling is now consistently implemented across all major data modules, ensuring user data isolation and proper association in the local Dexie database. The `incomes` table schema has been corrected to store essential data. The `DataValidator` service is partially reintegrated for currency formatting.
 
 ---
 *(Log will be updated as more tasks are completed)*

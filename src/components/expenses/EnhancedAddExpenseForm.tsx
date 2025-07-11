@@ -72,7 +72,7 @@ const initialFormState: EnhancedFormState = {
   merchant: '',
   account: '',
   source: '',
-  user_id: 'default_user',
+  user_id: undefined, // Initialize as undefined
 };
 
 export const EnhancedAddExpenseForm: React.FC = () => {
@@ -84,16 +84,21 @@ export const EnhancedAddExpenseForm: React.FC = () => {
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
-    const newUserId = user?.uid || 'default_user';
-    setFormState({ ...initialFormState, user_id: newUserId });
+    setFormState({ ...initialFormState, user_id: user?.uid }); // Set current user_id on reset
     setErrors({});
     setFormMessage(null);
   }, [user]);
 
   useEffect(() => {
-    // Set user_id when user context changes or on initial load
-    if (user && (formState.user_id === 'default_user' || !formState.user_id)) {
+    // Effect to set user_id in formState if it's not already set or doesn't match current user
+    // This helps ensure that if the component mounts before user context is ready,
+    // it gets updated once the user is available.
+    if (user && formState.user_id !== user.uid) {
       setFormState(prev => ({ ...prev, user_id: user.uid }));
+    }
+    // If user logs out while form is open, clear user_id or handle as needed
+    if (!user && formState.user_id) {
+        setFormState(prev => ({ ...prev, user_id: undefined }));
     }
   }, [user, formState.user_id]);
 
@@ -160,12 +165,22 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       return;
     }
 
+    if (!user?.uid) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to add an expense.",
+        variant: "destructive",
+      });
+      setFormMessage("Login required to save expense.");
+      return;
+    }
+
     try {
       const newId = self.crypto.randomUUID();
       const expenseToSave: DexieExpenseRecord = {
         id: newId,
-        user_id: formState.user_id || user?.uid || "default_user",
-        amount: Number(formState.amount) || 0, // Ensure amount is number
+        user_id: user.uid, // Use directly from auth context
+        amount: Number(formState.amount) || 0,
         date: formState.date || new Date().toISOString().split('T')[0],
         category: formState.category || '',
         description: formState.description || '',
@@ -181,10 +196,10 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       await db.expenses.add(expenseToSave);
 
       toast({
-        title: "Expense Added Locally",
-        description: `Expense "${expenseToSave.description || 'Unnamed'}" of ${expenseToSave.amount} added.`,
+        title: "Expense Added",
+        description: `Expense "${expenseToSave.description || 'Unnamed'}" for ${formatCurrency(expenseToSave.amount)} added.`,
       });
-      setFormMessage('Expense added successfully to local DB!');
+      setFormMessage('Expense added successfully!');
       resetForm();
 
     } catch (error) {
@@ -193,7 +208,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       if (error instanceof Error && error.message) {
           errorMessage = error.message;
       }
-      toast({ title: "Dexie Error", description: errorMessage, variant: "destructive" });
+      toast({ title: "Error Saving Expense", description: errorMessage, variant: "destructive" });
       setFormMessage(`Failed to save expense: ${errorMessage}`);
     }
   };
@@ -202,17 +217,25 @@ export const EnhancedAddExpenseForm: React.FC = () => {
     <form onSubmit={handleSubmit} className="space-y-4 p-6 border rounded-lg shadow-lg bg-white dark:bg-slate-900">
       <h2 className="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-100">Add New Expense</h2>
 
+      {!user && (
+        <div className="p-3 mb-4 text-sm text-yellow-800 bg-yellow-100 rounded-lg dark:bg-yellow-900 dark:text-yellow-300" role="alert">
+          <AlertTriangleIcon className="inline w-4 h-4 mr-2" />
+          You are not logged in. Expenses will not be saved until you log in.
+        </div>
+      )}
+
       <div>
         <Label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount *</Label>
         <Input
           id="amount" name="amount" type="number" step="0.01"
-          value={formState.amount || ''}
-          onChange={(e) => handleInputChange('amount', e.target.value === '' ? '' : parseFloat(e.target.value))}
+          value={formState.amount === 0 && !errors.amount ? '' : formState.amount} // Show placeholder if 0 and no error
+          onChange={(e) => handleInputChange('amount', e.target.value === '' ? 0 : parseFloat(e.target.value))}
           onBlur={() => handleBlur('amount')}
           aria-invalid={!!errors.amount}
           aria-required="true"
           aria-describedby={errors.amount ? "amount-error" : undefined}
           className={`mt-1 block w-full ${errors.amount ? 'border-red-500' : ''}`} required
+          placeholder="0.00"
         />
         {errors.amount && <p id="amount-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.amount}</p>}
       </div>
@@ -318,10 +341,11 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
       <AdvancedExpenseOptions
         tags={formState.tags || []}
-        userId={user?.uid || 'default_user'}
+        // Pass undefined if user is not available, AdvancedExpenseOptions should handle this
+        userId={user?.uid}
         onTagsChange={(newTags) => handleInputChange('tags', newTags)}
       />
-       {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}
+       {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}
 
 
       {formMessage && (

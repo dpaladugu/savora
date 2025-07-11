@@ -143,21 +143,48 @@ export interface IncomeSourceData extends Omit<JsonIncomeCashFlow, 'amount'> { /
 
 
 export interface VehicleData {
-  id?: number;
-  vehicle_name: string;
+  // Core Identification
+  id?: number; // Used by forms, not by Dexie which uses string id
+  vehicle_name: string; // Form field, maps to 'name' in DexieVehicleRecord
+  registrationNumber?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  color?: string;
+  type?: string; // General type like "Car", "Motorcycle"
   owner?: string;
-  type?: "motorcycle" | "car" | string;
-  usage?: string;
-  insurance_premium?: number;
+  status?: string; // e.g., "Active", "Sold"
+
+  // Purchase and Financials
+  purchaseDate?: string; // ISO Date string
+  purchasePrice?: number;
+
+  // Technical Details
+  fuelType?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
+  currentOdometer?: number;
+  fuelEfficiency?: string; // e.g., "15 km/l"
+
+  // Insurance Details
   insurance_provider?: string;
+  insurancePolicyNumber?: string;
+  insurance_next_renewal?: string; // Form field, maps to 'insuranceExpiryDate' in Dexie
+  insurance_premium?: number;
   insurance_frequency?: string;
-  insurance_next_renewal?: string;
+
+  // Tracking & Maintenance
   tracking_type?: string;
   tracking_last_service_odometer?: number;
-  tracking_next_pollution_check?: string;
-  status?: string;
+  next_pollution_check?: string; // ISO Date string
   location?: string;
   repair_estimate?: number;
+
+  // Misc
+  notes?: string;
+
+  // Fields to explicitly exclude from VehicleData if they were only for UI or legacy:
+  // usage?: string; // Decided to remove this one for now
 }
 
 export interface LoanData {

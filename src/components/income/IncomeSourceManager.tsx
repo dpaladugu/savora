@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
-import { IncomeSourceData } from "@/types/jsonPreload"; // Using the updated type
+import { IncomeSourceData } from "@/types/jsonPreload";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,11 +35,15 @@ export function IncomeSourceManager() {
   const [editingSource, setEditingSource] = useState<IncomeSourceData | null>(null);
   const [sourceToDelete, setSourceToDelete] = useState<IncomeSourceData | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const incomeSources = useLiveQuery(
-    () => db.incomeSources.orderBy('name').toArray(),
-    [], // dependencies
-    []  // initial value
+    async () => {
+      if (!user?.uid) return [];
+      return db.incomeSources.where('user_id').equals(user.uid).orderBy('name').toArray();
+    },
+    [user?.uid], // Re-run if user.uid changes
+    []
   );
 
   const handleAddNew = () => {
@@ -168,23 +173,53 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
     }
     return defaults;
   });
+  const { toast } = useToast();
+  const { user } = useAuth(); // Get user for the form
+  const [formData, setFormData] = useState<IncomeSourceFormData>(() => {
+    const defaults: IncomeSourceFormData = {
+      name: '',
+      defaultAmount: '',
+      frequency: 'monthly',
+      account: '',
+      user_id: user?.uid // Initialize with current user_id
+    };
+    if (initialData) {
+      return {
+        ...initialData,
+        defaultAmount: initialData.defaultAmount?.toString() || '',
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
+      };
+    }
+    return defaults;
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof IncomeSourceFormData, string>>>({});
 
 
   useEffect(() => {
-    const defaults: IncomeSourceFormData = { name: '', defaultAmount: '', frequency: 'monthly', account: '', user_id: 'default_user' };
-    if (initialData) {
-      setFormData({
-        ...initialData,
-        id: initialData.id,
-        defaultAmount: initialData.defaultAmount?.toString() || '',
-      });
-    } else {
-      setFormData(defaults);
+    // Update form's user_id if user context changes or if initialData didn't have it
+    if (user && formData.user_id !== user.uid) {
+      setFormData(prev => ({ ...prev, user_id: user.uid }));
     }
-    setFormErrors({}); // Clear errors when form opens or initialData changes
-  }, [initialData]);
+    if (!initialData && !user && formData.user_id) { // Clear user_id if user logs out and it's a new form
+        setFormData(prev => ({...prev, user_id: undefined}));
+    }
+    // Reset form if initialData changes (e.g. switching from add to edit)
+    if (initialData) {
+        setFormData({
+            ...initialData,
+            id: initialData.id,
+            defaultAmount: initialData.defaultAmount?.toString() || '',
+            user_id: initialData.user_id || user?.uid,
+        });
+    } else { // Reset to defaults for a new entry
+        setFormData({
+            name: '', defaultAmount: '', frequency: 'monthly', account: '',
+            user_id: user?.uid
+        });
+    }
+    setFormErrors({});
+  }, [initialData, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -222,32 +257,51 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
     }
     setIsSaving(true);
 
+    if (!validateCurrentForm()) {
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive", duration: 2000 });
+      return;
+    }
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save an income source.", variant: "destructive" });
+      setIsSaving(false); // Should be set before this check potentially
+      return;
+    }
+    setIsSaving(true);
+
     const defaultAmountNum = formData.defaultAmount ? parseFloat(formData.defaultAmount) : undefined;
 
-    const recordData: Omit<IncomeSourceData, 'id' | 'created_at' | 'updated_at' | 'source'> & {source?: string} = { // Omit 'source' as we use 'name'
+    // Ensure recordData has user_id from the authenticated user
+    const recordData: Omit<IncomeSourceData, 'id' | 'created_at' | 'updated_at'> = {
       name: formData.name!,
       defaultAmount: defaultAmountNum,
       frequency: formData.frequency! as IncomeSourceData['frequency'],
       account: formData.account || '',
-      user_id: formData.user_id || 'default_user',
+      user_id: user.uid, // Crucial: use authenticated user's ID
+      // source field is not part of IncomeSourceData, 'name' is used as the source identifier
     };
-    // The original JsonIncomeCashFlow had a 'source' field. If IncomeSourceData is to maintain that
-    // for some reason while 'name' is the display name, we might need to set it:
-    // recordData.source = formData.name;
 
     try {
-      if (formData.id) {
+      if (formData.id) { // Editing existing source
+        // Ensure we are not trying to update a source that doesn't belong to the user (optional check)
+        // const existing = await db.incomeSources.get(formData.id);
+        // if (existing?.user_id !== user.uid) { throw new Error("Permission denied."); }
         await db.incomeSources.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Income source updated." });
-      } else {
+      } else { // Adding new source
         const newId = self.crypto.randomUUID();
-        await db.incomeSources.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() } as IncomeSourceData);
+        await db.incomeSources.add({
+          ...recordData,
+          id: newId,
+          created_at: new Date(),
+          updated_at: new Date()
+        } as IncomeSourceData);
         toast({ title: "Success", description: "Income source added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save income source:", error);
-      toast({ title: "Database Error", description: "Could not save income source.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save income source.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
