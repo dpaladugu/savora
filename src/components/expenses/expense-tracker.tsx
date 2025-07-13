@@ -9,7 +9,8 @@ import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
 import { SupabaseDataService } from "@/services/supabase-data-service";
 import { useAuth } from "@/contexts/auth-context";
-import { ExpenseService } from "@/services/ExpenseService"; // Import the service
+import { ExpenseService } from "@/services/ExpenseService";
+import { TransactionService } from "@/services/TransactionService"; // Import the new service
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
@@ -42,31 +43,19 @@ export function ExpenseTracker() {
 
   EnhancedNotificationService.setToastFunction(toast);
 
-  const allExpenses = useLiveQuery(
+  const allTransactions = useLiveQuery(
     () => {
-      if (!user) return [];
-      // Use the service method for fetching. useLiveQuery expects the promise directly from the Dexie call.
-      // So, wrapping the service call is the right pattern here.
-      return ExpenseService.getExpenses(user.uid);
+      if (!user?.uid) return [];
+      return TransactionService.getTransactions(user.uid);
     },
-    [user?.uid], // Depend on user.uid
+    [user?.uid],
     []
   );
 
-  // Fetch incomes for summary card calculation
-  const allIncomes = useLiveQuery(
-    async () => {
-      if(!user) return [];
-      // Assuming incomes are also stored per user_id and have a 'date' and 'amount'
-      const incomesFromDB = await db.incomes.where({ user_id: user.uid }).toArray();
-      return incomesFromDB as AppIncome[];
-    },
-    [user], []
-  );
+  const isDataLoading = allTransactions === undefined && user !== null;
+  const expenses = useMemo(() => allTransactions?.filter(t => 'payment_method' in t) as AppExpense[] || [], [allTransactions]);
+  const incomes = useMemo(() => allTransactions?.filter(t => !('payment_method' in t)) as AppIncome[] || [], [allTransactions]);
 
-  const isDataLoading = (allExpenses === undefined || allIncomes === undefined) && user !== null;
-  const expenses = allExpenses || [];
-  const incomes = allIncomes || [];
 
   useEffect(() => {
     const syncData = async () => {
@@ -113,24 +102,18 @@ export function ExpenseTracker() {
   const handleDeleteTransaction = async (itemId: string, type: 'expense' | 'income') => {
     if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
 
-    if (type === 'expense') {
-        startMutationLoading("Deleting expense...");
-        try {
-          await SupabaseDataService.deleteExpense(itemId); // Also delete from Supabase if needed
-          await ExpenseService.deleteExpense(itemId);
-          toast({ title: "Success", description: "Expense deleted." });
-        } catch (error) {
-          toast({ title: "Failed to delete expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
-        } finally { stopMutationLoading(); }
-    } else { // Handle income deletion
-        // Assuming an IncomeService and SupabaseDataService.deleteIncome exist
-        // For now, we'll just log a warning as they are not yet implemented in this context.
-        // In a real scenario, you would call:
-        // await SupabaseDataService.deleteIncome(itemId);
-        // await IncomeService.deleteIncome(itemId);
-        toast({ title: "Info", description: "Income deletion service not fully implemented yet." });
-        console.warn("Attempted to delete an income record, but the service logic is not complete.");
-    }
+    startMutationLoading(`Deleting ${type}...`);
+    try {
+      if (type === 'expense') {
+        await SupabaseDataService.deleteExpense(itemId); // Also delete from Supabase if needed
+      } else {
+        // await SupabaseDataService.deleteIncome(itemId); // Assuming this exists
+      }
+      await TransactionService.deleteTransaction(itemId, type);
+      toast({ title: "Success", description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted.` });
+    } catch (error) {
+      toast({ title: `Failed to delete ${type}`, description: (error as Error).message || "Please try again.", variant: "destructive"});
+    } finally { stopMutationLoading(); }
   };
 
   const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {

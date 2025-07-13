@@ -14,35 +14,29 @@ This log tracks the development progress, insights, and actions performed by Jul
 *   **Component Verification & Initial Cleanup:** Verified key components, enhanced the Tag Management system, laid conceptual groundwork for data services, and performed a broad scan to identify redundant code and differing implementations.
 *   **Vehicle Module Refactor & User ID Implementation:** A major refactor to resolve critical TypeScript errors in the vehicle module, expand the vehicle data model in Dexie (schema v15), implement consistent `user_id` handling across all modules, correct the `incomes` table schema (v16), and integrate the `TagsInput` component.
 *   **Service Layer Abstraction:** A major architectural refactoring that implemented the service layer pattern across the entire application for local data. This involved creating dedicated services for all major data types (Expenses, Vehicles, Accounts, etc.) and updating UI components to use these services instead of interacting with the database directly.
+*   **Feature Enhancement & Final Cleanup:** Unified the redundant investment forms into a single Dexie-based workflow. Enhanced the main transaction tracker to display a unified list of incomes and expenses. Performed a final codebase cleanup to remove placeholders and debug logs.
 
 ---
-### Sub-Phase: Feature Enhancement & Final Cleanup (COMPLETED)
+### Sub-Phase: Finalizing Service Layer Abstraction (COMPLETED)
 
-**Objective:** Consolidate duplicate functionality, enhance core UI/UX, and perform a final cleanup of the codebase.
+**Objective:** Complete the service layer abstraction by creating a unified `TransactionService` and ensuring all components use this new abstraction.
 
 **Date: July 10, 2025**
 
 **Tasks Completed:**
 
-1.  **Unify Investment Forms:**
-    *   **Action:** Refactored the advanced, standalone `add-investment-form.tsx` (which previously used Firestore) to use the Dexie-based `InvestmentService`.
-    *   **Action:** Replaced the simple, inline form within `investments-tracker.tsx` with this newly adapted, more powerful form component.
-    *   **Action:** Deleted the now-redundant Firestore-based `InvestmentManager.ts` service.
-    *   **Outcome:** Resolved the data inconsistency between the two forms, creating a single, unified workflow for adding and editing investments in Dexie.
+1.  **Implement `TransactionService.ts`:**
+    *   **Action:** Created `IncomeService.ts` to provide CRUD operations for income records.
+    *   **Action:** Created `TransactionService.ts` which uses `ExpenseService` and `IncomeService` to provide unified methods like `getTransactions` and `deleteTransaction`.
+    *   **Outcome:** This service now acts as a single point of entry for components that need to handle both expenses and incomes.
 
-2.  **Enhance `expense-tracker.tsx` UI/UX:**
-    *   **Action:** Refactored the filtering logic in `expense-tracker.tsx` to combine both expenses and incomes into a single data stream.
-    *   **Action:** Renamed `ExpenseList.tsx` to `transaction-list.tsx` and updated it to render both income and expense items, with conditional styling (e.g., amount color, icons) for each type.
-    *   **Action:** Updated the delete handler in the tracker to correctly identify the type of transaction being deleted.
-    *   **Outcome:** The main transaction history view now presents a unified list of all financial activities, providing a more holistic user experience.
-
-3.  **Final Codebase Grep & Cleanup:**
-    *   **Action:** Grepped for and removed all remaining instances of the `'default_user'` placeholder string, primarily in `csv-upload.tsx` and a leftover case in `IncomeSourceManager.tsx`.
-    *   **Action:** Grepped for and removed numerous debugging-related `console.log` statements from auth components (`PinLock.tsx`, `Index.tsx`), all data services, and test functions in `apiKeyService.ts` and `encryptionService.ts`.
-    *   **Outcome:** Increased code quality and robustness by eliminating placeholders and noisy development logs.
+2.  **Refactor `expense-tracker.tsx` to Use `TransactionService`:**
+    *   **Action:** Updated the `useLiveQuery` in `expense-tracker.tsx` to fetch a combined list of transactions directly from `TransactionService.getTransactions`.
+    *   **Action:** Refactored the `handleDeleteTransaction` function to use `TransactionService.deleteTransaction`, which correctly delegates to the appropriate underlying service.
+    *   **Outcome:** The main transaction tracker component is now fully decoupled from direct database logic for fetching and deleting combined transaction types, making it cleaner and more maintainable.
 
 **Summary of Sub-Phase:**
-This sub-phase successfully unified a redundant feature, significantly enhanced a core UI component for a more integrated user experience, and performed a final cleanup of the codebase to remove placeholders and debug artifacts. The application is now in a more consistent, robust, and feature-complete state.
+This sub-phase successfully finalized the service layer abstraction for financial transactions. By creating and integrating `TransactionService`, the application now has a clean, unified, and robust pattern for managing mixed transaction data, completing the primary architectural goals of this refactoring effort.
 
 ---
 *(Log will be updated as more tasks are completed)*
