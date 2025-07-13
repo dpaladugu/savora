@@ -8,6 +8,7 @@ import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTr
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
 import { IncomeSourceData } from "@/types/jsonPreload";
+import { IncomeSourceService } from "@/services/IncomeSourceService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { useAuth } from '@/contexts/auth-context'; // Import useAuth
@@ -38,11 +39,11 @@ export function IncomeSourceManager() {
   const { user } = useAuth(); // Get user
 
   const incomeSources = useLiveQuery(
-    async () => {
+    () => {
       if (!user?.uid) return [];
-      return db.incomeSources.where('user_id').equals(user.uid).orderBy('name').toArray();
+      return IncomeSourceService.getIncomeSources(user.uid);
     },
-    [user?.uid], // Re-run if user.uid changes
+    [user?.uid],
     []
   );
 
@@ -197,26 +198,16 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
 
 
   useEffect(() => {
-    // Update form's user_id if user context changes or if initialData didn't have it
-    if (user && formData.user_id !== user.uid) {
-      setFormData(prev => ({ ...prev, user_id: user.uid }));
-    }
-    if (!initialData && !user && formData.user_id) { // Clear user_id if user logs out and it's a new form
-        setFormData(prev => ({...prev, user_id: undefined}));
-    }
-    // Reset form if initialData changes (e.g. switching from add to edit)
+    const defaults: IncomeSourceFormData = { name: '', defaultAmount: '', frequency: 'monthly', account: '', user_id: user?.uid };
     if (initialData) {
-        setFormData({
-            ...initialData,
-            id: initialData.id,
-            defaultAmount: initialData.defaultAmount?.toString() || '',
-            user_id: initialData.user_id || user?.uid,
-        });
-    } else { // Reset to defaults for a new entry
-        setFormData({
-            name: '', defaultAmount: '', frequency: 'monthly', account: '',
-            user_id: user?.uid
-        });
+      setFormData({
+        ...initialData,
+        id: initialData.id,
+        defaultAmount: initialData.defaultAmount?.toString() || '',
+        user_id: initialData.user_id || user?.uid,
+      });
+    } else {
+      setFormData(defaults);
     }
     setFormErrors({});
   }, [initialData, user]);
@@ -283,19 +274,10 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
 
     try {
       if (formData.id) { // Editing existing source
-        // Ensure we are not trying to update a source that doesn't belong to the user (optional check)
-        // const existing = await db.incomeSources.get(formData.id);
-        // if (existing?.user_id !== user.uid) { throw new Error("Permission denied."); }
-        await db.incomeSources.update(formData.id, { ...recordData, updated_at: new Date() });
+        await IncomeSourceService.updateIncomeSource(formData.id, recordData);
         toast({ title: "Success", description: "Income source updated." });
       } else { // Adding new source
-        const newId = self.crypto.randomUUID();
-        await db.incomeSources.add({
-          ...recordData,
-          id: newId,
-          created_at: new Date(),
-          updated_at: new Date()
-        } as IncomeSourceData);
+        await IncomeSourceService.addIncomeSource(recordData as Omit<IncomeSourceData, 'id'>);
         toast({ title: "Success", description: "Income source added." });
       }
       onClose();

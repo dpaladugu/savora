@@ -25,7 +25,6 @@ export class TagService {
         updated_at: new Date(),
       };
       await db.tags.add(recordToAdd);
-      console.log(`Tag added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in TagService.addTag:", error);
@@ -43,7 +42,6 @@ export class TagService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.tags.update(id, updateData);
-      console.log(`Updated ${updatedCount} tag(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in TagService.updateTag for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class TagService {
   static async deleteTag(id: string): Promise<void> {
     try {
       await db.tags.delete(id);
-      console.log(`Tag with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in TagService.deleteTag for id ${id}:`, error);
       throw error;

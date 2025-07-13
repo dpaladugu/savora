@@ -12,46 +12,37 @@ This log tracks the development progress, insights, and actions performed by Jul
 
 *   **Accessibility & UI:** Performed reviews and enhancements for accessibility, responsive design, and state management.
 *   **Component Verification & Initial Cleanup:** Verified key components, enhanced the Tag Management system, laid conceptual groundwork for data services, and performed a broad scan to identify redundant code and differing implementations.
-*   **Vehicle Module Refactor & User ID Implementation:** A major refactor to resolve critical TypeScript errors in the vehicle module. This involved:
-    *   Standardizing the Vehicle data type.
-    *   Expanding the vehicle data model in Dexie (schema v15) and all related UI components (`AddVehicleForm`, `VehicleManager`, `VehicleList`) to support a comprehensive set of new fields.
-    *   Implementing consistent `user_id` handling across all major data modules (Vehicles, Expenses, Incomes, Tags, Accounts, etc.) to ensure data isolation and integrity.
-    *   Correcting the `incomes` table schema (v16) to include critical fields like `amount`.
-    *   Integrating `TagsInput` into the `AddIncomeForm`.
+*   **Vehicle Module Refactor & User ID Implementation:** A major refactor to resolve critical TypeScript errors in the vehicle module, expand the vehicle data model in Dexie (schema v15), implement consistent `user_id` handling across all modules, correct the `incomes` table schema (v16), and integrate the `TagsInput` component.
+*   **Service Layer Abstraction:** A major architectural refactoring that implemented the service layer pattern across the entire application for local data. This involved creating dedicated services for all major data types (Expenses, Vehicles, Accounts, etc.) and updating UI components to use these services instead of interacting with the database directly.
 
 ---
-### Sub-Phase: Service Layer Expansion & Code Quality (COMPLETED)
+### Sub-Phase: Feature Enhancement & Final Cleanup (COMPLETED)
 
-**Objective:** Abstract data logic into dedicated services, refactor utilities for better organization, and address smaller code quality issues identified in previous phases.
+**Objective:** Consolidate duplicate functionality, enhance core UI/UX, and perform a final cleanup of the codebase.
 
 **Date: July 10, 2025**
 
 **Tasks Completed:**
 
-1.  **Refactor `DataValidator` Service:**
-    *   **Action:** Split the `DataValidator` class into `src/lib/format-utils.ts` and `src/lib/validation-utils.ts`.
-    *   **Action:** Updated components to use the new utility functions and deleted the old service file.
-    *   **Outcome:** Improved code organization and maintainability.
+1.  **Unify Investment Forms:**
+    *   **Action:** Refactored the advanced, standalone `add-investment-form.tsx` (which previously used Firestore) to use the Dexie-based `InvestmentService`.
+    *   **Action:** Replaced the simple, inline form within `investments-tracker.tsx` with this newly adapted, more powerful form component.
+    *   **Action:** Deleted the now-redundant Firestore-based `InvestmentManager.ts` service.
+    *   **Outcome:** Resolved the data inconsistency between the two forms, creating a single, unified workflow for adding and editing investments in Dexie.
 
-2.  **Address `AdvancedExpenseOptions` `userId` Handling:**
-    *   **Action:** Refactored the `TagsInput.tsx` dependency to gracefully handle an `undefined` `userId`, removing the `'default_user'` fallback.
-    *   **Outcome:** The component is now robust when no user is logged in, preventing errors.
+2.  **Enhance `expense-tracker.tsx` UI/UX:**
+    *   **Action:** Refactored the filtering logic in `expense-tracker.tsx` to combine both expenses and incomes into a single data stream.
+    *   **Action:** Renamed `ExpenseList.tsx` to `transaction-list.tsx` and updated it to render both income and expense items, with conditional styling (e.g., amount color, icons) for each type.
+    *   **Action:** Updated the delete handler in the tracker to correctly identify the type of transaction being deleted.
+    *   **Outcome:** The main transaction history view now presents a unified list of all financial activities, providing a more holistic user experience.
 
-3.  **Implement and Expand `ExpenseService.ts`:**
-    *   **Action:** Created `src/services/ExpenseService.ts` with methods for all CRUD operations.
-    *   **Action:** Refactored both `EnhancedAddExpenseForm.tsx` and `expense-tracker.tsx` to use the new service for adding, updating, and deleting expenses.
-    *   **Outcome:** Fully abstracted expense-related Dexie logic from UI components into a dedicated service layer.
-
-4.  **Implement `VehicleService.ts`:**
-    *   **Action:** Created `src/services/VehicleService.ts` with methods for all vehicle CRUD operations.
-    *   **Action:** Refactored `VehicleManager.tsx` to use the new service, abstracting its direct Dexie calls.
-    *   **Outcome:** Improved separation of concerns for the vehicle management module.
-
-5.  **Summarize `JULES_PROGRESS_LOG.md`:**
-    *   **Action:** Condensed older log entries into a summary section to improve readability.
+3.  **Final Codebase Grep & Cleanup:**
+    *   **Action:** Grepped for and removed all remaining instances of the `'default_user'` placeholder string, primarily in `csv-upload.tsx` and a leftover case in `IncomeSourceManager.tsx`.
+    *   **Action:** Grepped for and removed numerous debugging-related `console.log` statements from auth components (`PinLock.tsx`, `Index.tsx`), all data services, and test functions in `apiKeyService.ts` and `encryptionService.ts`.
+    *   **Outcome:** Increased code quality and robustness by eliminating placeholders and noisy development logs.
 
 **Summary of Sub-Phase:**
-This sub-phase successfully established and applied the service layer pattern for major data modules (Expenses, Vehicles), leading to cleaner components with better separation of concerns. Utility functions were refactored for better code organization, and a minor UI robustness issue related to user authentication state was resolved.
+This sub-phase successfully unified a redundant feature, significantly enhanced a core UI component for a more integrated user experience, and performed a final cleanup of the codebase to remove placeholders and debug artifacts. The application is now in a more consistent, robust, and feature-complete state.
 
 ---
 *(Log will be updated as more tasks are completed)*

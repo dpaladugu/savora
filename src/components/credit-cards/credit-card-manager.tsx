@@ -38,25 +38,23 @@ export function CreditCardManager() {
   const [cardToDelete, setCardToDelete] = useState<DexieCreditCardRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth(); // Import and use user from auth context
+  const { user } = useAuth();
 
   const cards = useLiveQuery(
     async () => {
-      if (!user?.uid) return []; // Do not query if user is not available
+      if (!user?.uid) return [];
 
-      let query = db.creditCards.where('user_id').equals(user.uid);
-
-      // Client-side filtering for searchTerm after fetching user's cards
-      const userCards = await query.orderBy('name').toArray();
+      const userCards = await CreditCardService.getCreditCards(user.uid);
       if (searchTerm) {
+        const lowerSearchTerm = searchTerm.toLowerCase();
         return userCards.filter(card =>
-          card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          card.issuer.toLowerCase().includes(searchTerm.toLowerCase())
+          card.name.toLowerCase().includes(lowerSearchTerm) ||
+          card.issuer.toLowerCase().includes(lowerSearchTerm)
         );
       }
       return userCards;
     },
-    [searchTerm, user?.uid], // Rerun query if searchTerm or user.uid changes
+    [searchTerm, user?.uid],
     []
   );
 

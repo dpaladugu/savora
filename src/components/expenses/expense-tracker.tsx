@@ -3,8 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-react"; // Added DollarSign
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
-import { ExpenseList } from "./expense-list";
-import type { Expense as AppExpense } from "@/services/supabase-data-service"; // Type for expenses
+import { TransactionList } from "./expense-list"; // Renaming to TransactionList, will rename file later
+import type { Expense as AppExpense } from "@/services/supabase-data-service";
 import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
 import { SupabaseDataService } from "@/services/supabase-data-service";
@@ -110,16 +110,27 @@ export function ExpenseTracker() {
     } finally { stopMutationLoading(); }
   };
 
-  const handleDeleteExpense = async (expenseId: string) => {
+  const handleDeleteTransaction = async (itemId: string, type: 'expense' | 'income') => {
     if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
-    startMutationLoading("Deleting expense...");
-    try {
-      await SupabaseDataService.deleteExpense(expenseId);
-      await ExpenseService.deleteExpense(expenseId);
-      toast({ title: "Success", description: "Expense deleted." });
-    } catch (error) {
-      toast({ title: "Failed to delete expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
-    } finally { stopMutationLoading(); }
+
+    if (type === 'expense') {
+        startMutationLoading("Deleting expense...");
+        try {
+          await SupabaseDataService.deleteExpense(itemId); // Also delete from Supabase if needed
+          await ExpenseService.deleteExpense(itemId);
+          toast({ title: "Success", description: "Expense deleted." });
+        } catch (error) {
+          toast({ title: "Failed to delete expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
+        } finally { stopMutationLoading(); }
+    } else { // Handle income deletion
+        // Assuming an IncomeService and SupabaseDataService.deleteIncome exist
+        // For now, we'll just log a warning as they are not yet implemented in this context.
+        // In a real scenario, you would call:
+        // await SupabaseDataService.deleteIncome(itemId);
+        // await IncomeService.deleteIncome(itemId);
+        toast({ title: "Info", description: "Income deletion service not fully implemented yet." });
+        console.warn("Attempted to delete an income record, but the service logic is not complete.");
+    }
   };
 
   const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -146,49 +157,40 @@ export function ExpenseTracker() {
   };
 
   const filteredData = useMemo(() => {
-    // Filter expenses
-    const filteredExpensesList = expenses.filter(expense => {
-      if (filters.type === "income") return false; // If filtering only for income, exclude expenses
+    let transactions: (AppExpense | AppIncome)[] = [];
+
+    if (filters.type === 'expense') {
+      transactions = expenses;
+    } else if (filters.type === 'income') {
+      transactions = incomes;
+    } else { // 'All'
+      transactions = [...expenses, ...incomes];
+    }
+
+    const filtered = transactions.filter(t => {
       const searchTermLower = filters.searchTerm.toLowerCase();
+      const description = 'description' in t ? t.description : t.source_name; // Handle different field names
       const matchesSearch = !filters.searchTerm ||
-                            (expense.description || "").toLowerCase().includes(searchTermLower) ||
-                            (expense.category || "").toLowerCase().includes(searchTermLower) ||
-                            (expense.tags_flat || "").toLowerCase().includes(searchTermLower);
-      const matchesCategory = filters.category === "All" || expense.category === filters.category;
-      const matchesPaymentMethod = filters.paymentMethod === "All" || expense.payment_method === filters.paymentMethod;
-      const date = expense.date ? parseISO(expense.date) : null;
+                            (description || "").toLowerCase().includes(searchTermLower) ||
+                            (t.category || "").toLowerCase().includes(searchTermLower) ||
+                            (t.tags_flat || "").toLowerCase().includes(searchTermLower);
+
+      const matchesCategory = filters.category === "All" || t.category === filters.category;
+
+      const paymentMethod = 'payment_method' in t ? t.payment_method : 'N/A';
+      const matchesPaymentMethod = filters.paymentMethod === "All" || paymentMethod === filters.paymentMethod;
+
+      const date = t.date ? parseISO(t.date) : null;
       const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
-      const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999))); // include whole day
-      const matchesMinAmount = !filters.minAmount || expense.amount >= parseFloat(filters.minAmount);
-      const matchesMaxAmount = !filters.maxAmount || expense.amount <= parseFloat(filters.maxAmount);
+      const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
+
+      const matchesMinAmount = !filters.minAmount || t.amount >= parseFloat(filters.minAmount);
+      const matchesMaxAmount = !filters.maxAmount || t.amount <= parseFloat(filters.maxAmount);
+
       return matchesSearch && matchesCategory && matchesPaymentMethod && matchesDateFrom && matchesDateTo && matchesMinAmount && matchesMaxAmount;
     });
 
-    // Filter incomes (only if type filter is 'All' or 'income')
-    let filteredIncomesList: AppIncome[] = [];
-    if (filters.type === "All" || filters.type === "income") {
-        filteredIncomesList = incomes.filter(income => {
-            const searchTermLower = filters.searchTerm.toLowerCase();
-            const matchesSearch = !filters.searchTerm ||
-                                (income.source || "").toLowerCase().includes(searchTermLower) ||
-                                (income.category || "").toLowerCase().includes(searchTermLower);
-            const matchesCategory = filters.category === "All" || income.category === filters.category;
-            // Incomes might not have paymentMethod, adapt if needed
-            const date = income.date ? parseISO(income.date) : null;
-            const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
-            const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
-            const matchesMinAmount = !filters.minAmount || income.amount >= parseFloat(filters.minAmount);
-            const matchesMaxAmount = !filters.maxAmount || income.amount <= parseFloat(filters.maxAmount);
-            return matchesSearch && matchesCategory && matchesDateFrom && matchesDateTo && matchesMinAmount && matchesMaxAmount;
-        });
-    }
-
-    // If filter type is 'expense', only return expenses.
-    // If filter type is 'income', only return incomes (as expense-like structure for list).
-    // If 'All', combine and sort. For now, ExpenseList expects AppExpense[].
-    // This might need adjustment if income items are to be displayed in the same list.
-    // For simplicity, this example focuses on filtering expenses. If income is displayed, adapt ExpenseList or use separate list.
-    return filteredExpensesList;
+    return filtered.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
   }, [expenses, incomes, filters]);
 
@@ -309,9 +311,9 @@ export function ExpenseTracker() {
           <Card>
             <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
             <CardContent>
-              <ExpenseList 
-                expenses={filteredData} // Use the comprehensively filtered data
-                onDelete={handleDeleteExpense}
+              <TransactionList
+                transactions={filteredData}
+                onDelete={handleDeleteTransaction}
                 onEdit={handleOpenEditForm}
               />
             </CardContent>

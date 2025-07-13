@@ -25,7 +25,6 @@ export class AccountService {
         updated_at: new Date(),
       };
       await db.accounts.add(recordToAdd);
-      console.log(`Account added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in AccountService.addAccount:", error);
@@ -43,7 +42,6 @@ export class AccountService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.accounts.update(id, updateData);
-      console.log(`Updated ${updatedCount} account(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in AccountService.updateAccount for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class AccountService {
   static async deleteAccount(id: string): Promise<void> {
     try {
       await db.accounts.delete(id);
-      console.log(`Account with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in AccountService.deleteAccount for id ${id}:`, error);
       throw error;

@@ -25,7 +25,6 @@ export class IncomeSourceService {
         updated_at: new Date(),
       };
       await db.incomeSources.add(recordToAdd);
-      console.log(`Income source added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in IncomeSourceService.addIncomeSource:", error);
@@ -43,7 +42,6 @@ export class IncomeSourceService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.incomeSources.update(id, updateData);
-      console.log(`Updated ${updatedCount} income source(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in IncomeSourceService.updateIncomeSource for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class IncomeSourceService {
   static async deleteIncomeSource(id: string): Promise<void> {
     try {
       await db.incomeSources.delete(id);
-      console.log(`Income source with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in IncomeSourceService.deleteIncomeSource for id ${id}:`, error);
       throw error;

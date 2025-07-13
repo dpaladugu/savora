@@ -25,7 +25,6 @@ export class GoldInvestmentService {
         updated_at: new Date(),
       };
       await db.goldInvestments.add(recordToAdd);
-      console.log(`Gold investment added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in GoldInvestmentService.addGoldInvestment:", error);
@@ -43,7 +42,6 @@ export class GoldInvestmentService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.goldInvestments.update(id, updateData);
-      console.log(`Updated ${updatedCount} gold investment(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in GoldInvestmentService.updateGoldInvestment for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class GoldInvestmentService {
   static async deleteGoldInvestment(id: string): Promise<void> {
     try {
       await db.goldInvestments.delete(id);
-      console.log(`Gold investment with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in GoldInvestmentService.deleteGoldInvestment for id ${id}:`, error);
       throw error;

@@ -19,7 +19,6 @@ export class ExpenseService {
   static async addExpense(expenseData: AppExpense): Promise<string> {
     try {
       const id = await db.expenses.add(expenseData);
-      console.log(`Expense added with id: ${id}`);
       return id;
     } catch (error) {
       console.error("Error in ExpenseService.addExpense:", error);
@@ -38,7 +37,6 @@ export class ExpenseService {
       // It's good practice to add an 'updated_at' timestamp
       const updateData = { ...updates, updated_at: new Date().toISOString() };
       const updatedCount = await db.expenses.update(id, updateData);
-      console.log(`Updated ${updatedCount} expense(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in ExpenseService.updateExpense for id ${id}:`, error);
@@ -53,7 +51,6 @@ export class ExpenseService {
   static async deleteExpense(id: string): Promise<void> {
     try {
       await db.expenses.delete(id);
-      console.log(`Expense with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in ExpenseService.deleteExpense for id ${id}:`, error);
       throw error;

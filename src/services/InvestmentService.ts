@@ -25,7 +25,6 @@ export class InvestmentService {
         updated_at: new Date(),
       };
       await db.investments.add(recordToAdd);
-      console.log(`Investment added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in InvestmentService.addInvestment:", error);
@@ -43,7 +42,6 @@ export class InvestmentService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.investments.update(id, updateData);
-      console.log(`Updated ${updatedCount} investment(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in InvestmentService.updateInvestment for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class InvestmentService {
   static async deleteInvestment(id: string): Promise<void> {
     try {
       await db.investments.delete(id);
-      console.log(`Investment with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in InvestmentService.deleteInvestment for id ${id}:`, error);
       throw error;

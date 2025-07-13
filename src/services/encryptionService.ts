@@ -108,30 +108,3 @@ export class EncryptionService {
     return bytes;
   }
 }
-
-// --- Example Usage (for testing) ---
-/*
-async function testEncryption() {
-  const myPin = "123456";
-  const myData = { apiKey: "sk-mySuperSecretApiKey", userPreference: "darkMode" };
-
-  console.log("Original Data:", myData);
-
-  const encrypted = await EncryptionService.encryptData(myData, myPin);
-  if (encrypted) {
-    console.log("Encrypted Payload String:", encrypted);
-
-    // Test decryption with correct PIN
-    const decryptedCorrect = await EncryptionService.decryptData(encrypted, myPin);
-    console.log("Decrypted with correct PIN:", decryptedCorrect); // Should match myData
-
-    // Test decryption with wrong PIN
-    const decryptedWrong = await EncryptionService.decryptData(encrypted, "wrongPin");
-    console.log("Decrypted with wrong PIN:", decryptedWrong); // Should be null or throw error handled by decrypt
-  } else {
-    console.log("Encryption failed.");
-  }
-}
-
-// testEncryption();
-*/

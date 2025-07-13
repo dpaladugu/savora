@@ -25,7 +25,6 @@ export class RecurringTransactionService {
         updated_at: new Date(),
       };
       await db.recurringTransactions.add(recordToAdd);
-      console.log(`Recurring transaction added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in RecurringTransactionService.addRecurringTransaction:", error);
@@ -43,7 +42,6 @@ export class RecurringTransactionService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.recurringTransactions.update(id, updateData);
-      console.log(`Updated ${updatedCount} recurring transaction(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in RecurringTransactionService.updateRecurringTransaction for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class RecurringTransactionService {
   static async deleteRecurringTransaction(id: string): Promise<void> {
     try {
       await db.recurringTransactions.delete(id);
-      console.log(`Recurring transaction with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in RecurringTransactionService.deleteRecurringTransaction for id ${id}:`, error);
       throw error;

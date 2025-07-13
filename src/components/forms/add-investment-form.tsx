@@ -9,19 +9,21 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { InvestmentManager } from "@/services/investment-manager";
+import { InvestmentService } from "@/services/InvestmentService"; // Use Dexie service
+import { InvestmentData } from "@/types/jsonPreload"; // Use Dexie data type
 import { useAuth } from "@/contexts/auth-context";
+import { useEffect } from "react";
 
+// Schema to validate form fields. Aligns with InvestmentData structure where possible.
 const investmentSchema = z.object({
-  name: z.string().min(1, "Investment name is required"),
-  type: z.enum(['stocks', 'mutual_funds', 'bonds', 'fixed_deposit', 'real_estate', 'crypto', 'others']),
-  amount: z.number().min(0.01, "Amount must be greater than 0"),
-  units: z.number().optional(),
-  price: z.number().optional(),
-  purchaseDate: z.string().min(1, "Purchase date is required"),
-  maturityDate: z.string().optional(),
-  expectedReturn: z.number().optional(),
-  riskLevel: z.enum(['low', 'medium', 'high'])
+  fund_name: z.string().min(1, "Investment name is required"),
+  investment_type: z.string().min(1, "Investment type is required"),
+  invested_value: z.number().optional(),
+  current_value: z.number().optional(),
+  quantity: z.number().optional(),
+  purchaseDate: z.string().optional(),
+  category: z.string().optional(),
+  notes: z.string().optional(),
 });
 
 type InvestmentFormData = z.infer<typeof investmentSchema>;
@@ -29,9 +31,13 @@ type InvestmentFormData = z.infer<typeof investmentSchema>;
 interface AddInvestmentFormProps {
   onSuccess?: () => void;
   onCancel?: () => void;
+  initialData?: InvestmentData | null; // For editing
 }
 
-export function AddInvestmentForm({ onSuccess, onCancel }: AddInvestmentFormProps) {
+const INVESTMENT_TYPES = ['Mutual Fund', 'PPF', 'EPF', 'NPS', 'Gold', 'Stock', 'Other'];
+const INVESTMENT_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Retirement', 'Commodity', 'Real Estate', 'Other'];
+
+export function AddInvestmentForm({ onSuccess, onCancel, initialData }: AddInvestmentFormProps) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -47,66 +53,81 @@ export function AddInvestmentForm({ onSuccess, onCancel }: AddInvestmentFormProp
     resolver: zodResolver(investmentSchema),
     defaultValues: {
       purchaseDate: new Date().toISOString().split('T')[0],
-      riskLevel: 'medium',
-      type: 'mutual_funds'
+      investment_type: 'Mutual Fund',
     }
   });
 
+  useEffect(() => {
+    if (initialData) {
+      reset({
+        ...initialData,
+        invested_value: initialData.invested_value || undefined,
+        current_value: initialData.current_value || undefined,
+        quantity: initialData.quantity || undefined,
+        purchaseDate: initialData.purchaseDate || new Date().toISOString().split('T')[0],
+      });
+    } else {
+      reset({
+        fund_name: '',
+        investment_type: 'Mutual Fund',
+        category: '',
+        purchaseDate: new Date().toISOString().split('T')[0],
+        invested_value: undefined,
+        current_value: undefined,
+        quantity: undefined,
+        notes: '',
+      });
+    }
+  }, [initialData, reset]);
+
+
   const onSubmit = async (data: InvestmentFormData) => {
     if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to add investments",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "You must be logged in to add investments", variant: "destructive" });
       return;
     }
 
     setIsLoading(true);
     try {
-      // Create properly typed data object
-      const investmentData = {
-        name: data.name,
-        type: data.type,
-        amount: data.amount,
-        units: data.units,
-        price: data.price,
+      const recordData: Omit<InvestmentData, 'id'> = {
+        fund_name: data.fund_name,
+        investment_type: data.investment_type,
+        category: data.category,
+        invested_value: data.invested_value,
+        current_value: data.current_value,
         purchaseDate: data.purchaseDate,
-        maturityDate: data.maturityDate,
-        expectedReturn: data.expectedReturn,
-        riskLevel: data.riskLevel
+        quantity: data.quantity,
+        notes: data.notes,
+        user_id: user.uid,
       };
 
-      await InvestmentManager.addInvestment(user.uid, investmentData);
-      
-      toast({
-        title: "Success",
-        description: "Investment added successfully!"
-      });
+      if (initialData?.id) {
+        await InvestmentService.updateInvestment(initialData.id, recordData);
+        toast({ title: "Success", description: "Investment updated successfully!" });
+      } else {
+        await InvestmentService.addInvestment(recordData);
+        toast({ title: "Success", description: "Investment added successfully!" });
+      }
 
       reset();
       onSuccess?.();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add investment. Please try again.",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Failed to save investment. Please try again.", variant: "destructive" });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className="w-full max-w-lg mx-auto my-4">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="w-5 h-5" />
-            Add Investment
+            {initialData ? 'Edit Investment' : 'Add Investment'}
           </CardTitle>
           {onCancel && (
-            <Button variant="ghost" size="sm" onClick={onCancel}>
+            <Button variant="ghost" size="icon" onClick={onCancel} aria-label="Close form">
               <X className="w-4 h-4" />
             </Button>
           )}
@@ -115,131 +136,65 @@ export function AddInvestmentForm({ onSuccess, onCancel }: AddInvestmentFormProp
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Investment Name</Label>
-            <Input
-              id="name"
-              placeholder="e.g., HDFC Large Cap Fund"
-              {...register('name')}
-            />
-            {errors.name && (
-              <p className="text-sm text-destructive">{errors.name.message}</p>
-            )}
+            <Label htmlFor="fund_name">Investment Name/Fund *</Label>
+            <Input id="fund_name" placeholder="e.g., HDFC Large Cap Fund" {...register('fund_name')} />
+            {errors.fund_name && <p className="text-sm text-destructive">{errors.fund_name.message}</p>}
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="type">Investment Type</Label>
-            <Select onValueChange={(value) => setValue('type', value as any)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select type" />
-              </SelectTrigger>
-              <SelectContent>
-                {InvestmentManager.getInvestmentTypes().map(type => (
-                  <SelectItem key={type.value} value={type.value}>
-                    {type.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.type && (
-              <p className="text-sm text-destructive">{errors.type.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount Invested (₹)</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              placeholder="0.00"
-              {...register('amount', { valueAsNumber: true })}
-            />
-            {errors.amount && (
-              <p className="text-sm text-destructive">{errors.amount.message}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="units">Units (Optional)</Label>
-              <Input
-                id="units"
-                type="number"
-                step="0.001"
-                placeholder="0"
-                {...register('units', { valueAsNumber: true })}
-              />
+              <Label htmlFor="investment_type">Type *</Label>
+              <Select onValueChange={(value) => setValue('investment_type', value)} defaultValue={initialData?.investment_type || 'Mutual Fund'}>
+                <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                <SelectContent>{INVESTMENT_TYPES.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}</SelectContent>
+              </Select>
+              {errors.investment_type && <p className="text-sm text-destructive">{errors.investment_type.message}</p>}
             </div>
-
             <div className="space-y-2">
-              <Label htmlFor="price">Price per Unit (₹)</Label>
-              <Input
-                id="price"
-                type="number"
-                step="0.01"
-                placeholder="0.00"
-                {...register('price', { valueAsNumber: true })}
-              />
+              <Label htmlFor="category">Category</Label>
+              <Select onValueChange={(value) => setValue('category', value)} defaultValue={initialData?.category}>
+                <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                <SelectContent>{INVESTMENT_CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+             <div className="space-y-2">
+              <Label htmlFor="invested_value">Amount Invested (₹)</Label>
+              <Input id="invested_value" type="number" step="0.01" placeholder="0.00" {...register('invested_value', { valueAsNumber: true })} />
+              {errors.invested_value && <p className="text-sm text-destructive">{errors.invested_value.message}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="current_value">Current Value (₹)</Label>
+              <Input id="current_value" type="number" step="0.01" placeholder="0.00" {...register('current_value', { valueAsNumber: true })} />
+              {errors.current_value && <p className="text-sm text-destructive">{errors.current_value.message}</p>}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Input id="purchaseDate" type="date" {...register('purchaseDate')} />
+              {errors.purchaseDate && <p className="text-sm text-destructive">{errors.purchaseDate.message}</p>}
+            </div>
+             <div className="space-y-2">
+              <Label htmlFor="quantity">Quantity/Units</Label>
+              <Input id="quantity" type="number" step="any" placeholder="0" {...register('quantity', { valueAsNumber: true })} />
+              {errors.quantity && <p className="text-sm text-destructive">{errors.quantity.message}</p>}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="purchaseDate">Purchase Date</Label>
-            <Input
-              id="purchaseDate"
-              type="date"
-              {...register('purchaseDate')}
-            />
-            {errors.purchaseDate && (
-              <p className="text-sm text-destructive">{errors.purchaseDate.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="riskLevel">Risk Level</Label>
-            <Select onValueChange={(value) => setValue('riskLevel', value as any)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select risk level" />
-              </SelectTrigger>
-              <SelectContent>
-                {InvestmentManager.getRiskLevels().map(risk => (
-                  <SelectItem key={risk.value} value={risk.value}>
-                    <div className="flex items-center gap-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: risk.color }}
-                      />
-                      {risk.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.riskLevel && (
-              <p className="text-sm text-destructive">{errors.riskLevel.message}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="expectedReturn">Expected Return (% per annum)</Label>
-            <Input
-              id="expectedReturn"
-              type="number"
-              step="0.1"
-              placeholder="12.0"
-              {...register('expectedReturn', { valueAsNumber: true })}
-            />
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea id="notes" placeholder="Any additional notes..." {...register('notes')} />
           </div>
 
           <div className="flex gap-2 pt-4">
             <Button type="submit" disabled={isLoading} className="flex-1">
-              {isLoading ? "Adding..." : "Add Investment"}
+              {isLoading ? "Saving..." : (initialData ? 'Update Investment' : 'Add Investment')}
             </Button>
-            {onCancel && (
-              <Button type="button" variant="outline" onClick={onCancel}>
-                Cancel
-              </Button>
-            )}
+            {onCancel && <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>}
           </div>
         </form>
       </CardContent>

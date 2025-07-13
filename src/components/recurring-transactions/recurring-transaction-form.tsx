@@ -12,7 +12,7 @@ import { format, parseISO, addDays, addWeeks, addMonths, addYears, isValid, set 
 import { db, RecurringTransactionRecord } from '@/db';
 import { RecurringTransactionService } from '@/services/RecurringTransactionService'; // Import the service
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { useAuth } from '@/contexts/auth-context';
 
 export type RecurringTransactionFormData = Partial<Omit<RecurringTransactionRecord, 'amount' | 'interval' | 'created_at' | 'updated_at'>> & {
   id?: string;

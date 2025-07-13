@@ -5,9 +5,10 @@ import { Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-reac
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import Papa from 'papaparse'; // Import PapaParse
-import { db } from '@/db'; // Import Dexie DB instance
-import { format, parse, isValid as isValidDate } from 'date-fns'; // For robust date parsing
+import Papa from 'papaparse';
+import { db } from '@/db';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { format, parse, isValid as isValidDate } from 'date-fns';
 
 // Interface for records to be saved in Dexie (aligns with DexieExpenseRecord used elsewhere)
 interface DexieExpenseRecordToSave {
@@ -42,6 +43,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   // Define expected headers (lowercase for case-insensitive matching)
   // Keep these simple for now, mapping can be more complex
@@ -149,6 +151,10 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
       toast({ title: "Cannot Process", description: "Please select a valid CSV file first.", variant: "warning" });
       return;
     }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to import data.", variant: "destructive" });
+      return;
+    }
     
     setIsProcessing(true);
     setValidationResult(prev => prev ? {...prev, dataErrors: []} : null); // Clear previous data errors
@@ -188,7 +194,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
 
           const expenseRecord: DexieExpenseRecordToSave = {
             id: self.crypto.randomUUID(),
-            user_id: 'default_user', // Placeholder
+            user_id: user.uid, // Use authenticated user's ID
             date: parsedDate,
             amount: amountNum,
             description: String(row.description || '').trim(),

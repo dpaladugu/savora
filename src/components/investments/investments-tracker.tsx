@@ -13,8 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
 import { InvestmentData } from "@/types/jsonPreload";
+import { InvestmentService } from '@/services/InvestmentService';
+import { AddInvestmentForm } from '@/components/forms/add-investment-form'; // Import the unified form
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -50,10 +52,9 @@ export function InvestmentsTracker() {
 
   const liveInvestments = useLiveQuery(
     async () => {
-      if (!user?.uid) return []; // Don't query if no user
-      let baseQuery = db.investments.where('user_id').equals(user.uid);
+      if (!user?.uid) return [];
 
-      const userInvestments = await baseQuery.orderBy('purchaseDate').reverse().toArray();
+      const userInvestments = await InvestmentService.getInvestments(user.uid);
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -63,9 +64,10 @@ export function InvestmentsTracker() {
           (inv.category && inv.category.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      return userInvestments;
+      // The service doesn't sort, so we sort here.
+      return userInvestments.sort((a, b) => (b.purchaseDate && a.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
     },
-    [searchTerm, user?.uid], // Re-run if searchTerm or user changes
+    [searchTerm, user?.uid],
     []
   );
   const investments = liveInvestments || [];
@@ -271,10 +273,13 @@ export function InvestmentsTracker() {
 
       {/* Add/Edit Form Dialog */}
       {showAddForm && (
-        <AddInvestmentForm
-          initialData={editingInvestment}
-          onClose={() => { setShowAddForm(false); setEditingInvestment(null); }}
-        />
+        <div className="my-4">
+          <AddInvestmentForm
+            initialData={editingInvestment}
+            onSuccess={() => { setShowAddForm(false); setEditingInvestment(null); }}
+            onCancel={() => { setShowAddForm(false); setEditingInvestment(null); }}
+          />
+        </div>
       )}
 
       {/* Delete Confirmation Dialog */}
@@ -298,252 +303,4 @@ export function InvestmentsTracker() {
   );
 }
 
-// --- AddInvestmentForm Sub-Component ---
-interface AddInvestmentFormProps {
-  initialData?: InvestmentData | null;
-  onClose: () => void;
-}
-
-function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
-  const { toast } = useToast();
-  const { user } = useAuth(); // Get user for the form
-  const [formData, setFormData] = useState<InvestmentFormData>(() => {
-    const defaults: InvestmentFormData = {
-      fund_name: '', investment_type: 'Mutual Fund', category: '', purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-      invested_value: '', current_value: '', quantity: '', notes: '', user_id: user?.uid, // Initialize with user?.uid
-    };
-    if (initialData) {
-      return {
-        ...initialData,
-        invested_value: initialData.invested_value?.toString() || '',
-        current_value: initialData.current_value?.toString() || '',
-        quantity: initialData.quantity?.toString() || '',
-        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : defaults.purchaseDate,
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
-      };
-    }
-    return defaults;
-  });
-  const [isSaving, setIsSaving] = useState(false);
-  const [formErrors, setFormErrors] = useState<Partial<InvestmentFormData>>({}); // Added for error display
-
-  useEffect(() => {
-    if (initialData) {
-      setFormData({
-        ...initialData,
-        id: initialData.id,
-        invested_value: initialData.invested_value?.toString() || '',
-        current_value: initialData.current_value?.toString() || '',
-        quantity: initialData.quantity?.toString() || '',
-        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
-      });
-    } else {
-      // For new form, ensure user_id is from current auth context
-      setFormData({
-        fund_name: '', investment_type: 'Mutual Fund', category: '', purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-        invested_value: '', current_value: '', quantity: '', notes: '', user_id: user?.uid,
-      });
-    }
-    setFormErrors({}); // Clear errors when data changes
-  }, [initialData, user]); // Rerun if initialData or user changes
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
-  const handleSelectChange = (name: keyof InvestmentFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-  const handleDateChange = (date?: Date) => {
-    setFormData(prev => ({ ...prev, purchaseDate: date ? format(date, 'yyyy-MM-dd') : undefined }));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const currentErrors: Partial<InvestmentFormData> = {};
-    if (!formData.fund_name?.trim()) currentErrors.fund_name = "Investment Name is required.";
-    if (!formData.investment_type?.trim()) currentErrors.investment_type = "Investment Type is required.";
-
-    const investedVal = formData.invested_value ? parseFloat(formData.invested_value) : undefined;
-    const currentVal = formData.current_value ? parseFloat(formData.current_value) : undefined;
-    const quantityVal = formData.quantity ? parseFloat(formData.quantity) : undefined;
-
-    if (formData.invested_value && (isNaN(investedVal!) || investedVal! < 0)) currentErrors.invested_value = "Invested Amount must be a valid number.";
-    if (formData.current_value && (isNaN(currentVal!) || currentVal! < 0)) currentErrors.current_value = "Current Value must be a valid number.";
-    if (formData.quantity && (isNaN(quantityVal!) || quantityVal! < 0)) currentErrors.quantity = "Quantity must be a valid number.";
-
-    setFormErrors(currentErrors);
-    if (Object.keys(currentErrors).length > 0) {
-      toast({ title: "Validation Error", description: "Please correct highlighted fields.", variant: "destructive" });
-      return;
-    }
-
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to save.", variant: "destructive" });
-      return;
-    }
-    setIsSaving(true);
-
-    const recordData: Omit<InvestmentData, 'id' | 'created_at' | 'updated_at'> = {
-      fund_name: formData.fund_name!,
-      investment_type: formData.investment_type!,
-      category: formData.category || '',
-      invested_value: investedVal,
-      current_value: currentVal,
-      purchaseDate: formData.purchaseDate,
-      quantity: quantityVal,
-      notes: formData.notes || '',
-      user_id: user.uid, // Use authenticated user's ID
-    };
-
-    try {
-      if (formData.id) {
-        // Optional: Check if existing record's user_id matches user.uid
-        await db.investments.update(formData.id, { ...recordData, updated_at: new Date() });
-        toast({ title: "Success", description: "Investment updated." });
-      } else {
-        await InvestmentService.addInvestment(recordData as Omit<InvestmentData, 'id'>);
-        toast({ title: "Success", description: "Investment added." });
-      }
-      onClose();
-    } catch (error) {
-      console.error("Failed to save investment:", error);
-      toast({ title: "Database Error", description: (error as Error).message || "Could not save investment details.", variant: "destructive"});
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{formData.id ? 'Edit' : 'Add'} Investment</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="fund_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Investment Name/Fund *</Label>
-            <Input
-              id="fund_name"
-              name="fund_name"
-              value={formData.fund_name || ''}
-              onChange={handleChange}
-              required
-              className={formErrors.fund_name ? 'border-red-500' : ''}
-              aria-invalid={!!formErrors.fund_name}
-              aria-describedby={formErrors.fund_name ? "fund_name-error" : undefined}
-            />
-            {formErrors.fund_name && <p id="fund_name-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.fund_name}</p>}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="investment_type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</Label>
-              <Select
-                name="investment_type"
-                value={formData.investment_type || ''}
-                onValueChange={v => handleSelectChange('investment_type', v as string)}
-              >
-                <SelectTrigger
-                  className={formErrors.investment_type ? 'border-red-500' : ''}
-                  aria-invalid={!!formErrors.investment_type}
-                  aria-describedby={formErrors.investment_type ? "investment_type-error" : undefined}
-                >
-                  <SelectValue placeholder="Select type..." />
-                </SelectTrigger>
-                <SelectContent>{INVESTMENT_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-              </Select>
-              {formErrors.investment_type && <p id="investment_type-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.investment_type}</p>}
-            </div>
-            <div>
-              <Label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category</Label>
-               <Select name="category" value={formData.category || ''} onValueChange={v => handleSelectChange('category', v as string)}>
-                <SelectTrigger><SelectValue placeholder="Select category..." /></SelectTrigger>
-                <SelectContent>{INVESTMENT_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-              </Select>
-              {/* Category is not mandatory, so no error display shown here, but could be added if needed */}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="invested_value" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount Invested (₹)</Label>
-              <Input
-                id="invested_value"
-                name="invested_value"
-                type="number"
-                step="0.01"
-                value={formData.invested_value || ''}
-                onChange={handleChange}
-                className={formErrors.invested_value ? 'border-red-500' : ''}
-                aria-invalid={!!formErrors.invested_value}
-                aria-describedby={formErrors.invested_value ? "invested_value-error" : undefined}
-              />
-              {formErrors.invested_value && <p id="invested_value-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.invested_value}</p>}
-            </div>
-            <div>
-              <Label htmlFor="current_value" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Current Value (₹)</Label>
-              <Input
-                id="current_value"
-                name="current_value"
-                type="number"
-                step="0.01"
-                value={formData.current_value || ''}
-                onChange={handleChange}
-                className={formErrors.current_value ? 'border-red-500' : ''}
-                aria-invalid={!!formErrors.current_value}
-                aria-describedby={formErrors.current_value ? "current_value-error" : undefined}
-              />
-              {formErrors.current_value && <p id="current_value-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.current_value}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <Label htmlFor="purchaseDate" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purchase Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className={`w-full justify-start text-left font-normal ${formErrors.purchaseDate ? 'border-red-500' : ''}`}
-                      aria-invalid={!!formErrors.purchaseDate}
-                      aria-describedby={formErrors.purchaseDate ? "purchaseDate-error" : undefined}
-                    >
-                      <CalendarDays className="mr-2 h-4 w-4" />
-                      {(formData.purchaseDate && isValidDate(parseISO(formData.purchaseDate))) ? format(parseISO(formData.purchaseDate), 'PPP') : "Pick date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0"><Calendar mode="single" selected={formData.purchaseDate ? parseISO(formData.purchaseDate) : undefined} onSelect={handleDateChange} /></PopoverContent>
-                </Popover>
-                {formErrors.purchaseDate && <p id="purchaseDate-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.purchaseDate}</p>}
-            </div>
-             <div>
-              <Label htmlFor="quantity" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Quantity/Units</Label>
-              <Input
-                id="quantity"
-                name="quantity"
-                type="number"
-                step="any"
-                value={formData.quantity || ''}
-                onChange={handleChange}
-                className={formErrors.quantity ? 'border-red-500' : ''}
-                aria-invalid={!!formErrors.quantity}
-                aria-describedby={formErrors.quantity ? "quantity-error" : undefined}
-              />
-              {formErrors.quantity && <p id="quantity-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/>{formErrors.quantity}</p>}
-              </div>
-          </div>
-
-          <div>
-            <Label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</Label>
-            <Textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Any additional notes..."/>
-          </div>
-
-          <DialogFooter className="pt-5">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSaving}>{isSaving ? 'Saving...' : (formData.id ? 'Update Investment' : 'Save Investment')}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
+// The AddInvestmentForm sub-component is now removed from this file.

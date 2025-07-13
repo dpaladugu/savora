@@ -25,7 +25,6 @@ export class InsuranceService {
         updated_at: new Date(),
       };
       await db.insurancePolicies.add(recordToAdd);
-      console.log(`Insurance policy added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in InsuranceService.addPolicy:", error);
@@ -43,7 +42,6 @@ export class InsuranceService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.insurancePolicies.update(id, updateData);
-      console.log(`Updated ${updatedCount} insurance policy(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in InsuranceService.updatePolicy for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class InsuranceService {
   static async deletePolicy(id: string): Promise<void> {
     try {
       await db.insurancePolicies.delete(id);
-      console.log(`Insurance policy with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in InsuranceService.deletePolicy for id ${id}:`, error);
       throw error;

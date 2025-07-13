@@ -29,7 +29,6 @@ export class VehicleService {
         updated_at: new Date(),
       };
       await db.vehicles.add(recordToAdd);
-      console.log(`Vehicle added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in VehicleService.addVehicle:", error);
@@ -47,7 +46,6 @@ export class VehicleService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.vehicles.update(id, updateData);
-      console.log(`Updated ${updatedCount} vehicle(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in VehicleService.updateVehicle for id ${id}:`, error);
@@ -62,7 +60,6 @@ export class VehicleService {
   static async deleteVehicle(id: string): Promise<void> {
     try {
       await db.vehicles.delete(id);
-      console.log(`Vehicle with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in VehicleService.deleteVehicle for id ${id}:`, error);
       throw error;

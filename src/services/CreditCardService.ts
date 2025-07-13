@@ -25,7 +25,6 @@ export class CreditCardService {
         updated_at: new Date(),
       };
       await db.creditCards.add(recordToAdd);
-      console.log(`Credit Card added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in CreditCardService.addCreditCard:", error);
@@ -43,7 +42,6 @@ export class CreditCardService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.creditCards.update(id, updateData);
-      console.log(`Updated ${updatedCount} credit card(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in CreditCardService.updateCreditCard for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class CreditCardService {
   static async deleteCreditCard(id: string): Promise<void> {
     try {
       await db.creditCards.delete(id);
-      console.log(`Credit Card with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in CreditCardService.deleteCreditCard for id ${id}:`, error);
       throw error;

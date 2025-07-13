@@ -25,7 +25,6 @@ export class LoanService {
         updated_at: new Date(),
       };
       await db.loans.add(recordToAdd);
-      console.log(`Loan added with id: ${newId}`);
       return newId;
     } catch (error) {
       console.error("Error in LoanService.addLoan:", error);
@@ -43,7 +42,6 @@ export class LoanService {
     try {
       const updateData = { ...updates, updated_at: new Date() };
       const updatedCount = await db.loans.update(id, updateData);
-      console.log(`Updated ${updatedCount} loan(s).`);
       return updatedCount;
     } catch (error) {
       console.error(`Error in LoanService.updateLoan for id ${id}:`, error);
@@ -58,7 +56,6 @@ export class LoanService {
   static async deleteLoan(id: string): Promise<void> {
     try {
       await db.loans.delete(id);
-      console.log(`Loan with id: ${id} deleted.`);
     } catch (error) {
       console.error(`Error in LoanService.deleteLoan for id ${id}:`, error);
       throw error;
