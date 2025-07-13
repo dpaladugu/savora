@@ -5,6 +5,7 @@ import { RecurringTransactionForm } from './recurring-transaction-form';
 import { db, RecurringTransactionRecord } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid } from 'date-fns';
 import {
   AlertDialog,
@@ -25,10 +26,17 @@ export function RecurringTransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<RecurringTransactionRecord | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<RecurringTransactionRecord | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const recurringTransactions = useLiveQuery(
-    () => db.recurringTransactions.orderBy('next_occurrence_date').toArray(),
-    [] // dependencies
+    async () => {
+      if (!user?.uid) return [];
+      return db.recurringTransactions
+        .where('user_id').equals(user.uid)
+        .orderBy('next_occurrence_date')
+        .toArray();
+    },
+    [user?.uid] // Re-run if user.uid changes
   );
 
   const handleAddNew = () => {

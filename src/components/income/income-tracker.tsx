@@ -13,7 +13,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { db } from "@/db";
-import { Income as AppIncome } from '@/components/income/income-tracker'; // Using self-defined AppIncome
+import { IncomeSourceData } from '@/types/jsonPreload';
+import { DexieAccountRecord } from '@/db';
+import { formatCurrency } from '@/lib/format-utils'; // Import from new utility file
+import { TagsInput } from '@/components/tags/TagsInput';
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValidDate } from 'date-fns';
 import {
@@ -30,26 +33,34 @@ import {
 // This is the type for records in db.incomes (defined in SavoraDB class in db.ts)
 // It should align with AppIncome interface if AppIncome is the intended structure for Dexie.
 // Assuming AppIncome is the structure for db.incomes.
-// export interface AppIncome {
-//   id: string;
-//   user_id?: string;
-//   amount: number;
-//   source: string;
-//   category: 'salary' | 'rental' | 'side-business' | 'investment' | 'other' | string;
-//   date: string; // ISO YYYY-MM-DD
-//   frequency: 'one-time' | 'monthly' | 'quarterly' | 'yearly' | string;
-//   note?: string;
-//   created_at?: Date;
-//   updated_at?: Date;
-// }
+// Define the AppIncome interface to match the new Dexie schema for 'incomes' (v16)
+export interface AppIncome {
+  id: string; // UUID
+  user_id?: string;
+  date: string; // YYYY-MM-DD
+  amount: number;
+  category: string;
+  source_name?: string; // Name of the income source (e.g., "Salary", "Freelance Project X") - previously 'source'
+  description?: string; // More detailed description of the income
+  frequency?: 'one-time' | 'monthly' | 'quarterly' | 'yearly' | 'weekly' | 'bi-weekly' | string;
+  tags_flat?: string; // Comma-separated for Dexie FTS
+  account_id?: string; // FK to Accounts table (where it was received)
+  // Denormalized fields for display (optional, can be fetched via relations)
+  // source_id?: string; // Optional: if you want to store relation to IncomeSources table
+  // account_name?: string;
+  created_at?: string; // ISO string
+  updated_at?: string; // ISO string
+}
+
 
 // Form data type
-type IncomeFormData = Partial<Omit<AppIncome, 'amount' | 'created_at' | 'updated_at'>> & {
+type IncomeFormData = Partial<Omit<AppIncome, 'amount' | 'created_at' | 'updated_at' | 'user_id'>> & {
   amount?: string; // Amount as string for form input
+  tags?: string[]; // For tag input component
 };
 
-const INCOME_CATEGORIES = ['salary', 'rental', 'side-business', 'investment', 'freelance', 'dividends', 'gifts', 'other'] as const;
-const INCOME_FREQUENCIES = ['one-time', 'monthly', 'quarterly', 'yearly', 'bi-weekly', 'weekly'] as const;
+const INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Rental', 'Bonus', 'Gift', 'Other'] as const;
+const INCOME_FREQUENCIES = ['one-time', 'monthly', 'quarterly', 'yearly', 'weekly', 'bi-weekly'] as const;
 
 
 export function IncomeTracker() {
@@ -61,23 +72,30 @@ export function IncomeTracker() {
   const [incomeToDelete, setIncomeToDelete] = useState<AppIncome | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Fetch incomes using useLiveQuery
   const liveIncomes = useLiveQuery(async () => {
-    const userIdToQuery = user?.uid || 'default_user'; // Fallback for local-only if user is null
-    let query = db.incomes.where({ user_id: userIdToQuery });
+    if (!user?.uid) return [];
+    let query = db.incomes.where('user_id').equals(user.uid);
     
+    const userIncomes = await query.toArray(); // Fetch all user incomes first
+
     if (searchTerm) {
-      query = query.filter(income =>
-        income.source.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        income.category.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      return userIncomes.filter(income =>
+        (income.source_name && income.source_name.toLowerCase().includes(lowerSearchTerm)) ||
+        (income.description && income.description.toLowerCase().includes(lowerSearchTerm)) ||
+        income.category.toLowerCase().includes(lowerSearchTerm)
+      ).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     }
-    // Sort by date descending after filtering
-    const result = await query.toArray();
-    return result.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [user?.uid, searchTerm], []); // Dependencies
+    return userIncomes.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+  }, [user?.uid, searchTerm], []);
 
   const incomes = liveIncomes || [];
+
+  // These handlers would be part of IncomeTracker if form submission is managed here
+  // For now, AddIncomeForm handles its own submission.
+  // const handleAddIncome = async (formData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'>) => { /* ... */ };
+  // const handleUpdateIncome = async (id: string, formData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'>) => { /* ... */ };
+
 
   const handleAddNew = () => {
     setEditingIncome(null);
@@ -199,7 +217,7 @@ export function IncomeTracker() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-semibold text-foreground text-lg">
-                        ₹{income.amount.toLocaleString()}
+                        {formatCurrency(income.amount)}
                       </h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(income.category)}`}>
                         {income.category}
@@ -210,13 +228,13 @@ export function IncomeTracker() {
                     </div>
                     
                     <div className="space-y-1">
-                      <p className="font-medium text-foreground">{income.source}</p>
+                      <p className="font-medium text-foreground">{income.source_name}</p>
+                       {income.description && income.description !== income.source_name && (
+                        <p className="text-xs text-muted-foreground">{income.description}</p>
+                      )}
                       <p className="text-sm text-muted-foreground">
                         Date: {income.date && isValidDate(parseISO(income.date)) ? format(parseISO(income.date), 'PPP') : 'N/A'}
                       </p>
-                      {income.note && (
-                        <p className="text-sm text-muted-foreground">{income.note}</p>
-                      )}
                     </div>
                   </div>
                   
@@ -226,7 +244,7 @@ export function IncomeTracker() {
                       variant="ghost"
                       className="h-8 w-8 p-0"
                       onClick={() => handleOpenEditForm(income)}
-                      aria-label={`Edit income from ${income.source}`}
+                      aria-label={`Edit income from ${income.source_name}`}
                     >
                       <Edit className="w-3 h-3" />
                     </Button>
@@ -235,7 +253,7 @@ export function IncomeTracker() {
                       variant="ghost"
                       className="h-8 w-8 p-0"
                       onClick={() => openDeleteConfirm(income)}
-                      aria-label={`Delete income from ${income.source}`}
+                      aria-label={`Delete income from ${income.source_name}`}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -256,7 +274,7 @@ export function IncomeTracker() {
                 <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 mr-2 text-destructive"/>Are you sure?
               </AlertDialogTitleComponent>
               <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the income from "{incomeToDelete.source}".
+                This action cannot be undone. This will permanently delete the income from "{incomeToDelete.source_name || 'this entry'}".
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -274,22 +292,26 @@ export function IncomeTracker() {
 interface AddIncomeFormProps {
   initialData?: AppIncome | null;
   onClose: () => void;
-  userId?: string; // Pass userId for saving
+  // userId prop removed, will use useAuth internally
 }
 
-function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
+function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user from context
+
   const [formData, setFormData] = useState<IncomeFormData>(() => {
     const defaults: IncomeFormData = {
-        amount: '', source: '', category: 'salary',
+        amount: '', source_name: '', category: 'Salary', description: '',
         date: format(new Date(), 'yyyy-MM-dd'),
-        frequency: 'monthly', note: '', user_id: userId || 'default_user'
+        frequency: 'monthly', tags: [], account_id: '',
     };
     if (initialData) {
       return {
-        ...initialData,
+        ...initialData, // Spread initialData first to get all existing fields
         amount: initialData.amount?.toString() || '',
         date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : defaults.date,
+        tags: initialData.tags_flat ? initialData.tags_flat.split(',').map(t => t.trim()) : [],
+        // user_id will be handled by useEffect or if present in initialData
       };
     }
     return defaults;
@@ -297,25 +319,32 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof IncomeFormData, string>>>({});
 
+  // For fetching income sources and accounts for dropdowns (if needed for source_name selection)
+  // const incomeSourceList = useLiveQuery(() => user?.uid ? db.incomeSources.where('user_id').equals(user.uid).toArray() : [], [user?.uid], []);
+  const accountList = useLiveQuery(() => user?.uid ? db.accounts.where('user_id').equals(user.uid).and(acc => acc.isActive === true).toArray() : [], [user?.uid], []);
+
 
   useEffect(() => {
     const defaults: IncomeFormData = {
-        amount: '', source: '', category: 'salary',
+        amount: '', source_name: '', category: 'Salary', description: '',
         date: format(new Date(), 'yyyy-MM-dd'),
-        frequency: 'monthly', note: '', user_id: userId || 'default_user'
+        frequency: 'monthly', tags: [], account_id: '',
     };
     if (initialData) {
       setFormData({
         ...initialData,
         id: initialData.id,
         amount: initialData.amount?.toString() || '',
-        date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : defaults.date,
+        date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        tags: initialData.tags_flat ? initialData.tags_flat.split(',').map(t => t.trim()) : [],
+        // user_id from initialData will be preserved if present
       });
     } else {
+      // For new form, set defaults (user_id is not part of IncomeFormData directly)
       setFormData(defaults);
     }
-    setFormErrors({}); // Clear errors when initialData changes or form opens for new
-  }, [initialData, userId]);
+    setFormErrors({});
+  }, [initialData]); // Removed user from deps for this specific effect to avoid loops if formState itself depends on user
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -327,7 +356,7 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
 
   const handleSelectChange = (name: keyof IncomeFormData, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value as any }));
-     if (formErrors[name]) {
+     if (formErrors[name]) { // Corrected: formErrors[name] instead of formErrors[name as keyof IncomeFormData]
       setFormErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
@@ -341,14 +370,11 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
 
   const validateCurrentForm = (): boolean => {
     const newErrors: Partial<Record<keyof IncomeFormData, string>> = {};
-    if (!formData.source?.trim()) newErrors.source = "Source name is required.";
-    if (!formData.amount?.trim()) newErrors.amount = "Amount is required.";
-    else {
-        const amountNum = parseFloat(formData.amount);
-        if (isNaN(amountNum) || amountNum <= 0) newErrors.amount = "Amount must be a positive number.";
+    if (!formData.source_name?.trim()) newErrors.source_name = "Source Name/Title is required.";
+    if (!formData.amount?.trim() || isNaN(parseFloat(formData.amount)) || parseFloat(formData.amount) <= 0) {
+      newErrors.amount = "Amount must be a positive number.";
     }
-    if (!formData.date) newErrors.date = "Date is required.";
-    else if (!isValidDate(parseISO(formData.date))) newErrors.date = "Invalid date format.";
+    if (!formData.date || !isValidDate(parseISO(formData.date))) newErrors.date = "A valid Date is required.";
     if (!formData.category) newErrors.category = "Category is required.";
     if (!formData.frequency) newErrors.frequency = "Frequency is required.";
 
@@ -360,36 +386,48 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateCurrentForm()) {
-      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive", duration: 2000 });
+      toast({ title: "Validation Error", description: "Please correct the form errors.", variant: "destructive" });
+      return;
+    }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save income.", variant: "destructive" });
       return;
     }
     setIsSaving(true);
 
-    const amountNum = parseFloat(formData.amount!); // Already validated
+    const amountNum = parseFloat(formData.amount!);
 
-    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'> = {
+    // Construct the record according to AppIncome and new Dexie schema
+    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at' | 'user_id'> = {
       amount: amountNum,
-      source: formData.source!,
-      category: formData.category! as AppIncome['category'],
+      source_name: formData.source_name!,
+      description: formData.description || formData.source_name, // Default description to source_name if empty
+      category: formData.category!,
       date: formData.date!,
-      frequency: formData.frequency! as AppIncome['frequency'],
-      note: formData.note || '',
-      user_id: userId || 'default_user',
+      frequency: formData.frequency as AppIncome['frequency'],
+      tags_flat: formData.tags?.join(',').toLowerCase() || '',
+      account_id: formData.account_id || undefined,
     };
 
     try {
-      if (formData.id) { // Update
-        await db.incomes.update(formData.id, { ...recordData, updated_at: new Date() });
-        toast({ title: "Success", description: "Income record updated." });
-      } else { // Add
+      if (formData.id) {
+        await db.incomes.update(formData.id, { ...recordData, user_id: user.uid, updated_at: new Date().toISOString() });
+        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${formatCurrency(recordData.amount)} updated.` });
+      } else {
         const newId = self.crypto.randomUUID();
-        await db.incomes.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
-        toast({ title: "Success", description: "Income record added." });
+        await db.incomes.add({
+          ...recordData,
+          id: newId,
+          user_id: user.uid,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        } as AppIncome);
+        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${formatCurrency(recordData.amount)} added.` });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save income record:", error);
-      toast({ title: "Database Error", description: "Could not save income record.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save income record.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
@@ -413,24 +451,27 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
             {formErrors.amount && <p id="amount-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.amount}</p>}
           </div>
           <div>
-            <Label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source *</Label>
-            <Input id="source" name="source" value={formData.source || ''} onChange={handleChange} placeholder="e.g., Salary, Freelance Project" required
-                   className={formErrors.source ? 'border-red-500' : ''}
-                   aria-required="true"
-                   aria-invalid={!!formErrors.source}
-                   aria-describedby={formErrors.source ? "source-error-income" : undefined}
+            <Label htmlFor="source_name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source/Title *</Label>
+            <Input id="source_name" name="source_name" value={formData.source_name || ''} onChange={handleChange} placeholder="e.g., Monthly Salary, Project Alpha" required
+                   className={formErrors.source_name ? 'border-red-500' : ''}
+                   aria-invalid={!!formErrors.source_name}
+                   aria-describedby={formErrors.source_name ? "source_name-error-income" : undefined}
             />
-            {formErrors.source && <p id="source-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.source}</p>}
+            {formErrors.source_name && <p id="source_name-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.source_name}</p>}
+          </div>
+           <div>
+            <Label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</Label>
+            <Textarea id="description" name="description" value={formData.description || ''} onChange={handleChange} placeholder="More details about the income..."/>
           </div>
            <div>
             <Label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</Label>
-            <Select name="category" value={formData.category || 'salary'} onValueChange={v => handleSelectChange('category', v as string)}>
+            <Select name="category" value={formData.category || 'Salary'} onValueChange={v => handleSelectChange('category', v as string)}>
               <SelectTrigger className={formErrors.category ? 'border-red-500' : ''}
                              aria-required="true"
                              aria-invalid={!!formErrors.category}
                              aria-describedby={formErrors.category ? "category-error-income" : undefined}
               ><SelectValue /></SelectTrigger>
-              <SelectContent>{INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</SelectItem>)}</SelectContent>
+              <SelectContent>{INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
             </Select>
             {formErrors.category && <p id="category-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.category}</p>}
           </div>
@@ -465,9 +506,24 @@ function AddIncomeForm({ initialData, onClose, userId }: AddIncomeFormProps) {
               {formErrors.frequency && <p id="frequency-error-income" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{formErrors.frequency}</p>}
             </div>
           </div>
+           <div>
+            <Label htmlFor="account_id" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Credited To Account (Optional)</Label>
+            <Select name="account_id" value={formData.account_id || ''} onValueChange={v => handleSelectChange('account_id', v as string)}>
+                <SelectTrigger><SelectValue placeholder="Select account..."/></SelectTrigger>
+                <SelectContent>
+                    <SelectItem value=""><em>None/Not Specified</em></SelectItem>
+                    {accountList?.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.provider})</SelectItem>)}
+                </SelectContent>
+            </Select>
+          </div>
           <div>
-            <Label htmlFor="note" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Note</Label>
-            <Textarea id="note" name="note" value={formData.note || ''} onChange={handleChange} placeholder="Additional details..."/>
+            <Label htmlFor="tags" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tags (Optional)</Label>
+            <TagsInput
+              tags={formData.tags || []}
+              onTagsChange={(newTags) => handleSelectChange('tags', newTags as any)} // cast as any because handleSelectChange expects string for value
+              userId={user?.uid}
+              placeholder="Add relevant tags..."
+            />
           </div>
           <DialogFooter className="pt-5">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>

@@ -37,14 +37,26 @@ export function CreditCardManager() {
   const [cardToDelete, setCardToDelete] = useState<DexieCreditCardRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth(); // Import and use user from auth context
 
   const cards = useLiveQuery(
-    () => db.creditCards.orderBy('name').filter(card =>
-      card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.issuer.toLowerCase().includes(searchTerm.toLowerCase())
-    ).toArray(),
-    [searchTerm], // Rerun query if searchTerm changes
-    [] // Initial value
+    async () => {
+      if (!user?.uid) return []; // Do not query if user is not available
+
+      let query = db.creditCards.where('user_id').equals(user.uid);
+
+      // Client-side filtering for searchTerm after fetching user's cards
+      const userCards = await query.orderBy('name').toArray();
+      if (searchTerm) {
+        return userCards.filter(card =>
+          card.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          card.issuer.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+      }
+      return userCards;
+    },
+    [searchTerm, user?.uid], // Rerun query if searchTerm or user.uid changes
+    []
   );
 
   const handleAddNew = () => {
@@ -250,12 +262,12 @@ interface AddCreditCardFormProps {
 
 function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user for user_id default
+  const { user } = useAuth();
   const [formData, setFormData] = useState<CreditCardFormData>(() => {
     const defaults: CreditCardFormData = {
       name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
       currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
-      last4Digits: '', user_id: user?.uid || 'default_user',
+      last4Digits: '', user_id: user?.uid, // Initialize with user?.uid
     };
     if (initialData) {
       return {
@@ -264,6 +276,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
         currentBalance: initialData.currentBalance.toString(),
         billCycleDay: initialData.billCycleDay.toString(),
         dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : defaults.dueDate,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -272,11 +285,6 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof CreditCardFormData, string>>>({});
 
   useEffect(() => {
-    const defaults: CreditCardFormData = {
-      name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
-      currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
-      last4Digits: '', user_id: user?.uid || 'default_user',
-    };
     if (initialData) {
       setFormData({
         ...initialData,
@@ -284,13 +292,19 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
         limit: initialData.limit.toString(),
         currentBalance: initialData.currentBalance.toString(),
         billCycleDay: initialData.billCycleDay.toString(),
-        dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : defaults.dueDate,
+        dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData, fallback to current user
       });
     } else {
-      setFormData(defaults);
+      // For new form, ensure user_id is from current auth context
+      setFormData({
+        name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
+        currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
+        last4Digits: '', user_id: user?.uid,
+      });
     }
     setFormErrors({});
-  }, [initialData, user]);
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -328,6 +342,10 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
       return;
     }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save a credit card.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
 
     const cardRecord: Omit<DexieCreditCardRecord, 'id' | 'created_at' | 'updated_at'> = {
@@ -339,11 +357,12 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       dueDate: formData.dueDate!,
       autoDebit: formData.autoDebit || false,
       last4Digits: formData.last4Digits || '',
-      user_id: formData.user_id || user?.uid || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) {
+        // Optional: Check if existingRecord.user_id matches user.uid
         await db.creditCards.update(formData.id, { ...cardRecord, updated_at: new Date() });
         toast({ title: "Success", description: `Card "${cardRecord.name}" updated.` });
       } else {
@@ -354,7 +373,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       onClose();
     } catch (error) {
       console.error("Failed to save credit card:", error);
-      toast({ title: "Database Error", description: "Could not save credit card details.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save credit card details.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }

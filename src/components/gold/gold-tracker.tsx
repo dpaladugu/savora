@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Purity and Form
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"; // For Date Picker
 import { Calendar } from "@/components/ui/calendar"; // For Date Picker
-import { CalendarIcon } from "lucide-react"; // For Date Picker
+import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { db, DexieGoldInvestmentRecord } from "@/db"; // Import Dexie db and record type
+import { db, DexieGoldInvestmentRecord } from "@/db";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -48,22 +49,28 @@ export function GoldTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<DexieGoldInvestmentRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const liveInvestments = useLiveQuery(
     async () => {
-      let query = db.goldInvestments.orderBy('purchaseDate').reverse(); // Show newest first
+      if (!user?.uid) return []; // Don't query if no user
+      let baseQuery = db.goldInvestments.where('user_id').equals(user.uid);
+
+      // Client-side filtering for searchTerm after fetching user's investments
+      const userInvestments = await baseQuery.orderBy('purchaseDate').reverse().toArray();
+
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
-        query = query.filter(inv =>
+        return userInvestments.filter(inv =>
           inv.form.toLowerCase().includes(lowerSearchTerm) ||
           inv.storageLocation.toLowerCase().includes(lowerSearchTerm) ||
           (inv.vendor && inv.vendor.toLowerCase().includes(lowerSearchTerm)) ||
           (inv.note && inv.note.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      return await query.toArray();
+      return userInvestments;
     },
-    [searchTerm],
+    [searchTerm, user?.uid], // Re-run if searchTerm or user changes
     []
   );
 
@@ -319,31 +326,27 @@ function AddGoldForm({ initialData, onClose }: {
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user for user_id
   const [formData, setFormData] = useState<GoldInvestmentFormData>(() => {
+    const defaults: GoldInvestmentFormData = {
+      weight: '', purity: '999', purchasePrice: '', currentPrice: '',
+      purchaseDate: format(new Date(), 'yyyy-MM-dd'), paymentMethod: 'Bank Transfer',
+      storageLocation: '', form: 'coins', vendor: '', note: '',
+      user_id: user?.uid, // Initialize with current user's ID
+    };
     if (initialData) {
       return {
         ...initialData,
         weight: initialData.weight.toString(),
         purchasePrice: initialData.purchasePrice.toString(),
         currentPrice: initialData.currentPrice?.toString() || '',
-        purity: initialData.purity as GoldPurity, // Ensure type alignment
-        form: initialData.form as GoldForm,       // Ensure type alignment
+        purity: initialData.purity as GoldPurity,
+        form: initialData.form as GoldForm,
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
-    return { // Default for new investment
-      weight: '',
-      purity: '999',
-      purchasePrice: '',
-      currentPrice: '',
-      purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-      paymentMethod: 'Bank Transfer',
-      storageLocation: '',
-      form: 'coins',
-      vendor: '',
-      note: '',
-      user_id: 'default_user', // Placeholder
-    };
+    return defaults;
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -358,23 +361,18 @@ function AddGoldForm({ initialData, onClose }: {
         purity: initialData.purity as GoldPurity,
         form: initialData.form as GoldForm,
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
+      // For new form, ensure user_id is from current auth context
       setFormData({
-        weight: '',
-        purity: '999',
-        purchasePrice: '',
-        currentPrice: '',
-        purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-        paymentMethod: 'Bank Transfer',
-        storageLocation: '',
-        form: 'coins',
-        vendor: '',
-        note: '',
-        user_id: 'default_user',
+        weight: '', purity: '999', purchasePrice: '', currentPrice: '',
+        purchaseDate: format(new Date(), 'yyyy-MM-dd'), paymentMethod: 'Bank Transfer',
+        storageLocation: '', form: 'coins', vendor: '', note: '',
+        user_id: user?.uid,
       });
     }
-  }, [initialData]);
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -393,13 +391,17 @@ function AddGoldForm({ initialData, onClose }: {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
 
     if (!formData.weight || !formData.purchasePrice || !formData.storageLocation || !formData.paymentMethod || !formData.purchaseDate) {
       toast({ title: "Validation Error", description: "Please fill all required fields (*).", variant: "destructive" });
-      setIsSaving(false);
       return;
     }
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
 
     const weightNum = parseFloat(formData.weight);
     const purchasePriceNum = parseFloat(formData.purchasePrice);
@@ -427,11 +429,12 @@ function AddGoldForm({ initialData, onClose }: {
       form: formData.form!,
       vendor: formData.vendor || '',
       note: formData.note || '',
-      user_id: formData.user_id || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) { // Update existing
+        // Optional: Check if existing record's user_id matches user.uid
         await db.goldInvestments.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Gold investment updated." });
       } else { // Add new
@@ -447,7 +450,7 @@ function AddGoldForm({ initialData, onClose }: {
       onClose();
     } catch (error) {
       console.error("Failed to save gold investment:", error);
-      toast({ title: "Database Error", description: "Could not save gold investment.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save gold investment.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
