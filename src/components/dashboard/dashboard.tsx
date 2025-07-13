@@ -10,7 +10,7 @@ import { Logger } from "@/services/logger";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card"; // For Financial Insights
 import { TrendingUp, Target, CreditCard } from "lucide-react"; // For Financial Insights
-import { DataValidator } from "@/services/data-validator"; // For Financial Insights
+import { DataValidator } from "@/services/enhanced-data-validator"; // For Financial Insights
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;

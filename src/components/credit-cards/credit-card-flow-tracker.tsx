@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreditCard, Plus, TrendingDown, Calendar, AlertCircle } from "lucide-react";
 import { ModuleHeader } from "@/components/layout/module-header";
-import { ExpenseManager, Expense } from "@/services/expense-manager";
+import { ExpenseService } from "@/services/ExpenseService";
+import { Expense } from "@/services/supabase-data-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
@@ -145,7 +146,7 @@ export function CreditCardFlowTracker() {
     if (!user?.uid) return;
     setLoading(true);
     try {
-      const expenseData = await ExpenseManager.getExpenses(user.uid);
+      const expenseData = await ExpenseService.getExpenses(user.uid);
       setExpenses(expenseData);
       
       const savedCards = localStorage.getItem('credit-cards');
