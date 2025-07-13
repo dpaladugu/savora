@@ -5,10 +5,11 @@ import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-rea
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { ExpenseList } from "./expense-list";
 import type { Expense as AppExpense } from "@/services/supabase-data-service"; // Type for expenses
-import type { Income as AppIncome } from "@/components/income/income-tracker"; // Type for incomes
+import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
 import { SupabaseDataService } from "@/services/supabase-data-service";
 import { useAuth } from "@/contexts/auth-context";
+import { ExpenseService } from "@/services/ExpenseService"; // Import the service
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
@@ -42,12 +43,14 @@ export function ExpenseTracker() {
   EnhancedNotificationService.setToastFunction(toast);
 
   const allExpenses = useLiveQuery(
-    async () => {
+    () => {
       if (!user) return [];
-      const expensesFromDB = await db.expenses.where({ user_id: user.uid }).orderBy('date').reverse().toArray();
-      return expensesFromDB as AppExpense[];
+      // Use the service method for fetching. useLiveQuery expects the promise directly from the Dexie call.
+      // So, wrapping the service call is the right pattern here.
+      return ExpenseService.getExpenses(user.uid);
     },
-    [user], []
+    [user?.uid], // Depend on user.uid
+    []
   );
 
   // Fetch incomes for summary card calculation
@@ -97,8 +100,9 @@ export function ExpenseTracker() {
     if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
     startMutationLoading("Updating expense...");
     try {
+      // Still calling Supabase first, then our service for local update
       const updatedExpenseFromSupabase = await SupabaseDataService.updateExpense(expenseId, updates);
-      await db.expenses.update(expenseId, { ...updatedExpenseFromSupabase, user_id: user.uid });
+      await ExpenseService.updateExpense(expenseId, { ...updatedExpenseFromSupabase, user_id: user.uid });
       setShowAddForm(false); setEditingExpense(null);
       toast({ title: "Success", description: "Expense updated." });
     } catch (error) {
@@ -111,7 +115,7 @@ export function ExpenseTracker() {
     startMutationLoading("Deleting expense...");
     try {
       await SupabaseDataService.deleteExpense(expenseId);
-      await db.expenses.delete(expenseId);
+      await ExpenseService.deleteExpense(expenseId);
       toast({ title: "Success", description: "Expense deleted." });
     } catch (error) {
       toast({ title: "Failed to delete expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
@@ -124,7 +128,8 @@ export function ExpenseTracker() {
     const expensePayload = { ...expenseFormData, user_id: user.uid, tags: expenseFormData.tags || [] };
     try {
       const newExpenseFromSupabase = await SupabaseDataService.addExpense(expensePayload);
-      await db.expenses.add(newExpenseFromSupabase); // newExpenseFromSupabase includes id from Supabase
+      // The service expects the full AppExpense object, which newExpenseFromSupabase is
+      await ExpenseService.addExpense(newExpenseFromSupabase);
       setShowAddForm(false);
       toast({ title: "Success", description: "Expense added." });
     } catch (error) {

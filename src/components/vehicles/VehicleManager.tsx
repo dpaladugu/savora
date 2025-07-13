@@ -4,6 +4,7 @@ import { db, Vehicle } from '@/db'; // Vehicle is now DexieVehicleRecord
 import { VehicleList } from './VehicleList';
 import { AddVehicleForm } from './AddVehicleForm';
 import { Button } from '@/components/ui/button';
+import { VehicleService } from '@/services/VehicleService'; // Import the new service
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -16,18 +17,17 @@ export function VehicleManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuth();
 
   // orderBy 'name' and filter by user_id if user is available
-  const vehicles = useLiveQuery(async () => {
-    if (!user?.uid) return []; // Or handle appropriately if user must be logged in
-    return await db.vehicles
-      .where('user_id').equals(user.uid)
-      .orderBy('name')
-      .toArray();
-  }, [user?.uid], []); // Re-run query if user.uid changes
+  const vehicles = useLiveQuery(() => {
+    if (!user?.uid) return [];
+    // The service method returns the promise that useLiveQuery needs.
+    // We can add sorting here after getting the data if the service doesn't handle it.
+    return VehicleService.getVehicles(user.uid).then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
+  }, [user?.uid], []);
 
-  const isLoading = vehicles === undefined && user !== undefined; // Adjust loading based on user state too
+  const isLoading = vehicles === undefined && user !== undefined;
 
   // vehicleFormData is what comes from AddVehicleForm, based on VehicleData
   const handleAddVehicle = async (vehicleFormData: Omit<VehicleData, 'id'>) => {
@@ -77,17 +77,15 @@ export function VehicleManager() {
         notes: vehicleFormData.notes,
       };
 
-      const recordToSave: Partial<Vehicle> = { ...vehicleRecord };
+      const recordToSave: Partial<Vehicle> = { ...vehicleRecord, user_id: user.uid };
 
       if (editingVehicle && editingVehicle.id) {
-        // For updates, we don't change the user_id. It should already match.
-        // Or, add a check: if (editingVehicle.user_id !== user.uid) { throw new Error("Cannot edit vehicle of another user."); }
-        await db.vehicles.update(editingVehicle.id, recordToSave);
+        // The service handles adding the 'updated_at' timestamp.
+        await VehicleService.updateVehicle(editingVehicle.id, recordToSave);
         toast({ title: "Vehicle Updated", description: `${recordToSave.name} has been successfully updated.` });
       } else {
-        // Add new vehicle, include user_id
-        recordToSave.user_id = user.uid;
-        await db.vehicles.add(recordToSave as Vehicle);
+        // The service handles adding 'id', 'created_at', and 'updated_at'.
+        await VehicleService.addVehicle(recordToSave as Omit<Vehicle, 'id'>);
         toast({ title: "Vehicle Added", description: `${recordToSave.name} has been successfully added.` });
       }
 
@@ -108,7 +106,7 @@ export function VehicleManager() {
     const vehicleName = vehicleToDelete?.name || "this vehicle";
     if (window.confirm(`Are you sure you want to delete ${vehicleName}? This action cannot be undone.`)) {
       try {
-        await db.vehicles.delete(vehicleId);
+        await VehicleService.deleteVehicle(vehicleId);
         toast({ title: "Vehicle Deleted", description: `${vehicleName} has been successfully deleted.` });
       } catch (error) {
         console.error("Failed to delete vehicle:", error);
