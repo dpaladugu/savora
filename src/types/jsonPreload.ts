@@ -143,34 +143,48 @@ export interface IncomeSourceData extends Omit<JsonIncomeCashFlow, 'amount'> { /
 
 
 export interface VehicleData {
-  id?: number;
-  vehicle_name: string;
-  registrationNumber?: string; // Added for DexieVehicleRecord compatibility
-  make?: string; // Added for DexieVehicleRecord compatibility
-  model?: string; // Added for DexieVehicleRecord compatibility
-  year?: number; // Added as it's common for vehicles, though not in Dexie v10
-  fuelType?: string; // Added for DexieVehicleRecord compatibility
+  // Core Identification
+  id?: number; // Used by forms, not by Dexie which uses string id
+  vehicle_name: string; // Form field, maps to 'name' in DexieVehicleRecord
+  registrationNumber?: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  color?: string;
+  type?: string; // General type like "Car", "Motorcycle"
   owner?: string;
-  type?: "motorcycle" | "car" | string; // This is distinct from make/model, more general type
-  usage?: string;
-  insurance_premium?: number;
+  status?: string; // e.g., "Active", "Sold"
+
+  // Purchase and Financials
+  purchaseDate?: string; // ISO Date string
+  purchasePrice?: number;
+
+  // Technical Details
+  fuelType?: string;
+  engineNumber?: string;
+  chassisNumber?: string;
+  currentOdometer?: number;
+  fuelEfficiency?: string; // e.g., "15 km/l"
+
+  // Insurance Details
   insurance_provider?: string;
+  insurancePolicyNumber?: string;
+  insurance_next_renewal?: string; // Form field, maps to 'insuranceExpiryDate' in Dexie
+  insurance_premium?: number;
   insurance_frequency?: string;
-  insurance_next_renewal?: string; // Maps to insuranceExpiryDate in DexieVehicleRecord
+
+  // Tracking & Maintenance
   tracking_type?: string;
   tracking_last_service_odometer?: number;
-  tracking_next_pollution_check?: string;
-  status?: string;
+  next_pollution_check?: string; // ISO Date string
   location?: string;
   repair_estimate?: number;
-  // Consider adding other fields from DexieVehicleRecord if they should be form-editable:
-  // color?: string;
-  // mileage?: number; // This was in VehicleList but not DexieVehicleRecord v10
-  // purchaseDate?: string;
-  // purchasePrice?: number;
-  // engineNumber?: string;
-  // chassisNumber?: string;
-  // notes?: string;
+
+  // Misc
+  notes?: string;
+
+  // Fields to explicitly exclude from VehicleData if they were only for UI or legacy:
+  // usage?: string; // Decided to remove this one for now
 }
 
 export interface LoanData {

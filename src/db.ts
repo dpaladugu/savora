@@ -47,10 +47,51 @@ export interface DexieLoanEMIRecord {
 }
 
 export interface DexieVehicleRecord {
-  id: string; user_id?: string; name: string; registrationNumber: string; make?: string; model?: string;
-  year?: number; fuelType?: string; color?: string; mileage?: number; purchaseDate?: string; purchasePrice?: number;
-  insurancePolicyNumber?: string; insuranceExpiryDate?: string; engineNumber?: string; chassisNumber?: string;
-  notes?: string; created_at?: Date; updated_at?: Date;
+  id: string; // Primary Key
+  user_id?: string; // Foreign key to user
+
+  // Core identification
+  name: string; // Vehicle's display name (e.g., "My Red Swift", "Office Bike")
+  registrationNumber: string; // Vehicle Registration Number (License Plate)
+  make?: string; // e.g., "Maruti Suzuki", "Honda", "Toyota"
+  model?: string; // e.g., "Swift", "Activa", "Corolla"
+  year?: number; // Manufacturing year
+  color?: string;
+  type?: string; // General type like "Car", "Motorcycle", "Scooter"
+  owner?: string; // e.g., "Self", "Spouse", "Company"
+  status?: string; // e.g., "Active", "Sold", "In Repair", "Out of service"
+
+  // Purchase and Financials
+  purchaseDate?: string; // ISO Date string (YYYY-MM-DD)
+  purchasePrice?: number;
+
+  // Technical Details
+  fuelType?: string; // e.g., "Petrol", "Diesel", "Electric", "Hybrid", "CNG"
+  engineNumber?: string;
+  chassisNumber?: string;
+  currentOdometer?: number; // Current odometer reading
+  fuelEfficiency?: string; // e.g., "15 km/l", "50 km/charge" (can be string to accommodate units)
+
+  // Insurance Details (Basic)
+  insuranceProvider?: string;
+  insurancePolicyNumber?: string; // Kept from original, though not in v10 schema. Good to have.
+  insuranceExpiryDate?: string; // ISO Date string (YYYY-MM-DD) - This was in v10 schema
+  insurance_premium?: number; // Renaming from previous VehicleData to align naming
+  insurance_frequency?: string; // e.g., "Annual", "Bi-Annual", "3-Year"
+
+  // Tracking & Maintenance (Basic)
+  tracking_type?: string; // e.g., "GPS", "FASTag", "None"
+  tracking_last_service_odometer?: number;
+  next_pollution_check?: string; // ISO Date string (YYYY-MM-DD)
+  location?: string; // Current general location or parking spot
+  repair_estimate?: number; // For any ongoing or upcoming repair
+
+  // Misc
+  notes?: string; // General notes
+
+  // Audit
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface DexieTagRecord {
@@ -168,9 +209,32 @@ export class SavoraDB extends Dexie {
       accounts: '&id, user_id, name, type, provider, isActive', // UUID PK, indexed fields
     }).upgrade(async tx => {
       console.log("Upgrading Dexie DB to v14: Adding/Updating 'accounts' table with UUID PK and detailed schema.");
-      // Placeholder for migrating 'accounts' table if it existed with an old schema.
-      // If migrating from '++id, name, type, provider' (example old schema in v3)
-      // await tx.table('accounts').clear(); // Simplest if data can be re-entered or lost
+    });
+
+    // Version 15 - Enhanced Vehicle Schema
+    this.version(15).stores({
+      vehicles: '&id, user_id, name, registrationNumber, type, status, purchaseDate, insuranceExpiryDate, next_pollution_check, make, model, fuelType, owner',
+      // Other vehicle fields are not indexed by default for brevity in schema string
+    }).upgrade(async tx => {
+      console.log("Upgrading Dexie DB to v15: Enhanced 'vehicles' table schema with more fields.");
+    });
+
+    // Version 16 - Enhanced Incomes Schema
+    this.version(16).stores({
+      incomes: '&id, user_id, date, amount, category, source_name, description, frequency, *tags_flat, account_id',
+      // Renamed 'source' to 'source_name' for clarity if it's a string name.
+      // Added amount, description, frequency, *tags_flat, account_id based on AppIncome interface.
+      // If 'source' was meant to be an ID, it should be 'source_id'.
+      // Note: AppIncome type in income-tracker.tsx should be reviewed for consistency with this.
+    }).upgrade(async tx => {
+      console.log("Upgrading Dexie DB to v16: Enhanced 'incomes' table schema.");
+      // Potential migration: If 'source' field existed and needs to be 'source_name',
+      // await tx.table('incomes').toCollection().modify(income => {
+      //   if (income.source && !income.source_name) {
+      //     income.source_name = income.source;
+      //     delete income.source;
+      //   }
+      // });
     });
 
     // Initialize table properties

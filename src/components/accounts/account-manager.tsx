@@ -40,21 +40,29 @@ export function AccountManager() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const userIdToQuery = user?.uid || 'default_user';
+  // const userIdToQuery = user?.uid || 'default_user'; // Old approach
 
   const liveAccounts = useLiveQuery(
     async () => {
-      let query = db.accounts.where({ user_id: userIdToQuery });
+      if (!user?.uid) return []; // Don't query if no user_id
+      let query = db.accounts.where('user_id').equals(user.uid); // Correct way to use where clause
+
+      // The filter logic below needs to be applied carefully after initial data fetching
+      // or by ensuring Dexie can handle it. Dexie's .filter() is client-side.
+      // For server-side or more complex filtering, you might need multiple queries or more advanced indexing.
+      // For now, let's assume searchTerm filtering happens client-side on the results.
+      const allUserAccounts = await query.orderBy('name').toArray();
+
       if (searchTerm) {
-        query = query.filter(acc =>
+        return allUserAccounts.filter(acc =>
           acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
           acc.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (acc.accountNumber && acc.accountNumber.includes(searchTerm))
         );
       }
-      return await query.orderBy('name').toArray();
+      return allUserAccounts;
     },
-    [searchTerm, userIdToQuery],
+    [searchTerm, user?.uid], // Depend on user.uid
     []
   );
   const accounts = liveAccounts || [];
@@ -143,11 +151,13 @@ export function AccountManager() {
         </Card>
       </div>
 
-      {/* Add Account Form */}
+      {/* Add Account Form - onSubmit needs to be defined or passed if this is the intended structure */}
+      {/* Assuming handleAddAccount is a method that will call db.accounts.add/update after getting data from AddAccountForm */}
       {showAddForm && (
-        <AddAccountForm 
-          onSubmit={handleAddAccount}
-          onCancel={() => setShowAddForm(false)}
+        <AddAccountForm // Remove onSubmit for now, as AddAccountForm will handle its own submission
+          initialData={editingAccount} // Pass editingAccount here
+          onClose={() => { setShowAddForm(false); setEditingAccount(null); }}
+          // userId prop will be removed from AddAccountForm
         />
       )}
 
@@ -268,20 +278,22 @@ export function AccountManager() {
 interface AddAccountFormProps {
   initialData?: DexieAccountRecord | null;
   onClose: () => void;
-  userId?: string;
+  // userId prop removed
 }
 
-function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
+function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user directly in form
   const [formData, setFormData] = useState<AccountFormData>(() => {
     const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
     };
     if (initialData) {
       return {
         ...initialData,
         balance: initialData.balance?.toString() || '0',
-        type: initialData.type as AccountType, // Ensure type alignment
+        type: initialData.type as AccountType,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -290,21 +302,22 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof AccountFormData, string>>>({});
 
   useEffect(() => {
-    const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
-    };
     if (initialData) {
       setFormData({
         ...initialData,
         id: initialData.id,
         balance: initialData.balance?.toString() || '0',
         type: initialData.type as AccountType,
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData's user_id if present
       });
     } else {
-      setFormData(defaults);
+      // For new form, set user_id from current auth context
+      setFormData({
+        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
+      });
     }
     setFormErrors({});
-  }, [initialData, userId]);
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -340,6 +353,16 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
     }
     setIsSaving(true);
 
+    if(!validateCurrentForm()){
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
+      return;
+    }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save an account.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+
     const balanceNum = parseFloat(formData.balance || '0');
 
     const recordData: Omit<DexieAccountRecord, 'id' | 'created_at' | 'updated_at'> = {
@@ -350,11 +373,14 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
       provider: formData.provider!,
       isActive: formData.isActive !== undefined ? formData.isActive : true,
       notes: formData.notes || '',
-      user_id: userId || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) { // Update
+        // Optional: check if existing record's user_id matches current user.uid before update
+        // const existingRecord = await db.accounts.get(formData.id);
+        // if (existingRecord?.user_id !== user.uid) { throw new Error("Permission denied."); }
         await db.accounts.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Account updated." });
       } else { // Add
@@ -365,7 +391,7 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
       onClose();
     } catch (error) {
       console.error("Failed to save account:", error);
-      toast({ title: "Database Error", description: "Could not save account.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save account.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }

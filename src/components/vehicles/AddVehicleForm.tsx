@@ -40,17 +40,32 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
   const [make, setMake] = useState('');
   const [model, setModel] = useState('');
   const [fuelType, setFuelType] = useState<string | undefined>(undefined);
-  const [type, setType] = useState<string>('car'); // General type like car/motorcycle
+  const [type, setType] = useState<string>('Car'); // General type like car/motorcycle
   const [owner, setOwner] = useState<string | undefined>(undefined);
+  const [year, setYear] = useState<string>('');
+  const [color, setColor] = useState<string>('');
+  const [status, setStatus] = useState<string | undefined>(undefined);
+  const [purchaseDate, setPurchaseDate] = useState<string>('');
+  const [purchasePrice, setPurchasePrice] = useState<string>('');
+  const [engineNumber, setEngineNumber] = useState<string>('');
+  const [chassisNumber, setChassisNumber] = useState<string>('');
+  const [currentOdometer, setCurrentOdometer] = useState<string>('');
+  const [fuelEfficiency, setFuelEfficiency] = useState<string>('');
+
+  const [insuranceProvider, setInsuranceProvider] = useState<string>('');
+  const [insurancePolicyNumber, setInsurancePolicyNumber] = useState<string>('');
+  const [insurancePremium, setInsurancePremium] = useState<string>('');
+  const [insuranceFrequency, setInsuranceFrequency] = useState<string | undefined>(undefined);
+  const [insuranceRenewalDate, setInsuranceRenewalDate] = useState<string>(''); // maps to insurance_next_renewal from VehicleData
+
+  const [trackingType, setTrackingType] = useState<string>('');
+  const [trackingLastServiceOdometer, setTrackingLastServiceOdometer] = useState<string>('');
+  const [nextPollutionCheck, setNextPollutionCheck] = useState<string>('');
+  const [location, setLocation] = useState<string>('');
+  const [repairEstimate, setRepairEstimate] = useState<string>('');
+  const [notes, setNotes] = useState<string>('');
 
   const [formErrors, setFormErrors] = useState<{ vehicleName?: string; registrationNumber?: string; type?: string }>({});
-
-  // Optional fields from original form
-  const [initialOdometer, setInitialOdometer] = useState<string>('');
-  const [currentOdometer, setCurrentOdometer] = useState<string>('');
-  const [insuranceProvider, setInsuranceProvider] = useState('');
-  const [insurancePremium, setInsurancePremium] = useState<string>('');
-  const [insuranceRenewalDate, setInsuranceRenewalDate] = useState('');
 
   const { toast } = useToast();
 
@@ -60,83 +75,121 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
       setRegistrationNumber(existingVehicle.registrationNumber || '');
       setMake(existingVehicle.make || '');
       setModel(existingVehicle.model || '');
+      setYear(existingVehicle.year?.toString() || '');
+      setColor(existingVehicle.color || '');
       setFuelType(existingVehicle.fuelType || undefined);
-      setType(existingVehicle.type || 'car');
+      setType(existingVehicle.type || 'Car');
       setOwner(existingVehicle.owner || undefined);
+      setStatus(existingVehicle.status || undefined);
+      setPurchaseDate(existingVehicle.purchaseDate || '');
+      setPurchasePrice(existingVehicle.purchasePrice?.toString() || '');
+      setEngineNumber(existingVehicle.engineNumber || '');
+      setChassisNumber(existingVehicle.chassisNumber || '');
+      setCurrentOdometer(existingVehicle.currentOdometer?.toString() || '');
+      setFuelEfficiency(existingVehicle.fuelEfficiency || '');
       setInsuranceProvider(existingVehicle.insurance_provider || '');
+      setInsurancePolicyNumber(existingVehicle.insurancePolicyNumber || '');
       setInsurancePremium(existingVehicle.insurance_premium?.toString() || '');
+      setInsuranceFrequency(existingVehicle.insurance_frequency || undefined);
       setInsuranceRenewalDate(existingVehicle.insurance_next_renewal || '');
-      // Initialize other fields like odometer if they are part of VehicleData and form
+      setTrackingType(existingVehicle.tracking_type || '');
+      setTrackingLastServiceOdometer(existingVehicle.tracking_last_service_odometer?.toString() || '');
+      setNextPollutionCheck(existingVehicle.next_pollution_check || '');
+      setLocation(existingVehicle.location || '');
+      setRepairEstimate(existingVehicle.repair_estimate?.toString() || '');
+      setNotes(existingVehicle.notes || '');
     } else {
       // Reset form for new entry
-      setVehicleName('');
-      setRegistrationNumber('');
-      setMake('');
-      setModel('');
-      setFuelType(undefined);
-      setType('car');
-      setOwner(undefined);
-      setInsuranceProvider('');
-      setInsurancePremium('');
-      setInsuranceRenewalDate('');
-      setInitialOdometer('');
-      setCurrentOdometer('');
+      setVehicleName(''); setRegistrationNumber(''); setMake(''); setModel(''); setYear(''); setColor('');
+      setFuelType(undefined); setType('Car'); setOwner(undefined); setStatus(undefined);
+      setPurchaseDate(''); setPurchasePrice(''); setEngineNumber(''); setChassisNumber('');
+      setCurrentOdometer(''); setFuelEfficiency(''); setInsuranceProvider(''); setInsurancePolicyNumber('');
+      setInsurancePremium(''); setInsuranceFrequency(undefined); setInsuranceRenewalDate('');
+      setTrackingType(''); setTrackingLastServiceOdometer(''); setNextPollutionCheck('');
+      setLocation(''); setRepairEstimate(''); setNotes('');
     }
   }, [existingVehicle]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const errors: { vehicleName?: string; registrationNumber?: string; type?: string } = {};
-    if (!vehicleName.trim()) {
-      errors.vehicleName = "Vehicle Name is required.";
-    }
-    if (!registrationNumber.trim()) {
-      errors.registrationNumber = "Registration Number is required.";
-    }
-    if (!type) {
-      errors.type = "Vehicle Type is required.";
-    }
+    const errors: { vehicleName?: string; registrationNumber?: string; type?: string; } = {};
+    if (!vehicleName.trim()) { errors.vehicleName = "Vehicle Name is required."; }
+    if (!registrationNumber.trim()) { errors.registrationNumber = "Registration Number is required."; }
+    if (!type) { errors.type = "Vehicle Type is required."; }
+    // Add more validations as needed for new required fields if any
 
     setFormErrors(errors);
 
     if (Object.keys(errors).length > 0) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill all required fields.",
-        variant: "destructive",
-      });
+      toast({ title: "Validation Error", description: "Please fill all required fields.", variant: "destructive" });
       return;
     }
 
     const vehicleDataToSubmit: Omit<VehicleData, 'id'> = {
       vehicle_name: vehicleName,
-      registrationNumber: registrationNumber.toUpperCase(), // Standardize to uppercase
+      registrationNumber: registrationNumber.toUpperCase(),
       make: make || undefined,
       model: model || undefined,
+      year: year ? parseInt(year, 10) : undefined,
+      color: color || undefined,
       fuelType: fuelType || undefined,
-      type, // General type
+      type,
       owner: owner || undefined,
+      status: status || undefined,
+      purchaseDate: purchaseDate || undefined,
+      purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
+      engineNumber: engineNumber || undefined,
+      chassisNumber: chassisNumber || undefined,
+      currentOdometer: currentOdometer ? parseInt(currentOdometer, 10) : undefined,
+      fuelEfficiency: fuelEfficiency || undefined,
       insurance_provider: insuranceProvider || undefined,
+      insurancePolicyNumber: insurancePolicyNumber || undefined,
       insurance_premium: insurancePremium ? parseFloat(insurancePremium) : undefined,
-      insurance_next_renewal: insuranceRenewalDate || undefined,
-      // Include other fields like odometer if they are part of VehicleData
+      insurance_frequency: insuranceFrequency || undefined,
+      insurance_next_renewal: insuranceRenewalDate || undefined, // This is insuranceExpiryDate in Dexie
+      tracking_type: trackingType || undefined,
+      tracking_last_service_odometer: trackingLastServiceOdometer ? parseInt(trackingLastServiceOdometer, 10) : undefined,
+      next_pollution_check: nextPollutionCheck || undefined,
+      location: location || undefined,
+      repair_estimate: repairEstimate ? parseFloat(repairEstimate) : undefined,
+      notes: notes || undefined,
     };
     onSubmit(vehicleDataToSubmit);
   };
 
+  const statusOptions = [
+    { value: 'Active', label: 'Active' },
+    { value: 'Sold', label: 'Sold' },
+    { value: 'In Repair', label: 'In Repair' },
+    { value: 'Out of Service', label: 'Out of Service' },
+  ];
+
+  const insuranceFrequencyOptions = [
+    { value: 'Annual', label: 'Annual' },
+    { value: 'Semi-Annual', label: 'Semi-Annual' },
+    { value: 'Quarterly', label: 'Quarterly' },
+    { value: 'Monthly', label: 'Monthly' },
+    { value: '3-Year', label: '3-Year' },
+    { value: '5-Year', label: '5-Year' },
+  ];
+
+
   return (
-    <Card>
+    <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>{existingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}</CardTitle>
         <CardDescription>
-          {existingVehicle ? 'Update the details of your vehicle.' : 'Enter the details for your new vehicle.'}
+          {existingVehicle ? 'Update the details of your vehicle.' : 'Enter the details for your new vehicle. Fields marked * are required.'}
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-6">
+
+          <CardTitle className="text-lg pt-2 border-b pb-2 mb-3">Core Details</CardTitle>
+
           {/* Vehicle Name */}
           <div>
-            <Label htmlFor="vehicleName">Vehicle Name*</Label>
+            <Label htmlFor="vehicleName">Vehicle Nickname*</Label>
             <Input
               id="vehicleName"
               value={vehicleName}
