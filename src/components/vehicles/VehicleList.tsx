@@ -251,7 +251,6 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                       </div>
                         <p className="text-muted-foreground italic text-xs">Mock expense display needs review.</p>
                       </div>
-                    </div>
                   ) : <p className="text-muted-foreground italic text-xs">No linked expenses (mock).</p>}
                 </CollapsibleContent>
               </Collapsible>
