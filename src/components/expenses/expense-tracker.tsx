@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-react"; // Added DollarSign
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
-import { TransactionList } from "./expense-list"; // Renaming to TransactionList, will rename file later
+import { TransactionList } from "./transaction-list";
 import type { Expense as AppExpense } from "@/services/supabase-data-service";
 import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
