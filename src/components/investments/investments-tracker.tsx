@@ -11,9 +11,11 @@ import { Calendar } from "@/components/ui/calendar";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/db"; // Dexie DB
-import { InvestmentData } from "@/types/jsonPreload"; // Using the updated InvestmentData
+import { db } from "@/db";
+import { InvestmentData } from "@/types/jsonPreload";
+import { InvestmentService } from '@/services/InvestmentService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
+import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -45,21 +47,26 @@ export function InvestmentsTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<InvestmentData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const liveInvestments = useLiveQuery(
     async () => {
-      let query = db.investments.orderBy('purchaseDate').reverse();
+      if (!user?.uid) return [];
+
+      const userInvestments = await InvestmentService.getInvestments(user.uid);
+
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
-        query = query.filter(inv =>
+        return userInvestments.filter(inv =>
           inv.fund_name.toLowerCase().includes(lowerSearchTerm) ||
           inv.investment_type.toLowerCase().includes(lowerSearchTerm) ||
           (inv.category && inv.category.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      return await query.toArray();
+      // The service doesn't sort, so we sort here.
+      return userInvestments.sort((a, b) => (b.purchaseDate && a.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
     },
-    [searchTerm],
+    [searchTerm, user?.uid],
     []
   );
   const investments = liveInvestments || [];
@@ -81,11 +88,11 @@ export function InvestmentsTracker() {
   const handleDeleteExecute = async () => {
     if (!investmentToDelete || !investmentToDelete.id) return;
     try {
-      await db.investments.delete(investmentToDelete.id);
+      await InvestmentService.deleteInvestment(investmentToDelete.id);
       toast({ title: "Success", description: `Investment "${investmentToDelete.fund_name}" deleted.` });
     } catch (error) {
       console.error("Error deleting investment:", error);
-      toast({ title: "Error", description: "Could not delete investment.", variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message || "Could not delete investment.", variant: "destructive" });
     } finally {
       setInvestmentToDelete(null);
     }
@@ -300,10 +307,11 @@ interface AddInvestmentFormProps {
 
 function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user for the form
   const [formData, setFormData] = useState<InvestmentFormData>(() => {
     const defaults: InvestmentFormData = {
       fund_name: '', investment_type: 'Mutual Fund', category: '', purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-      invested_value: '', current_value: '', quantity: '', notes: '', user_id: 'default_user',
+      invested_value: '', current_value: '', quantity: '', notes: '', user_id: user?.uid, // Initialize with user?.uid
     };
     if (initialData) {
       return {
@@ -312,30 +320,34 @@ function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
         current_value: initialData.current_value?.toString() || '',
         quantity: initialData.quantity?.toString() || '',
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : defaults.purchaseDate,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<InvestmentFormData>>({}); // Added for error display
 
   useEffect(() => {
-    const defaults: InvestmentFormData = {
-      fund_name: '', investment_type: 'Mutual Fund', category: '', purchaseDate: format(new Date(), 'yyyy-MM-dd'),
-      invested_value: '', current_value: '', quantity: '', notes: '', user_id: 'default_user',
-    };
     if (initialData) {
       setFormData({
         ...initialData,
-        id: initialData.id, // Important for updates
+        id: initialData.id,
         invested_value: initialData.invested_value?.toString() || '',
         current_value: initialData.current_value?.toString() || '',
         quantity: initialData.quantity?.toString() || '',
-        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : defaults.purchaseDate,
+        purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
-      setFormData(defaults);
+      // For new form, ensure user_id is from current auth context
+      setFormData({
+        fund_name: '', investment_type: 'Mutual Fund', category: '', purchaseDate: format(new Date(), 'yyyy-MM-dd'),
+        invested_value: '', current_value: '', quantity: '', notes: '', user_id: user?.uid,
+      });
     }
-  }, [initialData]);
+    setFormErrors({}); // Clear errors when data changes
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -349,29 +361,30 @@ function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaving(true);
 
-    if (!formData.fund_name?.trim() || !formData.investment_type?.trim()) {
-      toast({ title: "Validation Error", description: "Investment Name and Type are required.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
+    const currentErrors: Partial<InvestmentFormData> = {};
+    if (!formData.fund_name?.trim()) currentErrors.fund_name = "Investment Name is required.";
+    if (!formData.investment_type?.trim()) currentErrors.investment_type = "Investment Type is required.";
 
     const investedVal = formData.invested_value ? parseFloat(formData.invested_value) : undefined;
     const currentVal = formData.current_value ? parseFloat(formData.current_value) : undefined;
     const quantityVal = formData.quantity ? parseFloat(formData.quantity) : undefined;
 
-    if (formData.invested_value && (isNaN(investedVal!) || investedVal! < 0)) {
-      toast({ title: "Validation Error", description: "Invested Amount must be a valid number.", variant: "destructive" });
-      setIsSaving(false); return;
+    if (formData.invested_value && (isNaN(investedVal!) || investedVal! < 0)) currentErrors.invested_value = "Invested Amount must be a valid number.";
+    if (formData.current_value && (isNaN(currentVal!) || currentVal! < 0)) currentErrors.current_value = "Current Value must be a valid number.";
+    if (formData.quantity && (isNaN(quantityVal!) || quantityVal! < 0)) currentErrors.quantity = "Quantity must be a valid number.";
+
+    setFormErrors(currentErrors);
+    if (Object.keys(currentErrors).length > 0) {
+      toast({ title: "Validation Error", description: "Please correct highlighted fields.", variant: "destructive" });
+      return;
     }
-     if (formData.current_value && (isNaN(currentVal!) || currentVal! < 0)) {
-      toast({ title: "Validation Error", description: "Current Value must be a valid number.", variant: "destructive" });
-      setIsSaving(false); return;
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save.", variant: "destructive" });
+      return;
     }
-    if (formData.quantity && (isNaN(quantityVal!) || quantityVal! < 0)) {
-      toast({ title: "Validation Error", description: "Quantity must be a valid number.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
+    setIsSaving(true);
 
     const recordData: Omit<InvestmentData, 'id' | 'created_at' | 'updated_at'> = {
       fund_name: formData.fund_name!,
@@ -382,22 +395,21 @@ function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
       purchaseDate: formData.purchaseDate,
       quantity: quantityVal,
       notes: formData.notes || '',
-      user_id: formData.user_id || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) {
-        await db.investments.update(formData.id, { ...recordData, updated_at: new Date() });
+        await InvestmentService.updateInvestment(formData.id, recordData);
         toast({ title: "Success", description: "Investment updated." });
       } else {
-        const newId = self.crypto.randomUUID();
-        await db.investments.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
+        await InvestmentService.addInvestment(recordData as Omit<InvestmentData, 'id'>);
         toast({ title: "Success", description: "Investment added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save investment:", error);
-      toast({ title: "Database Error", description: "Could not save investment details.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save investment details.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }

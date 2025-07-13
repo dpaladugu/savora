@@ -3,8 +3,10 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Repeat, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { RecurringTransactionForm } from './recurring-transaction-form';
 import { db, RecurringTransactionRecord } from '@/db';
+import { RecurringTransactionService } from '@/services/RecurringTransactionService'; // Import the service
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid } from 'date-fns';
 import {
   AlertDialog,
@@ -25,10 +27,14 @@ export function RecurringTransactionsPage() {
   const [editingTransaction, setEditingTransaction] = useState<RecurringTransactionRecord | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<RecurringTransactionRecord | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const recurringTransactions = useLiveQuery(
-    () => db.recurringTransactions.orderBy('next_occurrence_date').toArray(),
-    [] // dependencies
+    () => {
+      if (!user?.uid) return [];
+      return RecurringTransactionService.getRecurringTransactions(user.uid);
+    },
+    [user?.uid]
   );
 
   const handleAddNew = () => {
@@ -48,7 +54,7 @@ export function RecurringTransactionsPage() {
   const handleDelete = async () => {
     if (!transactionToDelete || !transactionToDelete.id) return;
     try {
-      await db.recurringTransactions.delete(transactionToDelete.id);
+      await RecurringTransactionService.deleteRecurringTransaction(transactionToDelete.id);
       toast({
         title: "Success",
         description: `Recurring transaction "${transactionToDelete.description}" deleted.`,
@@ -57,7 +63,7 @@ export function RecurringTransactionsPage() {
       console.error("Failed to delete recurring transaction:", error);
       toast({
         title: "Error",
-        description: "Failed to delete transaction.",
+        description: (error as Error).message || "Failed to delete transaction.",
         variant: "destructive",
       });
     } finally {

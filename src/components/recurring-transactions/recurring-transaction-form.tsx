@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { CalendarIcon, AlertCircle } from 'lucide-react';
 import { format, parseISO, addDays, addWeeks, addMonths, addYears, isValid, set } from 'date-fns';
 import { db, RecurringTransactionRecord } from '@/db';
+import { RecurringTransactionService } from '@/services/RecurringTransactionService'; // Import the service
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from '@/contexts/auth-context';
 
 export type RecurringTransactionFormData = Partial<Omit<RecurringTransactionRecord, 'amount' | 'interval' | 'created_at' | 'updated_at'>> & {
   id?: string;
@@ -90,11 +92,15 @@ const defaultInitialFormData: RecurringTransactionFormData = {
   day_of_week: undefined,
   day_of_month: undefined,
   is_active: true,
-  user_id: 'default_user',
+  user_id: undefined, // Initialize as undefined
 };
 
 export function RecurringTransactionForm({ isOpen, onClose, initialData }: RecurringTransactionFormProps) {
-  const [formData, setFormData] = useState<RecurringTransactionFormData>(defaultInitialFormData);
+  const { user } = useAuth(); // Get user
+  const [formData, setFormData] = useState<RecurringTransactionFormData>(() => ({
+    ...defaultInitialFormData,
+    user_id: user?.uid, // Initialize with current user's ID
+  }));
   const [errors, setErrors] = useState<Partial<Record<keyof RecurringTransactionFormData, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -104,9 +110,9 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
 
 
   const resetForm = useCallback(() => {
-    setFormData(defaultInitialFormData);
+    setFormData({ ...defaultInitialFormData, user_id: user?.uid });
     setErrors({});
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (isOpen) {
@@ -117,12 +123,24 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
           interval: initialData.interval.toString(),
           start_date: initialData.start_date ? format(parseISO(initialData.start_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
           end_date: initialData.end_date ? format(parseISO(initialData.end_date), 'yyyy-MM-dd') : undefined,
+          user_id: initialData.user_id || user?.uid, // Ensure user_id is set
         });
       } else {
-        resetForm();
+        // When opening for a new record, ensure user_id is current
+        setFormData({ ...defaultInitialFormData, user_id: user?.uid });
       }
+    } else if (!isOpen && initialData) { // Reset if form closes after editing
+        resetForm();
     }
-  }, [initialData, isOpen, resetForm]);
+  }, [initialData, isOpen, resetForm, user]);
+
+  // This effect updates user_id if the user logs in/out while the form is already open for a new record
+  useEffect(() => {
+    if (isOpen && !initialData && formData.user_id !== user?.uid) {
+        setFormData(prev => ({ ...prev, user_id: user?.uid }));
+    }
+  }, [user, isOpen, initialData, formData.user_id]);
+
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -179,13 +197,18 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
       toast({ title: "Validation Error", description: "Please check the form for errors.", variant: "destructive" });
       return;
     }
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save.", variant: "destructive" });
+      return;
+    }
     setIsLoading(true);
 
     const amountNum = parseFloat(formData.amount as string);
     const intervalNum = parseInt(formData.interval as string, 10);
 
     const recordData: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at' | 'next_occurrence_date'> & {next_occurrence_date?: string} = {
-      user_id: formData.user_id || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
       description: formData.description!,
       amount: amountNum,
       type: formData.type!,
@@ -211,23 +234,16 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
     try {
       if (formData.id) {
         const updates = { ...recordData, updated_at: new Date() };
-        await db.recurringTransactions.update(formData.id, updates);
+        await RecurringTransactionService.updateRecurringTransaction(formData.id, updates);
         toast({ title: "Success", description: "Recurring transaction updated." });
       } else {
-        const newRecord: RecurringTransactionRecord = {
-          id: self.crypto.randomUUID(),
-          ...recordData,
-          next_occurrence_date: recordData.next_occurrence_date || calculateNextOccurrenceDate(recordData.start_date, recordData.frequency, recordData.interval, recordData.day_of_week, recordData.day_of_month),
-          created_at: new Date(),
-          updated_at: new Date(),
-        };
-        await db.recurringTransactions.add(newRecord);
+        await RecurringTransactionService.addRecurringTransaction(recordData as Omit<RecurringTransactionRecord, 'id'>);
         toast({ title: "Success", description: "Recurring transaction added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save recurring transaction:", error);
-      toast({ title: "Error", description: `Failed to save: ${error instanceof Error ? error.message : 'Unknown error'}`, variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message || `Failed to save transaction.`, variant: "destructive" });
     } finally {
       setIsLoading(false);
     }

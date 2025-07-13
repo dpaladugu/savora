@@ -9,9 +9,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { db, DexieAccountRecord } from "@/db"; // Import Dexie db and record type
+import { db, DexieAccountRecord } from "@/db";
+import { AccountService } from "@/services/AccountService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from "@/contexts/auth-context"; // For user_id
+import { useAuth } from "@/contexts/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,21 +41,25 @@ export function AccountManager() {
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  const userIdToQuery = user?.uid || 'default_user';
+  // const userIdToQuery = user?.uid || 'default_user'; // Old approach
 
   const liveAccounts = useLiveQuery(
     async () => {
-      let query = db.accounts.where({ user_id: userIdToQuery });
+      if (!user?.uid) return [];
+
+      const allUserAccounts = await AccountService.getAccounts(user.uid);
+
       if (searchTerm) {
-        query = query.filter(acc =>
-          acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          acc.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (acc.accountNumber && acc.accountNumber.includes(searchTerm))
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        return allUserAccounts.filter(acc =>
+          acc.name.toLowerCase().includes(lowerSearchTerm) ||
+          acc.provider.toLowerCase().includes(lowerSearchTerm) ||
+          (acc.accountNumber && acc.accountNumber.includes(lowerSearchTerm))
         );
       }
-      return await query.orderBy('name').toArray();
+      return allUserAccounts.sort((a,b) => a.name.localeCompare(b.name));
     },
-    [searchTerm, userIdToQuery],
+    [searchTerm, user?.uid],
     []
   );
   const accounts = liveAccounts || [];
@@ -76,11 +81,11 @@ export function AccountManager() {
   const handleDeleteExecute = async () => {
     if (!accountToDelete || !accountToDelete.id) return;
     try {
-      await db.accounts.delete(accountToDelete.id);
+      await AccountService.deleteAccount(accountToDelete.id);
       toast({ title: "Success", description: `Account "${accountToDelete.name}" deleted.` });
     } catch (error) {
       console.error("Error deleting account:", error);
-      toast({ title: "Error", description: "Could not delete account.", variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message || "Could not delete account.", variant: "destructive" });
     } finally {
       setAccountToDelete(null);
     }
@@ -143,11 +148,13 @@ export function AccountManager() {
         </Card>
       </div>
 
-      {/* Add Account Form */}
+      {/* Add Account Form - onSubmit needs to be defined or passed if this is the intended structure */}
+      {/* Assuming handleAddAccount is a method that will call db.accounts.add/update after getting data from AddAccountForm */}
       {showAddForm && (
-        <AddAccountForm 
-          onSubmit={handleAddAccount}
-          onCancel={() => setShowAddForm(false)}
+        <AddAccountForm // Remove onSubmit for now, as AddAccountForm will handle its own submission
+          initialData={editingAccount} // Pass editingAccount here
+          onClose={() => { setShowAddForm(false); setEditingAccount(null); }}
+          // userId prop will be removed from AddAccountForm
         />
       )}
 
@@ -268,20 +275,22 @@ export function AccountManager() {
 interface AddAccountFormProps {
   initialData?: DexieAccountRecord | null;
   onClose: () => void;
-  userId?: string;
+  // userId prop removed
 }
 
-function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
+function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user directly in form
   const [formData, setFormData] = useState<AccountFormData>(() => {
     const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
     };
     if (initialData) {
       return {
         ...initialData,
         balance: initialData.balance?.toString() || '0',
-        type: initialData.type as AccountType, // Ensure type alignment
+        type: initialData.type as AccountType,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -290,21 +299,22 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof AccountFormData, string>>>({});
 
   useEffect(() => {
-    const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: userId || 'default_user'
-    };
     if (initialData) {
       setFormData({
         ...initialData,
         id: initialData.id,
         balance: initialData.balance?.toString() || '0',
         type: initialData.type as AccountType,
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData's user_id if present
       });
     } else {
-      setFormData(defaults);
+      // For new form, set user_id from current auth context
+      setFormData({
+        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
+      });
     }
     setFormErrors({});
-  }, [initialData, userId]);
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -340,6 +350,16 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
     }
     setIsSaving(true);
 
+    if(!validateCurrentForm()){
+      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
+      return;
+    }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save an account.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+
     const balanceNum = parseFloat(formData.balance || '0');
 
     const recordData: Omit<DexieAccountRecord, 'id' | 'created_at' | 'updated_at'> = {
@@ -350,22 +370,21 @@ function AddAccountForm({ initialData, onClose, userId }: AddAccountFormProps) {
       provider: formData.provider!,
       isActive: formData.isActive !== undefined ? formData.isActive : true,
       notes: formData.notes || '',
-      user_id: userId || 'default_user',
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) { // Update
-        await db.accounts.update(formData.id, { ...recordData, updated_at: new Date() });
+        await AccountService.updateAccount(formData.id, recordData);
         toast({ title: "Success", description: "Account updated." });
       } else { // Add
-        const newId = self.crypto.randomUUID();
-        await db.accounts.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
+        await AccountService.addAccount(recordData as Omit<DexieAccountRecord, 'id'>);
         toast({ title: "Success", description: "Account added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save account:", error);
-      toast({ title: "Database Error", description: "Could not save account.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save account.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }

@@ -20,7 +20,7 @@ export const TagsInput: React.FC<TagsInputProps> = ({
   onTagsChange,
   placeholder = "Add tags...",
   className = "",
-  userId = "default_user", // Default or passed in user ID
+  userId, // Removed default_user fallback
 }) => {
   const [inputValue, setInputValue] = useState('');
   const [filteredSuggestions, setFilteredSuggestions] = useState<string[]>([]);
@@ -30,14 +30,9 @@ export const TagsInput: React.FC<TagsInputProps> = ({
 
   // Step 1: Fetch tags from the new db.tags table
   const allMasterTags = useLiveQuery(async () => {
-    // Fetch tags, potentially filtering by user_id if your schema supports it and it's provided
-    // For now, assuming user_id is part of the DexieTagRecord and can be filtered if needed.
-    // If all tags are global or user_id isn't indexed for this query, fetch all.
-    // The schema is '&id, user_id, &[user_id+name], color'
-    // So, to get all tags for a user: db.tags.where({ user_id }).toArray()
-    // Or, if tags are global (no user_id in DexieTagRecord or not used for this): db.tags.toArray()
+    if (!userId) return []; // Don't query if no user is provided
     const userTags = await db.tags.where({ user_id: userId }).sortBy('name');
-    return userTags.map(tagRecord => tagRecord.name); // We only need the names for suggestions
+    return userTags.map(tagRecord => tagRecord.name);
   }, [userId], []); // Re-run if userId changes
 
   useEffect(() => {
@@ -84,14 +79,14 @@ export const TagsInput: React.FC<TagsInputProps> = ({
     setFilteredSuggestions([]);
     setActiveIndex(-1);
 
-    // Step 2: Check if this tag exists in db.tags and add it if not
-    if (allMasterTags && !allMasterTags.map(t=>t.toLowerCase()).includes(newTagName)) {
+    // Step 2: Check if this tag exists in db.tags and add it if not. Only if userId is available.
+    if (userId && allMasterTags && !allMasterTags.map(t=>t.toLowerCase()).includes(newTagName)) {
       try {
         const newTagRecord = {
           id: self.crypto.randomUUID(),
           user_id: userId,
           name: newTagName, // Store normalized name
-          // color: '#cccccc', // Default color or leave undefined
+          // color: '#cccccc',
           created_at: new Date(),
           updated_at: new Date(),
         };
@@ -101,11 +96,9 @@ export const TagsInput: React.FC<TagsInputProps> = ({
           description: `Tag "${newTagName}" has been added to your master list.`,
           duration: 2000,
         });
-        // useLiveQuery on allMasterTags will auto-update suggestions if needed
       } catch (error) {
-        // Handle potential unique constraint violation if added concurrently (unlikely in sole user)
         if (error instanceof Error && error.name === 'ConstraintError') {
-            console.warn(`Tag "${newTagName}" already exists in master list (possibly added concurrently).`);
+            console.warn(`Tag "${newTagName}" already exists in master list.`);
         } else {
             console.error("Failed to add new tag to master list:", error);
             toast({

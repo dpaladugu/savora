@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Tag as TagIcon, Edit2, Trash2, Palette, AlertTriangle as AlertTriangleIcon, Loader2 } from 'lucide-react'; // Renamed AlertTriangle
+import { PlusCircle, Tag as TagIcon, Edit2, Trash2, Palette, AlertTriangle as AlertTriangleIcon, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieTagRecord } from "@/db";
+import { TagService } from '@/services/TagService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'; // Removed DialogClose as not used
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useAuth } from '@/contexts/auth-context';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,10 +32,14 @@ export function TagManager() {
   const [tagToDelete, setTagToDelete] = useState<DexieTagRecord | null>(null);
   const [deleteUsageCount, setDeleteUsageCount] = useState<number | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const tags = useLiveQuery(
-    () => db.tags.orderBy('name').toArray(),
-    [],
+    () => {
+      if (!user?.uid) return [];
+      return TagService.getTags(user.uid);
+    },
+    [user?.uid],
     []
   );
 
@@ -49,30 +55,25 @@ export function TagManager() {
 
   const openDeleteConfirm = async (tag: DexieTagRecord) => {
     setTagToDelete(tag);
-    // Check usage count
     try {
-      const expensesWithTag = await db.expenses.where('tags_flat').includesIgnoreCase(tag.name.toLowerCase()).count();
-      // Add counts from other tables if tags are used elsewhere (e.g., incomes, recurring transactions)
-      setDeleteUsageCount(expensesWithTag);
+      const usageCount = await TagService.getTagUsageCount(tag.name);
+      setDeleteUsageCount(usageCount);
     } catch (e) {
       console.error("Failed to get tag usage count", e);
-      setDeleteUsageCount(null); // Indicate unknown
+      setDeleteUsageCount(null);
     }
   };
 
   const handleDeleteExecute = async () => {
     if (!tagToDelete || !tagToDelete.id) return;
     try {
-      await db.tags.delete(tagToDelete.id);
-      // If tags were stored as an array of IDs/refs in expenses, this would be more complex.
-      // Since they are in tags_flat (string), we might need to update those records.
-      // For now, just deleting the tag. Orphaned tag strings in expenses might remain.
-      // A more robust solution would be a batch update to remove the tag string from relevant expenses.
-      // This is a larger task.
+      await TagService.deleteTag(tagToDelete.id);
+      // Note: Orphaned tag strings in expenses might remain. A more robust solution
+      // would be a batch update on the expenses table, which could be a new service method.
       toast({ title: "Success", description: `Tag "${tagToDelete.name}" deleted.` });
     } catch (error) {
       console.error("Error deleting tag:", error);
-      toast({ title: "Error", description: "Could not delete tag.", variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message || "Could not delete tag.", variant: "destructive" });
     } finally {
       setTagToDelete(null);
       setDeleteUsageCount(null);
@@ -99,14 +100,13 @@ export function TagManager() {
       </div>
 
       {showForm && (
-        <AddEditTagForm
+        <AddEditTagForm // userId prop will be removed from AddEditTagForm
           initialData={editingTag}
           onClose={() => { setShowForm(false); setEditingTag(null); }}
-          userId={tags && tags.length > 0 ? tags[0].user_id : 'default_user'} // Pass a userId
         />
       )}
 
-      {tags.length === 0 && !showForm ? (
+      {tags && tags.length === 0 && !showForm ? (
         <Card className="border-dashed mt-6">
           <CardContent className="p-6 text-center">
             <TagIcon aria-hidden="true" className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -174,27 +174,33 @@ export function TagManager() {
 interface AddEditTagFormProps {
   initialData?: DexieTagRecord | null;
   onClose: () => void;
-  userId?: string; // Added userId prop
+  // userId prop removed
 }
 
-function AddEditTagForm({ initialData, onClose, userId = 'default_user' }: AddEditTagFormProps) {
+function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user directly in the form
   const [formData, setFormData] = useState<TagFormData>(() => {
-    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: userId };
-    return initialData ? { ...initialData, name: initialData.name } : defaults;
+    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: user?.uid };
+    return initialData ? { ...initialData, name: initialData.name, user_id: initialData.user_id || user?.uid } : defaults;
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof TagFormData, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: userId };
+    // Set initial form data based on initialData or defaults, including user_id
     if (initialData) {
-      setFormData({ ...initialData, id: initialData.id, name: initialData.name });
+      setFormData({
+        id: initialData.id,
+        name: initialData.name,
+        color: initialData.color || '#cccccc',
+        user_id: initialData.user_id || user?.uid
+      });
     } else {
-      setFormData(defaults);
+      setFormData({ name: '', color: '#cccccc', user_id: user?.uid });
     }
     setFormErrors({});
-  }, [initialData, userId]);
+  }, [initialData, user]); // Rerun if initialData or user changes
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -227,40 +233,49 @@ function AddEditTagForm({ initialData, onClose, userId = 'default_user' }: AddEd
     }
     setIsSaving(true);
 
+    if (!validateForm()) {
+        toast({ title: "Validation Error", description: "Please correct the errors.", variant: "destructive", duration: 2000 });
+        return;
+    }
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save a tag.", variant: "destructive" });
+      return;
+    }
+    setIsSaving(true);
+
     const normalizedName = formData.name!.trim().toLowerCase();
 
     const recordData: Omit<DexieTagRecord, 'id' | 'created_at' | 'updated_at'> = {
       name: normalizedName,
       color: formData.color || undefined,
-      user_id: formData.user_id || userId, // Ensure userId is set
+      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
-      if (formData.id) {
-        // Check if name changed and if new name conflicts (excluding self)
-        if (normalizedName !== initialData?.name.toLowerCase()) {
-            const existingTag = await db.tags.where({user_id: recordData.user_id, name: normalizedName}).first();
-            if (existingTag && existingTag.id !== formData.id) {
+      if (formData.id) { // Editing existing tag
+        if (initialData && normalizedName !== initialData.name.toLowerCase()) {
+            const conflictingTag = await TagService.getTagByName(normalizedName, user.uid);
+            if (conflictingTag && conflictingTag.id !== formData.id) {
                  toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
                  setIsSaving(false); return;
             }
         }
-        await db.tags.update(formData.id, { ...recordData, updated_at: new Date() });
+        await TagService.updateTag(formData.id, recordData);
         toast({ title: "Success", description: "Tag updated." });
-      } else {
-        const existingTag = await db.tags.where({user_id: recordData.user_id, name: normalizedName}).first();
+      } else { // Adding new tag
+        const existingTag = await TagService.getTagByName(normalizedName, user.uid);
         if (existingTag) {
             toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
             setIsSaving(false); return;
         }
-        const newId = self.crypto.randomUUID();
-        await db.tags.add({ ...recordData, id: newId, created_at: new Date(), updated_at: new Date() });
+        await TagService.addTag(recordData as Omit<DexieTagRecord, 'id'>);
         toast({ title: "Success", description: "Tag added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save tag:", error);
-      toast({ title: "Database Error", description: `Could not save tag. ${error instanceof Error ? error.message : ''}`, variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || `Could not save tag.`, variant: "destructive"});
     } finally {
       setIsSaving(false);
     }

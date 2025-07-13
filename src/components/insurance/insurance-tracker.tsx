@@ -12,7 +12,10 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieInsurancePolicyRecord, DexieLoanEMIRecord } from "@/db";
+import { InsuranceService } from "@/services/InsuranceService"; // Import new service
+import { LoanService } from "@/services/LoanService"; // Import new service
 import { useLiveQuery } from "dexie-react-hooks";
+import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -54,37 +57,40 @@ export function InsuranceTracker() {
   const [itemToDelete, setItemToDelete] = useState<DexieInsurancePolicyRecord | DexieLoanEMIRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
 
   const liveInsurances = useLiveQuery(
     async () => {
-      if (!db.insurancePolicies) return []; // Table might not be initialized on first load if schema changed
-      let query = db.insurancePolicies.orderBy('policyName');
+      if (!user?.uid) return [];
+      const userInsurances = await InsuranceService.getPolicies(user.uid);
       if (searchTerm && activeTab === 'insurance') {
-        query = query.filter(p =>
-            p.policyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            p.insurer.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (p.policyNumber && p.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()))
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        return userInsurances.filter(p =>
+            p.policyName.toLowerCase().includes(lowerSearchTerm) ||
+            p.insurer.toLowerCase().includes(lowerSearchTerm) ||
+            (p.policyNumber && p.policyNumber.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      return await query.toArray();
+      return userInsurances;
     },
-    [searchTerm, activeTab],
+    [searchTerm, activeTab, user?.uid],
     []
   );
 
   const liveEMIs = useLiveQuery(
     async () => {
-      if (!db.loans) return [];
-      let query = db.loans.orderBy('loanType');
+      if (!user?.uid) return [];
+      const userEMIs = await LoanService.getLoans(user.uid);
        if (searchTerm && activeTab === 'emi') {
-        query = query.filter(e =>
-            e.loanType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            e.lender.toLowerCase().includes(searchTerm.toLowerCase())
+        const lowerSearchTerm = searchTerm.toLowerCase();
+        return userEMIs.filter(e =>
+            e.loanType.toLowerCase().includes(lowerSearchTerm) ||
+            e.lender.toLowerCase().includes(lowerSearchTerm)
         );
       }
-      return await query.toArray();
+      return userEMIs;
     },
-    [searchTerm, activeTab],
+    [searchTerm, activeTab, user?.uid],
     []
   );
 
@@ -110,15 +116,15 @@ export function InsuranceTracker() {
 
     try {
       if (activeTab === 'insurance') {
-        await db.insurancePolicies.delete(itemToDelete.id);
+        await InsuranceService.deletePolicy(itemToDelete.id);
         toast({ title: "Success", description: `Insurance policy "${(itemToDelete as DexieInsurancePolicyRecord).policyName}" deleted.` });
       } else {
-        await db.loans.delete(itemToDelete.id);
+        await LoanService.deleteLoan(itemToDelete.id);
         toast({ title: "Success", description: `EMI for "${(itemToDelete as DexieLoanEMIRecord).loanType}" deleted.` });
       }
     } catch (error) {
       console.error(`Failed to delete ${activeTab} item:`, error);
-      toast({ title: "Error", description: `Failed to delete ${activeTab === 'insurance' ? 'policy' : 'EMI'}.`, variant: "destructive" });
+      toast({ title: "Error", description: (error as Error).message || `Failed to delete ${activeTab === 'insurance' ? 'policy' : 'EMI'}.`, variant: "destructive" });
     } finally {
       setItemToDelete(null);
     }
@@ -405,11 +411,12 @@ interface AddInsuranceFormProps {
 }
 function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth(); // Get user
   const [formData, setFormData] = useState<InsuranceFormData>(() => {
     const defaults: InsuranceFormData = {
         policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', coverageAmount: '',
-        nextDueDate: '', status: 'active', note: '', user_id: 'default_user'
+        nextDueDate: '', status: 'active', note: '', user_id: user?.uid // Initialize with user?.uid
     };
     if (initialData) {
       return {
@@ -419,32 +426,36 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<InsuranceFormData>>({}); // Added for form errors
 
-  useEffect(() => { // Repopulate form if initialData changes (e.g. opening edit after add)
-     const defaults: InsuranceFormData = {
-        policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
-        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', coverageAmount: '',
-        nextDueDate: '', status: 'active', note: '', user_id: 'default_user'
-    };
+  useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
         id: initialData.id,
         premium: initialData.premium?.toString() || '',
         coverageAmount: initialData.coverageAmount?.toString() || '',
-        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
-        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
-        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : undefined,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : undefined,
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
-      setFormData(defaults);
+      // For new form, ensure user_id is from current auth context
+      setFormData({
+        policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: undefined, coverageAmount: '',
+        nextDueDate: undefined, status: 'active', note: '', user_id: user?.uid
+      });
     }
-  }, [initialData]);
+    setFormErrors({}); // Clear errors when data changes
+  }, [initialData, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -459,40 +470,50 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Basic Validation
-    if (!formData.policyName || !formData.insurer || !formData.type || !formData.premium || !formData.frequency || !formData.status) {
-      toast({ title: "Validation Error", description: "Please fill all required fields for insurance.", variant: "destructive" });
+    // Basic Validation (can be enhanced with Zod or similar)
+    const currentErrors: Partial<InsuranceFormData> = {};
+    if (!formData.policyName?.trim()) currentErrors.policyName = "Policy Name is required.";
+    if (!formData.insurer?.trim()) currentErrors.insurer = "Insurer is required.";
+    if (!formData.type) currentErrors.type = "Policy Type is required.";
+    if (!formData.premium?.trim() || isNaN(parseFloat(formData.premium)) || parseFloat(formData.premium) <= 0) currentErrors.premium = "Valid Premium is required.";
+    if (formData.coverageAmount && (isNaN(parseFloat(formData.coverageAmount)) || parseFloat(formData.coverageAmount) <=0)) currentErrors.coverageAmount = "Coverage must be a valid positive number.";
+    // Add more specific date validations if needed
+
+    setFormErrors(currentErrors);
+    if (Object.keys(currentErrors).length > 0) {
+      toast({ title: "Validation Error", description: "Please correct the highlighted fields.", variant: "destructive" });
       setIsSaving(false); return;
     }
-    const premiumNum = parseFloat(formData.premium);
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
+      setIsSaving(false); return;
+    }
+
+    const premiumNum = parseFloat(formData.premium!); // Already validated
     const coverageNum = formData.coverageAmount ? parseFloat(formData.coverageAmount) : undefined;
-    if (isNaN(premiumNum) || premiumNum <= 0 || (formData.coverageAmount && (isNaN(coverageNum!) || coverageNum! <=0 ))) {
-      toast({ title: "Validation Error", description: "Premium and Coverage Amount must be valid positive numbers.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
 
     const record: Omit<DexieInsurancePolicyRecord, 'id' | 'created_at' | 'updated_at'> = {
         policyName: formData.policyName!, insurer: formData.insurer!, type: formData.type!,
         premium: premiumNum, frequency: formData.frequency! as DexieInsurancePolicyRecord['frequency'],
         startDate: formData.startDate, endDate: formData.endDate, coverageAmount: coverageNum,
         nextDueDate: formData.nextDueDate, status: formData.status! as DexieInsurancePolicyRecord['status'],
-        note: formData.note || '', user_id: formData.user_id || 'default_user',
+        note: formData.note || '', user_id: user.uid, // Use authenticated user's ID
         policyNumber: formData.policyNumber || ''
     };
 
     try {
       if (formData.id) {
-        await db.insurancePolicies.update(formData.id, { ...record, updated_at: new Date() });
+        await InsuranceService.updatePolicy(formData.id, record);
         toast({ title: "Success", description: "Insurance policy updated." });
       } else {
-        const newId = self.crypto.randomUUID();
-        await db.insurancePolicies.add({ ...record, id: newId, created_at: new Date(), updated_at: new Date() });
+        await InsuranceService.addPolicy(record as Omit<DexieInsurancePolicyRecord, 'id'>);
         toast({ title: "Success", description: "Insurance policy added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save insurance policy:", error);
-      toast({ title: "Database Error", description: "Could not save insurance policy.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save insurance policy.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
@@ -637,11 +658,12 @@ interface AddEMIFormProps {
 }
 function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
    const { toast } = useToast();
+   const { user } = useAuth(); // Get user
   const [formData, setFormData] = useState<EMIFormData>(() => {
     const defaults: EMIFormData = {
         loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', nextDueDate: '', remainingAmount: '',
-        status: 'active', account: '', note: '', user_id: 'default_user'
+        status: 'active', account: '', note: '', user_id: user?.uid // Initialize with user?.uid
     };
     if (initialData) {
       return {
@@ -654,18 +676,15 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [formErrors, setFormErrors] = useState<Partial<EMIFormData>>({}); // Added for form errors
 
-   useEffect(() => { // Repopulate form if initialData changes
-    const defaults: EMIFormData = {
-        loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
-        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', nextDueDate: '', remainingAmount: '',
-        status: 'active', account: '', note: '', user_id: 'default_user'
-    };
+   useEffect(() => {
     if (initialData) {
       setFormData({
         ...initialData,
@@ -675,14 +694,21 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
         interestRate: initialData.interestRate?.toString() || '',
         tenureMonths: initialData.tenureMonths?.toString() || '',
         remainingAmount: initialData.remainingAmount?.toString() || '',
-        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
-        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
-        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
+        startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
+        endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : undefined,
+        nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : undefined,
+        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
-      setFormData(defaults);
+      // For new form, ensure user_id is from current auth context
+      setFormData({
+        loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
+        startDate: format(new Date(), 'yyyy-MM-dd'), endDate: undefined, nextDueDate: undefined, remainingAmount: '',
+        status: 'active', account: '', note: '', user_id: user?.uid
+      });
     }
-  }, [initialData]);
+    setFormErrors({}); // Clear errors when data changes
+  }, [initialData, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -697,44 +723,54 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Basic Validation
-    if (!formData.loanType || !formData.lender || !formData.principalAmount || !formData.emiAmount || !formData.status) {
-      toast({ title: "Validation Error", description: "Please fill all required EMI fields.", variant: "destructive" });
+    // Basic Validation (can be enhanced)
+    const currentErrors: Partial<EMIFormData> = {};
+    if (!formData.loanType?.trim()) currentErrors.loanType = "Loan Type is required.";
+    if (!formData.lender?.trim()) currentErrors.lender = "Lender is required.";
+    if (!formData.principalAmount?.trim() || isNaN(parseFloat(formData.principalAmount)) || parseFloat(formData.principalAmount) <= 0) currentErrors.principalAmount = "Valid Principal Amount is required.";
+    if (!formData.emiAmount?.trim() || isNaN(parseFloat(formData.emiAmount)) || parseFloat(formData.emiAmount) <= 0) currentErrors.emiAmount = "Valid EMI Amount is required.";
+    if (!formData.status) currentErrors.status = "Status is required.";
+    // Add more validations as needed
+
+    setFormErrors(currentErrors);
+    if (Object.keys(currentErrors).length > 0) {
+      toast({ title: "Validation Error", description: "Please correct the highlighted fields.", variant: "destructive" });
       setIsSaving(false); return;
     }
-    const principalNum = parseFloat(formData.principalAmount);
-    const emiNum = parseFloat(formData.emiAmount);
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
+      setIsSaving(false); return;
+    }
+
+    const principalNum = parseFloat(formData.principalAmount!);
+    const emiNum = parseFloat(formData.emiAmount!);
     const interestNum = formData.interestRate ? parseFloat(formData.interestRate) : undefined;
-    const tenureNum = formData.tenureMonths ? parseInt(formData.tenureMonths) : undefined;
+    const tenureNum = formData.tenureMonths ? parseInt(formData.tenureMonths) : undefined; // Should be number
     const remainingNum = formData.remainingAmount ? parseFloat(formData.remainingAmount) : undefined;
 
-    if (isNaN(principalNum) || principalNum <= 0 || isNaN(emiNum) || emiNum <= 0) {
-         toast({ title: "Validation Error", description: "Principal and EMI Amount must be valid positive numbers.", variant: "destructive" });
-         setIsSaving(false); return;
-    }
-    // Add more specific validations as needed
 
     const record: Omit<DexieLoanEMIRecord, 'id' | 'created_at' | 'updated_at'> = {
         loanType: formData.loanType!, lender: formData.lender!, principalAmount: principalNum,
-        emiAmount: emiNum, interestRate: interestNum, tenureMonths: tenureNum!,
+        emiAmount: emiNum, interestRate: interestNum,
+        tenureMonths: tenureNum!, // Ensure this is parsed as number if string input
         startDate: formData.startDate, endDate: formData.endDate, nextDueDate: formData.nextDueDate,
         remainingAmount: remainingNum, status: formData.status! as DexieLoanEMIRecord['status'],
-        account: formData.account || '', note: formData.note || '', user_id: formData.user_id || 'default_user'
+        account: formData.account || '', note: formData.note || '', user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) {
-        await db.loans.update(formData.id, { ...record, updated_at: new Date() });
+        await LoanService.updateLoan(formData.id, record);
         toast({ title: "Success", description: "EMI/Loan details updated." });
       } else {
-        const newId = self.crypto.randomUUID();
-        await db.loans.add({ ...record, id: newId, created_at: new Date(), updated_at: new Date() });
+        await LoanService.addLoan(record as Omit<DexieLoanEMIRecord, 'id'>);
         toast({ title: "Success", description: "EMI/Loan added." });
       }
       onClose();
     } catch (error) {
       console.error("Failed to save EMI/Loan:", error);
-      toast({ title: "Database Error", description: "Could not save EMI/Loan details.", variant: "destructive"});
+      toast({ title: "Database Error", description: (error as Error).message || "Could not save EMI/Loan details.", variant: "destructive"});
     } finally {
       setIsSaving(false);
     }
