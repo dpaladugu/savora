@@ -25,51 +25,45 @@ This log tracks the development progress, insights, and actions performed by Jul
 
 ---
 ### Sub-Phase: Component Verification & Service Layer Review (COMPLETED)
+**(Details omitted for brevity)**
 
-**Objective:** Verify the functionality and completeness of key components/hooks and conduct a conceptual review for introducing dedicated data service layers.
+---
+### Sub-Phase: Codebase Cleanup & Refactoring (Previous Focus)
+**(Details omitted for brevity)**
 
-**Date: 2024-03-15** (Simulated Date)
+---
+### Sub-Phase: Vehicle Module Refactor & User ID Implementation (COMPLETED)
+**(Details omitted for brevity - see previous log entry)**
+
+---
+### Sub-Phase: Service Layer & Quality of Life Refinements (Current Focus)
+
+**Objective:** Abstract data logic into dedicated services, refactor utilities for better organization, and address smaller code quality issues identified in previous phases.
+
+**Date: July 10, 2025**
 
 **Tasks Completed:**
 
-1.  **Verify `useEnhancedExpenseValidation` Hook:** Reviewed, found functional and extensible. No changes made.
-2.  **Verify Tag Management System (`TagManager.tsx`, `TagsInput.tsx`):** Reviewed. Enhanced `TagManager.tsx` for delete confirmation (checks tag usage) and improved form validation UX/accessibility. `TagsInput.tsx` confirmed robust.
-3.  **Conceptual Review for Dedicated Data Services:** Completed. Recommendation is to implement dedicated data services to improve abstraction, testability, and maintainability.
-4.  **Submit Changes:** Changes related to `TagManager.tsx` enhancements submitted.
+1.  **Refactor `DataValidator` Service:**
+    *   **Action:** Split the `DataValidator` class into two more focused utility files: `src/lib/format-utils.ts` (for display formatting) and `src/lib/validation-utils.ts` (for data validation).
+    *   **Action:** Updated `VehicleList.tsx` and `income-tracker.tsx` to import `formatCurrency` from the new `format-utils.ts`.
+    *   **Action:** Deleted the old `src/services/data-validator.ts` file.
+    *   **Outcome:** Improved code organization and maintainability. Formatting and validation logic are now separated and can be imported individually.
 
-**Summary of Sub-Phase:** Key hooks and components verified. `TagManager` enhanced. Conceptual groundwork laid for data services.
+2.  **Address `AdvancedExpenseOptions` `userId` Handling:**
+    *   **Action:** Investigated the component and its dependency, `TagsInput.tsx`.
+    *   **Action:** Refactored `TagsInput.tsx` to be robust against an `undefined` `userId`. It no longer defaults to `'default_user'` and will not perform user-specific DB operations if no user is provided.
+    *   **Outcome:** This transitively fixes the issue in `AdvancedExpenseOptions`, preventing errors and incorrect behavior when a user is not logged in.
 
----
-### Sub-Phase: Codebase Cleanup & Refactoring (Current Focus)
+3.  **Implement `ExpenseService.ts` (Initial Draft):**
+    *   **Action:** Created `src/services/ExpenseService.ts` with static methods for `addExpense`, `updateExpense`, `deleteExpense`, `getExpenses`, and `getExpenseById`.
+    *   **Action:** Refactored the `EnhancedAddExpenseForm.tsx` component to use `ExpenseService.addExpense` instead of interacting with Dexie directly.
+    *   **Outcome:** Successfully demonstrated the service layer pattern, abstracting database logic from the UI component. This sets a precedent for other data modules.
 
-**Objective:** Reduce redundancy, consolidate similar components/services, and standardize approaches based on previous findings.
-
-**Date: 2024-03-15** (Simulated Date)
-
-**Tasks Completed (Cleanup & Refactoring):**
-
-1.  **Scan for Redundant/Similar Files:**
-    *   **Actions:** Performed a recursive file listing (`ls -R`) and analyzed the output. Read content of multiple files across expense management, dashboards, vehicle management, auth screens, data validators, and UI wrappers.
-    *   **Findings:** Identified significant areas of potential redundancy and differing implementations for similar functionalities, particularly in:
-        *   Expense Forms (multiple versions with different validation and features).
-        *   Expense Trackers (multiple versions with different data strategies and UIs).
-        *   Expense Validation (custom hook vs. Zod-based hook).
-        *   Data Services for Expenses (Firestore-based vs. Supabase-based, and general Supabase service).
-        *   Dashboard components (standard vs. "enhanced" versions).
-        *   Vehicle Manager (filename casing variants).
-        *   Auth Screens (standard vs. "enhanced").
-        *   Error Boundaries (general vs. global vs. critical).
-        *   Loading Wrappers (basic vs. enhanced vs. granular state components).
-        *   Data Validators (utility class vs. Zod-based comprehensive validator).
-    *   **State:** Scan complete. Detailed understanding of overlaps achieved.
-
-**Pending Tasks (Cleanup & Refactoring):**
-*   Task 2: Plan and Execute Cleanup/Refactoring (currently active).
-    *   Sub-Task 2.1: Formulate Detailed Cleanup Sub-Plan.
-    *   Sub-Task 2.2 onwards: Execute deletions, merges, and refactoring actions based on the sub-plan.
-*   Task 3: Implement `ExpenseService.ts`.
-*   Task 4: Implement `RecurringTransactionService.ts`.
-*   Task 5: Update Progress Log & Submit.
+**Pending Tasks:**
+*   Complete the implementation of `ExpenseService` by refactoring other components (e.g., expense list/tracker) to use the service for update and delete operations.
+*   Create and implement similar services for other major data types (e.g., `VehicleService`, `AccountService`).
+*   Update this progress log upon completion of the current plan.
 
 ---
 *(Log will be updated as more tasks are completed)*
