@@ -8,6 +8,7 @@ import { AdvancedExpenseOptions } from './AdvancedExpenseOptions';
 import { db } from "@/db";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
+import { ExpenseService } from '@/services/ExpenseService'; // Import the new service
 import { Expense as FormExpenseType } from '@/types/expense'; // Original type from the app
 
 // Define the Zod schema for expense validation
@@ -193,7 +194,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         updated_at: new Date().toISOString(),
       };
 
-      await db.expenses.add(expenseToSave);
+      await ExpenseService.addExpense(expenseToSave);
 
       toast({
         title: "Expense Added",
@@ -203,7 +204,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       resetForm();
 
     } catch (error) {
-      console.error("Failed to add expense to Dexie:", error);
+      console.error("Failed to add expense via ExpenseService:", error);
       let errorMessage = "Failed to save expense. Please try again.";
       if (error instanceof Error && error.message) {
           errorMessage = error.message;

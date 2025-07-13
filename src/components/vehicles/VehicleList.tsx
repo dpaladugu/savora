@@ -6,7 +6,7 @@ import {
   Palette, Tag as StatusTag, ShoppingCart, Cog, Route, MapPin, Wrench, FileText, ClockHistory, TrendingUp
 } from "lucide-react";
 import { Vehicle } from "@/db";
-import { DataValidator } from "@/services/data-validator"; // Import DataValidator
+import { formatCurrency } from "@/lib/format-utils"; // Import from new utility file
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { motion } from "framer-motion";
 import { format, parseISO, isValid } from 'date-fns';
@@ -152,7 +152,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 <div className="flex items-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Purchased: <span className="text-foreground ml-1">{isValid(parseISO(vehicle.purchaseDate)) ? format(parseISO(vehicle.purchaseDate), 'PPP') : 'N/A'}</span></div>
               )}
                {vehicle.purchasePrice !== undefined && (
-                <div className="flex items-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Price: <span className="text-foreground ml-1">{DataValidator.formatCurrency(vehicle.purchasePrice)}</span></div>
+                <div className="flex items-center text-muted-foreground"><ShoppingCart aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Price: <span className="text-foreground ml-1">{formatCurrency(vehicle.purchasePrice)}</span></div>
               )}
             </div>
 
@@ -169,7 +169,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
               */}
               {/* vehicle.insurance_premium is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.insurance_premium !== undefined && (
-                <div className="flex items-center text-muted-foreground"><ShieldCheck aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Premium: <span className="text-foreground ml-1">{DataValidator.formatCurrency(vehicle.insurance_premium)} {vehicle.insurance_frequency && `(${vehicle.insurance_frequency})`}</span></div>
+                <div className="flex items-center text-muted-foreground"><ShieldCheck aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Premium: <span className="text-foreground ml-1">{formatCurrency(vehicle.insurance_premium)} {vehicle.insurance_frequency && `(${vehicle.insurance_frequency})`}</span></div>
               )}
               {vehicle.insuranceExpiryDate && (
                 <div className={`flex items-center text-muted-foreground ${isDateApproaching(vehicle.insuranceExpiryDate) ? 'font-semibold text-orange-600 dark:text-orange-400' : ''} ${isDateInPast(vehicle.insuranceExpiryDate) ? 'text-red-600 dark:text-red-400' : ''}`}>
@@ -204,7 +204,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 <div className="flex items-center text-muted-foreground"><ClockHistory aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Last Serviced: <span className="text-foreground ml-1">{vehicle.tracking_last_service_odometer.toLocaleString()} km</span></div>
               )}
               {vehicle.repair_estimate !== undefined && vehicle.repair_estimate > 0 && (
-                <div className="flex items-center text-muted-foreground"><Wrench aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Repair Est: <span className="text-foreground ml-1">{DataValidator.formatCurrency(vehicle.repair_estimate)}</span></div>
+                <div className="flex items-center text-muted-foreground"><Wrench aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Repair Est: <span className="text-foreground ml-1">{formatCurrency(vehicle.repair_estimate)}</span></div>
               )}
             </div>
 

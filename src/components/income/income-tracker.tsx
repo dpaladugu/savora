@@ -15,8 +15,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { db } from "@/db";
 import { IncomeSourceData } from '@/types/jsonPreload';
 import { DexieAccountRecord } from '@/db';
-import { DataValidator } from '@/services/data-validator';
-import { TagsInput } from '@/components/tags/TagsInput'; // Import TagsInput
+import { formatCurrency } from '@/lib/format-utils'; // Import from new utility file
+import { TagsInput } from '@/components/tags/TagsInput';
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValidDate } from 'date-fns';
 import {
@@ -217,7 +217,7 @@ export function IncomeTracker() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h4 className="font-semibold text-foreground text-lg">
-                        ₹{income.amount.toLocaleString()}
+                        {formatCurrency(income.amount)}
                       </h4>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(income.category)}`}>
                         {income.category}
@@ -412,7 +412,7 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
     try {
       if (formData.id) {
         await db.incomes.update(formData.id, { ...recordData, user_id: user.uid, updated_at: new Date().toISOString() });
-        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${DataValidator.formatCurrency(recordData.amount)} updated.` });
+        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${formatCurrency(recordData.amount)} updated.` });
       } else {
         const newId = self.crypto.randomUUID();
         await db.incomes.add({
@@ -422,7 +422,7 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         } as AppIncome);
-        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${DataValidator.formatCurrency(recordData.amount)} added.` });
+        toast({ title: "Success", description: `Income from "${recordData.source_name}" of ${formatCurrency(recordData.amount)} added.` });
       }
       onClose();
     } catch (error) {
