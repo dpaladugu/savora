@@ -15,7 +15,7 @@ import { db, DexieInsurancePolicyRecord, DexieLoanEMIRecord } from "@/db";
 import { InsuranceService } from "@/services/InsuranceService"; // Import new service
 import { LoanService } from "@/services/LoanService"; // Import new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -61,36 +61,38 @@ export function InsuranceTracker() {
 
   const liveInsurances = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-      const userInsurances = await InsuranceService.getPolicies(user.uid);
+      if (!user?.uid || !db.insurancePolicies) return [];
+      let baseQuery = db.insurancePolicies.where('user_id').equals(user.uid);
+      const userInsurances = await baseQuery.orderBy('policyName').toArray();
+
       if (searchTerm && activeTab === 'insurance') {
-        const lowerSearchTerm = searchTerm.toLowerCase();
         return userInsurances.filter(p =>
-            p.policyName.toLowerCase().includes(lowerSearchTerm) ||
-            p.insurer.toLowerCase().includes(lowerSearchTerm) ||
-            (p.policyNumber && p.policyNumber.toLowerCase().includes(lowerSearchTerm))
+            p.policyName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.insurer.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (p.policyNumber && p.policyNumber.toLowerCase().includes(searchTerm.toLowerCase()))
         );
       }
       return userInsurances;
     },
-    [searchTerm, activeTab, user?.uid],
+    [searchTerm, activeTab, user?.uid], // Depend on user.uid
     []
   );
 
   const liveEMIs = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-      const userEMIs = await LoanService.getLoans(user.uid);
+      if (!user?.uid || !db.loans) return [];
+      let baseQuery = db.loans.where('user_id').equals(user.uid);
+      const userEMIs = await baseQuery.orderBy('loanType').toArray();
+
        if (searchTerm && activeTab === 'emi') {
-        const lowerSearchTerm = searchTerm.toLowerCase();
         return userEMIs.filter(e =>
-            e.loanType.toLowerCase().includes(lowerSearchTerm) ||
-            e.lender.toLowerCase().includes(lowerSearchTerm)
+            e.loanType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            e.lender.toLowerCase().includes(searchTerm.toLowerCase())
         );
       }
       return userEMIs;
     },
-    [searchTerm, activeTab, user?.uid],
+    [searchTerm, activeTab, user?.uid], // Depend on user.uid
     []
   );
 
@@ -504,7 +506,8 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
 
     try {
       if (formData.id) {
-        await InsuranceService.updatePolicy(formData.id, record);
+        // Optional: Check if existing record's user_id matches user.uid
+        await db.insurancePolicies.update(formData.id, { ...record, updated_at: new Date() });
         toast({ title: "Success", description: "Insurance policy updated." });
       } else {
         await InsuranceService.addPolicy(record as Omit<DexieInsurancePolicyRecord, 'id'>);
@@ -761,7 +764,8 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
 
     try {
       if (formData.id) {
-        await LoanService.updateLoan(formData.id, record);
+        // Optional: Check if existing record's user_id matches user.uid
+        await db.loans.update(formData.id, { ...record, updated_at: new Date() });
         toast({ title: "Success", description: "EMI/Loan details updated." });
       } else {
         await LoanService.addLoan(record as Omit<DexieLoanEMIRecord, 'id'>);

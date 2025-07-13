@@ -9,7 +9,7 @@ import { TagService } from '@/services/TagService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,11 +35,11 @@ export function TagManager() {
   const { user } = useAuth(); // Get user
 
   const tags = useLiveQuery(
-    () => {
+    async () => {
       if (!user?.uid) return [];
-      return TagService.getTags(user.uid);
+      return db.tags.where('user_id').equals(user.uid).orderBy('name').toArray();
     },
-    [user?.uid],
+    [user?.uid], // Re-run if user.uid changes
     []
   );
 
@@ -254,8 +254,13 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
 
     try {
       if (formData.id) { // Editing existing tag
+        // Ensure we are not trying to update a tag that doesn't belong to the user (optional check)
+        // const existingDbTag = await db.tags.get(formData.id);
+        // if (existingDbTag?.user_id !== user.uid) { throw new Error("Permission denied to edit this tag."); }
+
+        // Check if name changed and if new name conflicts (excluding self)
         if (initialData && normalizedName !== initialData.name.toLowerCase()) {
-            const conflictingTag = await TagService.getTagByName(normalizedName, user.uid);
+            const conflictingTag = await db.tags.where({user_id: user.uid, name: normalizedName}).first();
             if (conflictingTag && conflictingTag.id !== formData.id) {
                  toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
                  setIsSaving(false); return;
@@ -264,7 +269,7 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
         await TagService.updateTag(formData.id, recordData);
         toast({ title: "Success", description: "Tag updated." });
       } else { // Adding new tag
-        const existingTag = await TagService.getTagByName(normalizedName, user.uid);
+        const existingTag = await db.tags.where({user_id: user.uid, name: normalizedName}).first();
         if (existingTag) {
             toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
             setIsSaving(false); return;

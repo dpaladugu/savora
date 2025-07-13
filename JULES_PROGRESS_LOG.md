@@ -12,41 +12,46 @@ This log tracks the development progress, insights, and actions performed by Jul
 
 *   **Accessibility & UI:** Performed reviews and enhancements for accessibility, responsive design, and state management.
 *   **Component Verification & Initial Cleanup:** Verified key components, enhanced the Tag Management system, laid conceptual groundwork for data services, and performed a broad scan to identify redundant code and differing implementations.
-*   **Vehicle Module Refactor & User ID Implementation:** A major refactor to resolve critical TypeScript errors in the vehicle module, expand the vehicle data model in Dexie (schema v15), implement consistent `user_id` handling across all modules, correct the `incomes` table schema (v16), and integrate the `TagsInput` component.
+*   **Vehicle Module Refactor & User ID Implementation:** A major refactor to resolve critical TypeScript errors in the vehicle module. This involved:
+    *   Standardizing the Vehicle data type.
+    *   Expanding the vehicle data model in Dexie (schema v15) and all related UI components (`AddVehicleForm`, `VehicleManager`, `VehicleList`) to support a comprehensive set of new fields.
+    *   Implementing consistent `user_id` handling across all major data modules (Vehicles, Expenses, Incomes, Tags, Accounts, etc.) to ensure data isolation and integrity.
+    *   Correcting the `incomes` table schema (v16) to include critical fields like `amount`.
+    *   Integrating `TagsInput` into the `AddIncomeForm`.
 
 ---
-### Sub-Phase: Service Layer Abstraction (COMPLETED)
+### Sub-Phase: Service Layer Expansion & Code Quality (COMPLETED)
 
-**Objective:** Abstract all direct Dexie.js data logic from UI components into dedicated, reusable service classes to improve separation of concerns, maintainability, and testability.
+**Objective:** Abstract data logic into dedicated services, refactor utilities for better organization, and address smaller code quality issues identified in previous phases.
 
 **Date: July 10, 2025**
 
 **Tasks Completed:**
 
 1.  **Refactor `DataValidator` Service:**
-    *   **Action:** Split the `DataValidator` class into `src/lib/format-utils.ts` (for display formatting) and `src/lib/validation-utils.ts` (for data validation). Updated components to use the new utilities and deleted the old service file.
-    *   **Outcome:** Improved code organization.
+    *   **Action:** Split the `DataValidator` class into `src/lib/format-utils.ts` and `src/lib/validation-utils.ts`.
+    *   **Action:** Updated components to use the new utility functions and deleted the old service file.
+    *   **Outcome:** Improved code organization and maintainability.
 
-2.  **Harden `TagsInput` Component:**
-    *   **Action:** Refactored `TagsInput.tsx` to gracefully handle an `undefined` `userId`, which fixed a downstream issue in `AdvancedExpenseOptions`.
-    *   **Outcome:** Component is now robust when no user is logged in.
+2.  **Address `AdvancedExpenseOptions` `userId` Handling:**
+    *   **Action:** Refactored the `TagsInput.tsx` dependency to gracefully handle an `undefined` `userId`, removing the `'default_user'` fallback.
+    *   **Outcome:** The component is now robust when no user is logged in, preventing errors.
 
-3.  **Implement and Integrate Data Services:**
-    *   **Action:** Created a suite of new service classes in `src/services/` for each major data entity (`ExpenseService`, `VehicleService`, `AccountService`, `TagService`, `IncomeSourceService`, `CreditCardService`, `GoldInvestmentService`, `InsuranceService`, `LoanService`, `RecurringTransactionService`, `InvestmentService`).
-    *   **Action:** Each service was implemented with static methods for all CRUD operations (add, update, delete, get), encapsulating the direct `db.table` calls.
-    *   **Action:** Refactored all corresponding manager components (e.g., `ExpenseTracker.tsx`, `VehicleManager.tsx`, `AccountManager.tsx`, etc.) to use the new service methods instead of interacting with Dexie directly.
-    *   **Outcome:** The application's data access layer is now fully abstracted from the UI, leading to cleaner, more maintainable components and a consistent pattern for data handling.
+3.  **Implement and Expand `ExpenseService.ts`:**
+    *   **Action:** Created `src/services/ExpenseService.ts` with methods for all CRUD operations.
+    *   **Action:** Refactored both `EnhancedAddExpenseForm.tsx` and `expense-tracker.tsx` to use the new service for adding, updating, and deleting expenses.
+    *   **Outcome:** Fully abstracted expense-related Dexie logic from UI components into a dedicated service layer.
 
-4.  **Review Standalone Forms:**
-    *   **Action:** Investigated `src/components/forms/add-investment-form.tsx` and its `InvestmentManager` service.
-    *   **Finding:** Confirmed this form interacts directly with Firestore, not the local Dexie database, creating a data inconsistency with the Dexie-based `InvestmentsTracker.tsx`.
-    *   **Outcome:** The investigation is complete. Unifying these two systems is a significant architectural task noted for future consideration.
+4.  **Implement `VehicleService.ts`:**
+    *   **Action:** Created `src/services/VehicleService.ts` with methods for all vehicle CRUD operations.
+    *   **Action:** Refactored `VehicleManager.tsx` to use the new service, abstracting its direct Dexie calls.
+    *   **Outcome:** Improved separation of concerns for the vehicle management module.
 
 5.  **Summarize `JULES_PROGRESS_LOG.md`:**
     *   **Action:** Condensed older log entries into a summary section to improve readability.
 
 **Summary of Sub-Phase:**
-This sub-phase successfully completed a major architectural refactoring by implementing the service layer pattern across the entire application for local data. This has greatly improved the separation of concerns and code organization.
+This sub-phase successfully established and applied the service layer pattern for major data modules (Expenses, Vehicles), leading to cleaner components with better separation of concerns. Utility functions were refactored for better code organization, and a minor UI robustness issue related to user authentication state was resolved.
 
 ---
 *(Log will be updated as more tasks are completed)*

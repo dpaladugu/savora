@@ -8,7 +8,6 @@ import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTr
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
 import { IncomeSourceData } from "@/types/jsonPreload";
-import { IncomeSourceService } from "@/services/IncomeSourceService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { useAuth } from '@/contexts/auth-context'; // Import useAuth
@@ -39,11 +38,11 @@ export function IncomeSourceManager() {
   const { user } = useAuth(); // Get user
 
   const incomeSources = useLiveQuery(
-    () => {
+    async () => {
       if (!user?.uid) return [];
-      return IncomeSourceService.getIncomeSources(user.uid);
+      return db.incomeSources.where('user_id').equals(user.uid).orderBy('name').toArray();
     },
-    [user?.uid],
+    [user?.uid], // Re-run if user.uid changes
     []
   );
 
@@ -284,10 +283,19 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
 
     try {
       if (formData.id) { // Editing existing source
-        await IncomeSourceService.updateIncomeSource(formData.id, recordData);
+        // Ensure we are not trying to update a source that doesn't belong to the user (optional check)
+        // const existing = await db.incomeSources.get(formData.id);
+        // if (existing?.user_id !== user.uid) { throw new Error("Permission denied."); }
+        await db.incomeSources.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Income source updated." });
       } else { // Adding new source
-        await IncomeSourceService.addIncomeSource(recordData as Omit<IncomeSourceData, 'id'>);
+        const newId = self.crypto.randomUUID();
+        await db.incomeSources.add({
+          ...recordData,
+          id: newId,
+          created_at: new Date(),
+          updated_at: new Date()
+        } as IncomeSourceData);
         toast({ title: "Success", description: "Income source added." });
       }
       onClose();

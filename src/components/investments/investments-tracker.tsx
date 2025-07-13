@@ -13,9 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
 import { InvestmentData } from "@/types/jsonPreload";
-import { InvestmentService } from '@/services/InvestmentService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -51,9 +50,10 @@ export function InvestmentsTracker() {
 
   const liveInvestments = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
+      if (!user?.uid) return []; // Don't query if no user
+      let baseQuery = db.investments.where('user_id').equals(user.uid);
 
-      const userInvestments = await InvestmentService.getInvestments(user.uid);
+      const userInvestments = await baseQuery.orderBy('purchaseDate').reverse().toArray();
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -63,10 +63,9 @@ export function InvestmentsTracker() {
           (inv.category && inv.category.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      // The service doesn't sort, so we sort here.
-      return userInvestments.sort((a, b) => (b.purchaseDate && a.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
+      return userInvestments;
     },
-    [searchTerm, user?.uid],
+    [searchTerm, user?.uid], // Re-run if searchTerm or user changes
     []
   );
   const investments = liveInvestments || [];
@@ -400,7 +399,8 @@ function AddInvestmentForm({ initialData, onClose }: AddInvestmentFormProps) {
 
     try {
       if (formData.id) {
-        await InvestmentService.updateInvestment(formData.id, recordData);
+        // Optional: Check if existing record's user_id matches user.uid
+        await db.investments.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Investment updated." });
       } else {
         await InvestmentService.addInvestment(recordData as Omit<InvestmentData, 'id'>);

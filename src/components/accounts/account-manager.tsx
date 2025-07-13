@@ -45,21 +45,25 @@ export function AccountManager() {
 
   const liveAccounts = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
+      if (!user?.uid) return []; // Don't query if no user_id
+      let query = db.accounts.where('user_id').equals(user.uid); // Correct way to use where clause
 
-      const allUserAccounts = await AccountService.getAccounts(user.uid);
+      // The filter logic below needs to be applied carefully after initial data fetching
+      // or by ensuring Dexie can handle it. Dexie's .filter() is client-side.
+      // For server-side or more complex filtering, you might need multiple queries or more advanced indexing.
+      // For now, let's assume searchTerm filtering happens client-side on the results.
+      const allUserAccounts = await query.orderBy('name').toArray();
 
       if (searchTerm) {
-        const lowerSearchTerm = searchTerm.toLowerCase();
         return allUserAccounts.filter(acc =>
-          acc.name.toLowerCase().includes(lowerSearchTerm) ||
-          acc.provider.toLowerCase().includes(lowerSearchTerm) ||
-          (acc.accountNumber && acc.accountNumber.includes(lowerSearchTerm))
+          acc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          acc.provider.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (acc.accountNumber && acc.accountNumber.includes(searchTerm))
         );
       }
-      return allUserAccounts.sort((a,b) => a.name.localeCompare(b.name));
+      return allUserAccounts;
     },
-    [searchTerm, user?.uid],
+    [searchTerm, user?.uid], // Depend on user.uid
     []
   );
   const accounts = liveAccounts || [];
@@ -375,7 +379,10 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
 
     try {
       if (formData.id) { // Update
-        await AccountService.updateAccount(formData.id, recordData);
+        // Optional: check if existing record's user_id matches current user.uid before update
+        // const existingRecord = await db.accounts.get(formData.id);
+        // if (existingRecord?.user_id !== user.uid) { throw new Error("Permission denied."); }
+        await db.accounts.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Account updated." });
       } else { // Add
         await AccountService.addAccount(recordData as Omit<DexieAccountRecord, 'id'>);

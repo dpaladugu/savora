@@ -11,9 +11,8 @@ import { Calendar } from "@/components/ui/calendar"; // For Date Picker
 import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieGoldInvestmentRecord } from "@/db";
-import { GoldInvestmentService } from "@/services/GoldInvestmentService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
+import { useAuth } from '@/contexts/auth-context'; // Import useAuth
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -54,9 +53,11 @@ export function GoldTracker() {
 
   const liveInvestments = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
+      if (!user?.uid) return []; // Don't query if no user
+      let baseQuery = db.goldInvestments.where('user_id').equals(user.uid);
 
-      const userInvestments = await GoldInvestmentService.getGoldInvestments(user.uid);
+      // Client-side filtering for searchTerm after fetching user's investments
+      const userInvestments = await baseQuery.orderBy('purchaseDate').reverse().toArray();
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -67,9 +68,9 @@ export function GoldTracker() {
           (inv.note && inv.note.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      return userInvestments.sort((a, b) => parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime());
+      return userInvestments;
     },
-    [searchTerm, user?.uid],
+    [searchTerm, user?.uid], // Re-run if searchTerm or user changes
     []
   );
 
@@ -433,7 +434,8 @@ function AddGoldForm({ initialData, onClose }: {
 
     try {
       if (formData.id) { // Update existing
-        await GoldInvestmentService.updateGoldInvestment(formData.id, recordData);
+        // Optional: Check if existing record's user_id matches user.uid
+        await db.goldInvestments.update(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Gold investment updated." });
       } else { // Add new
         await GoldInvestmentService.addGoldInvestment(recordData as Omit<DexieGoldInvestmentRecord, 'id'>);

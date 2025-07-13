@@ -30,11 +30,14 @@ export function RecurringTransactionsPage() {
   const { user } = useAuth(); // Get user
 
   const recurringTransactions = useLiveQuery(
-    () => {
+    async () => {
       if (!user?.uid) return [];
-      return RecurringTransactionService.getRecurringTransactions(user.uid);
+      return db.recurringTransactions
+        .where('user_id').equals(user.uid)
+        .orderBy('next_occurrence_date')
+        .toArray();
     },
-    [user?.uid]
+    [user?.uid] // Re-run if user.uid changes
   );
 
   const handleAddNew = () => {

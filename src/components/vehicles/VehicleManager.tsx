@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, Vehicle } from '@/db';
+import { db, Vehicle } from '@/db'; // Vehicle is now DexieVehicleRecord
 import { VehicleList } from './VehicleList';
 import { AddVehicleForm } from './AddVehicleForm';
 import { Button } from '@/components/ui/button';

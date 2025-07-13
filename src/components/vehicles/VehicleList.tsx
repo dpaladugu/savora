@@ -88,7 +88,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
     <div className="space-y-4">
       {vehicles.map((vehicle, index) => (
         <motion.div
-            key={vehicle.id}
+            key={vehicle.id} // id is string
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
@@ -125,12 +125,15 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
               {vehicle.make && vehicle.model && (
                 <div className="flex items-center text-muted-foreground"><Package aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Make/Model: <span className="text-foreground ml-1">{vehicle.make} {vehicle.model}</span></div>
               )}
+              {/* vehicle.year is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.year && (
                 <div className="flex items-center text-muted-foreground"><CalendarDays aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Year: <span className="text-foreground ml-1">{vehicle.year}</span></div>
               )}
               {vehicle.color && (
                 <div className="flex items-center text-muted-foreground"><Palette aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Color: <span className="text-foreground ml-1">{vehicle.color}</span></div>
               )}
+              */}
+              {/* vehicle.owner is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.owner && (
                 <div className="flex items-center text-muted-foreground"><UserCircle aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Owner: <span className="text-foreground ml-1">{vehicle.owner}</span></div>
               )}
@@ -163,6 +166,8 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
               {vehicle.insurancePolicyNumber && (
                 <div className="flex items-center text-muted-foreground"><FileText aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Policy#: <span className="text-foreground ml-1">{vehicle.insurancePolicyNumber}</span></div>
               )}
+              */}
+              {/* vehicle.insurance_premium is not in DexieVehicleRecord v10. Commenting out.
               {vehicle.insurance_premium !== undefined && (
                 <div className="flex items-center text-muted-foreground"><ShieldCheck aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Premium: <span className="text-foreground ml-1">{formatCurrency(vehicle.insurance_premium)} {vehicle.insurance_frequency && `(${vehicle.insurance_frequency})`}</span></div>
               )}
