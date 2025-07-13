@@ -101,13 +101,5 @@ export class TokenUsageService {
   // For testing or manual reset by user
   public static resetAllUsage(): void {
     localStorage.removeItem(STORAGE_KEY);
-    console.log("Token usage data has been reset.");
   }
 }
-
-// Example Usage (for testing in console)
-// TokenUsageService.addUsage(100);
-// console.log("Today's usage:", TokenUsageService.getCurrentDailyUsage());
-// console.log("This month's usage:", TokenUsageService.getCurrentMonthlyUsage());
-// TokenUsageService.resetAllUsage();
-// console.log("Today's usage after reset:", TokenUsageService.getCurrentDailyUsage());

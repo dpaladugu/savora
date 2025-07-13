@@ -122,14 +122,6 @@ export function useEmergencyFund() {
       
       setMissingData(missing);
       
-      console.log('Emergency fund data loaded:', {
-        monthlyExpenses: Math.round(avgMonthlyEssential),
-        monthlyEMIs,
-        annualInsurancePremiums,
-        monthlyRentalIncome,
-        missingDataCount: missing.length
-      });
-      
     } catch (error) {
       console.error('Failed to load integrated emergency fund data:', error);
       setMissingData(['Unable to load data - Please check your connection']);

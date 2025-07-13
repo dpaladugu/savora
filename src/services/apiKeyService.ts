@@ -31,7 +31,6 @@ export class ApiKeyService {
         key: API_KEY_SETTING_KEY,
         value: encryptedApiKeyString,
       });
-      console.log('API key encrypted and saved successfully.');
     } catch (error) {
       console.error('Failed to save encrypted API key to database:', error);
       throw new Error('Failed to save API key to database.');
@@ -52,7 +51,6 @@ export class ApiKeyService {
     try {
       const setting = await db.appSettings.get(API_KEY_SETTING_KEY);
       if (!setting || typeof setting.value !== 'string') {
-        console.log('No encrypted API key found in settings.');
         return null;
       }
 
@@ -67,7 +65,6 @@ export class ApiKeyService {
         return null;
       } else {
         // Decryption returned null (e.g. wrong PIN)
-        console.log('Failed to decrypt API key, possibly due to incorrect PIN.');
         return null;
       }
     } catch (error) {
@@ -84,7 +81,6 @@ export class ApiKeyService {
   public static async deleteApiKey(): Promise<void> {
     try {
       await db.appSettings.delete(API_KEY_SETTING_KEY);
-      console.log('Encrypted API key deleted successfully from settings.');
     } catch (error) {
       console.error('Failed to delete API key from database:', error);
       throw new Error('Failed to delete API key from database.');

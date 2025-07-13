@@ -57,7 +57,6 @@ export class TransactionService {
       } else {
         throw new Error(`Unknown transaction type: ${type}`);
       }
-      console.log(`Transaction with id: ${id} (type: ${type}) deleted.`);
     } catch (error) {
       console.error(`Error in TransactionService.deleteTransaction for id ${id}:`, error);
       throw error;

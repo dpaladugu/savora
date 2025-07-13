@@ -65,7 +65,6 @@ export function DataImport() {
                     description: importResult.message,
                 });
                 setImportSummaryMessage(importResult.message + (importResult.summary ? ` Details: ${JSON.stringify(importResult.summary)}` : ''));
-                console.log("Import Summary:", importResult.summary);
                 setFile(null); // Clear file input
             } else {
                 // PreloadFinancialData itself might have a detailed error message

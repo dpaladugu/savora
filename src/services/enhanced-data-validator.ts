@@ -14,7 +14,6 @@ export interface ValidationResult {
 export function validateFinancialData(data: unknown): ValidationResult {
   try {
     const validatedData = jsonPreloadMVPDataSchema.parse(data);
-    console.log("JSON data is valid (MVP sections):", validatedData);
     return { 
       isValid: true, 
       data: validatedData 

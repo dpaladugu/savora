@@ -150,7 +150,6 @@ export class AiChatService {
           return false;
         }
         this.provider = new DeepSeekProvider(apiKey, model || DEEPSEEK_MODEL_NAME);
-        console.log(`AI Service: Initialized with DeepSeekProvider (Model: ${model || DEEPSEEK_MODEL_NAME}).`);
         break;
       case 'groq':
         if (!apiKey) {
@@ -158,12 +157,10 @@ export class AiChatService {
           return false;
         }
         this.provider = new GroqProvider(apiKey, model || GROQ_DEFAULT_MODEL_NAME);
-        console.log(`AI Service: Initialized with GroqProvider (Model: ${model || GROQ_DEFAULT_MODEL_NAME}).`);
         break;
       case 'ollama_local':
         // Ollama typically uses a base URL and model, API key might not be needed.
         this.provider = new OllamaProvider(baseUrl || OLLAMA_DEFAULT_BASE_URL, model || OLLAMA_DEFAULT_MODEL_NAME);
-        console.log(`AI Service: Initialized with OllamaProvider (BaseURL: ${baseUrl || OLLAMA_DEFAULT_BASE_URL}, Model: ${model || OLLAMA_DEFAULT_MODEL_NAME}).`);
         break;
       default:
         console.warn(`AI Service: Unknown or unsupported provider "${providerName}". Provider not initialized.`);

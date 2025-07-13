@@ -131,21 +131,3 @@ export const jsonPreloadMVPDataSchema = z.object({
     cards: z.array(creditCardSchema),
   }).optional(),
 }).strict(); // Strict on the top level to ensure no unexpected top-level keys for MVP
-
-// Example usage (for testing or in the service):
-/*
-export function validateJsonForPreload(data: unknown) {
-  try {
-    const validatedData = jsonPreloadMVPDataSchema.parse(data);
-    console.log("JSON data is valid (MVP sections):", validatedData);
-    return { success: true, data: validatedData };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error("JSON validation errors (MVP sections):", error.errors);
-      return { success: false, errors: error.errors };
-    }
-    console.error("Unexpected validation error:", error);
-    return { success: false, errors: [{ message: "Unexpected validation error" }] };
-  }
-}
-*/
