@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
-import { AuthScreen } from "@/components/auth/auth-screen";
+import { AuthScreen } from "@/components/auth/enhanced-auth-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { MainContentRouter } from "@/components/layout/main-content-router";
 import { GlobalErrorBoundary } from "@/components/ui/global-error-boundary";

@@ -6,7 +6,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, Settings } from "lucide-react";
 
 interface AdvancedExpenseOptionsProps {
-interface AdvancedExpenseOptionsProps {
   formData: {
     merchant: string;
     note: string;
