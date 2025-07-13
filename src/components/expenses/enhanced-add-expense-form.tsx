@@ -238,8 +238,6 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
             }} // Pass specific errors
           />
 
-          />
-
           <CategoryPaymentSelectors 
             formData={{
               category: formData.category,
