@@ -73,8 +73,7 @@ export function RentalTracker() {
     setProperties([property, ...properties]);
     setShowAddForm(false);
     
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save rental property to Firestore:', property);
+    // Logic to save to a local or remote database would go here.
     
     toast({
       title: "Property added successfully",
@@ -84,8 +83,7 @@ export function RentalTracker() {
 
   const handleDeleteProperty = (id: string) => {
     setProperties(properties.filter(prop => prop.id !== id));
-    // TODO: Firebase integration - delete from Firestore
-    console.log('TODO: Delete rental property from Firestore:', id);
+    // Logic to delete rental property from a local or remote database would go here.
     toast({
       title: "Property deleted",
     });

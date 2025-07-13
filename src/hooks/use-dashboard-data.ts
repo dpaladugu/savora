@@ -1,146 +1,77 @@
 
-import { useState, useEffect, useCallback } from "react";
-import { FirestoreService } from "@/services/firestore";
-import { DataIntegrationService } from "@/services/data-integration";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "@/contexts/auth-context";
 import { DashboardData } from "@/types/dashboard";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { ExpenseService } from "@/services/ExpenseService";
+import { InvestmentService } from "@/services/InvestmentService";
+import { IncomeService } from "@/services/IncomeService";
+import { InsuranceService } from "@/services/InsuranceService";
+import { LoanService } from "@/services/LoanService";
 import { Logger } from "@/services/logger";
 import { useErrorHandler } from "./use-error-handler";
 import { useLoadingState } from "./use-loading-state";
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-let dataCache: { data: DashboardData; timestamp: number } | null = null;
-
 export function useDashboardData() {
   const { user } = useAuth();
-  const { handleError, clearError, errorMessage } = useErrorHandler();
-  const { isLoading, startLoading, stopLoading } = useLoadingState();
   
-  const [dashboardData, setDashboardData] = useState<DashboardData>({
-    totalExpenses: 0,
-    monthlyExpenses: 0,
-    totalInvestments: 0,
-    expenseCount: 0,
-    investmentCount: 0,
-    emergencyFundTarget: 0,
-    emergencyFundCurrent: 0,
-    monthlyIncome: 0,
-    savingsRate: 0,
-    investmentValue: 0,
-    creditCardDebt: 0,
-    emergencyFund: 0,
-    goals: [],
-    recentTransactions: [],
-    categoryBreakdown: []
-  });
-
-  const loadDashboardData = useCallback(async (forceRefresh = false) => {
-    if (!user) {
-      Logger.warn('Attempted to load dashboard data without user');
-      return;
-    }
-
-    // Check cache first
-    if (!forceRefresh && dataCache && (Date.now() - dataCache.timestamp < CACHE_DURATION)) {
-      Logger.debug('Using cached dashboard data');
-      setDashboardData(dataCache.data);
-      return;
+  const allData = useLiveQuery(async () => {
+    if (!user?.uid) {
+      return null;
     }
     
-    try {
-      startLoading('Loading dashboard data...');
-      clearError();
-      
-      Logger.info('Fetching dashboard data', { userId: user.uid, forceRefresh });
-      
-      const [expenses, investments, insurances, emis, rentals] = await Promise.all([
-        FirestoreService.getExpenses(user.uid),
-        FirestoreService.getInvestments(user.uid),
-        DataIntegrationService.getInsuranceData(user.uid),
-        DataIntegrationService.getEMIData(user.uid),
-        DataIntegrationService.getRentalData(user.uid)
-      ]);
-      
-      const currentMonth = new Date().toISOString().substring(0, 7);
-      const monthlyExpenses = expenses
-        .filter(expense => expense.date.startsWith(currentMonth))
-        .reduce((sum: number, expense) => sum + expense.amount, 0);
-      
-      const totalExpenses = expenses.reduce((sum: number, expense) => sum + expense.amount, 0);
-      const totalInvestments = investments.reduce((sum: number, investment) => sum + investment.amount, 0);
-      
-      // Calculate emergency fund requirements from actual data
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-      
-      const recentExpenses = expenses.filter(expense => 
-        new Date(expense.date) >= sixMonthsAgo &&
-        !expense.description?.toLowerCase().includes('bill payment') &&
-        !expense.description?.toLowerCase().includes('emi')
-      );
-      
-      const avgMonthlyExpenses = recentExpenses.length > 0 
-        ? recentExpenses.reduce((sum: number, expense) => sum + expense.amount, 0) / 6
-        : monthlyExpenses;
-      
-      // Include insurance premiums and EMIs in emergency fund calculation
-      const annualInsurancePremiums = DataIntegrationService.calculateAnnualInsurancePremiums(insurances);
-      const monthlyEMIs = DataIntegrationService.calculateMonthlyEMIs(emis);
-      const monthlyRentalIncome = DataIntegrationService.calculateMonthlyRentalIncome(rentals);
-      
-      const adjustedMonthlyExpenses = avgMonthlyExpenses + (annualInsurancePremiums / 12) + monthlyEMIs - monthlyRentalIncome;
-      const emergencyFundTarget = Math.max(adjustedMonthlyExpenses * 6, 0);
-      const emergencyFundCurrent = totalInvestments * 0.15; // Assume 15% is emergency fund
-      
-      const newData: DashboardData = {
-        totalExpenses,
-        monthlyExpenses,
-        totalInvestments,
-        expenseCount: expenses.length,
-        investmentCount: investments.length,
-        emergencyFundTarget,
-        emergencyFundCurrent,
-        monthlyIncome: 85000, // Mock data - should come from actual income tracking
-        savingsRate: totalInvestments > 0 ? Math.round((totalInvestments / (totalInvestments + totalExpenses)) * 100) : 0,
-        investmentValue: totalInvestments,
-        creditCardDebt: 0, // Mock data - should come from actual debt tracking
-        emergencyFund: emergencyFundCurrent,
-        goals: [], // Mock data - should come from goals service
-        recentTransactions: [], // Mock data - should come from recent transactions
-        categoryBreakdown: [] // Mock data - should come from category analysis
+    const [expenses, investments, incomes, insurances, loans] = await Promise.all([
+      ExpenseService.getExpenses(user.uid),
+      InvestmentService.getInvestments(user.uid),
+      IncomeService.getIncomes(user.uid),
+      InsuranceService.getPolicies(user.uid),
+      LoanService.getLoans(user.uid),
+    ]);
+
+    return { expenses, investments, incomes, insurances, loans };
+  }, [user?.uid]);
+
+  const loading = allData === undefined;
+
+  const dashboardData = useMemo(() => {
+    if (!allData) {
+      return {
+        totalInvestments: 0,
+        totalExpenses: 0,
+        totalIncome: 0,
+        investmentAllocation: {},
+        expenseByCategory: {},
+        // You can add more detailed calculations here if needed
       };
-
-      setDashboardData(newData);
-      
-      // Cache the data
-      dataCache = {
-        data: newData,
-        timestamp: Date.now()
-      };
-      
-      Logger.info('Dashboard data loaded successfully', newData);
-    } catch (err) {
-      Logger.error('Failed to load dashboard data', err);
-      handleError(err as Error, 'Failed to load dashboard data');
-    } finally {
-      stopLoading();
     }
-  }, [user, startLoading, stopLoading, clearError, handleError]);
 
-  useEffect(() => {
-    if (user) {
-      loadDashboardData();
-    }
-  }, [user, loadDashboardData]);
+    const { expenses, investments, incomes } = allData;
 
-  const refetch = useCallback(() => {
-    loadDashboardData(true);
-  }, [loadDashboardData]);
+    const totalInvestments = investments.reduce((sum, inv) => sum + (inv.current_value || inv.invested_value || 0), 0);
+    const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+    const totalIncome = incomes.reduce((sum, inc) => sum + inc.amount, 0);
 
-  return { 
-    dashboardData, 
-    loading: isLoading, 
-    error: errorMessage, 
-    refetch 
-  };
+    const investmentAllocation = investments.reduce((acc, inv) => {
+      const key = inv.investment_type || 'Other';
+      acc[key] = (acc[key] || 0) + (inv.current_value || inv.invested_value || 0);
+      return acc;
+    }, {} as Record<string, number>);
+
+    const expenseByCategory = expenses.reduce((acc, exp) => {
+      const key = exp.category || 'Uncategorized';
+      acc[key] = (acc[key] || 0) + exp.amount;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      totalInvestments,
+      totalExpenses,
+      totalIncome,
+      investmentAllocation,
+      expenseByCategory,
+    };
+  }, [allData]);
+
+  return { data: dashboardData, loading };
 }

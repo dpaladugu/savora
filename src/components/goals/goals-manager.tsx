@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { Target, Plus, Trash2, Edit } from "lucide-react";
+import { EmergencyFundAdvisor } from './EmergencyFundAdvisor'; // Import the new component
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -129,6 +130,8 @@ export function GoalsManager() {
           Add Goal
         </Button>
       </div>
+
+      <EmergencyFundAdvisor />
 
       {/* Add Goal Form */}
       {isAddingGoal && (

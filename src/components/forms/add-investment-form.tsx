@@ -13,16 +13,27 @@ import { InvestmentService } from "@/services/InvestmentService"; // Use Dexie s
 import { InvestmentData } from "@/types/jsonPreload"; // Use Dexie data type
 import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
+import { Textarea } from '@/components/ui/textarea';
 
-// Schema to validate form fields. Aligns with InvestmentData structure where possible.
+// Zod schema for comprehensive validation, aligning with InvestmentData
 const investmentSchema = z.object({
-  fund_name: z.string().min(1, "Investment name is required"),
-  investment_type: z.string().min(1, "Investment type is required"),
-  invested_value: z.number().optional(),
-  current_value: z.number().optional(),
-  quantity: z.number().optional(),
-  purchaseDate: z.string().optional(),
+  fund_name: z.string().min(1, "Investment name is required."),
+  investment_type: z.string().min(1, "Investment type is required."),
   category: z.string().optional(),
+  purchaseDate: z.string().optional(),
+  // Coerce empty strings to undefined so they are not converted to 0
+  invested_value: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.number({ invalid_type_error: "Must be a number" }).positive("Must be positive").optional()
+  ),
+  current_value: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.number({ invalid_type_error: "Must be a number" }).nonnegative("Cannot be negative").optional()
+  ),
+  quantity: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.number({ invalid_type_error: "Must be a number" }).positive("Must be positive").optional()
+  ),
   notes: z.string().optional(),
 });
 
@@ -188,6 +199,7 @@ export function AddInvestmentForm({ onSuccess, onCancel, initialData }: AddInves
           <div className="space-y-2">
             <Label htmlFor="notes">Notes</Label>
             <Textarea id="notes" placeholder="Any additional notes..." {...register('notes')} />
+            {errors.notes && <p className="text-sm text-destructive">{errors.notes.message}</p>}
           </div>
 
           <div className="flex gap-2 pt-4">

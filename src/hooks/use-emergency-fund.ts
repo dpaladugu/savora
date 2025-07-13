@@ -1,8 +1,10 @@
 
 import { useState, useEffect } from "react";
-import { FirestoreService } from "@/services/firestore";
-import { DataIntegrationService } from "@/services/data-integration";
 import { useAuth } from "@/contexts/auth-context";
+import { ExpenseService } from "@/services/ExpenseService";
+import { InsuranceService } from "@/services/InsuranceService";
+import { LoanService } from "@/services/LoanService";
+import { IncomeService } from "@/services/IncomeService";
 
 interface EmergencyFundData {
   monthlyExpenses: number;
@@ -60,12 +62,12 @@ export function useEmergencyFund() {
     try {
       setLoading(true);
       
-      // Load data from all modules concurrently
-      const [expenses, insurances, emis, rentals] = await Promise.all([
-        FirestoreService.getExpenses(user.uid),
-        DataIntegrationService.getInsuranceData(user.uid),
-        DataIntegrationService.getEMIData(user.uid),
-        DataIntegrationService.getRentalData(user.uid)
+      // Load data from all modules concurrently using Dexie services
+      const [expenses, insurances, emis, incomes] = await Promise.all([
+        ExpenseService.getExpenses(user.uid),
+        InsuranceService.getPolicies(user.uid),
+        LoanService.getLoans(user.uid),
+        IncomeService.getIncomes(user.uid),
       ]);
       
       // Calculate essential expenses from expense data
@@ -91,10 +93,23 @@ export function useEmergencyFund() {
       const totalEssential = essentialExpenses.reduce((sum, expense) => sum + expense.amount, 0);
       const avgMonthlyEssential = recentExpenses.length > 0 ? totalEssential / 6 : 0;
       
-      // Calculate data from integrated modules
-      const monthlyEMIs = DataIntegrationService.calculateMonthlyEMIs(emis);
-      const annualInsurancePremiums = DataIntegrationService.calculateAnnualInsurancePremiums(insurances);
-      const monthlyRentalIncome = DataIntegrationService.calculateMonthlyRentalIncome(rentals);
+      // Calculate data from integrated modules directly
+      const monthlyEMIs = emis
+        .filter(e => e.status === 'active')
+        .reduce((sum, emi) => sum + emi.emiAmount, 0);
+
+      const annualInsurancePremiums = insurances
+        .filter(ins => ins.status === 'active')
+        .reduce((sum, ins) => {
+            if (ins.frequency === 'monthly') return sum + (ins.premium * 12);
+            if (ins.frequency === 'quarterly') return sum + (ins.premium * 4);
+            if (ins.frequency === 'yearly') return sum + ins.premium;
+            return sum;
+        }, 0);
+
+      const totalMonthlyIncome = incomes
+        .filter(inc => inc.frequency === 'monthly')
+        .reduce((sum, inc) => sum + inc.amount, 0);
       
       // Determine missing data
       const missing: string[] = [];
@@ -117,7 +132,10 @@ export function useEmergencyFund() {
         monthlyExpenses: Math.round(avgMonthlyEssential),
         monthlyEMIs: monthlyEMIs,
         insurancePremiums: annualInsurancePremiums,
-        rentalIncome: monthlyRentalIncome,
+        numIncomeSources: incomes.length, // Can be refined
+        // Assuming rentalIncome is a type of income, or needs a separate data source.
+        // For now, let's use a placeholder or assume it's part of the user's income entries.
+        // We can also calculate total monthly income here.
       }));
       
       setMissingData(missing);

@@ -12,8 +12,8 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieInsurancePolicyRecord, DexieLoanEMIRecord } from "@/db";
-import { InsuranceService } from "@/services/InsuranceService"; // Import new service
-import { LoanService } from "@/services/LoanService"; // Import new service
+import { InsuranceService } from "@/services/InsuranceService";
+import { LoanService } from "@/services/LoanService";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
@@ -994,8 +994,7 @@ export function InsuranceTracker() {
     setInsurances([insurance, ...insurances]);
     setShowAddForm(false);
     
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save insurance to Firestore:', insurance);
+    // Logic to save to Firestore would go here
     
     toast({
       title: "Insurance policy added",
@@ -1012,8 +1011,7 @@ export function InsuranceTracker() {
     setEMIs([emi, ...emis]);
     setShowAddForm(false);
     
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save EMI to Firestore:', emi);
+    // Logic to save to Firestore would go here
     
     toast({
       title: "EMI added",

@@ -68,8 +68,7 @@ export function RecurringGoals() {
     setGoals([goal, ...goals]);
     setShowAddForm(false);
     
-    // TODO: Firebase integration - save to Firestore
-    console.log('TODO: Save recurring goal to Firestore:', goal);
+    // Logic to save the recurring goal to a local or remote database would go here.
     
     toast({
       title: "Recurring goal added",

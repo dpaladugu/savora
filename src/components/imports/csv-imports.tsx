@@ -3,9 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, FileText, CreditCard, TrendingUp, Shield, CheckCircle, AlertCircle, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { CSVParser } from "@/services/csv-parser";
-import { FirestoreService } from "@/services/firestore"; // Consider using ExpenseManager/InvestmentManager if available
+import { ExpenseService } from "@/services/ExpenseService";
+import { InvestmentService } from "@/services/InvestmentService";
 import { useAuth } from "@/contexts/auth-context";
 import { EnhancedCSVProcessor } from "@/components/csv/enhanced-csv-processor";
 
@@ -76,15 +76,16 @@ export function CSVImports() {
           throw new Error('No valid expenses found in CSV. Please check the format or use the enhanced processor.');
         }
         
-        const firestoreExpenses = expenses.map(expense => ({
+        const expensesToSave = expenses.map(expense => ({
           ...expense,
-          userId: user.uid,
-          type: 'expense' as const,
-          source: 'csv' as const,
-          createdAt: new Date().toISOString()
+          id: self.crypto.randomUUID(), // Services don't auto-gen ID for bulk ops
+          user_id: user.uid,
+          source: 'csv',
+          created_at: new Date(),
+          updated_at: new Date()
         }));
         
-        await FirestoreService.addExpenses(firestoreExpenses);
+        await db.expenses.bulkAdd(expensesToSave as any); // Use bulkAdd
         
         toast({
           title: "Success",
@@ -118,7 +119,7 @@ export function CSVImports() {
           }));
         
         if (expenseFormat.length > 0) {
-          await FirestoreService.addExpenses(expenseFormat);
+          await db.expenses.bulkAdd(expenseFormat as any);
         }
         
         toast({
@@ -135,16 +136,16 @@ export function CSVImports() {
           throw new Error('No valid investments found in CSV');
         }
         
-        const firestoreInvestments = investments.map(investment => ({
+        const investmentsToSave = investments.map(investment => ({
           ...investment,
-          userId: user.uid,
+          id: self.crypto.randomUUID(),
+          user_id: user.uid,
           purchaseDate: investment.date,
-          riskLevel: 'medium' as const,
-          source: 'csv' as const,
-          createdAt: new Date().toISOString()
+          investment_type: investment.type, // Map field name
+          fund_name: investment.name, // Map field name
         }));
         
-        await FirestoreService.addInvestments(firestoreInvestments);
+        await db.investments.bulkAdd(investmentsToSave as any);
         
         toast({
           title: "Success",
@@ -226,26 +227,25 @@ export function CSVImports() {
     
     try {
       if (type === 'axio') {
-        const firestoreExpenses = data.map(expense => ({
+        const expensesToSave = data.map(expense => ({
           ...expense,
-          userId: user.uid,
-          type: 'expense' as const,
-          source: 'csv' as const,
-          createdAt: new Date().toISOString()
+          id: self.crypto.randomUUID(),
+          user_id: user.uid,
+          source: 'csv',
         }));
         
-        await FirestoreService.addExpenses(firestoreExpenses);
+        await db.expenses.bulkAdd(expensesToSave as any);
       } else if (type === 'kuvera') {
-        const firestoreInvestments = data.map(investment => ({
+        const investmentsToSave = data.map(investment => ({
           ...investment,
-          userId: user.uid,
+          id: self.crypto.randomUUID(),
+          user_id: user.uid,
           purchaseDate: investment.date,
-          riskLevel: 'medium' as const,
-          source: 'csv' as const,
-          createdAt: new Date().toISOString()
+          investment_type: investment.type,
+          fund_name: investment.name,
         }));
         
-        await FirestoreService.addInvestments(firestoreInvestments);
+        await db.investments.bulkAdd(investmentsToSave as any);
       }
       
       toast({
