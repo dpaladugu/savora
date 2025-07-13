@@ -45,6 +45,35 @@ export class ExpenseService {
   }
 
   /**
+   * Bulk adds an array of expense records to the database.
+   * @param expensesData An array of expense data to add.
+   * @returns A promise that resolves when the operation is complete.
+   */
+  static async bulkAddExpenses(expensesData: AppExpense[]): Promise<void> {
+    try {
+      await db.expenses.bulkAdd(expensesData);
+    } catch (error) {
+      console.error("Error in ExpenseService.bulkAddExpenses:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk adds an array of expense records to the database.
+   * @param expensesData An array of expense data to add.
+   * @returns A promise that resolves when the operation is complete.
+   */
+  static async bulkAddExpenses(expensesData: AppExpense[]): Promise<void> {
+    try {
+      await db.expenses.bulkAdd(expensesData);
+      console.log(`Bulk added ${expensesData.length} expenses.`);
+    } catch (error) {
+      console.error("Error in ExpenseService.bulkAddExpenses:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Deletes an expense record from the database.
    * @param id The id of the expense to delete.
    */
@@ -53,6 +82,21 @@ export class ExpenseService {
       await db.expenses.delete(id);
     } catch (error) {
       console.error(`Error in ExpenseService.deleteExpense for id ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Bulk adds an array of investment records to the database.
+   * @param investmentsData An array of investment data to add.
+   * @returns A promise that resolves when the operation is complete.
+   */
+  static async bulkAddInvestments(investmentsData: AppInvestment[]): Promise<void> {
+    try {
+      await db.investments.bulkAdd(investmentsData);
+      console.log(`Bulk added ${investmentsData.length} investments.`);
+    } catch (error) {
+      console.error("Error in InvestmentService.bulkAddInvestments:", error);
       throw error;
     }
   }

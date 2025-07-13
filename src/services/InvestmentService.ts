@@ -33,6 +33,20 @@ export class InvestmentService {
   }
 
   /**
+   * Bulk adds an array of investment records to the database.
+   * @param investmentsData An array of investment data to add.
+   * @returns A promise that resolves when the operation is complete.
+   */
+  static async bulkAddInvestments(investmentsData: AppInvestment[]): Promise<void> {
+    try {
+      await db.investments.bulkAdd(investmentsData);
+    } catch (error) {
+      console.error("Error in InvestmentService.bulkAddInvestments:", error);
+      throw error;
+    }
+  }
+
+  /**
    * Updates an existing investment record.
    * @param id The id of the investment to update.
    * @param updates A partial object of the investment data to update.
