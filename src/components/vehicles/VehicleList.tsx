@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import {
   Trash2, Edit3, ShieldCheck, Gauge, UserCircle, CalendarDays, Car, Bike, ChevronDown, Shield, Receipt, Package,
-  Palette, Tag as StatusTag, ShoppingCart, Cog, Route, MapPin, Wrench, FileText, ClockHistory, TrendingUp
+  Palette, Tag as StatusTag, ShoppingCart, Cog, Route, MapPin, Wrench, FileText, History, TrendingUp
 } from "lucide-react";
 import { Vehicle } from "@/db";
 import { formatCurrency } from "@/lib/format-utils"; // Import from new utility file
@@ -196,7 +196,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 <div className="flex items-center text-muted-foreground"><MapPin aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Location: <span className="text-foreground ml-1">{vehicle.location}</span></div>
               )}
               {vehicle.tracking_last_service_odometer !== undefined && (
-                <div className="flex items-center text-muted-foreground"><ClockHistory aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Last Serviced: <span className="text-foreground ml-1">{vehicle.tracking_last_service_odometer.toLocaleString()} km</span></div>
+                <div className="flex items-center text-muted-foreground"><History aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Last Serviced: <span className="text-foreground ml-1">{vehicle.tracking_last_service_odometer.toLocaleString()} km</span></div>
               )}
               {vehicle.repair_estimate !== undefined && vehicle.repair_estimate > 0 && (
                 <div className="flex items-center text-muted-foreground"><Wrench aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Repair Est: <span className="text-foreground ml-1">{formatCurrency(vehicle.repair_estimate)}</span></div>

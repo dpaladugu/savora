@@ -19,7 +19,7 @@ interface AddVehicleFormProps {
 
 // Zod schema for validation
 const vehicleSchema = z.object({
-  vehicle_name: z.string().min(1, "Vehicle Name is required."),
+  name: z.string().min(1, "Vehicle Name is required."),
   registrationNumber: z.string().min(1, "Registration Number is required."),
   type: z.string().min(1, "Type is required."),
   make: z.string().optional(),
@@ -61,7 +61,7 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
   const { register, handleSubmit, control, reset, formState: { errors } } = useForm<VehicleFormData>({
     resolver: zodResolver(vehicleSchema),
     defaultValues: {
-      vehicle_name: '',
+      name: '',
       registrationNumber: '',
       type: 'Car',
       make: '',
@@ -126,9 +126,9 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
           <CardTitle className="text-lg pt-2 border-b pb-2 mb-3">Core Details</CardTitle>
 
           <div>
-            <Label htmlFor="vehicle_name">Vehicle Nickname*</Label>
-            <Input id="vehicle_name" {...register('vehicle_name')} placeholder="e.g., My Honda City, Dad's Scooter" />
-            {errors.vehicle_name && <p className="mt-1 text-xs text-destructive">{errors.vehicle_name.message}</p>}
+            <Label htmlFor="name">Vehicle Nickname*</Label>
+            <Input id="name" {...register('name')} placeholder="e.g., My Honda City, Dad's Scooter" />
+            {errors.name && <p className="mt-1 text-xs text-destructive">{errors.name.message}</p>}
           </div>
 
           <div>
