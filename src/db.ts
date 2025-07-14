@@ -219,6 +219,12 @@ export class SavoraDB extends Dexie {
       console.log("Upgrading Dexie DB to v15: Enhanced 'vehicles' table schema with more fields.");
     });
 
+    this.version(17).stores({
+      appSettings: '&key',
+    }).upgrade(async tx => {
+      console.log("Upgrading Dexie DB to v17: Added appSettings table.");
+    });
+
     // Version 16 - Enhanced Incomes Schema
     this.version(16).stores({
       incomes: '&id, user_id, date, amount, category, source_name, description, frequency, *tags_flat, account_id',
