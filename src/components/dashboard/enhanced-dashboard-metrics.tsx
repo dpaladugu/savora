@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, DollarSign, Target, PiggyBank, CreditCard } from "lucide-react";
 import { motion } from "framer-motion";
 import { DashboardData } from "@/types/dashboard";
-import { DataValidator } from "@/services/enhanced-data-validator"; // Changed import
+import { ComprehensiveDataValidator as DataValidator } from "@/services/comprehensive-data-validator"; // Changed import
 
 interface EnhancedDashboardMetricsProps {
   dashboardData: DashboardData | null;
