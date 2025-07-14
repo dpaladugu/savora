@@ -42,16 +42,8 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   useEffect(() => {
     const checkPinSetup = async () => {
       try {
-        const aiConfigSetting = await db.appSettings.get('encryptedAiConfig');
-        if (aiConfigSetting && aiConfigSetting.value) {
-          const providerSetting = await db.appSettings.get('currentAiProvider');
-          if (providerSetting?.value) {
-            setAiProvider(providerSetting.value as string);
-          }
-          const baseUrlSetting = await db.appSettings.get('aiServiceBaseUrl');
-          if (baseUrlSetting?.value) {
-            setAiBaseUrl(baseUrlSetting.value as string);
-          }
+        const pinLastSet = await db.appSettings.get('pinLastSet');
+        if (pinLastSet) {
           setMode('unlock');
         } else {
           setMode('setup');
