@@ -170,7 +170,17 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
           });
           toast({ title: 'Success!', description: 'Application unlocked.' });
           onUnlockSuccess();
-        } else {
+        } else if (decryptedPayload) {
+          // Handle case where PIN is correct but payload is incomplete
+          setDecryptedAiConfig({
+            apiKey: decryptedPayload.apiKey || null,
+            provider: decryptedPayload.provider || null,
+            baseUrl: decryptedPayload.baseUrl || null,
+          });
+          toast({ title: 'Success!', description: 'Application unlocked.' });
+          onUnlockSuccess();
+        }
+        else {
           console.warn("PinLock: Unlock handleSubmit - Decryption failed or payload malformed. Decrypted:", decryptedPayload);
           setError('Invalid PIN or corrupted data. Please try again.');
           toast({ title: 'Unlock Failed', description: 'Invalid PIN or data corruption.', variant: 'destructive' });
