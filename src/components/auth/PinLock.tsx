@@ -179,6 +179,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
             baseUrl: decryptedPayload.baseUrl || null,
           });
           toast({ title: 'Success!', description: 'Application unlocked.' });
+          aiChatServiceInstance.initializeProvider();
           onUnlockSuccess();
         }
         else {

@@ -167,8 +167,6 @@ export class SavoraDB extends Dexie {
 
     this.version(5).stores({
       expenses: '&id, user_id, date, category, amount, description, payment_method, *tags_flat, source, merchant, account',
-    }).upgrade(async tx => {
-      console.log("Upgrading Dexie DB to v5: Expenses PK to UUID, schema update.");
     });
 
     this.version(6).stores({
@@ -189,8 +187,7 @@ export class SavoraDB extends Dexie {
     }).upgrade(async () => console.log("Upgrading Dexie DB to v9: Added insurancePolicies, Loans PK to UUID and schema update."));
 
     this.version(10).stores({
-      vehicles: '&id, user_id, name, registrationNumber, make, model, fuelType, insuranceExpiryDate',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v10: Vehicles PK to UUID and schema update."));
+    });
 
     this.version(11).stores({
       investments: '&id, user_id, fund_name, investment_type, category, purchaseDate',

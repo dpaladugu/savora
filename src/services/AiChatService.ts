@@ -121,7 +121,7 @@ export class AiChatService {
   private currentProviderConfig: { apiKey?: string; provider?: string; baseUrl?: string; model?: string } | null = null;
 
   constructor() {
-    this.initializeProvider(); // Initialize based on current store state
+    // this.initializeProvider(); // Initialize based on current store state
   }
 
   // Initialize or re-initialize the provider if settings have changed
