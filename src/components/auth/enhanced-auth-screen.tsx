@@ -10,7 +10,7 @@ import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { GlobalHeader } from "@/components/layout/global-header"; // Import GlobalHeader
 
-export function EnhancedAuthScreen() {
+export const AuthScreen = function EnhancedAuthScreen() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

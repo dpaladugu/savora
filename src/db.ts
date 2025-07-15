@@ -237,6 +237,7 @@ export class SavoraDB extends Dexie {
       // });
     });
 
+
     // Initialize table properties
     this.appSettings = this.table('appSettings');
     this.expenses = this.table('expenses');
