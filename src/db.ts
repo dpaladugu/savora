@@ -174,8 +174,7 @@ export class SavoraDB extends Dexie {
     }).upgrade(async () => console.log("Upgrading Dexie DB to v6: Added recurringTransactions."));
 
     this.version(7).stores({
-      creditCards: '&id, user_id, name, issuer, dueDate',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v7: CreditCards PK to UUID and schema update."));
+    });
 
     this.version(8).stores({
       goldInvestments: '&id, user_id, purchaseDate, form, purity, storageLocation, vendor',
