@@ -182,7 +182,6 @@ export class SavoraDB extends Dexie {
 
     this.version(9).stores({
       insurancePolicies: '&id, user_id, policyName, insurer, type, nextDueDate, status',
-      loans: '&id, user_id, loanType, lender, nextDueDate, status, principalAmount, emiAmount, tenureMonths',
     }).upgrade(async () => console.log("Upgrading Dexie DB to v9: Added insurancePolicies, Loans PK to UUID and schema update."));
 
     this.version(10).stores({
