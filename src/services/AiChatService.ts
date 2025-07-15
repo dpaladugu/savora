@@ -121,12 +121,12 @@ export class AiChatService {
   private currentProviderConfig: { apiKey?: string; provider?: string; baseUrl?: string; model?: string } | null = null;
 
   constructor() {
-    this.initializeProvider(); // Initialize based on current store state
+    // this.initializeProvider(); // Initialize based on current store state
   }
 
   // Initialize or re-initialize the provider if settings have changed
   private initializeProvider(): boolean {
-    const { apiKey, provider: providerName, baseUrl, model } = useAppStore.getState().decryptedAiConfigState();
+    const { decryptedAiApiKey: apiKey, currentAiProvider: providerName, aiServiceBaseUrl: baseUrl, currentAiModel: model } = useAppStore.getState();
 
     // Check if configuration has actually changed to prevent unnecessary re-initialization
     if (

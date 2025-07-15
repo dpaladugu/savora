@@ -42,16 +42,8 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   useEffect(() => {
     const checkPinSetup = async () => {
       try {
-        const aiConfigSetting = await db.appSettings.get('encryptedAiConfig');
-        if (aiConfigSetting && aiConfigSetting.value) {
-          const providerSetting = await db.appSettings.get('currentAiProvider');
-          if (providerSetting?.value) {
-            setAiProvider(providerSetting.value as string);
-          }
-          const baseUrlSetting = await db.appSettings.get('aiServiceBaseUrl');
-          if (baseUrlSetting?.value) {
-            setAiBaseUrl(baseUrlSetting.value as string);
-          }
+        const pinLastSet = await db.appSettings.get('pinLastSet');
+        if (pinLastSet) {
           setMode('unlock');
         } else {
           setMode('setup');
@@ -128,6 +120,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
               provider: aiProvider,
               baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
             });
+            await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider });
           } else {
             console.error("PinLock: Encryption process failed during PIN setup with AI config.");
             throw new Error('Encryption process failed for AI configuration.');
@@ -178,7 +171,18 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
           });
           toast({ title: 'Success!', description: 'Application unlocked.' });
           onUnlockSuccess();
-        } else {
+        } else if (decryptedPayload) {
+          // Handle case where PIN is correct but payload is incomplete
+          setDecryptedAiConfig({
+            apiKey: decryptedPayload.apiKey || null,
+            provider: decryptedPayload.provider || null,
+            baseUrl: decryptedPayload.baseUrl || null,
+          });
+          toast({ title: 'Success!', description: 'Application unlocked.' });
+          aiChatServiceInstance.initializeProvider();
+          onUnlockSuccess();
+        }
+        else {
           console.warn("PinLock: Unlock handleSubmit - Decryption failed or payload malformed. Decrypted:", decryptedPayload);
           setError('Invalid PIN or corrupted data. Please try again.');
           toast({ title: 'Unlock Failed', description: 'Invalid PIN or data corruption.', variant: 'destructive' });

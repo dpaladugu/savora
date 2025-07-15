@@ -4,14 +4,14 @@ import { db, Vehicle } from '@/db';
 import { VehicleList } from './VehicleList';
 import { AddVehicleForm } from './AddVehicleForm';
 import { Button } from '@/components/ui/button';
-import { VehicleService } from '@/services/VehicleService'; // Import the new service
+import { VehicleService } from '@/services/VehicleService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PlusCircle, Car } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { EnhancedLoadingWrapper } from '@/components/ui/enhanced-loading-wrapper';
 import { CriticalErrorBoundary } from '@/components/ui/critical-error-boundary';
 import type { VehicleData } from '@/types/jsonPreload';
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { useAuth } from '@/contexts/auth-context';
 
 export function VehicleManager() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -19,26 +19,21 @@ export function VehicleManager() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // orderBy 'name' and filter by user_id if user is available
   const vehicles = useLiveQuery(() => {
     if (!user?.uid) return [];
-    // The service method returns the promise that useLiveQuery needs.
-    // We can add sorting here after getting the data if the service doesn't handle it.
     return VehicleService.getVehicles(user.uid).then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
   }, [user?.uid], []);
 
   const isLoading = vehicles === undefined && user !== undefined;
 
-  // vehicleFormData is what comes from AddVehicleForm, based on VehicleData
   const handleAddVehicle = async (vehicleFormData: Omit<VehicleData, 'id'>) => {
     if (!user?.uid) {
       toast({ title: "Authentication Error", description: "You must be logged in to add a vehicle.", variant: "destructive" });
       return;
     }
     try {
-      const vehicleRecord: Omit<Vehicle, 'id' | 'user_id'> & { user_id?: string } = { // Ensure user_id is part of the type for the record
-        // Core Identification
-        name: vehicleFormData.vehicle_name,
+      const vehicleRecord: Omit<Vehicle, 'id' | 'user_id'> & { user_id?: string } = {
+        name: vehicleFormData.name,
         registrationNumber: vehicleFormData.registrationNumber!,
         make: vehicleFormData.make,
         model: vehicleFormData.model,
@@ -47,44 +42,32 @@ export function VehicleManager() {
         type: vehicleFormData.type,
         owner: vehicleFormData.owner,
         status: vehicleFormData.status,
-
-        // Purchase and Financials
         purchaseDate: vehicleFormData.purchaseDate,
         purchasePrice: vehicleFormData.purchasePrice,
-
-        // Technical Details
         fuelType: vehicleFormData.fuelType,
         engineNumber: vehicleFormData.engineNumber,
         chassisNumber: vehicleFormData.chassisNumber,
         currentOdometer: vehicleFormData.currentOdometer,
         fuelEfficiency: vehicleFormData.fuelEfficiency,
-
-        // Insurance Details
         insuranceProvider: vehicleFormData.insurance_provider,
         insurancePolicyNumber: vehicleFormData.insurancePolicyNumber,
         insuranceExpiryDate: vehicleFormData.insurance_next_renewal,
         insurance_premium: vehicleFormData.insurance_premium,
         insurance_frequency: vehicleFormData.insurance_frequency,
-
-        // Tracking & Maintenance
         tracking_type: vehicleFormData.tracking_type,
         tracking_last_service_odometer: vehicleFormData.tracking_last_service_odometer,
         next_pollution_check: vehicleFormData.next_pollution_check,
         location: vehicleFormData.location,
         repair_estimate: vehicleFormData.repair_estimate,
-
-        // Misc
         notes: vehicleFormData.notes,
       };
 
       const recordToSave: Partial<Vehicle> = { ...vehicleRecord, user_id: user.uid };
 
       if (editingVehicle && editingVehicle.id) {
-        // The service handles adding the 'updated_at' timestamp.
         await VehicleService.updateVehicle(editingVehicle.id, recordToSave);
         toast({ title: "Vehicle Updated", description: `${recordToSave.name} has been successfully updated.` });
       } else {
-        // The service handles adding 'id', 'created_at', and 'updated_at'.
         await VehicleService.addVehicle(recordToSave as Omit<Vehicle, 'id'>);
         toast({ title: "Vehicle Added", description: `${recordToSave.name} has been successfully added.` });
       }
@@ -140,9 +123,7 @@ export function VehicleManager() {
             setEditingVehicle(null);
           }}
           existingVehicle={editingVehicle ? {
-            // Map DexieVehicleRecord (Vehicle) to VehicleData for the form
-            // id is not part of VehicleData for form purposes beyond existing check
-            vehicle_name: editingVehicle.name,
+            name: editingVehicle.name,
             registrationNumber: editingVehicle.registrationNumber,
             make: editingVehicle.make,
             model: editingVehicle.model,
@@ -160,7 +141,7 @@ export function VehicleManager() {
             fuelEfficiency: editingVehicle.fuelEfficiency,
             insurance_provider: editingVehicle.insuranceProvider,
             insurancePolicyNumber: editingVehicle.insurancePolicyNumber,
-            insurance_next_renewal: editingVehicle.insuranceExpiryDate, // Map to form field
+            insurance_next_renewal: editingVehicle.insuranceExpiryDate,
             insurance_premium: editingVehicle.insurance_premium,
             insurance_frequency: editingVehicle.insurance_frequency,
             tracking_type: editingVehicle.tracking_type,

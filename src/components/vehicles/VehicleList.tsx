@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import {
   Trash2, Edit3, ShieldCheck, Gauge, UserCircle, CalendarDays, Car, Bike, ChevronDown, Shield, Receipt, Package,
-  Palette, Tag as StatusTag, ShoppingCart, Cog, Route, MapPin, Wrench, FileText, ClockHistory, TrendingUp
+  Palette, Tag as StatusTag, ShoppingCart, Cog, Route, MapPin, Wrench, FileText, History, TrendingUp
 } from "lucide-react";
 import { Vehicle } from "@/db";
 import { formatCurrency } from "@/lib/format-utils"; // Import from new utility file
@@ -196,7 +196,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 <div className="flex items-center text-muted-foreground"><MapPin aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Location: <span className="text-foreground ml-1">{vehicle.location}</span></div>
               )}
               {vehicle.tracking_last_service_odometer !== undefined && (
-                <div className="flex items-center text-muted-foreground"><ClockHistory aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Last Serviced: <span className="text-foreground ml-1">{vehicle.tracking_last_service_odometer.toLocaleString()} km</span></div>
+                <div className="flex items-center text-muted-foreground"><History aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Last Serviced: <span className="text-foreground ml-1">{vehicle.tracking_last_service_odometer.toLocaleString()} km</span></div>
               )}
               {vehicle.repair_estimate !== undefined && vehicle.repair_estimate > 0 && (
                 <div className="flex items-center text-muted-foreground"><Wrench aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />Repair Est: <span className="text-foreground ml-1">{formatCurrency(vehicle.repair_estimate)}</span></div>
@@ -251,70 +251,7 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                       </div>
                         <p className="text-muted-foreground italic text-xs">Mock expense display needs review.</p>
                       </div>
-                    </div>
                   ) : <p className="text-muted-foreground italic text-xs">No linked expenses (mock).</p>}
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-          </CardContent>
-        </Card>
-        </motion.div>
-      ))}
-    </div>
-  );
-}
-                </div>
-              )}
-            </div>
-
-            {/* Related Data Collapsible Section - vehicle.id is now string */}
-            <div className="mt-3 pt-2 border-t border-dashed">
-              <Collapsible open={expandedVehicleId === vehicle.id} onOpenChange={(open) => setExpandedVehicleId(open ? vehicle.id! : null)}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 p-2 w-full justify-start text-xs text-muted-foreground hover:bg-muted/50">
-                    View Related Data
-                    <ChevronDown aria-hidden="true" className={`w-3 h-3 ml-auto transform transition-transform ${expandedVehicleId === vehicle.id ? 'rotate-180' : ''}`} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-3 space-y-3 text-xs pl-2">
-                  {/* Related Insurance (Mock) - Keyed by string vehicle.id */}
-                  {(mockInsurancePolicies[vehicle.id!] && mockInsurancePolicies[vehicle.id!].length > 0) ? (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Shield aria-hidden="true" className="w-3 h-3 text-blue-600" />
-                        <span className="text-xs font-medium text-blue-800 dark:text-blue-200">Insurance Policies</span>
-                      </div>
-                      {/* Ensure DataValidator.formatCurrency is available or remove if insurance_premium is not used
-                      {mockInsurancePolicies[vehicle.id!]?.map(policy => (
-                        <div key={policy.id} className="text-blue-700 dark:text-blue-300">
-                          {policy.insurer} - {DataValidator.formatCurrency(policy.premium)} (Exp: {format(parseISO(policy.expiryDate), 'PP')})
-                        </div>
-                      ))}
-                      */}
-                       <p className="text-muted-foreground italic">Mock policy display needs review.</p>
-                    </div>
-                  ) : <p className="text-muted-foreground italic">No linked insurance policies (mock).</p>}
-
-                  {/* Recent Expenses (Mock) - Keyed by string vehicle.id */}
-                  {(mockRelatedExpenses[vehicle.id!] && mockRelatedExpenses[vehicle.id!].length > 0) ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-md p-2">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Receipt aria-hidden="true" className="w-3 h-3 text-green-600" />
-                        <span className="text-xs font-medium text-green-800 dark:text-green-200">Recent Expenses</span>
-                      </div>
-                      <div className="space-y-0.5">
-                        {/* Ensure DataValidator.formatCurrency is available
-                        {mockRelatedExpenses[vehicle.id!]?.slice(0, 3).map(expense => (
-                          <div key={expense.id} className="text-green-700 dark:text-green-300 flex justify-between">
-                            <span>{expense.tag}</span>
-                            <span>{DataValidator.formatCurrency(expense.amount)}</span>
-                          </div>
-                        ))}
-                        */}
-                        <p className="text-muted-foreground italic">Mock expense display needs review.</p>
-                      </div>
-                    </div>
-                  ) : <p className="text-muted-foreground italic">No linked expenses (mock).</p>}
                 </CollapsibleContent>
               </Collapsible>
             </div>
