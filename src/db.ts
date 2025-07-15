@@ -237,11 +237,6 @@ export class SavoraDB extends Dexie {
       // });
     });
 
-    this.version(17).stores({
-      appSettings: '&key',
-    }).upgrade(async tx => {
-      console.log("Upgrading Dexie DB to v17: Added appSettings table.");
-    });
 
     // Initialize table properties
     this.appSettings = this.table('appSettings');

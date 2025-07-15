@@ -120,6 +120,7 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
               provider: aiProvider,
               baseUrl: (aiProvider === 'ollama_local') ? currentBaseUrl : null,
             });
+            await db.appSettings.put({ key: 'currentAiProvider', value: aiProvider });
           } else {
             console.error("PinLock: Encryption process failed during PIN setup with AI config.");
             throw new Error('Encryption process failed for AI configuration.');
