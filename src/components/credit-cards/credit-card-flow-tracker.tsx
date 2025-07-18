@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { CreditCard, Plus, TrendingDown, Calendar, AlertCircle } from "lucide-react";
 import { ModuleHeader } from "@/components/layout/module-header";
 import { ExpenseService } from "@/services/ExpenseService";
+import { formatCurrency } from "@/lib/format-utils";
 import { Expense } from "@/services/supabase-data-service";
 import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
@@ -289,7 +290,7 @@ export function CreditCardFlowTracker() {
                         <span className="text-sm text-muted-foreground">This Month</span>
                       </div>
                       <div className="text-xl font-bold text-foreground">
-                        ₹{monthlySpend.toLocaleString()}
+                        {formatCurrency(monthlySpend)}
                       </div>
                       {card.creditLimit && (
                         <div className="text-xs text-muted-foreground">
@@ -340,7 +341,7 @@ export function CreditCardFlowTracker() {
                         {categoryBreakdown.map(([category, amount]) => (
                           <div key={category} className="flex justify-between text-sm">
                             <span className="text-muted-foreground">{category}</span>
-                            <span className="font-medium text-foreground">₹{Number(amount).toLocaleString()}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(Number(amount))}</span>
                           </div>
                         ))}
                       </div>

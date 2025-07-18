@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,10 +30,10 @@ const OLLAMA_DEFAULT_FORM_MODEL = 'llama2';
 
 export function LLMSettingsForm() {
   const { toast } = useToast();
-  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(state => ({
+  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(useCallback(state => ({
     decryptedAiConfig: state.decryptedAiConfig,
     setDecryptedAiConfig: state.setDecryptedAiConfig,
-  }));
+  }), []));
   const { user } = useAuth();
 
   const [selectedProvider, setSelectedProvider] = useState<string>('');

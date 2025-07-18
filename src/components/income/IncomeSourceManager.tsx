@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/format-utils";
 import { db } from "@/db";
 import { IncomeSourceData } from "@/types/jsonPreload";
 import { IncomeSourceService } from "@/services/IncomeSourceService"; // Import the new service
@@ -119,7 +120,7 @@ export function IncomeSourceManager() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {source.defaultAmount && <p className="text-xl font-semibold text-green-600">₹{source.defaultAmount.toLocaleString()}</p>}
+                {source.defaultAmount && <p className="text-xl font-semibold text-green-600">{formatCurrency(source.defaultAmount)}</p>}
                 {source.account && <p className="text-sm text-muted-foreground">Account: {source.account}</p>}
                  <div className="flex justify-end space-x-2 pt-2 border-t mt-2">
                     <Button variant="ghost" size="icon" onClick={() => handleEdit(source)} className="h-8 w-8" aria-label={`Edit ${source.name}`}>

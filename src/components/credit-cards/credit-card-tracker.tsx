@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Plus, CreditCard, Calendar, DollarSign, Percent } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/format-utils";
 import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
 
@@ -106,7 +107,7 @@ export function CreditCardTracker() {
                 <CreditCard className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-foreground">₹{totalCreditLimit.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalCreditLimit)}</div>
                 <div className="text-sm text-muted-foreground">Total Limit</div>
               </div>
             </div>
@@ -161,7 +162,7 @@ export function CreditCardTracker() {
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Credit Limit:</span>
-                        <div className="font-semibold text-foreground">₹{card.creditLimit.toLocaleString()}</div>
+                        <div className="font-semibold text-foreground">{formatCurrency(card.creditLimit)}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Due Date:</span>
@@ -169,7 +170,7 @@ export function CreditCardTracker() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Annual Fee:</span>
-                        <div className="font-semibold text-foreground">₹{card.annualFee}</div>
+                        <div className="font-semibold text-foreground">{formatCurrency(card.annualFee)}</div>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Fee Waiver:</span>
