@@ -166,6 +166,7 @@ async function fetchDashboardData(userId?: string): Promise<DashboardData> { // 
   };
 
   Logger.info('Dashboard data calculated from Dexie:', realData);
+  console.log("Dashboard data calculated from Dexie:", realData);
   return realData;
 }
 

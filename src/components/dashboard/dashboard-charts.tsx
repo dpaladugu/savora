@@ -5,7 +5,32 @@ import { ErrorBoundary } from "@/components/error/error-boundary";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
 
-export function DashboardCharts() {
+import { DashboardData } from "@/types/dashboard";
+
+interface DashboardChartsProps {
+  data: DashboardData | null;
+}
+
+export function DashboardCharts({ data }: DashboardChartsProps) {
+  if (!data) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card className="metric-card border-border/50">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No data available for charts.</p>
+          </CardContent>
+        </Card>
+        <Card className="metric-card border-border/50">
+          <CardContent className="p-6 text-center">
+            <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">No data available for charts.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <div className="space-y-6 px-2">
@@ -17,7 +42,7 @@ export function DashboardCharts() {
             </CardContent>
           </Card>
         }>
-          <ExpenseChart />
+          <ExpenseChart data={data.categoryBreakdown} />
         </ErrorBoundary>
         
         <ErrorBoundary fallback={
@@ -28,7 +53,7 @@ export function DashboardCharts() {
             </CardContent>
           </Card>
         }>
-          <AssetAllocation />
+          <AssetAllocation data={data.categoryBreakdown} />
         </ErrorBoundary>
       </div>
     </ErrorBoundary>

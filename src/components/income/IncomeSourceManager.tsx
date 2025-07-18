@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/format-utils";
@@ -292,9 +292,12 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="add-income-source-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} Income Source</DialogTitle>
+          <DialogDescription id="add-income-source-description">
+            {formData.id ? 'Update the details of your income source.' : 'Add a new source of income to track.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div>
