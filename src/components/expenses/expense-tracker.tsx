@@ -17,8 +17,8 @@ import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper
 import { CriticalErrorBoundary } from "@/components/ui/critical-error-boundary";
 import { useSingleLoading } from "@/hooks/use-comprehensive-loading";
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AdvancedExpenseFilters, ExpenseFilterCriteria } from "./advanced-expense-filters"; // Updated import
-import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator"; // For currency formatting
+import { AdvancedExpenseFilters, ExpenseFilterCriteria } from "./advanced-expense-filters";
+import { formatCurrency } from "@/lib/format-utils";
 import { motion } from "framer-motion";
 import { parseISO, isValid } from "date-fns";
 
@@ -247,7 +247,7 @@ export function ExpenseTracker() {
               <Card className="bg-gradient-to-br from-red-500 to-pink-600 text-white">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
-                    <div><p className="text-red-100 text-sm">Total Expenses</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(totalShownExpenses)}</p></div>
+                    <div><p className="text-red-100 text-sm">Total Expenses</p><p className="text-2xl font-bold">{formatCurrency(totalShownExpenses)}</p></div>
                     <TrendingDown aria-hidden="true" className="w-8 h-8 text-red-200" />
                   </div>
                 </CardContent>
@@ -257,7 +257,7 @@ export function ExpenseTracker() {
               <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
-                    <div><p className="text-green-100 text-sm">Total Income (filtered period)</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(totalIncomeForSummary)}</p></div>
+                    <div><p className="text-green-100 text-sm">Total Income (filtered period)</p><p className="text-2xl font-bold">{formatCurrency(totalIncomeForSummary)}</p></div>
                     <TrendingUp aria-hidden="true" className="w-8 h-8 text-green-200" />
                   </div>
                 </CardContent>
@@ -267,7 +267,7 @@ export function ExpenseTracker() {
               <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                 <CardContent className="p-4 md:p-6">
                   <div className="flex items-center justify-between">
-                    <div><p className="text-blue-100 text-sm">Net Balance (filtered period)</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(netBalanceForSummary)}</p></div>
+                    <div><p className="text-blue-100 text-sm">Net Balance (filtered period)</p><p className="text-2xl font-bold">{formatCurrency(netBalanceForSummary)}</p></div>
                     <DollarSign aria-hidden="true" className="w-8 h-8 text-blue-200" />
                   </div>
                 </CardContent>
