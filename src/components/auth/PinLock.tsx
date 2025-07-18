@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
-import { AiChatService } from '@/services/AiChatService'; // Import the service
+import aiChatServiceInstance from '@/services/AiChatService';
 
 interface PinLockProps {
   onUnlockSuccess: () => void;
@@ -36,7 +36,6 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const aiChatServiceInstance = AiChatService.getInstance();
 
 
   const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig); // Select only the needed action
