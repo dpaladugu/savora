@@ -28,7 +28,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true }}>
               <div className="min-h-screen bg-background text-foreground">
                 <Routes>
                   <Route path="/" element={<Index />} />

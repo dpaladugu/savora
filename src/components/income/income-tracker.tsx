@@ -386,10 +386,10 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="add-income-description">
         <DialogHeader>
           <DialogTitle>{initialData?.id ? 'Edit' : 'Add New'} Income</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-income-description">
             {initialData?.id ? 'Update the details of your income entry.' : 'Add a new income entry to your records.'}
           </DialogDescription>
         </DialogHeader>

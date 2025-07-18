@@ -292,10 +292,10 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="add-income-source-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} Income Source</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-income-source-description">
             {formData.id ? 'Update the details of your income source.' : 'Add a new source of income to track.'}
           </DialogDescription>
         </DialogHeader>

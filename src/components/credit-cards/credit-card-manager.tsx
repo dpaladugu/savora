@@ -392,10 +392,10 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6" aria-describedby="add-credit-card-description">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">{formData.id ? 'Edit' : 'Add New'} Credit Card</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-credit-card-description">
             {formData.id ? 'Update the details of your existing credit card.' : 'Add a new credit card to track your spending.'}
           </DialogDescription>
         </DialogHeader>

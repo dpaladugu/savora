@@ -287,10 +287,10 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="add-tag-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Create New'} Tag</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-tag-description">
             {formData.id ? 'Update the details of your tag.' : 'Create a new tag to categorize your items.'}
           </DialogDescription>
         </DialogHeader>

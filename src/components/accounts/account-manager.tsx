@@ -396,10 +396,10 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="add-account-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add New'} Account</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-account-description">
             {formData.id ? 'Update the details of your existing account.' : 'Add a new account to track your finances.'}
           </DialogDescription>
         </DialogHeader>

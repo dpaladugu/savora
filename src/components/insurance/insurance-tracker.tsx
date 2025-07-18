@@ -530,10 +530,10 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}> {/* Form is now a dialog itself */}
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="add-insurance-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} Insurance Policy</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-insurance-description">
             {formData.id ? 'Update the details of your insurance policy.' : 'Add a new insurance policy to your records.'}
           </DialogDescription>
         </DialogHeader>
@@ -790,10 +790,10 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
 
   return (
      <Dialog open={true} onOpenChange={onClose}> {/* Form is now a dialog itself */}
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="add-emi-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} EMI / Loan</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-emi-description">
             {formData.id ? 'Update the details of your EMI or loan.' : 'Add a new EMI or loan to your records.'}
           </DialogDescription>
         </DialogHeader>
