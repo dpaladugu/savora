@@ -255,10 +255,10 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] md:sm:max-w-[650px] max-h-[90vh] overflow-y-auto p-6">
+      <DialogContent className="sm:max-w-[480px] md:sm:max-w-[650px] max-h-[90vh] overflow-y-auto p-6" aria-describedby="add-recurring-transaction-description">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">{formData.id ? 'Edit' : 'Add'} Recurring Transaction</DialogTitle>
-          <DialogDescription>
+          <DialogDescription id="add-recurring-transaction-description">
             Automate your regular income or expenses with ease.
           </DialogDescription>
         </DialogHeader>
