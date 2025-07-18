@@ -18,7 +18,7 @@ import { CriticalErrorBoundary } from "@/components/ui/critical-error-boundary";
 import { useSingleLoading } from "@/hooks/use-comprehensive-loading";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { AdvancedExpenseFilters, ExpenseFilterCriteria } from "./advanced-expense-filters";
-import { formatCurrency } from "@/lib/format-utils";
+import { formatCurrency } from "@/services/DataValidator";
 import { motion } from "framer-motion";
 import { parseISO, isValid } from "date-fns";
 
