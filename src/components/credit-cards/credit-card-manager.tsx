@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react"; // Added useEff
 import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2 } from "lucide-react"; // Added Loader2
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
@@ -124,7 +125,7 @@ export function CreditCardManager() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Credit Limit</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalLimit.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalLimit)}</div>
           </CardContent>
         </Card>
         
@@ -137,7 +138,7 @@ export function CreditCardManager() {
                 {utilization.toFixed(1)}%
             </div>
             <p className="text-xs text-muted-foreground">
-                Total Balance: ₹{totalUsed.toLocaleString()}
+                Total Balance: {formatCurrency(totalUsed)}
             </p>
           </CardContent>
         </Card>
@@ -190,9 +191,9 @@ export function CreditCardManager() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Used:</span>
-                        <span className="font-medium text-foreground">₹{card.currentBalance.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(card.currentBalance)}</span>
                         <span className="text-muted-foreground">of</span>
-                        <span className="font-medium text-foreground">₹{card.limit.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(card.limit)}</span>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Due:</span>

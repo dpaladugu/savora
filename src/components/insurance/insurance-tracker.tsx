@@ -17,6 +17,7 @@ import { LoanService } from "@/services/LoanService";
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import { formatCurrency } from "@/lib/format-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -197,7 +198,7 @@ export function InsuranceTracker() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Monthly Premiums</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalMonthlyPremiums.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalMonthlyPremiums)}</div>
           </CardContent>
         </Card>
 
@@ -206,7 +207,7 @@ export function InsuranceTracker() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Monthly EMIs</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₹{totalMonthlyEMIs.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{formatCurrency(totalMonthlyEMIs)}</div>
           </CardContent>
         </Card>
       </div>
@@ -322,8 +323,8 @@ function InsuranceList({ insurances, onEdit, onDelete }: InsuranceListProps) {
                 <p className="text-sm text-muted-foreground mb-1">{insurance.insurer} - {insurance.policyNumber}</p>
 
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-2">
-                  <div><span className="font-medium">Premium:</span> ₹{insurance.premium.toLocaleString()}/{insurance.frequency}</div>
-                  {insurance.coverageAmount && <div><span className="font-medium">Coverage:</span> ₹{insurance.coverageAmount.toLocaleString()}</div>}
+                  <div><span className="font-medium">Premium:</span> {formatCurrency(insurance.premium)}/{insurance.frequency}</div>
+                  {insurance.coverageAmount && <div><span className="font-medium">Coverage:</span> {formatCurrency(insurance.coverageAmount)}</div>}
                   {insurance.startDate && <div><span className="font-medium">Starts:</span> {format(parseISO(insurance.startDate), 'PPP')}</div>}
                   {insurance.endDate && <div><span className="font-medium">Ends:</span> {format(parseISO(insurance.endDate), 'PPP')}</div>}
                   {insurance.nextDueDate && <div><span className="font-medium">Next Due:</span> {format(parseISO(insurance.nextDueDate), 'PPP')}</div>}
@@ -376,9 +377,9 @@ function EMIList({ emis, onEdit, onDelete }: EMIListProps) {
                 </div>
                 <p className="text-sm text-muted-foreground mb-1">{emi.lender}</p>
                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm mt-2">
-                    <div><span className="font-medium">EMI:</span> ₹{emi.emiAmount.toLocaleString()}/month</div>
-                    {emi.principalAmount && <div><span className="font-medium">Principal:</span> ₹{emi.principalAmount.toLocaleString()}</div>}
-                    {emi.remainingAmount !== undefined && <div><span className="font-medium">Remaining:</span> ₹{emi.remainingAmount.toLocaleString()}</div>}
+                    <div><span className="font-medium">EMI:</span> {formatCurrency(emi.emiAmount)}/month</div>
+                    {emi.principalAmount && <div><span className="font-medium">Principal:</span> {formatCurrency(emi.principalAmount)}</div>}
+                    {emi.remainingAmount !== undefined && <div><span className="font-medium">Remaining:</span> {formatCurrency(emi.remainingAmount)}</div>}
                     {emi.interestRate !== undefined && <div><span className="font-medium">Rate:</span> {emi.interestRate}% p.a.</div>}
                     {emi.tenureMonths && <div><span className="font-medium">Tenure:</span> {emi.tenureMonths} months</div>}
                     {emi.nextDueDate && <div><span className="font-medium">Next Due:</span> {format(parseISO(emi.nextDueDate), 'PPP')}</div>}

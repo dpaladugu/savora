@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Plus, Home, Search, Trash2, Edit, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
@@ -184,7 +185,7 @@ export function RentalTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                <p className="text-lg font-bold text-foreground">₹{totalMonthlyRent.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalMonthlyRent)}</p>
               </div>
             </div>
           </CardContent>
@@ -198,7 +199,7 @@ export function RentalTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Security Deposits</p>
-                <p className="text-lg font-bold text-foreground">₹{totalSecurityDeposit.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalSecurityDeposit)}</p>
               </div>
             </div>
           </CardContent>
@@ -264,7 +265,7 @@ export function RentalTracker() {
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Rent:</span>
-                        <span className="font-medium text-foreground">₹{property.rentAmount.toLocaleString()}/month</span>
+                        <span className="font-medium text-foreground">{formatCurrency(property.rentAmount)}/month</span>
                         <span className="text-muted-foreground">•</span>
                         <span className="text-muted-foreground">Due: {property.rentDueDay}{getOrdinalSuffix(property.rentDueDay)}</span>
                         {property.status === 'occupied' && (
@@ -278,7 +279,7 @@ export function RentalTracker() {
                       </div>
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Deposit:</span>
-                        <span className="font-medium text-foreground">₹{property.securityDeposit.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(property.securityDeposit)}</span>
                         <span className="text-muted-foreground">•</span>
                         <span className="text-muted-foreground">Since {new Date(property.leaseStartDate).toLocaleDateString('en-IN')}</span>
                       </div>
