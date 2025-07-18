@@ -133,8 +133,15 @@ export class SavoraDB extends Dexie {
   constructor() {
     super('SavoraFinanceDB');
 
+    // Base schema definition, version 1 (or your initial version)
+    this.version(1).stores({
+      appSettings: '&key',
+      // ... other initial tables if any
+    });
+
+    // Version 3: Added many new tables
     this.version(3).stores({
-        appSettings: '&key',
+        appSettings: '&key', // No change to appSettings PK
         expenses: '++id, date, category, amount, cardLast4, type, merchant, *tags',
         vehicles: '++id, name, type',
         investments: '++id, type, date, name, platform',
@@ -148,16 +155,17 @@ export class SavoraDB extends Dexie {
         realEstateProperties: '++id, name, address',
         financialGoals: '++id, name, priority, targetDate',
         incomeSources: '++id, source, frequency, account',
-        accounts: '++id, name, type, provider', // Simple old schema for accounts if it existed
+        accounts: '++id, name, type, provider',
     });
 
+    // Version 4: Schema changes and data migration
     this.version(4).stores({
-      incomes: '&id, user_id, date, category, source',
-      vehicles: '++id, vehicle_name, owner, type',
-      loans: '++id, user_id, loan_name, lender, interest_rate',
-      investments: '++id, fund_name, investment_type, category',
-      creditCards: '++id, &lastDigits, bank_name, card_name',
-      incomeSources: '++id, source, frequency, account',
+      incomes: '&id, user_id, date, category, source', // New table
+      vehicles: '++id, vehicle_name, owner, type', // Modified
+      loans: '++id, user_id, loan_name, lender, interest_rate', // Modified
+      investments: '++id, fund_name, investment_type, category', // Modified
+      creditCards: '++id, &lastDigits, bank_name, card_name', // Modified
+      incomeSources: '++id, source, frequency, account', // No change, but good to list
     }).upgrade(async tx => {
         console.log("Upgrading Dexie DB to v4.");
         await tx.table('vehicles').toCollection().modify(v => { if(v.name && !v.vehicle_name) {v.vehicle_name = v.name; delete v.name;} });
@@ -165,61 +173,59 @@ export class SavoraDB extends Dexie {
         await tx.table('loans').toCollection().modify(l => { if(l.name && !l.loan_name) {l.loan_name = l.name; delete l.name;} });
     });
 
+    // Version 5: Expenses table primary key changed to UUID
     this.version(5).stores({
       expenses: '&id, user_id, date, category, amount, description, payment_method, *tags_flat, source, merchant, account',
     });
 
+    // Version 6: Added recurringTransactions table
     this.version(6).stores({
       recurringTransactions: '&id, user_id, description, type, category, frequency, start_date, next_occurrence_date, end_date, is_active',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v6: Added recurringTransactions."));
-
-    this.version(7).stores({
     });
 
+    // Version 8: Added goldInvestments table
     this.version(8).stores({
       goldInvestments: '&id, user_id, purchaseDate, form, purity, storageLocation, vendor',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v8: Added goldInvestments."));
+    });
 
+    // Version 9: Added insurancePolicies table
     this.version(9).stores({
       insurancePolicies: '&id, user_id, policyName, insurer, type, nextDueDate, status',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v9: Added insurancePolicies, Loans PK to UUID and schema update."));
-
-    this.version(10).stores({
     });
 
+    // Version 11: Updated investments table
     this.version(11).stores({
       investments: '&id, user_id, fund_name, investment_type, category, purchaseDate',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v11: Investments PK to UUID and schema update."));
+    });
 
+    // Version 12: Updated incomeSources table
     this.version(12).stores({
       incomeSources: '&id, user_id, name, frequency, account, defaultAmount',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v12: IncomeSources PK to UUID and schema update."));
+    });
 
+    // Version 13: Added tags table
     this.version(13).stores({
       tags: '&id, user_id, &[user_id+name], color',
-    }).upgrade(async () => console.log("Upgrading Dexie DB to v13: Adding 'tags' table."));
-
-    // Version 14 - Added/Updated accounts table
-    this.version(14).stores({
-      accounts: '&id, user_id, name, type, provider, isActive', // UUID PK, indexed fields
-    }).upgrade(async tx => {
-      console.log("Upgrading Dexie DB to v14: Adding/Updating 'accounts' table with UUID PK and detailed schema.");
     });
 
-    // Version 15 - Enhanced Vehicle Schema
+    // Version 14: Added/Updated accounts table
+    this.version(14).stores({
+      accounts: '&id, user_id, name, type, provider, isActive',
+    });
+
+    // Version 15: Enhanced Vehicle Schema
     this.version(15).stores({
       vehicles: '&id, user_id, name, registrationNumber, type, status, purchaseDate, insuranceExpiryDate, next_pollution_check, make, model, fuelType, owner',
-      // Other vehicle fields are not indexed by default for brevity in schema string
-    }).upgrade(async tx => {
-      console.log("Upgrading Dexie DB to v15: Enhanced 'vehicles' table schema with more fields.");
     });
 
-    // Version 17 - Add user_id index to loans
+    // Version 17: Added user_id index to loans
     this.version(17).stores({
       loans: '&id, user_id, loanType, lender, status, nextDueDate',
-    }).upgrade(async tx => {
-        console.log("Upgrading Dexie DB to v17: Added user_id index to loans table.");
     });
+
+    // Final, current version of the database.
+    // This should be the highest version number.
+    this.version(18).stores({}); // No schema changes, just ensuring it's the latest version.
 
 
     // Initialize table properties
