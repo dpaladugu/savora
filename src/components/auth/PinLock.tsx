@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
+import aiChatServiceInstance from '@/services/AiChatService';
 
 interface PinLockProps {
   onUnlockSuccess: () => void;
@@ -36,22 +37,30 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+
   const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig); // Select only the needed action
 
 
   useEffect(() => {
     const checkPinSetup = async () => {
       try {
+        // Dexie's open() is implicit. If the DB doesn't exist, it's created.
+        // A failed .get() could mean the key doesn't exist, or the DB is closed/blocked.
         const pinLastSet = await db.appSettings.get('pinLastSet');
         if (pinLastSet) {
           setMode('unlock');
         } else {
           setMode('setup');
         }
-      } catch (e) {
+      } catch (e: any) {
         console.error("PinLock: Error checking PIN setup:", e);
-        setError("Could not verify PIN status. Please refresh.");
-        setMode('unlock'); // Default to unlock on error
+        // If it's a Dexie-related error, especially an UpgradeError, the DB is likely blocked.
+        if (e.name === 'UpgradeError' || e.name === 'DatabaseClosedError') {
+          setError("Database upgrade in progress or issue. Please wait or refresh.");
+        } else {
+          setError("Could not verify PIN status. Please refresh.");
+        }
+        setMode('unlock'); // Default to unlock on error but show the error message.
       }
     };
     checkPinSetup();
@@ -154,32 +163,25 @@ export function PinLock({ onUnlockSuccess }: PinLockProps) {
         const encryptedCiphertext = encryptedSetting?.value as string | undefined;
 
         if (!encryptedCiphertext) {
-          console.warn('encryptedAiConfig not found in unlock mode, switching to setup.');
-          toast({ title: 'Setup Required', description: 'Please set up your PIN and AI provider.', variant: 'default' });
-          setMode('setup');
+          // This case suggests PIN is set, but no AI config. This is a valid state.
+          // We can just proceed to unlock.
+          console.warn('No encryptedAiConfig found, but PIN is set. Unlocking without AI config.');
+          toast({ title: 'Success!', description: 'Application unlocked.' });
+          onUnlockSuccess();
           setLoading(false);
           return;
         }
 
         const decryptedPayload = await EncryptionService.decryptData(encryptedCiphertext, pin);
 
-        if (decryptedPayload && typeof decryptedPayload.apiKey === 'string' && decryptedPayload.provider) {
+        if (decryptedPayload && typeof decryptedPayload.provider === 'string') {
            setDecryptedAiConfig({
-            apiKey: decryptedPayload.apiKey,
+            apiKey: decryptedPayload.apiKey || null, // API key can be null/empty
             provider: decryptedPayload.provider,
             baseUrl: decryptedPayload.baseUrl || null,
           });
+          aiChatServiceInstance.initializeProvider(); // Re-initialize with new config
           toast({ title: 'Success!', description: 'Application unlocked.' });
-          onUnlockSuccess();
-        } else if (decryptedPayload) {
-          // Handle case where PIN is correct but payload is incomplete
-          setDecryptedAiConfig({
-            apiKey: decryptedPayload.apiKey || null,
-            provider: decryptedPayload.provider || null,
-            baseUrl: decryptedPayload.baseUrl || null,
-          });
-          toast({ title: 'Success!', description: 'Application unlocked.' });
-          aiChatServiceInstance.initializeProvider();
           onUnlockSuccess();
         }
         else {

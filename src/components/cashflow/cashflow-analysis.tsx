@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, ArrowUpDown } from "lucide-react";
 import { SupabaseDataService } from "@/services/supabase-data-service"; // Changed
 import { useAuth } from "@/contexts/auth-context";
+import { formatCurrency } from "@/lib/format-utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 // Assuming Income and Expense types from SupabaseDataService will be compatible or we'll import them
 // For now, the internal processing relies on .date and .amount which should be common.
@@ -181,7 +182,7 @@ export function CashflowAnalysis() {
                     <TrendingUp className="w-4 h-4 text-green-500" />
                     <span className="text-sm text-muted-foreground">Income</span>
                   </div>
-                  <div className="text-2xl font-bold text-foreground">₹{Math.round(totalIncome).toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalIncome)}</div>
                 </CardContent>
               </Card>
 
@@ -191,7 +192,7 @@ export function CashflowAnalysis() {
                     <TrendingDown className="w-4 h-4 text-red-500" />
                     <span className="text-sm text-muted-foreground">Expenses</span>
                   </div>
-                  <div className="text-2xl font-bold text-foreground">₹{totalExpenses.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalExpenses)}</div>
                 </CardContent>
               </Card>
 
@@ -201,7 +202,7 @@ export function CashflowAnalysis() {
                     <DollarSign className="w-4 h-4 text-blue-500" />
                     <span className="text-sm text-muted-foreground">Investments</span>
                   </div>
-                  <div className="text-2xl font-bold text-foreground">₹{totalInvestments.toLocaleString()}</div>
+                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalInvestments)}</div>
                 </CardContent>
               </Card>
 
@@ -212,7 +213,7 @@ export function CashflowAnalysis() {
                     <span className="text-sm text-muted-foreground">Surplus</span>
                   </div>
                   <div className={`text-2xl font-bold ${netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ₹{Math.round(netSurplus).toLocaleString()}
+                    {formatCurrency(netSurplus)}
                   </div>
                 </CardContent>
               </Card>

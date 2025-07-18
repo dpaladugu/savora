@@ -31,8 +31,8 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     validateField, 
     validateForm, 
     clearErrors, 
-    // hasErrors, // This will be derived or handled by validateForm's boolean return
-    isValidating 
+    isValidating,
+    hasErrors,
   } = useEnhancedExpenseValidation();
   
   // Internal form state - keep it flat as it is, map to AppExpense on submit
@@ -209,7 +209,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     }
   };
 
-  const isFormDisabled = isSubmitting || isValidating || hasErrors;
+  const isFormDisabled = isSubmitting || isValidating;
 
   return (
     <Card className="metric-card border-border/50">
@@ -297,7 +297,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
             </Button>
           </div>
           
-          {hasErrors && (
+          {Object.values(errors).some(e => !!e) && (
             <div className="text-sm text-red-600 mt-2">
               Please fix the errors above before submitting.
             </div>

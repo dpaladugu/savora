@@ -10,7 +10,7 @@ import { Logger } from "@/services/logger";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card"; // For Financial Insights
 import { TrendingUp, Target, CreditCard } from "lucide-react"; // For Financial Insights
-import { ComprehensiveDataValidator as DataValidator } from "@/services/comprehensive-data-validator"; // For Financial Insights
+import { formatCurrency, formatPercentage } from "@/lib/format-utils"; // For Financial Insights
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -55,21 +55,21 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
     {
       icon: TrendingUp, // Note: This was TrendUp in enhanced-dashboard, assuming TrendingUp is correct from lucide
       title: "Monthly Expenses Trend", // Example title
-      value: DataValidator.formatCurrency(dashboardData.monthlyExpenses),
+      value: formatCurrency(dashboardData.monthlyExpenses),
       trend: dashboardData.monthlyExpenses > (dashboardData.monthlyIncome * 0.5) ? "Spending high vs income" : "Spending moderate", // Example trend
       color: dashboardData.monthlyExpenses > (dashboardData.monthlyIncome * 0.5) ? "text-orange-600" : "text-green-600"
     },
     {
       icon: Target,
       title: "Emergency Fund Progress",
-      value: DataValidator.formatPercentage((dashboardData.emergencyFundCurrent / dashboardData.emergencyFundTarget) * 100),
+      value: formatPercentage((dashboardData.emergencyFundCurrent / dashboardData.emergencyFundTarget) * 100),
       trend: dashboardData.emergencyFundCurrent < dashboardData.emergencyFundTarget ? "Below target" : "Target met/exceeded",
       color: dashboardData.emergencyFundCurrent < dashboardData.emergencyFundTarget ? "text-red-600" : "text-green-600"
     },
     {
       icon: CreditCard,
       title: "Credit Card Utilization", // Example
-      value: DataValidator.formatCurrency(dashboardData.creditCardDebt), // Assuming creditCardDebt is total utilization
+      value: formatCurrency(dashboardData.creditCardDebt), // Assuming creditCardDebt is total utilization
       trend: dashboardData.creditCardDebt > 0 ? "Debt present" : "No CC debt",
       color: dashboardData.creditCardDebt > 0 ? "text-red-600" : "text-green-600"
     }

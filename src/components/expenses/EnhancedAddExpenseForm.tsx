@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from '@/contexts/auth-context';
 import { ExpenseService } from '@/services/ExpenseService'; // Import the new service
 import { Expense as FormExpenseType } from '@/types/expense'; // Original type from the app
+import { formatCurrency } from '@/lib/format-utils';
 
 // Define the Zod schema for expense validation
 const expenseValidationSchema = z.object({
@@ -147,16 +148,15 @@ export const EnhancedAddExpenseForm: React.FC = () => {
     const result = expenseValidationSchema.safeParse(dataToValidate);
     if (!result.success) {
       const newErrors: Partial<Record<keyof ValidatedExpenseFormData, string>> = {};
-      for (const error of result.error.errors) {
-        if (error.path.length > 0) {
-          newErrors[error.path[0] as keyof ValidatedExpenseFormData] = error.message;
-        }
+      for (const issue of result.error.issues) {
+        newErrors[issue.path[0] as keyof ValidatedExpenseFormData] = issue.message;
       }
       setErrors(newErrors);
       setFormMessage('Please correct the errors in the form.');
       return false;
     }
     setErrors({});
+    setFormMessage(null);
     return true;
   };
 

@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Upload, CreditCard, TrendingDown, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/format-utils";
 // import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { CSVParser, ParsedCreditCard } from "@/services/csv-parser";
 import { useAuth } from "@/contexts/auth-context";
@@ -94,14 +95,14 @@ export function CreditCardStatements() {
                   <TrendingDown className="w-4 h-4 text-red-500" />
                   <span className="text-sm text-muted-foreground">Total Spent</span>
                 </div>
-                <div className="text-2xl font-bold text-foreground">₹{totalSpent.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalSpent)}</div>
               </div>
               <div className="metric-card p-4">
                 <div className="flex items-center gap-2 mb-2">
                   <TrendingUp className="w-4 h-4 text-green-500" />
                   <span className="text-sm text-muted-foreground">Credits/Refunds</span>
                 </div>
-                <div className="text-2xl font-bold text-foreground">₹{totalCredits.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalCredits)}</div>
               </div>
               <div className="metric-card p-4">
                 <div className="flex items-center gap-2 mb-2">
@@ -146,7 +147,7 @@ export function CreditCardStatements() {
                           <div className="space-y-1">
                             <div className="flex items-center gap-4 text-sm text-muted-foreground">
                               <span className="font-medium text-foreground">
-                                {statement.type === 'debit' ? '-' : '+'}₹{statement.amount.toLocaleString()}
+                                {statement.type === 'debit' ? '-' : '+'}{formatCurrency(statement.amount)}
                               </span>
                               <span>•</span>
                               <span>{new Date(statement.date).toLocaleDateString('en-IN')}</span>

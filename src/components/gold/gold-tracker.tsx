@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Coins, Search, Trash2, Edit, Loader2, AlertTriangle } from "lucide-react"; // Added Loader2, AlertTriangle
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Purity and Form
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"; // For Date Picker
@@ -168,7 +169,7 @@ export function GoldTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Current Value</p>
-                <p className="text-lg font-bold text-foreground">₹{totalCurrentValue.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalCurrentValue)}</p>
               </div>
             </div>
           </CardContent>
@@ -182,7 +183,7 @@ export function GoldTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Investment</p>
-                <p className="text-lg font-bold text-foreground">₹{totalInvestment.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalInvestmentValue)}</p>
               </div>
             </div>
           </CardContent>
@@ -197,7 +198,7 @@ export function GoldTracker() {
               <div>
                 <p className="text-sm text-muted-foreground">Gain/Loss</p>
                 <p className={`text-lg font-bold ${totalGainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {totalGainLoss >= 0 ? '+' : ''}₹{totalGainLoss.toLocaleString()}
+                  {totalGainLoss >= 0 ? '+' : ''}{formatCurrency(totalGainLoss)}
                 </p>
               </div>
             </div>
@@ -254,11 +255,11 @@ export function GoldTracker() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Purchase:</span>
-                        <span className="font-medium text-foreground">₹{investment.purchasePrice.toLocaleString()}</span>
+                        <span className="font-medium text-foreground">{formatCurrency(investment.purchasePrice)}</span>
                         {investment.currentPrice && (
                           <>
                             <span className="text-muted-foreground">Current:</span>
-                            <span className="font-medium text-foreground">₹{investment.currentPrice.toLocaleString()}</span>
+                            <span className="font-medium text-foreground">{formatCurrency(investment.currentPrice)}</span>
                           </>
                         )}
                       </div>

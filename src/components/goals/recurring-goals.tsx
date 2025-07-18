@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Plus, Target, AlertCircle, TrendingUp, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 import { useToast } from "@/hooks/use-toast";
 
 export interface RecurringGoal {
@@ -101,7 +102,7 @@ export function RecurringGoals() {
     
     toast({
       title: "Clustered SIP created",
-      description: `₹${Math.round(sipAmount).toLocaleString()}/month SIP for ${clusterGoals.length} goals`,
+      description: `${formatCurrency(sipAmount)}/month SIP for ${clusterGoals.length} goals`,
     });
   };
 
@@ -165,7 +166,7 @@ export function RecurringGoals() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Upcoming</p>
-                <p className="text-lg font-bold text-foreground">₹{totalUpcoming.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalUpcoming)}</p>
               </div>
             </div>
           </CardContent>
@@ -179,7 +180,7 @@ export function RecurringGoals() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Saved</p>
-                <p className="text-lg font-bold text-foreground">₹{totalSaved.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalSaved)}</p>
               </div>
             </div>
           </CardContent>
@@ -245,7 +246,7 @@ export function RecurringGoals() {
                         </span>
                       </div>
                       <div className="text-right">
-                        <p className="text-lg font-bold text-foreground">₹{goal.amount.toLocaleString()}</p>
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(goal.amount)}</p>
                         <p className="text-xs text-muted-foreground">{goal.frequency}</p>
                       </div>
                     </div>
@@ -272,7 +273,7 @@ export function RecurringGoals() {
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Progress</span>
                         <span className="font-medium">
-                          ₹{goal.currentSavings.toLocaleString()} / ₹{goal.amount.toLocaleString()}
+                          {formatCurrency(goal.currentSavings)} / {formatCurrency(goal.amount)}
                         </span>
                       </div>
                       <div className="w-full bg-muted rounded-full h-2">

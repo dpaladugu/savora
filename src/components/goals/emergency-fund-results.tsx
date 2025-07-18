@@ -1,6 +1,7 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Calculator, Shield, Users, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/lib/format-utils";
 
 interface EmergencyFundCalculation {
   monthlyRequired: number;
@@ -29,7 +30,7 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
             </div>
           </div>
           <div className="text-3xl font-bold text-foreground">
-            ₹{calculation.monthlyRequired.toLocaleString()}
+            {formatCurrency(calculation.monthlyRequired)}
           </div>
         </CardContent>
       </Card>
@@ -46,7 +47,7 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
             </div>
           </div>
           <div className="text-3xl font-bold text-foreground">
-            ₹{calculation.emergencyFundRequired.toLocaleString()}
+            {formatCurrency(calculation.emergencyFundRequired)}
           </div>
         </CardContent>
       </Card>
@@ -93,7 +94,7 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
             </div>
           </div>
           <div className="text-3xl font-bold text-foreground">
-            ₹{calculation.shortfall.toLocaleString()}
+            {formatCurrency(calculation.shortfall)}
           </div>
         </CardContent>
       </Card>

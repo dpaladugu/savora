@@ -154,7 +154,7 @@ export class SavoraDB extends Dexie {
     this.version(4).stores({
       incomes: '&id, user_id, date, category, source',
       vehicles: '++id, vehicle_name, owner, type',
-      loans: '++id, loan_name, lender, interest_rate',
+      loans: '++id, user_id, loan_name, lender, interest_rate',
       investments: '++id, fund_name, investment_type, category',
       creditCards: '++id, &lastDigits, bank_name, card_name',
       incomeSources: '++id, source, frequency, account',
@@ -214,22 +214,11 @@ export class SavoraDB extends Dexie {
       console.log("Upgrading Dexie DB to v15: Enhanced 'vehicles' table schema with more fields.");
     });
 
-    // Version 16 - Enhanced Incomes Schema
-    this.version(16).stores({
-      incomes: '&id, user_id, date, amount, category, source_name, description, frequency, *tags_flat, account_id',
-      // Renamed 'source' to 'source_name' for clarity if it's a string name.
-      // Added amount, description, frequency, *tags_flat, account_id based on AppIncome interface.
-      // If 'source' was meant to be an ID, it should be 'source_id'.
-      // Note: AppIncome type in income-tracker.tsx should be reviewed for consistency with this.
+    // Version 17 - Add user_id index to loans
+    this.version(17).stores({
+      loans: '&id, user_id, loanType, lender, status, nextDueDate',
     }).upgrade(async tx => {
-      console.log("Upgrading Dexie DB to v16: Enhanced 'incomes' table schema.");
-      // Potential migration: If 'source' field existed and needs to be 'source_name',
-      // await tx.table('incomes').toCollection().modify(income => {
-      //   if (income.source && !income.source_name) {
-      //     income.source_name = income.source;
-      //     delete income.source;
-      //   }
-      // });
+        console.log("Upgrading Dexie DB to v17: Added user_id index to loans table.");
     });
 
 
