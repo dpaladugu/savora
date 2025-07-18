@@ -13,6 +13,14 @@ import { CreditCardService } from "@/services/CreditCardService"; // Import the 
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValid } from 'date-fns';
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -387,6 +395,9 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto p-6">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">{formData.id ? 'Edit' : 'Add New'} Credit Card</DialogTitle>
+          <DialogDescription>
+            {formData.id ? 'Update the details of your existing credit card.' : 'Add a new credit card to track your spending.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

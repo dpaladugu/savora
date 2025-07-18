@@ -36,6 +36,10 @@ function App() {
                 </Routes>
                 <Toaster />
               </div>
+              <future>
+                {/* All v7 behavior is opt-in. The future flag will enable all of them. */}
+                <v7_startTransition>true</v7_startTransition>
+              </future>
             </Router>
           </AuthProvider>
         </ThemeProvider>
