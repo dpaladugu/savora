@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/auth-context";
 import { db } from "@/db";
@@ -389,6 +389,9 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
       <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initialData?.id ? 'Edit' : 'Add New'} Income</DialogTitle>
+          <DialogDescription>
+            {initialData?.id ? 'Update the details of your income entry.' : 'Add a new income entry to your records.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 py-4">
           <div>

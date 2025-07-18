@@ -19,6 +19,14 @@ import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import { formatCurrency } from "@/lib/format-utils";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -525,6 +533,9 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} Insurance Policy</DialogTitle>
+          <DialogDescription>
+            {formData.id ? 'Update the details of your insurance policy.' : 'Add a new insurance policy to your records.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* Policy Name, Number, Insurer */}
@@ -782,6 +793,9 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add'} EMI / Loan</DialogTitle>
+          <DialogDescription>
+            {formData.id ? 'Update the details of your EMI or loan.' : 'Add a new EMI or loan to your records.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           {/* Loan Type, Lender */}
