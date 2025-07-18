@@ -8,7 +8,7 @@ import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieAccountRecord } from "@/db";
 import { AccountService } from "@/services/AccountService"; // Import the new service
@@ -396,9 +396,12 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto" aria-describedby="add-account-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Add New'} Account</DialogTitle>
+          <DialogDescription id="add-account-description">
+            {formData.id ? 'Update the details of your existing account.' : 'Add a new account to track your finances.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div>

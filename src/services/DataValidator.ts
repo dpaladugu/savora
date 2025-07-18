@@ -1,9 +1,3 @@
-/**
- * src/lib/format-utils.ts
- *
- * A collection of utility functions for formatting data for display.
- */
-
 import { format as formatDateFns, parseISO, isValid } from 'date-fns';
 
 /**
@@ -12,6 +6,15 @@ import { format as formatDateFns, parseISO, isValid } from 'date-fns';
  * @param amount The number to format.
  * @returns The formatted currency string, or 'N/A' if amount is invalid.
  */
+export const formatCurrency = (amount?: number): string => {
+  if (amount === undefined || amount === null || isNaN(amount)) return 'N/A';
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 /**
  * Formats a number as a percentage string with one decimal place.
