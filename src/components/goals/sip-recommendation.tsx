@@ -1,5 +1,6 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 
 interface SipRecommendationProps {
   shortfall: number;
@@ -19,15 +20,15 @@ export function SipRecommendation({ shortfall }: SipRecommendationProps) {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
             <div>
               <span className="text-muted-foreground">12 months:</span>
-              <div className="font-semibold">₹{Math.round(shortfall / 12).toLocaleString()}/month</div>
+              <div className="font-semibold">{formatCurrency(shortfall / 12)}/month</div>
             </div>
             <div>
               <span className="text-muted-foreground">24 months:</span>
-              <div className="font-semibold">₹{Math.round(shortfall / 24).toLocaleString()}/month</div>
+              <div className="font-semibold">{formatCurrency(shortfall / 24)}/month</div>
             </div>
             <div>
               <span className="text-muted-foreground">36 months:</span>
-              <div className="font-semibold">₹{Math.round(shortfall / 36).toLocaleString()}/month</div>
+              <div className="font-semibold">{formatCurrency(shortfall / 36)}/month</div>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mt-3">

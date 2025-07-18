@@ -50,8 +50,26 @@ const validateExpense = (expense: Partial<Expense>): ValidationErrors => {
 export const useEnhancedExpenseValidation = (initialExpense?: Partial<Expense>) => {
   const [expense, setExpense] = useState<Partial<Expense>>(initialExpense || {});
   const [errors, setErrors] = useState<ValidationErrors>({});
+  const [isValidating, setIsValidating] = useState(false);
 
-  const validate = useCallback((expenseToValidate: Partial<Expense>): boolean => {
+  const validate = useCallback(async (expenseToValidate: Partial<Expense>): Promise<boolean> => {
+    setIsValidating(true);
+    const validationErrors = validateExpense(expenseToValidate);
+    setErrors(validationErrors);
+    setIsValidating(false);
+    return Object.keys(validationErrors).length === 0; // Returns true if no errors
+  }, []);
+
+  const validateField = useCallback(async (fieldName: keyof Expense, value: any, currentExpenseState: Partial<Expense>) => {
+    setIsValidating(true);
+    const validationErrors = validateExpense({ ...currentExpenseState, [fieldName]: value });
+    setErrors(prev => ({...prev, [fieldName]: validationErrors[fieldName]}));
+    setIsValidating(false);
+  }, []);
+
+  const hasErrors = Object.values(errors).some(error => !!error);
+
+  const handleChange = useCallback((field: keyof Expense, value: any) => {
     const validationErrors = validateExpense(expenseToValidate);
     setErrors(validationErrors);
     return Object.keys(validationErrors).length === 0; // Returns true if no errors

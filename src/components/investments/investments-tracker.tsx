@@ -18,6 +18,7 @@ import { AddInvestmentForm } from '@/components/forms/add-investment-form'; // I
 import { useLiveQuery } from "dexie-react-hooks";
 import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import { formatCurrency } from "@/lib/format-utils";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -134,7 +135,7 @@ export function InvestmentsTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Invested</p>
-                <p className="text-lg font-bold text-foreground">₹{totalInvested.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalInvested)}</p>
               </div>
             </div>
           </CardContent>
@@ -148,7 +149,7 @@ export function InvestmentsTracker() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Current Value</p>
-                <p className="text-lg font-bold text-foreground">₹{totalCurrent.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalCurrent)}</p>
               </div>
             </div>
           </CardContent>
@@ -163,7 +164,7 @@ export function InvestmentsTracker() {
               <div>
                 <p className="text-sm text-muted-foreground">Gains/Loss</p>
                 <p className={`text-lg font-bold ${totalGains >= 0 ? 'text-success' : 'text-destructive'}`}>
-                  ₹{totalGains.toLocaleString()}
+                  {formatCurrency(totalGains)}
                 </p>
               </div>
             </div>
@@ -221,12 +222,12 @@ export function InvestmentsTracker() {
                       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-2 text-sm">
                         <div>
                             <span className="text-muted-foreground">Invested: </span>
-                            <span className="font-medium">₹{investment.invested_value?.toLocaleString() || 'N/A'}</span>
+                            <span className="font-medium">{formatCurrency(investment.invested_value)}</span>
                         </div>
                         {investment.current_value !== undefined && (
                           <div>
                             <span className="text-muted-foreground">Current: </span>
-                            <span className="font-medium">₹{investment.current_value?.toLocaleString()}</span>
+                            <span className="font-medium">{formatCurrency(investment.current_value)}</span>
                           </div>
                         )}
                          {investment.quantity !== undefined && (
@@ -245,7 +246,7 @@ export function InvestmentsTracker() {
                                 investment.current_value >= investment.invested_value ? 'text-green-600' : 'text-red-600'
                             }`}>
                                 {investment.current_value >= investment.invested_value ? '+' : ''}
-                                ₹{(investment.current_value - investment.invested_value).toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:0})}
+                                {formatCurrency(investment.current_value - investment.invested_value)}
                             </p>
                             {investment.invested_value > 0 &&
                                 <p className={`text-xs ${investment.current_value >= investment.invested_value ? 'text-green-500' : 'text-red-500'}`}>

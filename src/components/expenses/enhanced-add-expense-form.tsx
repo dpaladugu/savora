@@ -209,7 +209,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     }
   };
 
-  const isFormDisabled = isSubmitting || isValidating || hasErrors;
+  const isFormDisabled = isSubmitting || isValidating;
 
   return (
     <Card className="metric-card border-border/50">
@@ -297,7 +297,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
             </Button>
           </div>
           
-          {hasErrors && (
+          {Object.values(errors).some(e => !!e) && (
             <div className="text-sm text-red-600 mt-2">
               Please fix the errors above before submitting.
             </div>
