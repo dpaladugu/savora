@@ -53,12 +53,7 @@ const Index = () => {
   }
 
   if (!user) {
-    return (
-      <GlobalErrorBoundary>
-        <AuthScreen />
-        {/* Or EnhancedAuthScreen, depending on which one is primary */}
-      </GlobalErrorBoundary>
-    );
+    return <WelcomeScreen onComplete={() => {}} />;
   }
 
   // User is authenticated and PIN is unlocked

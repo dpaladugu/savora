@@ -30,10 +30,8 @@ const OLLAMA_DEFAULT_FORM_MODEL = 'llama2';
 
 export function LLMSettingsForm() {
   const { toast } = useToast();
-  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(useCallback(state => ({
-    decryptedAiConfig: state.decryptedAiConfig,
-    setDecryptedAiConfig: state.setDecryptedAiConfig,
-  }), []));
+  const decryptedAiConfig = useAppStore(state => state.decryptedAiConfig);
+  const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig);
   const { user } = useAuth();
 
   const [selectedProvider, setSelectedProvider] = useState<string>('');
@@ -96,13 +94,14 @@ export function LLMSettingsForm() {
         }
       } else { // User is authenticated
         try {
-          const { data: supabaseConfig, error: supabaseError } = await supabase
+          const { data, error: supabaseError } = await supabase
             .from('user_llm_configurations')
             .select('provider_id, encrypted_config, base_url, model_id')
-            .eq('user_id', user.uid)
-            .single();
+            .eq('user_id', user.uid);
 
-          if (supabaseError && supabaseError.code !== 'PGRST116') throw supabaseError;
+          if (supabaseError) throw supabaseError;
+
+          const supabaseConfig = data?.[0];
 
           if (supabaseConfig) {
             initialProvider = supabaseConfig.provider_id || initialProvider;

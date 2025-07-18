@@ -50,7 +50,7 @@ export function useNavigationRouter() {
       // Validate moduleId is a valid MoreModule
       const validModules: MoreModule[] = [
         'emergency-fund', 'rentals', 'recommendations', 'cashflow', 
-        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions' // Added
+        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions', 'vehicles'
       ];
       
       const validModuleId = validModules.includes(moduleId as MoreModule) ? moduleId as MoreModule : null;
