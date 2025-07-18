@@ -31,8 +31,8 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     validateField, 
     validateForm, 
     clearErrors, 
-    // hasErrors, // This will be derived or handled by validateForm's boolean return
-    isValidating 
+    isValidating,
+    hasErrors,
   } = useEnhancedExpenseValidation();
   
   // Internal form state - keep it flat as it is, map to AppExpense on submit

@@ -70,17 +70,11 @@ export const useEnhancedExpenseValidation = (initialExpense?: Partial<Expense>) 
   const hasErrors = Object.values(errors).some(error => !!error);
 
   const handleChange = useCallback((field: keyof Expense, value: any) => {
-    const validationErrors = validateExpense(expenseToValidate);
-    setErrors(validationErrors);
-    return Object.keys(validationErrors).length === 0; // Returns true if no errors
-  }, []);
-
-  const handleChange = useCallback((field: keyof Expense, value: any) => {
     const updatedExpense = { ...expense, [field]: value };
     setExpense(updatedExpense);
     // Optionally, validate on change
     // validate(updatedExpense);
-  }, [expense /*, validate*/]); // Include validate if validating on change
+  }, [expense]);
 
   const handleBlur = useCallback((field: keyof Expense) => {
     // Validate field on blur
@@ -106,5 +100,8 @@ export const useEnhancedExpenseValidation = (initialExpense?: Partial<Expense>) 
     handleChange,
     handleBlur,
     resetForm,
+    isValidating,
+    hasErrors,
+    validateField,
   };
 };
