@@ -8,7 +8,7 @@ import { db, DexieTagRecord } from "@/db";
 import { TagService } from '@/services/TagService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/auth-context';
 import {
   AlertDialog,
@@ -287,9 +287,12 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" aria-describedby="add-tag-description">
         <DialogHeader>
           <DialogTitle>{formData.id ? 'Edit' : 'Create New'} Tag</DialogTitle>
+          <DialogDescription id="add-tag-description">
+            {formData.id ? 'Update the details of your tag.' : 'Create a new tag to categorize your items.'}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 py-4">
           <div>

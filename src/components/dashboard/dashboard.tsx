@@ -47,6 +47,7 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
     },
     onViewCards: () => {
       Logger.info('Quick action: View cards clicked');
+      onTabChange("more");
       onMoreNavigation("credit-cards");
     }
   };
@@ -134,7 +135,7 @@ export const Dashboard = memo(function Dashboard({ onTabChange, onMoreNavigation
             </motion.div>
           )}
 
-          <DashboardCharts />
+          <DashboardCharts data={dashboardData} />
           <div className="mt-6">
             <AiTokenUsageDisplay />
           </div>
