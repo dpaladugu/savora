@@ -225,7 +225,12 @@ export class SavoraDB extends Dexie {
 
     // Final, current version of the database.
     // This should be the highest version number.
-    this.version(18).stores({}); // No schema changes, just ensuring it's the latest version.
+    this.version(19).stores({}).upgrade(async () => {
+      // This is a destructive upgrade. A real app should migrate data.
+      console.warn("Performing a destructive database upgrade. All data will be lost.");
+      await Dexie.delete('SavoraFinanceDB');
+      window.location.reload();
+    });
 
 
     // Initialize table properties
