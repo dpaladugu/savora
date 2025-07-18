@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Plus, CreditCard, Wallet, Search, Trash2, Edit, Loader2, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -127,7 +128,7 @@ export function AccountManager() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Balance</p>
-                <p className="text-lg font-bold text-foreground">₹{totalBalance.toLocaleString()}</p>
+                <p className="text-lg font-bold text-foreground">{formatCurrency(totalBalance)}</p>
               </div>
             </div>
           </CardContent>
@@ -211,7 +212,7 @@ export function AccountManager() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">Balance:</span>
-                        <span className="font-medium text-foreground text-lg">₹{account.balance.toLocaleString()}</span>
+                        <span className="font-medium text-foreground text-lg">{formatCurrency(account.balance)}</span>
                       </div>
                       {account.accountNumber && (
                         <div className="flex items-center gap-4 text-sm">

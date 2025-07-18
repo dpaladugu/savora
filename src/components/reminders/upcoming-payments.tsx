@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, CreditCard, Home, Shield, TrendingUp, Clock, Bell } from "lucide-react";
+import { formatCurrency } from "@/lib/format-utils";
 
 interface Reminder {
   id: string;
@@ -167,7 +168,7 @@ export function UpcomingPayments() {
                 <Clock className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-foreground">₹{totalDueAmount.toLocaleString()}</div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalDueAmount)}</div>
                 <div className="text-sm text-muted-foreground">Due Today/Overdue</div>
               </div>
             </div>
