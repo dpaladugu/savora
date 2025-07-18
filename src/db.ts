@@ -262,6 +262,18 @@ export class SavoraDB extends Dexie {
 
 export const db = new SavoraDB();
 
+if (import.meta.env.DEV) {
+  db.open().catch(async (err) => {
+    if (err.name === "UpgradeError") {
+      console.warn("Dev only DB wipe due to schema mismatch");
+      await db.delete();
+      await db.open();
+    } else {
+      throw err;
+    }
+  });
+}
+
 export type Expense = ExpenseData;
 export { YearlySummary };
 export type Vehicle = DexieVehicleRecord; // Exporting DexieVehicleRecord as Vehicle

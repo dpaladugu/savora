@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/error/error-boundary"; // Changed im
 import { Toaster } from "@/components/ui/toaster";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
+import { AuthScreen } from "@/components/auth/enhanced-auth-screen";
 import { Logger } from "@/services/logger";
 import "./App.css";
 
@@ -32,6 +33,7 @@ function App() {
               <div className="min-h-screen bg-background text-foreground">
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<AuthScreen />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
