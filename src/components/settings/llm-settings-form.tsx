@@ -30,10 +30,10 @@ const OLLAMA_DEFAULT_FORM_MODEL = 'llama2';
 
 export function LLMSettingsForm() {
   const { toast } = useToast();
-  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(state => ({
+  const { decryptedAiConfig, setDecryptedAiConfig } = useAppStore(useCallback(state => ({
     decryptedAiConfig: state.decryptedAiConfig,
     setDecryptedAiConfig: state.setDecryptedAiConfig,
-  }));
+  }), []));
   const { user } = useAuth();
 
   const [selectedProvider, setSelectedProvider] = useState<string>('');

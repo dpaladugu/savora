@@ -154,7 +154,7 @@ export class SavoraDB extends Dexie {
     this.version(4).stores({
       incomes: '&id, user_id, date, category, source',
       vehicles: '++id, vehicle_name, owner, type',
-      loans: '++id, loan_name, lender, interest_rate',
+      loans: '++id, user_id, loan_name, lender, interest_rate',
       investments: '++id, fund_name, investment_type, category',
       creditCards: '++id, &lastDigits, bank_name, card_name',
       incomeSources: '++id, source, frequency, account',
