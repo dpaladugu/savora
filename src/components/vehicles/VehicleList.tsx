@@ -22,8 +22,6 @@ interface VehicleListProps {
 const mockInsurancePolicies: Record<string, Array<{id: string, insurer: string, premium: number, expiryDate: string}>> = {};
 const mockRelatedExpenses: Record<string, Array<{id: string, tag: string, amount: number}>> = {};
 
-// Local formatCurrency helper removed, will use DataValidator.formatCurrency
-
 export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
   const [expandedVehicleId, setExpandedVehicleId] = useState<string | null>(null);
 
