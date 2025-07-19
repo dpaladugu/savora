@@ -41,7 +41,7 @@ export function CreditCardManager() {
   const creditCards = useLiveQuery(() => db.creditCards.toArray(), []);
 
   const [formData, setFormData] = useState<Omit<DexieCreditCardRecord, 'id' | 'created_at' | 'updated_at'>>({
-    user_id: user?.id || '',
+    user_id: user?.uid || '',
     card_name: '',
     card_number_last_four: '',
     credit_limit: 0,
@@ -74,7 +74,7 @@ export function CreditCardManager() {
 
   const resetForm = () => {
     setFormData({
-      user_id: user?.id || '',
+      user_id: user?.uid || '',
       card_name: '',
       card_number_last_four: '',
       credit_limit: 0,
@@ -106,15 +106,12 @@ export function CreditCardManager() {
     try {
       const cardData = {
         ...formData,
-        user_id: user?.id || '',
+        user_id: user?.uid || '',
         available_credit: Math.max(0, formData.credit_limit - formData.current_balance),
       };
 
       if (editingCard) {
-        await db.creditCards.update(editingCard.id, {
-          ...cardData,
-          updated_at: new Date().toISOString(),
-        });
+        await db.creditCards.update(editingCard.id, cardData);
         toast({
           title: "Card Updated",
           description: "Credit card information has been updated successfully.",
@@ -147,7 +144,7 @@ export function CreditCardManager() {
   const handleEdit = (card: DexieCreditCardRecord) => {
     setEditingCard(card);
     setFormData({
-      user_id: card.user_id || user?.id || '',
+      user_id: card.user_id || user?.uid || '',
       card_name: card.card_name,
       card_number_last_four: card.card_number_last_four,
       credit_limit: card.credit_limit,

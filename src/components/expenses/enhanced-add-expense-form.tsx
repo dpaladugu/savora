@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -151,7 +152,8 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         description: formData.description.trim(),
         payment_method: formData.payment_method,
         tags: formData.tags.join(','), // Convert to flat string for compatibility
-        type: 'expense',
+        account: formData.account,
+        source: formData.source,
       };
 
       await onSubmit(expenseDataToSubmit);

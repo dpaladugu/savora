@@ -6,7 +6,6 @@ import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-rea
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { TransactionList } from "./transaction-list";
 import type { Expense as AppExpense } from "@/services/supabase-data-service";
-import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
 import { SupabaseDataService } from "@/services/supabase-data-service";
 import { ExpenseService } from "@/services/ExpenseService";
@@ -22,11 +21,38 @@ import { ComprehensiveDataValidator } from "@/services/comprehensive-data-valida
 import { motion } from "framer-motion";
 import { parseISO, isValid } from "date-fns";
 
+// Income type that matches the database structure
+export interface AppIncome {
+  id?: string;
+  user_id?: string;
+  date: string;
+  amount: number;
+  category: string;
+  description?: string;
+  frequency?: string;
+  tags_flat?: string;
+  source_name?: string;
+  account_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  source_recurring_transaction_id?: string;
+}
+
 // Extended Expense type with additional properties
 interface ExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
+}
+
+// Extended types for union handling
+interface ExtendedAppExpense extends AppExpense {
+  tags_flat?: string;
+  type?: 'expense';
+}
+
+interface ExtendedAppIncome extends AppIncome {
+  type?: 'income';
 }
 
 const initialFiltersState: ExpenseFilterCriteria = {
@@ -56,8 +82,22 @@ export function ExpenseTracker() {
   );
 
   const isDataLoading = allTransactions === undefined;
-  const expenses = useMemo(() => allTransactions?.filter(t => 'payment_method' in t) as AppExpense[] || [], [allTransactions]);
-  const incomes = useMemo(() => allTransactions?.filter(t => !('payment_method' in t)) as AppIncome[] || [], [allTransactions]);
+  const expenses = useMemo(() => {
+    const expenseTransactions = allTransactions?.filter(t => 'payment_method' in t) as ExtendedAppExpense[] || [];
+    return expenseTransactions.map(expense => ({
+      ...expense,
+      tags_flat: expense.tags || expense.tags_flat || '',
+      type: 'expense' as const
+    }));
+  }, [allTransactions]);
+  
+  const incomes = useMemo(() => {
+    const incomeTransactions = allTransactions?.filter(t => !('payment_method' in t)) as ExtendedAppIncome[] || [];
+    return incomeTransactions.map(income => ({
+      ...income,
+      type: 'income' as const
+    }));
+  }, [allTransactions]);
 
   const handleOpenEditForm = (expense: ExtendedExpense) => {
     setEditingExpense(expense);
@@ -105,7 +145,7 @@ export function ExpenseTracker() {
   };
 
   const filteredData = useMemo(() => {
-    let transactions: (AppExpense | AppIncome)[] = [];
+    let transactions: (ExtendedAppExpense | ExtendedAppIncome)[] = [];
 
     if (filters.type === 'expense') {
       transactions = expenses;
@@ -118,10 +158,11 @@ export function ExpenseTracker() {
     const filtered = transactions.filter(t => {
       const searchTermLower = filters.searchTerm.toLowerCase();
       const description = 'description' in t ? t.description : (t.source_name || '');
+      const tags_flat = 'tags_flat' in t ? t.tags_flat : '';
       const matchesSearch = !filters.searchTerm ||
                             (description || "").toLowerCase().includes(searchTermLower) ||
                             (t.category || "").toLowerCase().includes(searchTermLower) ||
-                            (t.tags_flat || "").toLowerCase().includes(searchTermLower);
+                            (tags_flat || "").toLowerCase().includes(searchTermLower);
 
       const matchesCategory = filters.category === "All" || t.category === filters.category;
 
@@ -163,9 +204,11 @@ export function ExpenseTracker() {
     try {
       const csvContent = "data:text/csv;charset=utf-8," 
         + "Date,Description,Category,Amount,Payment Method,Tags\n"
-        + filteredData.map(item =>
-            `${item.date},${item.description || ''},${item.category || ''},${item.amount},${item.payment_method || ''},${item.tags_flat || ''}`
-          ).join("\n");
+        + filteredData.map(item => {
+            const paymentMethod = 'payment_method' in item ? item.payment_method : '';
+            const tagsFlat = 'tags_flat' in item ? item.tags_flat : '';
+            return `${item.date},${item.description || ''},${item.category || ''},${item.amount},${paymentMethod || ''},${tagsFlat || ''}`;
+          }).join("\n");
       
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");

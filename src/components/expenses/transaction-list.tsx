@@ -3,11 +3,34 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Edit, Calendar, CreditCard, Repeat, TrendingUp, TrendingDown, Tag } from "lucide-react";
 import type { Expense as AppExpense } from "@/services/supabase-data-service";
-import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { formatCurrency, formatDate } from "@/lib/format-utils";
 import { Badge } from "@/components/ui/badge";
 
-type Transaction = AppExpense | AppIncome;
+// Income type that matches the database structure
+export interface AppIncome {
+  id?: string;
+  user_id?: string;
+  date: string;
+  amount: number;
+  category: string;
+  description?: string;
+  frequency?: string;
+  tags_flat?: string;
+  source_name?: string;
+  account_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  source_recurring_transaction_id?: string;
+  type?: 'income';
+}
+
+// Extended transaction types
+interface ExtendedExpense extends AppExpense {
+  tags_flat?: string;
+  type?: 'expense';
+}
+
+type Transaction = ExtendedExpense | AppIncome;
 
 interface TransactionListProps {
   transactions: Transaction[];
@@ -15,7 +38,7 @@ interface TransactionListProps {
   onEdit?: (item: Transaction) => void;
 }
 
-const isExpense = (transaction: Transaction): transaction is AppExpense => {
+const isExpense = (transaction: Transaction): transaction is ExtendedExpense => {
   return 'payment_method' in transaction;
 };
 
@@ -36,6 +59,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
         const itemIsExpense = isExpense(item);
         const description = itemIsExpense ? item.description : (item.source_name || item.description);
         const subLine = itemIsExpense ? item.payment_method : item.frequency;
+        const tagsFlat = itemIsExpense ? (item.tags_flat || item.tags) : item.tags_flat;
 
         return (
           <Card key={item.id} className="hover:shadow-md transition-shadow">
@@ -72,7 +96,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
                     </p>
                     <div className="flex flex-wrap gap-1 justify-end mt-1">
                       <Badge variant="outline" className="text-xs">{item.category}</Badge>
-                      {item.tags_flat?.split(',').filter(Boolean).map(tag => (
+                      {tagsFlat?.split(',').filter(Boolean).map(tag => (
                         <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
                       ))}
                     </div>
