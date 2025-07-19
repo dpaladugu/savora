@@ -24,6 +24,7 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  console.log('App: Component initializing');
   Logger.info('App initialized');
 
   return React.createElement(
