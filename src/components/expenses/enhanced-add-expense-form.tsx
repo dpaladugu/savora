@@ -27,10 +27,8 @@ const expenseValidationSchema = z.object({
   tags: z.array(z.string()).optional(),
   merchant: z.string().optional(),
   account: z.string().optional(),
-  source: z.string().optional(),
   user_id: z.string().optional(),
   id: z.string().optional(),
-  type: z.literal('expense').optional(),
 });
 
 // This is the type for data actually saved to Dexie (aligns with AppExpense for db.expenses)
@@ -43,10 +41,11 @@ interface DexieExpenseRecord {
   description: string;
   payment_method: string;
   tags: string;
-  source: string;
   account: string;
   created_at?: string;
   updated_at?: string;
+  type: string;
+  source: string;
 }
 
 // Form data type, derived from Zod schema for type safety in the form state
@@ -159,10 +158,11 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         description: formState.description || '',
         payment_method: formState.payment_method || '',
         tags: (formState.tags || []).map(t => t.toLowerCase()).join(','),
-        source: formState.source || '',
         account: formState.account || '',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
+        type: 'expense',
+        source: 'manual',
       };
 
       await ExpenseService.addExpense(expenseToSave);
@@ -296,19 +296,6 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           placeholder="e.g., ICICI Savings, HDFC Credit Card"
         />
         {errors.account && <p id="account-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.account}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source (Optional)</Label>
-        <Input
-          id="source" name="source" type="text"
-          value={formState.source || ''}
-          onChange={(e) => handleInputChange('source', e.target.value)}
-          onBlur={() => handleBlur('source')}
-          className="mt-1 block w-full"
-          placeholder="e.g., Online Purchase, Store Visit"
-        />
-         {errors.source && <p id="source-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.source}</p>}
       </div>
 
       <AdvancedExpenseOptions
