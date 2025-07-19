@@ -19,10 +19,10 @@ export function useDashboardData() {
     
     const [expenses, investments, incomes, insurances, loans] = await Promise.all([
       ExpenseService.getExpenses(),
-      InvestmentService.getInvestments(),
+      InvestmentService.getInvestments(user.uid),
       IncomeService.getIncomes(),
-      InsuranceService.getPolicies(),
-      LoanService.getLoans(),
+      InsuranceService.getPolicies(user.uid),
+      LoanService.getLoans(user.uid),
     ]);
 
     return { expenses, investments, incomes, insurances, loans };
