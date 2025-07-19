@@ -174,8 +174,8 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
 
   const validationResult = validateFinancialData(jsonData);
   if (!validationResult.success) {
-    Logger.error('JSON data failed validation for MVP sections.', validationResult.errors);
-    const errorMessage = validationResult.errors?.map(err => `${err.path.join('.')} - ${err.message}`).join('\n') || 'JSON data structure is invalid for MVP sections.';
+    Logger.error('JSON data failed validation for MVP sections.', (validationResult as FailedValidationResult).errors);
+    const errorMessage = (validationResult as FailedValidationResult).errors?.map(err => `${err.path.join('.')} - ${err.message}`).join('\n') || 'JSON data structure is invalid for MVP sections.';
     return { success: false, message: errorMessage };
   }
 
