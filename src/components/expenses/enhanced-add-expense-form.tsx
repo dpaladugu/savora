@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -41,9 +42,8 @@ interface DexieExpenseRecord {
   amount: number;
   description: string;
   payment_method: string;
-  tags_flat: string;
+  tags: string;
   source: string;
-  merchant: string;
   account: string;
   created_at?: string;
   updated_at?: string;
@@ -158,9 +158,8 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         category: formState.category || '',
         description: formState.description || '',
         payment_method: formState.payment_method || '',
-        tags_flat: (formState.tags || []).map(t => t.toLowerCase()).join(','),
+        tags: (formState.tags || []).map(t => t.toLowerCase()).join(','),
         source: formState.source || '',
-        merchant: formState.merchant || '',
         account: formState.account || '',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

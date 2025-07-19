@@ -27,17 +27,14 @@ export function CreditCardManager() {
 
   const [formData, setFormData] = useState<Omit<DexieCreditCardRecord, 'id' | 'created_at' | 'updated_at'>>({
     user_id: user?.uid || '',
-    cardName: '',
-    bankName: '',
-    lastFourDigits: '',
-    creditLimit: 0,
+    name: '',
+    issuer: '',
+    last4Digits: '',
+    limit: 0,
     currentBalance: 0,
-    availableCredit: 0,
-    interestRate: 0,
-    annualFee: 0,
-    dueDate: new Date(),
-    minimumPayment: 0,
-    paymentDueDate: new Date(),
+    billCycleDay: 1,
+    dueDate: new Date().toISOString().split('T')[0],
+    autoDebit: false,
   });
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -45,14 +42,6 @@ export function CreditCardManager() {
   const handleInputChange = (field: keyof typeof formData, value: any) => {
     setFormData(prev => {
       const updated = { ...prev, [field]: value };
-      
-      // Auto-calculate available credit when credit limit or current balance changes
-      if (field === 'creditLimit' || field === 'currentBalance') {
-        const creditLimit = field === 'creditLimit' ? parseFloat(value) || 0 : prev.creditLimit;
-        const currentBalance = field === 'currentBalance' ? parseFloat(value) || 0 : prev.currentBalance;
-        updated.availableCredit = Math.max(0, creditLimit - currentBalance);
-      }
-      
       return updated;
     });
   };
@@ -60,17 +49,14 @@ export function CreditCardManager() {
   const resetForm = () => {
     setFormData({
       user_id: user?.uid || '',
-      cardName: '',
-      bankName: '',
-      lastFourDigits: '',
-      creditLimit: 0,
+      name: '',
+      issuer: '',
+      last4Digits: '',
+      limit: 0,
       currentBalance: 0,
-      availableCredit: 0,
-      interestRate: 0,
-      annualFee: 0,
-      dueDate: new Date(),
-      minimumPayment: 0,
-      paymentDueDate: new Date(),
+      billCycleDay: 1,
+      dueDate: new Date().toISOString().split('T')[0],
+      autoDebit: false,
     });
     setEditingCard(null);
     setSelectedDate(new Date());
@@ -79,10 +65,10 @@ export function CreditCardManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.cardName || !formData.bankName) {
+    if (!formData.name || !formData.issuer) {
       toast({
         title: "Validation Error",
-        description: "Card name and bank name are required.",
+        description: "Card name and issuer are required.",
         variant: "destructive",
       });
       return;
@@ -92,7 +78,6 @@ export function CreditCardManager() {
       const cardData = {
         ...formData,
         user_id: user?.uid || '',
-        availableCredit: Math.max(0, formData.creditLimit - formData.currentBalance),
       };
 
       if (editingCard) {
@@ -130,19 +115,15 @@ export function CreditCardManager() {
     setEditingCard(card);
     setFormData({
       user_id: card.user_id || user?.uid || '',
-      cardName: card.cardName,
-      bankName: card.bankName,
-      lastFourDigits: card.lastFourDigits,
-      creditLimit: card.creditLimit,
+      name: card.name,
+      issuer: card.issuer,
+      last4Digits: card.last4Digits || '',
+      limit: card.limit,
       currentBalance: card.currentBalance,
-      availableCredit: card.availableCredit,
-      interestRate: card.interestRate,
-      annualFee: card.annualFee,
+      billCycleDay: card.billCycleDay,
       dueDate: card.dueDate,
-      minimumPayment: card.minimumPayment,
-      paymentDueDate: card.paymentDueDate,
+      autoDebit: card.autoDebit,
     });
-    setSelectedDate(card.dueDate);
     setShowAddForm(true);
   };
 
@@ -164,9 +145,9 @@ export function CreditCardManager() {
   };
 
   const filteredCards = creditCards || [];
-  const totalCreditLimit = filteredCards.reduce((sum, card) => sum + (card.creditLimit || 0), 0);
+  const totalCreditLimit = filteredCards.reduce((sum, card) => sum + (card.limit || 0), 0);
   const totalCurrentBalance = filteredCards.reduce((sum, card) => sum + (card.currentBalance || 0), 0);
-  const totalAvailableCredit = filteredCards.reduce((sum, card) => sum + (card.availableCredit || 0), 0);
+  const totalAvailableCredit = totalCreditLimit - totalCurrentBalance;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-IN', {
@@ -186,43 +167,43 @@ export function CreditCardManager() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="cardName">Card Name *</Label>
+                  <Label htmlFor="name">Card Name *</Label>
                   <Input
-                    id="cardName"
-                    value={formData.cardName}
-                    onChange={(e) => handleInputChange('cardName', e.target.value)}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => handleInputChange('name', e.target.value)}
                     placeholder="e.g., Chase Sapphire Preferred"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="bankName">Bank Name *</Label>
+                  <Label htmlFor="issuer">Issuer *</Label>
                   <Input
-                    id="bankName"
-                    value={formData.bankName}
-                    onChange={(e) => handleInputChange('bankName', e.target.value)}
+                    id="issuer"
+                    value={formData.issuer}
+                    onChange={(e) => handleInputChange('issuer', e.target.value)}
                     placeholder="e.g., Chase Bank"
                     required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lastFourDigits">Last 4 Digits</Label>
+                  <Label htmlFor="last4Digits">Last 4 Digits</Label>
                   <Input
-                    id="lastFourDigits"
-                    value={formData.lastFourDigits}
-                    onChange={(e) => handleInputChange('lastFourDigits', e.target.value)}
+                    id="last4Digits"
+                    value={formData.last4Digits || ''}
+                    onChange={(e) => handleInputChange('last4Digits', e.target.value)}
                     placeholder="1234"
                     maxLength={4}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="creditLimit">Credit Limit</Label>
+                  <Label htmlFor="limit">Credit Limit</Label>
                   <Input
-                    id="creditLimit"
+                    id="limit"
                     type="number"
                     step="0.01"
-                    value={formData.creditLimit || ''}
-                    onChange={(e) => handleInputChange('creditLimit', parseFloat(e.target.value) || 0)}
+                    value={formData.limit || ''}
+                    onChange={(e) => handleInputChange('limit', parseFloat(e.target.value) || 0)}
                   />
                 </div>
                 <div>
@@ -236,66 +217,23 @@ export function CreditCardManager() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="availableCredit">Available Credit (Auto-calculated)</Label>
+                  <Label htmlFor="billCycleDay">Bill Cycle Day</Label>
                   <Input
-                    id="availableCredit"
+                    id="billCycleDay"
                     type="number"
-                    value={formData.availableCredit || ''}
-                    disabled
-                    className="bg-gray-50 dark:bg-gray-800"
+                    min="1"
+                    max="31"
+                    value={formData.billCycleDay || ''}
+                    onChange={(e) => handleInputChange('billCycleDay', parseInt(e.target.value) || 1)}
                   />
                 </div>
                 <div>
-                  <Label htmlFor="interestRate">Interest Rate (%)</Label>
+                  <Label htmlFor="dueDate">Due Date</Label>
                   <Input
-                    id="interestRate"
-                    type="number"
-                    step="0.01"
-                    value={formData.interestRate || ''}
-                    onChange={(e) => handleInputChange('interestRate', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="annualFee">Annual Fee</Label>
-                  <Input
-                    id="annualFee"
-                    type="number"
-                    step="0.01"
-                    value={formData.annualFee || ''}
-                    onChange={(e) => handleInputChange('annualFee', parseFloat(e.target.value) || 0)}
-                  />
-                </div>
-                <div>
-                  <Label>Due Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        <Calendar className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, 'PPP') : 'Pick a date'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <CalendarComponent 
-                        mode="single" 
-                        selected={selectedDate} 
-                        onSelect={(date) => { 
-                          if (date) { 
-                            setSelectedDate(date); 
-                            handleInputChange('dueDate', date); 
-                          } 
-                        }} 
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div>
-                  <Label htmlFor="minimumPayment">Minimum Payment</Label>
-                  <Input
-                    id="minimumPayment"
-                    type="number"
-                    step="0.01"
-                    value={formData.minimumPayment || ''}
-                    onChange={(e) => handleInputChange('minimumPayment', parseFloat(e.target.value) || 0)}
+                    id="dueDate"
+                    type="date"
+                    value={formData.dueDate || ''}
+                    onChange={(e) => handleInputChange('dueDate', e.target.value)}
                   />
                 </div>
               </div>
@@ -394,16 +332,16 @@ export function CreditCardManager() {
                         <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-300" />
                       </div>
                       <div>
-                        <h3 className="font-semibold">{card.cardName}</h3>
+                        <h3 className="font-semibold">{card.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {card.bankName} •••• {card.lastFourDigits}
+                          {card.issuer} •••• {card.last4Digits}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           <Badge variant="outline">
-                            {((card.currentBalance / card.creditLimit) * 100).toFixed(1)}% used
+                            {((card.currentBalance / card.limit) * 100).toFixed(1)}% used
                           </Badge>
                           <span className="text-xs text-muted-foreground">
-                            Due: {format(card.dueDate, 'MMM dd')}
+                            Due: {card.billCycleDay}th
                           </span>
                         </div>
                       </div>
@@ -414,7 +352,7 @@ export function CreditCardManager() {
                       <p className="text-sm text-muted-foreground">Balance</p>
                       <p className="font-bold">{formatCurrency(card.currentBalance)}</p>
                       <p className="text-xs text-muted-foreground">
-                        of {formatCurrency(card.creditLimit)}
+                        of {formatCurrency(card.limit)}
                       </p>
                     </div>
                     <div className="flex flex-col gap-1 ml-2">
