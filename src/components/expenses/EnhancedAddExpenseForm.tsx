@@ -3,20 +3,21 @@ import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertTriangleIcon } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { AdvancedExpenseOptions } from './AdvancedExpenseOptions';
 import { db } from "@/db";
 import { useToast } from "@/hooks/use-toast";
-import { ExpenseService } from '@/services/ExpenseService'; // Import the new service
-import { Expense as FormExpenseType } from '@/types/expense'; // Original type from the app
+import { ExpenseService } from '@/services/ExpenseService';
+import { Expense as FormExpenseType } from '@/types/expense';
 import { formatCurrency } from '@/lib/format-utils';
+import { useAuth } from '@/contexts/auth-context';
 
 // Define the Zod schema for expense validation
 const expenseValidationSchema = z.object({
   amount: z.number().positive({ message: "Amount must be a positive number." }),
   date: z.string().min(1, { message: "Date is required." })
     .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Invalid date format. Please use YYYY-MM-DD."})
-    .refine(dateStr => new Date(dateStr) <= new Date(new Date().setHours(23,59,59,999)), { // Allow today
+    .refine(dateStr => new Date(dateStr) <= new Date(new Date().setHours(23,59,59,999)), {
       message: "Date cannot be in the future."
     }),
   category: z.string().min(1, { message: "Category is required." }),
@@ -27,8 +28,8 @@ const expenseValidationSchema = z.object({
   account: z.string().optional(),
   source: z.string().optional(),
   user_id: z.string().optional(),
-  id: z.string().optional(), // Not typically validated on input for new, but part of the type
-  type: z.literal('expense').optional(), // Defaulted, not usually user input
+  id: z.string().optional(),
+  type: z.literal('expense').optional(),
 });
 
 // This is the type for data actually saved to Dexie (aligns with AppExpense for db.expenses)
@@ -52,14 +53,12 @@ interface DexieExpenseRecord {
 type ValidatedExpenseFormData = z.infer<typeof expenseValidationSchema>;
 // Extended form state type to include all fields used in the form/Dexie, matching FormExpenseType where possible
 // This type is what our local `formState` will use.
-type EnhancedFormState = FormExpenseType & { // FormExpenseType from '@/types/expense'
+type EnhancedFormState = FormExpenseType & {
     payment_method: string;
     merchant: string;
     account: string;
-    // source is already in FormExpenseType if it's up-to-date
     user_id?: string;
 };
-
 
 const initialFormState: EnhancedFormState = {
   id: '',
@@ -73,11 +72,12 @@ const initialFormState: EnhancedFormState = {
   merchant: '',
   account: '',
   source: '',
-  user_id: undefined, // Initialize as undefined
+  user_id: undefined,
 };
 
 export const EnhancedAddExpenseForm: React.FC = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [formState, setFormState] = useState<EnhancedFormState>(initialFormState);
   const [errors, setErrors] = useState<Partial<Record<keyof ValidatedExpenseFormData, string>>>({});
@@ -97,7 +97,6 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       ...prevState,
       [field]: value,
     }));
-    // Clear error for this field on change
     if (errors[field as keyof ValidatedExpenseFormData]) {
       setErrors(prevErrors => ({
         ...prevErrors,
@@ -125,7 +124,6 @@ export const EnhancedAddExpenseForm: React.FC = () => {
   };
 
   const validateForm = (): boolean => {
-    // Ensure amount is number for Zod schema if it's coming from input as string
     const dataToValidate = {
         ...formState,
         amount: Number(formState.amount) || 0,
@@ -194,7 +192,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
       {!user && (
         <div className="p-3 mb-4 text-sm text-yellow-800 bg-yellow-100 rounded-lg dark:bg-yellow-900 dark:text-yellow-300" role="alert">
-          <AlertTriangleIcon className="inline w-4 h-4 mr-2" />
+          <AlertTriangle className="inline w-4 h-4 mr-2" />
           You are not logged in. Expenses will not be saved until you log in.
         </div>
       )}
@@ -203,7 +201,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         <Label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount *</Label>
         <Input
           id="amount" name="amount" type="number" step="0.01"
-          value={formState.amount === 0 && !errors.amount ? '' : formState.amount} // Show placeholder if 0 and no error
+          value={formState.amount === 0 && !errors.amount ? '' : formState.amount}
           onChange={(e) => handleInputChange('amount', e.target.value === '' ? 0 : parseFloat(e.target.value))}
           onBlur={() => handleBlur('amount')}
           aria-invalid={!!errors.amount}
@@ -212,7 +210,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className={`mt-1 block w-full ${errors.amount ? 'border-red-500' : ''}`} required
           placeholder="0.00"
         />
-        {errors.amount && <p id="amount-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.amount}</p>}
+        {errors.amount && <p id="amount-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.amount}</p>}
       </div>
 
       <div>
@@ -227,7 +225,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           aria-describedby={errors.date ? "date-error" : undefined}
           className={`mt-1 block w-full ${errors.date ? 'border-red-500' : ''}`} required
         />
-        {errors.date && <p id="date-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.date}</p>}
+        {errors.date && <p id="date-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.date}</p>}
       </div>
 
       <div>
@@ -243,7 +241,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className={`mt-1 block w-full ${errors.category ? 'border-red-500' : ''}`} required
           placeholder="e.g., Food, Transport"
         />
-        {errors.category && <p id="category-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.category}</p>}
+        {errors.category && <p id="category-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.category}</p>}
       </div>
 
       <div>
@@ -259,7 +257,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className={`mt-1 block w-full ${errors.description ? 'border-red-500' : ''}`} required
           placeholder="e.g., Lunch with colleagues"
         />
-        {errors.description && <p id="description-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.description}</p>}
+        {errors.description && <p id="description-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.description}</p>}
       </div>
 
       <div>
@@ -272,7 +270,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className="mt-1 block w-full"
           placeholder="e.g., Credit Card, Cash, UPI"
         />
-         {errors.payment_method && <p id="payment_method-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.payment_method}</p>}
+         {errors.payment_method && <p id="payment_method-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.payment_method}</p>}
       </div>
 
        <div>
@@ -285,7 +283,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className="mt-1 block w-full"
           placeholder="e.g., Amazon, Starbucks, Local Cafe"
         />
-         {errors.merchant && <p id="merchant-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.merchant}</p>}
+         {errors.merchant && <p id="merchant-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.merchant}</p>}
       </div>
 
       <div>
@@ -298,7 +296,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className="mt-1 block w-full"
           placeholder="e.g., ICICI Savings, HDFC Credit Card"
         />
-        {errors.account && <p id="account-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.account}</p>}
+        {errors.account && <p id="account-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.account}</p>}
       </div>
 
       <div>
@@ -311,15 +309,14 @@ export const EnhancedAddExpenseForm: React.FC = () => {
           className="mt-1 block w-full"
           placeholder="e.g., Online Purchase, Store Visit"
         />
-         {errors.source && <p id="source-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.source}</p>}
+         {errors.source && <p id="source-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.source}</p>}
       </div>
 
       <AdvancedExpenseOptions
         tags={formState.tags || []}
         onTagsChange={(newTags) => handleInputChange('tags', newTags)}
       />
-       {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}
-
+       {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}
 
       {formMessage && (
         <p

@@ -1,13 +1,12 @@
-
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
-import { Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-react"; // Added Loader2
+import { Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import Papa from 'papaparse';
 import { db } from '@/db';
-import { format, parse, isValid as isValidDate } from 'date-fns';
+import { format, parse, isValid as isValidDate, parseISO } from 'date-fns';
 
 // Interface for records to be saved in Dexie (aligns with DexieExpenseRecord used elsewhere)
 interface DexieExpenseRecordToSave {
@@ -37,16 +36,13 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
     isValid: boolean;
     errors: string[];
     rowCount?: number;
-    dataErrors?: { rowIndex: number, message: string }[]; // Errors from data parsing
+    dataErrors?: { rowIndex: number, message: string }[];
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  // Define expected headers (lowercase for case-insensitive matching)
-  // Keep these simple for now, mapping can be more complex
   const requiredHeaders = ['date', 'amount', 'description'];
-  // payment_mode will be mapped to payment_method
   const optionalHeaders = ['category', 'source', 'payment_mode', 'tags', 'merchant', 'account'];
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,8 +50,8 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
     if (selectedFile) {
       if (selectedFile.type === 'text/csv' || selectedFile.name.toLowerCase().endsWith('.csv')) {
         setFile(selectedFile);
-        setValidationResult(null); // Reset previous validation
-        validateCSVHeaders(selectedFile); // Validate headers first
+        setValidationResult(null);
+        validateCSVHeaders(selectedFile);
       } else {
         toast({
           title: "Invalid file type",
@@ -121,7 +117,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
   const parseDate = (dateString: string): string | null => {
     if (!dateString || typeof dateString !== 'string') return null;
     const trimmedDate = dateString.trim();
-    // Common date formats to try
     const formatsToTry = [
       'yyyy-MM-dd', 'MM/dd/yyyy', 'dd/MM/yyyy', 'MM-dd-yyyy', 'dd-MM-yyyy',
       'yyyy/MM/dd', 'M/d/yy', 'MM/dd/yy', 'dd.MM.yyyy', 'yyyy.MM.dd'
@@ -134,29 +129,27 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
         }
       } catch (e) { /* ignore parse error and try next format */ }
     }
-    // Try ISO format directly
     try {
         const parsedISO = parseISO(trimmedDate);
         if(isValidDate(parsedISO)) return format(parsedISO, 'yyyy-MM-dd');
     } catch(e) { /* ignore */ }
 
-    return null; // Could not parse
+    return null;
   };
-
 
   const handleUploadAndProcess = () => {
     if (!file || !validationResult?.isValid) {
-      toast({ title: "Cannot Process", description: "Please select a valid CSV file first.", variant: "warning" });
+      toast({ title: "Cannot Process", description: "Please select a valid CSV file first." });
       return;
     }
     
     setIsProcessing(true);
-    setValidationResult(prev => prev ? {...prev, dataErrors: []} : null); // Clear previous data errors
+    setValidationResult(prev => prev ? {...prev, dataErrors: []} : null);
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      dynamicTyping: false, // Handle type conversion manually for robustness
+      dynamicTyping: false,
       transformHeader: header => header.toLowerCase().trim().replace(/"/g, ''),
       complete: async (results) => {
         const dataToSave: DexieExpenseRecordToSave[] = [];
@@ -165,7 +158,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
         for (let i = 0; i < results.data.length; i++) {
           const row = results.data[i] as any;
 
-          // Basic validation for required fields content
           if (!row.date || !row.amount || !row.description) {
             currentDataErrors.push({ rowIndex: i + 1, message: "Missing required data (date, amount, or description)." });
             continue;
@@ -177,7 +169,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             continue;
           }
 
-          const amountStr = String(row.amount).replace(/[^0-9.-]+/g,""); // Remove currency symbols, thousands separators
+          const amountStr = String(row.amount).replace(/[^0-9.-]+/g,"");
           const amountNum = parseFloat(amountStr);
           if (isNaN(amountNum)) {
             currentDataErrors.push({ rowIndex: i + 1, message: `Invalid amount: ${row.amount}` });
@@ -192,7 +184,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             amount: amountNum,
             description: String(row.description || '').trim(),
             category: String(row.category || 'Uncategorized').trim(),
-            payment_method: String(row.payment_mode || row.payment_method || '').trim(), // Accept payment_mode or payment_method
+            payment_method: String(row.payment_mode || row.payment_method || '').trim(),
             tags_flat: tagsArray.join(','),
             source: String(row.source || 'CSV Import').trim(),
             merchant: String(row.merchant || '').trim(),
@@ -203,8 +195,8 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
 
         if (currentDataErrors.length > 0) {
             setValidationResult(prev => ({
-                ...(prev ?? { isValid: false, errors: [], rowCount: 0 }), // Ensure prev is not null
-                isValid: dataToSave.length > 0, // It's "valid" for import if some rows are good
+                ...(prev ?? { isValid: false, errors: [], rowCount: 0 }),
+                isValid: dataToSave.length > 0,
                 dataErrors: currentDataErrors,
                 rowCount: dataToSave.length
             }));
@@ -220,9 +212,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             if (onDataParsed) onDataParsed(dataToSave);
             if (onImportComplete) onImportComplete(dataToSave.length);
 
-            // Reset form after successful part of import
             setFile(null);
-            // Keep validationResult to show errors if any, or clear it fully
             if(currentDataErrors.length === 0) setValidationResult(null);
             if (fileInputRef.current) fileInputRef.current.value = '';
 
@@ -234,10 +224,9 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
                 errors: [...(prev?.errors ?? []), "Database error during bulk add."],
             }));
           }
-        } else if (currentDataErrors.length === 0) { // No data to save and no errors means empty valid file or all rows skipped by some logic not yet erroring
-            toast({ title: "No Data Imported", description: "The CSV file was processed, but no valid expense data was found to import.", variant: "warning"});
+        } else if (currentDataErrors.length === 0) {
+            toast({ title: "No Data Imported", description: "The CSV file was processed, but no valid expense data was found to import."});
         }
-         // If only errors and no data, toast for errors is already shown by dataError block or header validation.
 
         setIsProcessing(false);
       },

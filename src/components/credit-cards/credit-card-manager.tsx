@@ -1,7 +1,6 @@
-
 import { motion } from "framer-motion";
-import React, { useState, useEffect, useCallback } from "react";
-import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2, CalendarDays, AlertTriangle as AlertTriangleIcon } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2, CalendarDays, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format-utils";
@@ -39,7 +38,6 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-// Form data can be a partial of DexieCreditCardRecord, with some fields as string for input
 export type CreditCardFormData = Partial<Omit<DexieCreditCardRecord, 'limit' | 'currentBalance' | 'billCycleDay' | 'created_at' | 'updated_at'>> & {
   limit: string;
   currentBalance: string;
@@ -351,7 +349,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
 
   const handleDateChange = (date?: Date) => {
     setFormData(prev => ({ ...prev, dueDate: date ? format(date, 'yyyy-MM-dd') : undefined }));
-    if(formErrors.dueDate) setFormErrors(prev => ({...prev, dueDate: undefined}));
+    if(formErrors.dueDate) setFormErrors(prev => ({...prev, [dueDate]: undefined}));
   };
 
   const validateCurrentForm = (): boolean => {
@@ -411,7 +409,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
   };
 
   const FieldError: React.FC<{ field: keyof CreditCardFormData }> = ({ field }) =>
-    formErrors[field] ? <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon className="w-3 h-3 mr-1"/> {formErrors[field]}</p> : null;
+    formErrors[field] ? <p className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle className="w-3 h-3 mr-1"/> {formErrors[field]}</p> : null;
 
   return (
     <Dialog open={true} onOpenChange={onClose}>

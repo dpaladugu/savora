@@ -4,7 +4,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown, Receipt, Loader2 } from "lucide-react";
-// Use AppExpense type
 import type { Expense as AppExpense } from "@/services/supabase-data-service";
 import { SmartEntityLinking } from "./smart-entity-linking";
 import { ExpenseItemization, ExpenseLineItem } from "./expense-itemization";
@@ -15,13 +14,13 @@ import { useEnhancedExpenseValidation } from "@/hooks/use-enhanced-expense-valid
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { Logger } from "@/services/logger";
-import { useEffect } from "react"; // Added useEffect
-import type { PaymentMethod } from "./category-payment-selectors"; // Import PaymentMethod type
+import { useEffect } from "react";
+import type { PaymentMethod } from "./category-payment-selectors";
 
 interface EnhancedAddExpenseFormProps {
   onSubmit: (expense: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
   onCancel: () => void;
-  initialData?: AppExpense | null; // For editing
+  initialData?: AppExpense | null;
 }
 
 export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: EnhancedAddExpenseFormProps) {
@@ -32,16 +31,14 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     validateForm, 
     clearErrors, 
     isValidating,
-    hasErrors,
   } = useEnhancedExpenseValidation();
   
-  // Internal form state - keep it flat as it is, map to AppExpense on submit
   const [formData, setFormData] = useState<{
     amount: string;
     date: string;
     category: string;
     description: string;
-    payment_method: PaymentMethod; // Typed correctly
+    payment_method: PaymentMethod;
     tags: string[];
     note: string;
     merchant: string;
@@ -52,13 +49,12 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     date: initialData?.date || new Date().toISOString().split('T')[0],
     category: initialData?.category || 'Food',
     description: initialData?.description || '',
-    payment_method: (initialData?.payment_method || 'UPI') as PaymentMethod, // Ensure type
-    tags: initialData?.tags || [],
+    payment_method: (initialData?.payment_method || 'UPI') as PaymentMethod,
+    tags: Array.isArray(initialData?.tags) ? initialData.tags : (initialData?.tags ? [initialData.tags] : []),
     note: initialData?.note || '',
     merchant: initialData?.merchant || '',
     account: initialData?.account || '',
     source: initialData?.source || 'manual',
-    // linkedGoal was here, removing as it's removed from CategoryPaymentSelectors for now
   });
 
   const isEditMode = !!initialData;
@@ -71,20 +67,19 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         category: initialData.category,
         description: initialData.description || '',
         payment_method: (initialData.payment_method || 'UPI') as PaymentMethod,
-        tags: initialData.tags || [],
+        tags: Array.isArray(initialData.tags) ? initialData.tags : (initialData.tags ? [initialData.tags] : []),
         note: initialData.note || '',
         merchant: initialData.merchant || '',
         account: initialData.account || '',
         source: initialData.source || 'manual',
       });
     } else {
-      // Reset for "add" mode
       setFormData({
         amount: '',
         date: new Date().toISOString().split('T')[0],
         category: 'Food',
         description: '',
-        payment_method: 'UPI' as PaymentMethod, // Ensure type on reset
+        payment_method: 'UPI' as PaymentMethod,
         tags: [],
         note: '',
         merchant: '',
@@ -92,7 +87,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         source: 'manual',
       });
     }
-    clearErrors(); // Clear validation errors when form mode changes or data is reset
+    clearErrors();
   }, [initialData, clearErrors]);
 
   const [showItemization, setShowItemization] = useState(false);
@@ -100,7 +95,6 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
   const [linkedEntities, setLinkedEntities] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Set up notification service
   EnhancedNotificationService.setToastFunction(toast);
 
   const handleFormDataChange = (updates: Partial<typeof formData>) => {
@@ -127,25 +121,13 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     
     if (isSubmitting || isValidating) return;
 
-    // Logger.info('Starting expense form submission', formData); // formData structure changed
-    
-    // Validate form against the current formData state
-    // const isValid = await validateForm(formData); // validateForm might need adjustment if its internal checks depend on old field names
-    // For now, assuming basic validation or that validateForm is adapted separately.
-    // A simple check for amount and description (previously tag)
     if (!formData.amount || !formData.description) {
        EnhancedNotificationService.validationError("Amount and Description are required.");
        return;
     }
-    // if (!isValid || hasErrors) { // hasErrors was removed from useEnhancedExpenseValidation destructuring
-    //   EnhancedNotificationService.validationError("Please fix the errors before submitting");
-    //   return;
-    // }
-
 
     const mainAmount = parseFloat(formData.amount);
 
-    // Check if itemization totals match
     if (showItemization && lineItems.length > 0) {
       const itemsTotal = lineItems.reduce((sum, item) => sum + (item.cost * (item.quantity || 1)), 0);
       if (Math.abs(itemsTotal - mainAmount) > 0.01) {
@@ -156,30 +138,26 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
 
     setIsSubmitting(true);
     try {
-      // Construct the AppExpense compatible object
       const expenseDataToSubmit: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'> = {
         amount: mainAmount,
         date: formData.date,
         category: formData.category,
         description: formData.description.trim(),
         payment_method: formData.payment_method,
-        tags: formData.tags.filter(t => t.trim() !== ''), // Ensure tags are actual strings and not empty
+        tags: formData.tags.join(','), // Convert to flat string for compatibility
         note: formData.note?.trim() || undefined,
         merchant: formData.merchant?.trim() || undefined,
         account: formData.account?.trim() || undefined,
         source: formData.source,
-        // itemized_items and linked_goal_id are not part of AppExpense yet
+        type: 'expense',
       };
 
       await onSubmit(expenseDataToSubmit);
 
-      // Notification handled by parent (ExpenseTracker) after Supabase success
-      // EnhancedNotificationService.expenseAdded(); // This might be redundant if parent shows toast
       Logger.info(`Expense ${isEditMode ? 'updated' : 'added'} successfully via form submission`);
       
-      // Reset form only if not in edit mode, or if edit was successful (parent closes form)
       if (!isEditMode) {
-        setFormData({ // Reset to initial add mode state
+        setFormData({
           amount: '',
           date: new Date().toISOString().split('T')[0],
           category: 'Food',
@@ -195,7 +173,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         setLinkedEntities({});
         setShowItemization(false);
       }
-      clearErrors(); // Clear validation errors after successful submission
+      clearErrors();
       
     } catch (error) {
       Logger.error('Failed to add expense', error);
@@ -229,26 +207,26 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
               date: formData.date,
               description: formData.description,
             }}
-            onFormDataChange={handleFormDataChange} // This needs to correctly map back if field names differ
-            onFieldBlur={(fieldName, value) => handleFieldBlur(fieldName as any, value)} // Cast needed if fieldName type is stricter in child
+            onFormDataChange={handleFormDataChange}
+            onFieldBlur={(fieldName, value) => handleFieldBlur(fieldName as any, value)}
             errors={{
               amount: errors.amount,
               date: errors.date,
               description: errors.description
-            }} // Pass specific errors
+            }}
           />
 
           <CategoryPaymentSelectors 
             formData={{
               category: formData.category,
-              payment_method: formData.payment_method, // No cast needed now
+              payment_method: formData.payment_method,
             }}
             onFormDataChange={handleFormDataChange} 
           />
 
           <SmartEntityLinking
             category={formData.category}
-            description={formData.description} // Changed from tag to description
+            description={formData.description}
             onLinkChange={handleEntityLinkChange}
             linkedEntities={linkedEntities}
           />
