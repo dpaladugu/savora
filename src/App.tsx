@@ -8,6 +8,7 @@ import { ErrorBoundary } from "@/components/error/error-boundary";
 import { Toaster } from "@/components/ui/sonner";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
+import { Auth } from "@/components/auth/Auth";
 import { DbErrorListener } from "@/components/error/DbErrorListener";
 import { Logger } from "@/services/logger";
 import "./App.css";
@@ -37,6 +38,7 @@ function App() {
                 <DbErrorListener />
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />

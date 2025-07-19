@@ -1,26 +1,10 @@
 
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import * as React from "react";
 
 const NotFound = () => {
-  let location;
-  
-  try {
-    location = useLocation();
-  } catch (error) {
-    // If useLocation fails (no router context), we'll handle it gracefully
-    console.warn("Router context not available in NotFound component");
-    location = { pathname: window.location.pathname };
-  }
-
-  useEffect(() => {
-    if (location?.pathname) {
-      console.error(
-        "404 Error: User attempted to access non-existent route:",
-        location.pathname
-      );
-    }
-  }, [location?.pathname]);
+  React.useEffect(() => {
+    console.error("404 Error: User attempted to access non-existent route:", window.location.pathname);
+  }, []);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
