@@ -1,10 +1,8 @@
+
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData, Goal } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import {
-  db,
-  AppSettingTable, // Type for appSettings records
-} from "@/db";
+import { db, AppSettingTable } from "@/db";
 // Use AppExpense for expenses table as defined in SavoraDB
 import type { Expense as AppExpense } from '@/services/supabase-data-service';
 // Use Income from income-tracker for incomes table as defined in SavoraDB
@@ -12,7 +10,20 @@ import type { Income as AppIncome } from '@/components/income/income-tracker';
 import { format, parseISO } from 'date-fns';
 
 // Use types from jsonPreload instead of db module
-import type { InvestmentData, CreditCardData } from '@/types/jsonPreload';
+import type { InvestmentData } from '@/types/jsonPreload';
+
+// Define CreditCardData type locally
+interface CreditCardData {
+  id: string;
+  name?: string;
+  issuer?: string;
+  limit?: number;
+  currentBalance?: number;
+  due_date?: string;
+  bank_name?: string;
+  card_name?: string;
+  last_digits?: string;
+}
 
 // Default AppSetting for Emergency Fund if not found in DB
 const DEFAULT_EF_MONTHS = 6;
@@ -60,7 +71,7 @@ async function fetchDashboardData(): Promise<DashboardData> {
     db.expenses.toArray(), // Assuming AppExpense type from Dexie table
     db.incomes.toArray(),   // Assuming AppIncome type from Dexie table
     db.investments.toArray(), // InvestmentData type
-    db.creditCards.toArray(), // CreditCardData type
+    db.creditCards.toArray(), // DexieCreditCardRecord type
     db.appSettings.get(EF_SETTING_KEY) as Promise<EmergencyFundSetting | AppSettingTable | undefined>
   ]);
 
@@ -68,7 +79,18 @@ async function fetchDashboardData(): Promise<DashboardData> {
   const allExpenses = allDexieExpenses as AppExpense[];
   const allIncomes = allDexieIncomes as AppIncome[];
   const allInvestments = allDexieInvestments as InvestmentData[];
-  const allCreditCards = allDexieCreditCards as CreditCardData[];
+  // Convert DexieCreditCardRecord to CreditCardData
+  const allCreditCards = allDexieCreditCards.map(card => ({
+    id: card.id,
+    name: card.name,
+    issuer: card.issuer,
+    limit: card.limit,
+    currentBalance: card.currentBalance,
+    bank_name: card.issuer, // Map issuer to bank_name
+    card_name: card.name,   // Map name to card_name
+    last_digits: card.last4Digits,
+    due_date: card.dueDate
+  })) as CreditCardData[];
 
   // Calculate Expense Metrics
   const currentMonthStr = format(new Date(), 'yyyy-MM');
@@ -119,8 +141,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
   const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
 
   // Calculate Credit Card Debt
-  // Assuming CreditCardData has 'outstandingBalance' or similar
-  const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number((card as any).outstandingBalance) || 0), 0);
+  // Assuming CreditCardData has 'currentBalance'
+  const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number(card.currentBalance) || 0), 0);
 
   // Prepare Recent Transactions (mix of expenses and incomes)
   // Sort all transactions by date to get the most recent ones

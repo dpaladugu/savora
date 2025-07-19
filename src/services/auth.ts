@@ -6,7 +6,15 @@ import {
   onAuthStateChanged,
   User
 } from 'firebase/auth';
-import { auth } from '@/firebase';
+
+// Create a mock firebase auth object for now
+const mockAuth = {
+  currentUser: null,
+  signInWithEmailAndPassword: async () => { throw new Error('Firebase not configured'); },
+  createUserWithEmailAndPassword: async () => { throw new Error('Firebase not configured'); },
+  signOut: async () => { throw new Error('Firebase not configured'); },
+  onAuthStateChanged: () => () => {}
+};
 
 export interface AuthUser {
   uid: string;
@@ -17,51 +25,29 @@ export interface AuthUser {
 export class AuthService {
   static getCurrentUser(): Promise<User | null> {
     return new Promise((resolve) => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-        unsubscribe();
-        resolve(user);
-      });
+      resolve(null); // Mock implementation
     });
   }
 
   static async signIn(email: string, password: string): Promise<AuthUser> {
-    const result = await signInWithEmailAndPassword(auth, email, password);
-    return {
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName: result.user.displayName
-    };
+    // Mock implementation - replace with actual Firebase auth when configured
+    throw new Error('Firebase authentication not configured');
   }
 
   static async signUp(email: string, password: string): Promise<AuthUser> {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    return {
-      uid: result.user.uid,
-      email: result.user.email,
-      displayName: result.user.displayName
-    };
+    // Mock implementation - replace with actual Firebase auth when configured
+    throw new Error('Firebase authentication not configured');
   }
 
   static async signOut(): Promise<void> {
-    await signOut(auth);
     localStorage.removeItem('savora-user');
   }
 
   static onAuthStateChange(callback: (user: AuthUser | null) => void) {
-    return onAuthStateChanged(auth, (user) => {
-      if (user) {
-        const authUser: AuthUser = {
-          uid: user.uid,
-          email: user.email,
-          displayName: user.displayName
-        };
-        localStorage.setItem('savora-user', JSON.stringify(authUser));
-        callback(authUser);
-      } else {
-        localStorage.removeItem('savora-user');
-        callback(null);
-      }
-    });
+    // Mock implementation - replace with actual Firebase auth when configured
+    const stored = this.getStoredUser();
+    callback(stored);
+    return () => {};
   }
 
   static getStoredUser(): AuthUser | null {
