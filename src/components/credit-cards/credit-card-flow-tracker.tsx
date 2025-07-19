@@ -7,7 +7,6 @@ import { ModuleHeader } from "@/components/layout/module-header";
 import { ExpenseService } from "@/services/ExpenseService";
 import { formatCurrency } from "@/lib/format-utils";
 import { Expense } from "@/services/supabase-data-service";
-import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 
 interface CreditCardInfo {
@@ -130,7 +129,6 @@ function AddCardForm({ onSubmit, onCancel }: {
 
 
 export function CreditCardFlowTracker() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [cards, setCards] = useState<CreditCardInfo[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -138,16 +136,13 @@ export function CreditCardFlowTracker() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
+    loadData();
+  }, []);
 
   const loadData = async () => {
-    if (!user?.uid) return;
     setLoading(true);
     try {
-      const expenseData = await ExpenseService.getExpenses(user.uid);
+      const expenseData = await ExpenseService.getExpenses();
       setExpenses(expenseData);
       
       const savedCards = localStorage.getItem('credit-cards');

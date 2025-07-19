@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, ArrowUpDown } from "lucide-react";
 import { SupabaseDataService } from "@/services/supabase-data-service"; // Changed
-import { useAuth } from "@/contexts/auth-context";
 import { formatCurrency } from "@/lib/format-utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 // Assuming Income and Expense types from SupabaseDataService will be compatible or we'll import them
@@ -24,28 +23,24 @@ interface CategoryChartEntry {
 }
 
 export function CashflowAnalysis() {
-  const { user } = useAuth();
   const [cashflowData, setCashflowData] = useState<CashflowChartEntry[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryChartEntry[]>([]);
   const [timeFilter, setTimeFilter] = useState<'3m' | '6m' | '1y'>('6m');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      loadCashflowData();
-    }
-  }, [user, timeFilter]);
+    loadCashflowData();
+  }, [timeFilter]);
 
   const loadCashflowData = async () => {
-    if (!user) return;
     setLoading(true); // Ensure loading is true at the start of data fetching
     
     try {
       // Fetch incomes and expenses from SupabaseDataService
       // Commenting out investments for now as it's not part of SupabaseDataService yet
       const [incomes, expenses /*, investments */] = await Promise.all([
-        SupabaseDataService.getIncomes(user.uid),
-        SupabaseDataService.getExpenses(user.uid),
+        SupabaseDataService.getIncomes(),
+        SupabaseDataService.getExpenses(),
         // Promise.resolve([]) // Placeholder for investments if needed for array structure
       ]);
       const investments: any[] = []; // Mock empty investments

@@ -13,7 +13,6 @@ import { useToast } from "@/hooks/use-toast";
 import { db, DexieAccountRecord } from "@/db";
 import { AccountService } from "@/services/AccountService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from "@/contexts/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,20 +34,15 @@ type AccountType = typeof ACCOUNT_TYPES[number];
 
 
 export function AccountManager() {
-  const { user } = useAuth();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingAccount, setEditingAccount] = useState<DexieAccountRecord | null>(null);
   const [accountToDelete, setAccountToDelete] = useState<DexieAccountRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
-  // const userIdToQuery = user?.uid || 'default_user'; // Old approach
-
   const liveAccounts = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-
-      const allUserAccounts = await AccountService.getAccounts(user.uid);
+      const allUserAccounts = await AccountService.getAccounts();
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -60,7 +54,7 @@ export function AccountManager() {
       }
       return allUserAccounts.sort((a,b) => a.name.localeCompare(b.name));
     },
-    [searchTerm, user?.uid],
+    [searchTerm],
     []
   );
   const accounts = liveAccounts || [];
@@ -281,17 +275,15 @@ interface AddAccountFormProps {
 
 function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user directly in form
   const [formData, setFormData] = useState<AccountFormData>(() => {
     const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: ''
     };
     if (initialData) {
       return {
         ...initialData,
         balance: initialData.balance?.toString() || '0',
         type: initialData.type as AccountType,
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -306,16 +298,14 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
         id: initialData.id,
         balance: initialData.balance?.toString() || '0',
         type: initialData.type as AccountType,
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData's user_id if present
       });
     } else {
-      // For new form, set user_id from current auth context
       setFormData({
-        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
+        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: ''
       });
     }
     setFormErrors({});
-  }, [initialData, user]); // Rerun if initialData or user changes
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -355,10 +345,6 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
       return;
     }
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to save an account.", variant: "destructive" });
-      return;
-    }
     setIsSaving(true);
 
     const balanceNum = parseFloat(formData.balance || '0');
@@ -371,7 +357,6 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
       provider: formData.provider!,
       isActive: formData.isActive !== undefined ? formData.isActive : true,
       notes: formData.notes || '',
-      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {

@@ -67,13 +67,12 @@ export class IncomeService {
    * @param userId The ID of the user whose income to fetch.
    * @returns A promise that resolves to an array of income records.
    */
-  static async getIncomes(userId: string): Promise<AppIncome[]> {
+  static async getIncomes(): Promise<AppIncome[]> {
     try {
-      if (!userId) return [];
-      const incomes = await db.incomes.where('user_id').equals(userId).toArray();
+      const incomes = await db.incomes.toArray();
       return incomes;
     } catch (error) {
-      console.error(`Error in IncomeService.getIncomes for user ${userId}:`, error);
+      console.error(`Error in IncomeService.getIncomes:`, error);
       throw error;
     }
   }

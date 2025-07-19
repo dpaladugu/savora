@@ -22,12 +22,10 @@ export class TransactionService {
    * @param userId The ID of the user whose transactions to fetch.
    * @returns A promise that resolves to a combined array of transactions, sorted by date descending.
    */
-  static async getTransactions(userId: string): Promise<Transaction[]> {
+  static async getTransactions(): Promise<Transaction[]> {
     try {
-      if (!userId) return [];
-
-      const expensesPromise = ExpenseService.getExpenses(userId);
-      const incomesPromise = IncomeService.getIncomes(userId);
+      const expensesPromise = ExpenseService.getExpenses();
+      const incomesPromise = IncomeService.getIncomes();
 
       const [expenses, incomes] = await Promise.all([expensesPromise, incomesPromise]);
 
@@ -38,7 +36,7 @@ export class TransactionService {
 
       return combined;
     } catch (error) {
-      console.error(`Error in TransactionService.getTransactions for user ${userId}:`, error);
+      console.error(`Error in TransactionService.getTransactions:`, error);
       throw error;
     }
   }

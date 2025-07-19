@@ -11,7 +11,6 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from "@/contexts/auth-context";
 import { db } from "@/db";
 import { IncomeSourceData } from '@/types/jsonPreload';
 import { DexieAccountRecord } from '@/db';
@@ -29,6 +28,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 // This is the type for records in db.incomes (defined in SavoraDB class in db.ts)
 // It should align with AppIncome interface if AppIncome is the intended structure for Dexie.
@@ -64,7 +66,6 @@ const INCOME_FREQUENCIES = ['one-time', 'monthly', 'quarterly', 'yearly', 'weekl
 
 
 export function IncomeTracker() {
-  const { user } = useAuth();
   const { toast } = useToast();
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -73,8 +74,7 @@ export function IncomeTracker() {
   const [searchTerm, setSearchTerm] = useState("");
 
   const liveIncomes = useLiveQuery(async () => {
-    if (!user?.uid) return [];
-    let query = db.incomes.where('user_id').equals(user.uid);
+    let query = db.incomes;
     
     const userIncomes = await query.toArray(); // Fetch all user incomes first
 
@@ -87,7 +87,7 @@ export function IncomeTracker() {
       ).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
     }
     return userIncomes.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [user?.uid, searchTerm], []);
+  }, [searchTerm], []);
 
   const incomes = liveIncomes || [];
 
@@ -171,14 +171,7 @@ export function IncomeTracker() {
       {showAddForm && (
         <AddIncomeForm
           initialData={editingIncome} // Pass editingIncome here
-          onSubmit={(incomeData) => { // Combined submit handler
-            if (editingIncome) {
-              handleUpdateIncome(editingIncome.id, incomeData);
-            } else {
-              handleAddIncome(incomeData);
-            }
-          }}
-          onCancel={() => {
+          onClose={() => {
             setShowAddForm(false);
             setEditingIncome(null); // Clear editing state on cancel
           }}
@@ -313,7 +306,6 @@ interface AddIncomeFormProps {
 
 function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<AddIncomeFormData>({
     resolver: zodResolver(incomeSchema),
@@ -329,7 +321,7 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
     }
   });
 
-  const accountList = useLiveQuery(() => user?.uid ? db.accounts.where('user_id').equals(user.uid).and(acc => acc.isActive === true).toArray() : [], [user?.uid], []);
+  const accountList = useLiveQuery(() => db.accounts.where('isActive').equals(true).toArray(), [], []);
 
   useEffect(() => {
     if (initialData) {
@@ -352,26 +344,20 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
   }, [initialData, reset]);
 
   const processSubmit = async (data: AddIncomeFormData) => {
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to save income.", variant: "destructive" });
-      return;
-    }
-
-    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at' | 'user_id'> = {
+    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'> = {
       ...data,
       tags_flat: data.tags?.join(',').toLowerCase() || '',
     };
 
     try {
       if (initialData?.id) {
-        await db.incomes.update(initialData.id, { ...recordData, user_id: user.uid, updated_at: new Date().toISOString() });
+        await db.incomes.update(initialData.id, { ...recordData, updated_at: new Date().toISOString() });
         toast({ title: "Success", description: `Income from "${recordData.source_name}" updated.` });
       } else {
         const newId = self.crypto.randomUUID();
         await db.incomes.add({
           ...recordData,
           id: newId,
-          user_id: user.uid,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         } as AppIncome);
@@ -468,7 +454,6 @@ function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
                     <TagsInput
                         tags={field.value || []}
                         onTagsChange={field.onChange}
-                        userId={user?.uid}
                         placeholder="Add relevant tags..."
                     />
                 )}

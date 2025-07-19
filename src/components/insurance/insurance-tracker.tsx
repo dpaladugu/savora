@@ -15,7 +15,6 @@ import { db, DexieInsurancePolicyRecord, DexieLoanEMIRecord } from "@/db";
 import { InsuranceService } from "@/services/InsuranceService";
 import { LoanService } from "@/services/LoanService";
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import { formatCurrency } from "@/lib/format-utils";
 import {
@@ -66,12 +65,10 @@ export function InsuranceTracker() {
   const [itemToDelete, setItemToDelete] = useState<DexieInsurancePolicyRecord | DexieLoanEMIRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
 
   const liveInsurances = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-      const userInsurances = await InsuranceService.getPolicies(user.uid);
+      const userInsurances = await InsuranceService.getPolicies();
       if (searchTerm && activeTab === 'insurance') {
         const lowerSearchTerm = searchTerm.toLowerCase();
         return userInsurances.filter(p =>
@@ -82,14 +79,13 @@ export function InsuranceTracker() {
       }
       return userInsurances;
     },
-    [searchTerm, activeTab, user?.uid],
+    [searchTerm, activeTab],
     []
   );
 
   const liveEMIs = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-      const userEMIs = await LoanService.getLoans(user.uid);
+      const userEMIs = await LoanService.getLoans();
        if (searchTerm && activeTab === 'emi') {
         const lowerSearchTerm = searchTerm.toLowerCase();
         return userEMIs.filter(e =>
@@ -99,7 +95,7 @@ export function InsuranceTracker() {
       }
       return userEMIs;
     },
-    [searchTerm, activeTab, user?.uid],
+    [searchTerm, activeTab],
     []
   );
 
@@ -420,12 +416,11 @@ interface AddInsuranceFormProps {
 }
 function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
   const [formData, setFormData] = useState<InsuranceFormData>(() => {
     const defaults: InsuranceFormData = {
         policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', coverageAmount: '',
-        nextDueDate: '', status: 'active', note: '', user_id: user?.uid // Initialize with user?.uid
+        nextDueDate: '', status: 'active', note: ''
     };
     if (initialData) {
       return {
@@ -435,7 +430,6 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -453,18 +447,17 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : undefined,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : undefined,
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
       // For new form, ensure user_id is from current auth context
       setFormData({
         policyName: '', policyNumber: '', insurer: '', type: 'life', premium: '', frequency: 'yearly',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: undefined, coverageAmount: '',
-        nextDueDate: undefined, status: 'active', note: '', user_id: user?.uid
+        nextDueDate: undefined, status: 'active', note: ''
       });
     }
     setFormErrors({}); // Clear errors when data changes
-  }, [initialData, user]);
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -494,11 +487,6 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
       setIsSaving(false); return;
     }
 
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
-
     const premiumNum = parseFloat(formData.premium!); // Already validated
     const coverageNum = formData.coverageAmount ? parseFloat(formData.coverageAmount) : undefined;
 
@@ -507,7 +495,7 @@ function AddInsuranceForm({ initialData, onClose }: AddInsuranceFormProps) {
         premium: premiumNum, frequency: formData.frequency! as DexieInsurancePolicyRecord['frequency'],
         startDate: formData.startDate, endDate: formData.endDate, coverageAmount: coverageNum,
         nextDueDate: formData.nextDueDate, status: formData.status! as DexieInsurancePolicyRecord['status'],
-        note: formData.note || '', user_id: user.uid, // Use authenticated user's ID
+        note: formData.note || '',
         policyNumber: formData.policyNumber || ''
     };
 
@@ -670,12 +658,11 @@ interface AddEMIFormProps {
 }
 function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
    const { toast } = useToast();
-   const { user } = useAuth(); // Get user
   const [formData, setFormData] = useState<EMIFormData>(() => {
     const defaults: EMIFormData = {
         loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: '', nextDueDate: '', remainingAmount: '',
-        status: 'active', account: '', note: '', user_id: user?.uid // Initialize with user?.uid
+        status: 'active', account: '', note: ''
     };
     if (initialData) {
       return {
@@ -688,7 +675,6 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : defaults.startDate,
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : defaults.endDate,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : defaults.nextDueDate,
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -709,18 +695,17 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
         startDate: initialData.startDate ? format(parseISO(initialData.startDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
         endDate: initialData.endDate ? format(parseISO(initialData.endDate), 'yyyy-MM-dd') : undefined,
         nextDueDate: initialData.nextDueDate ? format(parseISO(initialData.nextDueDate), 'yyyy-MM-dd') : undefined,
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
       // For new form, ensure user_id is from current auth context
       setFormData({
         loanType: '', lender: '', principalAmount: '', emiAmount: '', interestRate: '', tenureMonths: '',
         startDate: format(new Date(), 'yyyy-MM-dd'), endDate: undefined, nextDueDate: undefined, remainingAmount: '',
-        status: 'active', account: '', note: '', user_id: user?.uid
+        status: 'active', account: '', note: ''
       });
     }
     setFormErrors({}); // Clear errors when data changes
-  }, [initialData, user]);
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -750,11 +735,6 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
       setIsSaving(false); return;
     }
 
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in.", variant: "destructive" });
-      setIsSaving(false); return;
-    }
-
     const principalNum = parseFloat(formData.principalAmount!);
     const emiNum = parseFloat(formData.emiAmount!);
     const interestNum = formData.interestRate ? parseFloat(formData.interestRate) : undefined;
@@ -768,7 +748,7 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
         tenureMonths: tenureNum!, // Ensure this is parsed as number if string input
         startDate: formData.startDate, endDate: formData.endDate, nextDueDate: formData.nextDueDate,
         remainingAmount: remainingNum, status: formData.status! as DexieLoanEMIRecord['status'],
-        account: formData.account || '', note: formData.note || '', user_id: user.uid, // Use authenticated user's ID
+        account: formData.account || '', note: formData.note || '',
     };
 
     try {
@@ -929,110 +909,6 @@ function AddEMIForm({ initialData, onClose }: AddEMIFormProps) {
     </Dialog>
   );
 }
-  policyNumber: string;
-  insurer: string;
-  type: 'life' | 'health' | 'vehicle' | 'home' | 'other';
-  premium: number;
-  frequency: 'monthly' | 'quarterly' | 'yearly';
-  startDate: string;
-  endDate: string;
-  coverageAmount: number;
-  nextDueDate: string;
-  status: 'active' | 'expired' | 'cancelled';
-  note?: string;
-}
-
-export interface EMI {
-  id: string;
-  loanType: string;
-  lender: string;
-  principalAmount: number;
-  emiAmount: number;
-  interestRate: number;
-  tenure: number;
-  startDate: string;
-  endDate: string;
-  nextDueDate: string;
-  remainingAmount: number;
-  status: 'active' | 'completed' | 'defaulted';
-  note?: string;
-}
-
-const mockInsurances: Insurance[] = [
-  {
-    id: '1',
-    policyName: 'Term Life Insurance',
-    policyNumber: 'LI001234567',
-    insurer: 'LIC of India',
-    type: 'life',
-    premium: 25000,
-    frequency: 'yearly',
-    startDate: '2023-01-15',
-    endDate: '2043-01-15',
-    coverageAmount: 5000000,
-    nextDueDate: '2024-01-15',
-    status: 'active'
-  }
-];
-
-const mockEMIs: EMI[] = [
-  {
-    id: '1',
-    loanType: 'Home Loan',
-    lender: 'SBI',
-    principalAmount: 5000000,
-    emiAmount: 45000,
-    interestRate: 8.5,
-    tenure: 240,
-    startDate: '2023-06-01',
-    endDate: '2043-06-01',
-    nextDueDate: '2024-02-01',
-    remainingAmount: 4800000,
-    status: 'active'
-  }
-];
-
-export function InsuranceTracker() {
-  const [insurances, setInsurances] = useState<Insurance[]>(mockInsurances);
-  const [emis, setEMIs] = useState<EMI[]>(mockEMIs);
-  const [activeTab, setActiveTab] = useState<'insurance' | 'emi'>('insurance');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const { toast } = useToast();
-
-  const handleAddInsurance = (newInsurance: Omit<Insurance, 'id'>) => {
-    const insurance: Insurance = {
-      ...newInsurance,
-      id: Date.now().toString()
-    };
-    
-    setInsurances([insurance, ...insurances]);
-    setShowAddForm(false);
-    
-    // Logic to save to Firestore would go here
-    
-    toast({
-      title: "Insurance policy added",
-      description: `${newInsurance.policyName} added successfully`,
-    });
-  };
-
-  const handleAddEMI = (newEMI: Omit<EMI, 'id'>) => {
-    const emi: EMI = {
-      ...newEMI,
-      id: Date.now().toString()
-    };
-    
-    setEMIs([emi, ...emis]);
-    setShowAddForm(false);
-    
-    // Logic to save to Firestore would go here
-    
-    toast({
-      title: "EMI added",
-      description: `${newEMI.loanType} EMI added successfully`,
-    });
-  };
 
   const getDaysUntilDue = (dueDate: string) => {
     const due = new Date(dueDate);

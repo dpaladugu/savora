@@ -15,13 +15,9 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
   return (
     <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
       <div className="flex items-center justify-between p-4">
-        <div className="flex items-center gap-3">
-          {showBackButton && onBack && (
-            <Button variant="ghost" size="sm" onClick={onBack}>
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          )}
-          <h1 className="text-xl font-bold text-foreground">{title}</h1>
+<div className="flex items-center gap-2">
+          <img src="/placeholder.svg" alt="Savora Logo" className="h-8 w-8" />
+          <h1 className="text-xl font-bold text-foreground tracking-tight">{title || "Savora"}</h1>
         </div>
         
         <Button

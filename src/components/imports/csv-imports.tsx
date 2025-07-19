@@ -6,14 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { CSVParser } from "@/services/csv-parser";
 import { ExpenseService } from "@/services/ExpenseService";
 import { InvestmentService } from "@/services/InvestmentService";
-import { useAuth } from "@/contexts/auth-context";
 import { EnhancedCSVProcessor } from "@/components/csv/enhanced-csv-processor";
 
 export function CSVImports() {
   const [uploading, setUploading] = useState<string | null>(null);
   const [uploadStatus, setUploadStatus] = useState<{ [key: string]: 'success' | 'error' | null }>({});
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const importTypes = [
     {
@@ -55,15 +53,6 @@ export function CSVImports() {
   ];
 
   const handleFileUpload = async (importType: string, file: File) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Please sign in to upload files.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setUploading(importType);
     
     try {
@@ -79,13 +68,12 @@ export function CSVImports() {
         const expensesToSave = expenses.map(expense => ({
           ...expense,
           id: self.crypto.randomUUID(), // Services don't auto-gen ID for bulk ops
-          user_id: user.uid,
           source: 'csv',
           created_at: new Date(),
           updated_at: new Date()
         }));
         
-        await db.expenses.bulkAdd(expensesToSave as any); // Use bulkAdd
+        await ExpenseService.bulkAddExpenses(expensesToSave as any); // Use bulkAdd
         
         toast({
           title: "Success",
@@ -105,21 +93,19 @@ export function CSVImports() {
         const expenseFormat = creditCardTransactions
           .filter(tx => tx.type === 'debit') // Only debits are expenses
           .map(tx => ({
-            userId: user.uid,
             date: tx.date,
             amount: tx.amount,
             category: tx.category,
-            paymentMethod: 'Credit Card',
+            payment_method: 'Credit Card',
             description: `${tx.merchant} - ${tx.description} (Card ...${tx.cardLastFour})`, // Added card info to description
-            tags: [`Credit Card - ${tx.merchant}`], // Changed to string array
-            // account: `Card ending ${tx.cardLastFour}`, // Removed 'account' property
+            tags_flat: `credit-card,${tx.merchant}`, // Changed to string
             type: 'expense' as const,
             source: 'csv' as const,
-            createdAt: new Date().toISOString()
+            created_at: new Date().toISOString()
           }));
         
         if (expenseFormat.length > 0) {
-          await db.expenses.bulkAdd(expenseFormat as any);
+          await ExpenseService.bulkAddExpenses(expenseFormat as any);
         }
         
         toast({
@@ -139,13 +125,12 @@ export function CSVImports() {
         const investmentsToSave = investments.map(investment => ({
           ...investment,
           id: self.crypto.randomUUID(),
-          user_id: user.uid,
           purchaseDate: investment.date,
           investment_type: investment.type, // Map field name
           fund_name: investment.name, // Map field name
         }));
         
-        await db.investments.bulkAdd(investmentsToSave as any);
+        await InvestmentService.bulkAddInvestments(investmentsToSave as any);
         
         toast({
           title: "Success",
@@ -223,29 +208,25 @@ export function CSVImports() {
   };
 
   const handleEnhancedDataProcessed = async (data: any[], type: string) => {
-    if (!user) return;
-    
     try {
       if (type === 'axio') {
         const expensesToSave = data.map(expense => ({
           ...expense,
           id: self.crypto.randomUUID(),
-          user_id: user.uid,
           source: 'csv',
         }));
         
-        await db.expenses.bulkAdd(expensesToSave as any);
+        await ExpenseService.bulkAddExpenses(expensesToSave as any);
       } else if (type === 'kuvera') {
         const investmentsToSave = data.map(investment => ({
           ...investment,
           id: self.crypto.randomUUID(),
-          user_id: user.uid,
           purchaseDate: investment.date,
           investment_type: investment.type,
           fund_name: investment.name,
         }));
         
-        await db.investments.bulkAdd(investmentsToSave as any);
+        await InvestmentService.bulkAddInvestments(investmentsToSave as any);
       }
       
       toast({
