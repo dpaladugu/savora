@@ -10,9 +10,11 @@ export interface Expense {
   description: string;
   category: string;
   date: string; // YYYY-MM-DD
+  type: string; // Required field in the database
   payment_method?: string;
   tags?: string;
   account?: string;
+  source?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -38,7 +40,7 @@ export class SupabaseDataService {
   static async addExpense(expenseData: Omit<Expense, 'id' | 'created_at' | 'updated_at'> & { user_id: string }): Promise<Expense> {
     const { data, error } = await supabase
       .from('expenses')
-      .insert([expenseData])
+      .insert(expenseData)
       .select()
       .single();
 

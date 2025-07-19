@@ -41,11 +41,9 @@ export function CashflowAnalysis() {
         return;
       }
 
-      // Pass user_id to the service methods
-      const [incomes, expenses] = await Promise.all([
-        SupabaseDataService.getIncomes(user.uid),
-        SupabaseDataService.getExpenses(user.uid),
-      ]);
+      // For now, we'll only use expenses since incomes table doesn't exist in Supabase
+      const expenses = await SupabaseDataService.getExpenses(user.uid);
+      const incomes: any[] = []; // Mock empty incomes until we create the table
       const investments: any[] = []; // Mock empty investments
 
       // Calculate date range based on filter
@@ -65,7 +63,7 @@ export function CashflowAnalysis() {
           if (!monthlyData[month]) {
             monthlyData[month] = { expenses: 0, investments: 0, income: 0 };
           }
-          monthlyData[month].expenses += expense.amount;
+          monthlyData[month].expenses += Number(expense.amount);
         }
       });
 
@@ -76,7 +74,7 @@ export function CashflowAnalysis() {
           if (!monthlyData[month]) {
             monthlyData[month] = { expenses: 0, investments: 0, income: 0 };
           }
-          monthlyData[month].investments += investment.amount;
+          monthlyData[month].investments += Number(investment.amount);
         }
       });
 
@@ -87,7 +85,7 @@ export function CashflowAnalysis() {
           if (!monthlyData[month]) {
             monthlyData[month] = { expenses: 0, investments: 0, income: 0 };
           }
-          monthlyData[month].income += income.amount;
+          monthlyData[month].income += Number(income.amount);
         }
       });
 
@@ -115,14 +113,14 @@ export function CashflowAnalysis() {
       const currentMonthExpenses = expenses.filter(exp => exp.date.startsWith(currentMonth));
       
       const categories = currentMonthExpenses.reduce((acc, expense) => {
-        acc[expense.category] = (acc[expense.category] || 0) + expense.amount;
+        acc[expense.category] = (acc[expense.category] || 0) + Number(expense.amount);
         return acc;
       }, {} as Record<string, number>);
 
       const categoryChartData = Object.entries(categories)
         .sort(([,a], [,b]) => b - a)
         .slice(0, 8)
-        .map(([category, amount]) => ({ category, amount }));
+        .map(([category, amount]) => ({ category, amount: Number(amount) }));
 
       setCategoryData(categoryChartData);
     } catch (error) {
