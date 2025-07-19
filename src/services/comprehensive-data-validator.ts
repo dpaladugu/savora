@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { Logger } from "./logger";
+import { jsonPreloadMVPDataSchema } from './jsonPreloadValidators';
+import type { JsonPreloadMVPData } from '@/types/jsonPreload';
 
 // Comprehensive validation schemas
 export const ExpenseValidationSchema = z.object({
@@ -11,7 +13,6 @@ export const ExpenseValidationSchema = z.object({
   type: z.enum(['expense', 'income']),
   paymentMethod: z.string().optional(),
   tags: z.array(z.string()).optional(),
-  userId: z.string().min(1, "User ID is required")
 });
 
 export const InvestmentValidationSchema = z.object({
@@ -21,7 +22,6 @@ export const InvestmentValidationSchema = z.object({
   name: z.string().min(1, "Investment name is required"),
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"),
   purchaseDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Invalid purchase date format"),
-  userId: z.string().min(1, "User ID is required"),
   riskLevel: z.enum(['low', 'medium', 'high'])
 });
 
@@ -88,9 +88,6 @@ export class ComprehensiveDataValidator {
     });
   }
 
-  // Utility methods like formatCurrency, formatPercentage, sanitizeInput, isValidDate, isValidAmount
-  // have been removed from here. They should be used from DataValidator.ts or a similar utility file.
-
   static formatCurrency(amount: number): string {
     if (typeof amount !== 'number') {
       return 'N/A';
@@ -106,12 +103,14 @@ export class ComprehensiveDataValidator {
 
 export interface ValidationResult {
   isValid: boolean;
-  data?: any;
-  errors?: any;
+  data?: JsonPreloadMVPData;
+  errors?: Array<{
+    path: string[];
+    message: string;
+  }>;
 }
 
 export function validateFinancialData(data: unknown): ValidationResult {
-  const { jsonPreloadMVPDataSchema } = require('./jsonPreloadValidators');
   try {
     const validatedData = jsonPreloadMVPDataSchema.parse(data);
     return {
