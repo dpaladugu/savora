@@ -14,10 +14,11 @@ import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
 import { InvestmentData } from "@/types/jsonPreload";
 import { InvestmentService } from '@/services/InvestmentService';
-import { AddInvestmentForm } from '@/components/forms/add-investment-form'; // Import the unified form
+import { AddInvestmentForm } from '@/components/forms/add-investment-form';
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import { formatCurrency } from "@/lib/format-utils";
+import { useAuth } from "@/contexts/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,9 +27,8 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle as AlertDialogTitleComponent, // Renamed to avoid conflict
+  AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
-
 
 // Form data type
 export type InvestmentFormData = Partial<Omit<InvestmentData, 'invested_value' | 'current_value' | 'quantity' | 'created_at' | 'updated_at'>> & {
@@ -38,9 +38,7 @@ export type InvestmentFormData = Partial<Omit<InvestmentData, 'invested_value' |
 };
 
 const INVESTMENT_TYPES = ['Mutual Fund', 'PPF', 'EPF', 'NPS', 'Gold', 'Stock', 'Other'] as const;
-// Potential categories, can be expanded or fetched dynamically in future
 const INVESTMENT_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Retirement', 'Commodity', 'Real Estate', 'Other'] as const;
-
 
 export function InvestmentsTracker() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -48,10 +46,11 @@ export function InvestmentsTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<InvestmentData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const liveInvestments = useLiveQuery(
     async () => {
-      const userInvestments = await InvestmentService.getInvestments();
+      const userInvestments = await InvestmentService.getInvestments(user?.uid || '');
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -61,10 +60,9 @@ export function InvestmentsTracker() {
           (inv.category && inv.category.toLowerCase().includes(lowerSearchTerm))
         );
       }
-      // The service doesn't sort, so we sort here.
       return userInvestments.sort((a, b) => (b.purchaseDate && a.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
     },
-    [searchTerm],
+    [searchTerm, user?.uid],
     []
   );
   const investments = liveInvestments || [];
@@ -169,16 +167,15 @@ export function InvestmentsTracker() {
       </div>
 
       {/* Search Input */}
-      <div className="mt-6 mb-4">
-          <Input
-            placeholder="Search investments by name, type, or category..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            icon={<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />}
-          />
+      <div className="mt-6 mb-4 relative">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search investments by name, type, or category..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-10"
+        />
       </div>
-
 
       {/* Investment List / Empty State */}
       {investments.length === 0 && !showAddForm ? (
@@ -299,4 +296,3 @@ export function InvestmentsTracker() {
     </div>
   );
 }
-
