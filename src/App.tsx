@@ -27,37 +27,25 @@ function App() {
   console.log('App: Component initializing');
   Logger.info('App initialized');
 
-  return React.createElement(
-    ErrorBoundary,
-    null,
-    React.createElement(
-      QueryClientProvider,
-      { client: queryClient },
-      React.createElement(
-        AuthProvider,
-        null,
-        React.createElement(
-          ThemeProvider,
-          null,
-          React.createElement(
-            Router,
-            null,
-            React.createElement(
-              "div",
-              { className: "min-h-screen bg-background text-foreground" },
-              React.createElement(DbErrorListener, null),
-              React.createElement(
-                Routes,
-                null,
-                React.createElement(Route, { path: "/", element: React.createElement(Index, null) }),
-                React.createElement(Route, { path: "*", element: React.createElement(NotFound, null) })
-              ),
-              React.createElement(Toaster, null)
-            )
-          )
-        )
-      )
-    )
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ThemeProvider>
+            <Router>
+              <div className="min-h-screen bg-background text-foreground">
+                <DbErrorListener />
+                <Routes>
+                  <Route path="/" element={<Index />} />
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster />
+              </div>
+            </Router>
+          </ThemeProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

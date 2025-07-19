@@ -14,11 +14,9 @@ if (!container) {
 const root = createRoot(container);
 console.log('main.tsx: Rendering App component');
 root.render(
-  React.createElement(
-    React.StrictMode,
-    null,
-    React.createElement(App, null)
-  )
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
 );
 
 if ('serviceWorker' in navigator) {

@@ -61,44 +61,40 @@ const Index = () => {
 
   if (!isAppInitialized) {
     console.log('Index: Rendering LoadingScreen');
-    return React.createElement(LoadingScreen);
+    return <LoadingScreen />;
   }
 
   if (!hasExistingUser) {
     console.log('Index: Rendering WelcomeScreen');
-    return React.createElement(WelcomeScreen, { onComplete: handleOnboardingComplete });
+    return <WelcomeScreen onComplete={handleOnboardingComplete} />;
   }
 
   if (hasPin && !isUnlocked) {
     console.log('Index: Rendering PinLock');
-    return React.createElement(PinLock, { onUnlockSuccess: handleUnlockSuccess });
+    return <PinLock onUnlockSuccess={handleUnlockSuccess} />;
   }
 
   console.log('Index: Rendering main app interface');
   // User is authenticated and PIN is unlocked (or not set)
-  return React.createElement(
-    GlobalErrorBoundary,
-    null,
-    React.createElement(
-      "div",
-      { className: "relative min-h-screen" },
-      React.createElement(
-        "div",
-        { className: "pb-20 md:pb-0" },
-        React.createElement(MainContentRouter, {
-          activeTab: activeTab,
-          activeMoreModule: activeMoreModule,
-          onMoreNavigation: handleMoreNavigation,
-          onTabChange: handleTabChange
-        }),
-        React.createElement(PersistentNavigation, {
-          activeTab: activeTab,
-          onTabChange: handleTabChange,
-          activeMoreModule: activeMoreModule,
-          onMoreNavigation: handleMoreNavigation
-        })
-      )
-    )
+  return (
+    <GlobalErrorBoundary>
+      <div className="relative min-h-screen">
+        <div className="pb-20 md:pb-0">
+          <MainContentRouter
+            activeTab={activeTab}
+            activeMoreModule={activeMoreModule}
+            onMoreNavigation={handleMoreNavigation}
+            onTabChange={handleTabChange}
+          />
+          <PersistentNavigation
+            activeTab={activeTab}
+            onTabChange={handleTabChange}
+            activeMoreModule={activeMoreModule}
+            onMoreNavigation={handleMoreNavigation}
+          />
+        </div>
+      </div>
+    </GlobalErrorBoundary>
   );
 };
 

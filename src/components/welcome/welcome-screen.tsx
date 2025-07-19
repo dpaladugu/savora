@@ -20,27 +20,21 @@ export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
     onComplete();
   };
 
-  return React.createElement(
-    "div",
-    { className: "flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900" },
-    React.createElement(
-      Card,
-      { className: "w-full max-w-md mx-4" },
-      React.createElement(
-        CardHeader,
-        { className: "text-center" },
-        React.createElement(CardTitle, { className: "text-2xl font-bold" }, "Welcome to Savora"),
-        React.createElement(
-          CardDescription,
-          null,
-          "Let's create your new account to get started."
-        )
-      ),
-      React.createElement(
-        CardContent,
-        null,
-        React.createElement(Button, { onClick: handleCreateAccount, className: "w-full" }, "Create Account")
-      )
-    )
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
+      <Card className="w-full max-w-md mx-4">
+        <CardHeader className="text-center">
+          <CardTitle className="text-2xl font-bold">Welcome to Savora</CardTitle>
+          <CardDescription>
+            Let's create your new account to get started.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button onClick={handleCreateAccount} className="w-full">
+            Create Account
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
