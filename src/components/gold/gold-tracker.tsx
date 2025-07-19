@@ -1,20 +1,21 @@
 
 import { motion } from "framer-motion";
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Coins, Search, Trash2, Edit, Loader2, AlertTriangle } from "lucide-react"; // Added Loader2, AlertTriangle
+import { Plus, Coins, Search, Trash2, Edit, Loader2, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // For Purity and Form
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"; // For Date Picker
-import { Calendar } from "@/components/ui/calendar"; // For Date Picker
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieGoldInvestmentRecord } from "@/db";
-import { GoldInvestmentService } from "@/services/GoldInvestmentService"; // Import the new service
+import { GoldInvestmentService } from "@/services/GoldInvestmentService";
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
+import { useAuth } from '@/contexts/auth-context';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,23 +27,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
-
-// Define types for form select options
 const GOLD_PURITY_OPTIONS = ['999', '995', '916', '750', 'other'] as const;
 type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
 
 const GOLD_FORM_OPTIONS = ['coins', 'bars', 'jewelry', 'etf', 'other'] as const;
 type GoldForm = typeof GOLD_FORM_OPTIONS[number];
 
-// Form data can be a partial of DexieGoldInvestmentRecord, with some fields as string for input
 export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'>> & {
   weight: string;
   purchasePrice: string;
   currentPrice?: string;
-  purity: GoldPurity; // Use specific types
-  form: GoldForm;     // Use specific types
+  purity: GoldPurity;
+  form: GoldForm;
 };
-
 
 export function GoldTracker() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,10 +47,12 @@ export function GoldTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<DexieGoldInvestmentRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const liveInvestments = useLiveQuery(
     async () => {
-      const userInvestments = await GoldInvestmentService.getGoldInvestments();
+      if (!user?.uid) return [];
+      const userInvestments = await GoldInvestmentService.getGoldInvestments(user.uid);
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -66,12 +65,11 @@ export function GoldTracker() {
       }
       return userInvestments.sort((a, b) => parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime());
     },
-    [searchTerm],
+    [searchTerm, user?.uid],
     []
   );
 
   const investments = liveInvestments || [];
-
 
   const handleAddNew = () => {
     setEditingInvestment(null);
@@ -112,7 +110,6 @@ export function GoldTracker() {
   const totalCurrentValue = investments.reduce((sum, inv) => sum + (Number(inv.currentPrice) || Number(inv.purchasePrice) || 0), 0);
   const totalGainLoss = totalCurrentValue - totalInvestmentValue;
 
-
   const getFormColor = (formType: string) => {
     const colors: Record<string, string> = {
       'coins': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
@@ -121,7 +118,7 @@ export function GoldTracker() {
       'etf': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
       'other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
     };
-    return colors[form] || colors['other'];
+    return colors[formType] || colors['other'];
   };
 
   return (
@@ -280,7 +277,7 @@ export function GoldTracker() {
                   </div>
                   
                   <div className="flex gap-1 ml-4">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleOpenEditForm(investment)}>
                       <Edit className="w-3 h-3" />
                     </Button>
                     <Button
@@ -315,16 +312,39 @@ export function GoldTracker() {
           </Button>
         </motion.div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      {investmentToDelete && (
+        <AlertDialog open={!!investmentToDelete} onOpenChange={() => setInvestmentToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center">
+                <AlertTriangle className="w-5 h-5 mr-2 text-destructive"/>
+                Are you sure?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the gold investment: "{investmentToDelete.weight}g {investmentToDelete.form}".
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteInvestmentExecute} className="bg-destructive hover:bg-destructive/90">
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
-
 
 function AddGoldForm({ initialData, onClose }: {
   initialData?: DexieGoldInvestmentRecord | null;
   onClose: () => void;
 }) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<GoldInvestmentFormData>(() => {
     const defaults: GoldInvestmentFormData = {
       weight: '', purity: '999', purchasePrice: '', currentPrice: '',
@@ -359,7 +379,6 @@ function AddGoldForm({ initialData, onClose }: {
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
       });
     } else {
-      // For new form, ensure user_id is from current auth context
       setFormData({
         weight: '', purity: '999', purchasePrice: '', currentPrice: '',
         purchaseDate: format(new Date(), 'yyyy-MM-dd'), paymentMethod: 'Bank Transfer',
@@ -367,15 +386,6 @@ function AddGoldForm({ initialData, onClose }: {
       });
     }
   }, [initialData]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSelectChange = (name: keyof GoldInvestmentFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
 
   const handleDateChange = (date: Date | undefined) => {
     if (date) {
@@ -388,6 +398,11 @@ function AddGoldForm({ initialData, onClose }: {
 
     if (!formData.weight || !formData.purchasePrice || !formData.storageLocation || !formData.paymentMethod || !formData.purchaseDate) {
       toast({ title: "Validation Error", description: "Please fill all required fields (*).", variant: "destructive" });
+      return;
+    }
+
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save a gold investment.", variant: "destructive" });
       return;
     }
 
@@ -419,13 +434,14 @@ function AddGoldForm({ initialData, onClose }: {
       form: formData.form!,
       vendor: formData.vendor || '',
       note: formData.note || '',
+      user_id: user.uid,
     };
 
     try {
-      if (formData.id) { // Update existing
+      if (formData.id) {
         await GoldInvestmentService.updateGoldInvestment(formData.id, recordData);
         toast({ title: "Success", description: "Gold investment updated." });
-      } else { // Add new
+      } else {
         await GoldInvestmentService.addGoldInvestment(recordData as Omit<DexieGoldInvestmentRecord, 'id'>);
         toast({ title: "Success", description: "Gold investment added." });
       }
@@ -445,7 +461,7 @@ function AddGoldForm({ initialData, onClose }: {
     >
       <Card className="metric-card border-border/50">
         <CardHeader>
-          <CardTitle>Add Gold Investment</CardTitle>
+          <CardTitle>{initialData ? 'Edit' : 'Add'} Gold Investment</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -468,7 +484,7 @@ function AddGoldForm({ initialData, onClose }: {
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Purity *
                 </label>
-                <Select name="purity" value={formData.purity} onValueChange={v => handleSelectChange('purity', v as GoldPurity)} required>
+                <Select value={formData.purity} onValueChange={(v) => setFormData({ ...formData, purity: v as GoldPurity })} required>
                   <SelectTrigger className="w-full h-10 px-3 rounded-md border">
                     <SelectValue placeholder="Select purity..." />
                   </SelectTrigger>
@@ -509,7 +525,7 @@ function AddGoldForm({ initialData, onClose }: {
                 <label className="text-sm font-medium text-foreground mb-2 block">
                   Form *
                 </label>
-                <Select name="form" value={formData.form} onValueChange={v => handleSelectChange('form', v as GoldForm)} required>
+                <Select value={formData.form} onValueChange={(v) => setFormData({ ...formData, form: v as GoldForm })} required>
                    <SelectTrigger className="w-full h-10 px-3 rounded-md border">
                     <SelectValue placeholder="Select form..." />
                   </SelectTrigger>
@@ -592,13 +608,13 @@ function AddGoldForm({ initialData, onClose }: {
             </div>
             
             <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                Add Investment
+              <Button type="submit" className="flex-1" disabled={isSaving}>
+                {isSaving ? 'Saving...' : (initialData ? 'Update Investment' : 'Add Investment')}
               </Button>
               <Button
                 type="button"
                 variant="outline"
-                onClick={onCancel}
+                onClick={onClose}
                 className="flex-1"
               >
                 Cancel

@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { PlusCircle, Edit2, Trash2, DollarSign, Repeat, AlertTriangle as AlertTriangleIcon } from 'lucide-react';
@@ -9,10 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/format-utils";
 import { db } from "@/db";
 import { IncomeSourceData } from "@/types/jsonPreload";
-import { IncomeSourceService } from "@/services/IncomeSourceService"; // Import the new service
+import { IncomeSourceService } from "@/services/IncomeSourceService";
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
-import { useAuth } from '@/contexts/auth-context'; // Import useAuth
+import { useAuth } from '@/contexts/auth-context';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,20 +26,18 @@ import {
   AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
 
-// Form Data Type
 type IncomeSourceFormData = Partial<Omit<IncomeSourceData, 'defaultAmount' | 'created_at' | 'updated_at'>> & {
   defaultAmount?: string;
 };
 
 const FREQUENCY_OPTIONS = ['monthly', 'yearly', 'weekly', 'one-time', 'variable'] as const;
 
-
 export function IncomeSourceManager() {
   const [showForm, setShowForm] = useState(false);
   const [editingSource, setEditingSource] = useState<IncomeSourceData | null>(null);
   const [sourceToDelete, setSourceToDelete] = useState<IncomeSourceData | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
+  const { user } = useAuth();
 
   const incomeSources = useLiveQuery(
     () => {
@@ -76,7 +76,7 @@ export function IncomeSourceManager() {
   };
 
   if (incomeSources === undefined) {
-    return <div className="p-4">Loading income sources...</div>; // Basic loading
+    return <div className="p-4">Loading income sources...</div>;
   }
 
   return (
@@ -136,7 +136,6 @@ export function IncomeSourceManager() {
         </div>
       )}
 
-      {/* Delete Confirmation Dialog */}
       {sourceToDelete && (
         <AlertDialog open={!!sourceToDelete} onOpenChange={() => setSourceToDelete(null)}>
           <AlertDialogContent>
@@ -157,7 +156,6 @@ export function IncomeSourceManager() {
   );
 }
 
-// --- AddEditIncomeSourceForm Sub-Component ---
 interface AddEditIncomeSourceFormProps {
   initialData?: IncomeSourceData | null;
   onClose: () => void;
@@ -165,38 +163,26 @@ interface AddEditIncomeSourceFormProps {
 
 function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFormProps) {
   const { toast } = useToast();
-  const [formData, setFormData] = useState<IncomeSourceFormData>(() => {
-    const defaults: IncomeSourceFormData = { name: '', defaultAmount: '', frequency: 'monthly', account: '', user_id: 'default_user' };
-    if (initialData) {
-      return {
-        ...initialData,
-        defaultAmount: initialData.defaultAmount?.toString() || '',
-      };
-    }
-    return defaults;
-  });
-  const { toast } = useToast();
-  const { user } = useAuth(); // Get user for the form
+  const { user } = useAuth();
   const [formData, setFormData] = useState<IncomeSourceFormData>(() => {
     const defaults: IncomeSourceFormData = {
       name: '',
       defaultAmount: '',
       frequency: 'monthly',
       account: '',
-      user_id: user?.uid // Initialize with current user_id
+      user_id: user?.uid
     };
     if (initialData) {
       return {
         ...initialData,
         defaultAmount: initialData.defaultAmount?.toString() || '',
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
+        user_id: initialData.user_id || user?.uid,
       };
     }
     return defaults;
   });
   const [isSaving, setIsSaving] = useState(false);
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof IncomeSourceFormData, string>>>({});
-
 
   useEffect(() => {
     const defaults: IncomeSourceFormData = { name: '', defaultAmount: '', frequency: 'monthly', account: '', user_id: user?.uid };
@@ -247,37 +233,29 @@ function AddEditIncomeSourceForm({ initialData, onClose }: AddEditIncomeSourceFo
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive", duration: 2000 });
       return;
     }
-    setIsSaving(true);
-
-    if (!validateCurrentForm()) {
-      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive", duration: 2000 });
-      return;
-    }
 
     if (!user?.uid) {
       toast({ title: "Authentication Error", description: "You must be logged in to save an income source.", variant: "destructive" });
-      setIsSaving(false); // Should be set before this check potentially
       return;
     }
     setIsSaving(true);
 
     const defaultAmountNum = formData.defaultAmount ? parseFloat(formData.defaultAmount) : undefined;
 
-    // Ensure recordData has user_id from the authenticated user
     const recordData: Omit<IncomeSourceData, 'id' | 'created_at' | 'updated_at'> = {
       name: formData.name!,
       defaultAmount: defaultAmountNum,
       frequency: formData.frequency! as IncomeSourceData['frequency'],
       account: formData.account || '',
-      user_id: user.uid, // Crucial: use authenticated user's ID
-      // source field is not part of IncomeSourceData, 'name' is used as the source identifier
+      user_id: user.uid,
+      source: formData.name!, // Add the missing source property
     };
 
     try {
-      if (formData.id) { // Editing existing source
+      if (formData.id) {
         await IncomeSourceService.updateIncomeSource(formData.id, recordData);
         toast({ title: "Success", description: "Income source updated." });
-      } else { // Adding new source
+      } else {
         await IncomeSourceService.addIncomeSource(recordData as Omit<IncomeSourceData, 'id'>);
         toast({ title: "Success", description: "Income source added." });
       }

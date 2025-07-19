@@ -31,7 +31,6 @@ export interface Income {
   updated_at?: string;
 }
 
-// Type alias for backward compatibility
 export type AppIncome = Income;
 
 interface IncomeFormData {
@@ -63,7 +62,7 @@ export function IncomeTracker() {
   const [formData, setFormData] = useState<IncomeFormData>(initialFormData);
   const [tagInput, setTagInput] = useState('');
 
-  const incomes = useLiveQuery(() => db.income.orderBy('date').reverse().toArray(), []);
+  const incomes = useLiveQuery(() => db.incomes.orderBy('date').reverse().toArray(), []);
 
   const handleInputChange = (field: keyof IncomeFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -112,13 +111,13 @@ export function IncomeTracker() {
       };
 
       if (editingIncome) {
-        await db.income.update(editingIncome.id!, incomeData);
+        await db.incomes.update(editingIncome.id!, incomeData);
         toast({
           title: "Income Updated",
           description: "Income entry has been updated successfully.",
         });
       } else {
-        await db.income.add({
+        await db.incomes.add({
           ...incomeData,
           id: crypto.randomUUID(),
           created_at: new Date().toISOString(),
@@ -160,7 +159,7 @@ export function IncomeTracker() {
 
   const handleDelete = async (id: string) => {
     try {
-      await db.income.delete(id);
+      await db.incomes.delete(id);
       toast({
         title: "Income Deleted",
         description: "Income entry has been deleted successfully.",
