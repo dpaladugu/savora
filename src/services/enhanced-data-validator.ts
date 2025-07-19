@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { jsonPreloadMVPDataSchema } from './jsonPreloadValidators';
 import type { JsonPreloadMVPData } from '@/types/jsonPreload';
+import { formatCurrency } from '@/lib/format-utils';
+
+export const ComprehensiveDataValidator = {
+  formatCurrency,
+};
 
 export interface ValidationResult {
   isValid: boolean;
