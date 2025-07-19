@@ -1,4 +1,5 @@
 
+import * as React from "react";
 import { useState, useEffect } from "react";
 import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
@@ -57,37 +58,41 @@ const Index = () => {
   };
 
   if (!isAppInitialized) {
-    return <LoadingScreen />;
+    return React.createElement(LoadingScreen);
   }
 
   if (!hasExistingUser) {
-    return <WelcomeScreen onComplete={handleOnboardingComplete} />;
+    return React.createElement(WelcomeScreen, { onComplete: handleOnboardingComplete });
   }
 
   if (hasPin && !isUnlocked) {
-    return <PinLock onUnlockSuccess={handleUnlockSuccess} />;
+    return React.createElement(PinLock, { onUnlockSuccess: handleUnlockSuccess });
   }
 
   // User is authenticated and PIN is unlocked (or not set)
-  return (
-    <GlobalErrorBoundary>
-      <div className="relative min-h-screen">
-        <div className="pb-20 md:pb-0">
-          <MainContentRouter
-            activeTab={activeTab}
-            activeMoreModule={activeMoreModule}
-            onMoreNavigation={handleMoreNavigation}
-            onTabChange={handleTabChange}
-          />
-          <PersistentNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            activeMoreModule={activeMoreModule}
-            onMoreNavigation={handleMoreNavigation}
-          />
-        </div>
-      </div>
-    </GlobalErrorBoundary>
+  return React.createElement(
+    GlobalErrorBoundary,
+    null,
+    React.createElement(
+      "div",
+      { className: "relative min-h-screen" },
+      React.createElement(
+        "div",
+        { className: "pb-20 md:pb-0" },
+        React.createElement(MainContentRouter, {
+          activeTab: activeTab,
+          activeMoreModule: activeMoreModule,
+          onMoreNavigation: handleMoreNavigation,
+          onTabChange: handleTabChange
+        }),
+        React.createElement(PersistentNavigation, {
+          activeTab: activeTab,
+          onTabChange: handleTabChange,
+          activeMoreModule: activeMoreModule,
+          onMoreNavigation: handleMoreNavigation
+        })
+      )
+    )
   );
 };
 
