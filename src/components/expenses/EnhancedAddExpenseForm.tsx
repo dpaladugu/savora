@@ -7,7 +7,6 @@ import { AlertTriangleIcon } from 'lucide-react';
 import { AdvancedExpenseOptions } from './AdvancedExpenseOptions';
 import { db } from "@/db";
 import { useToast } from "@/hooks/use-toast";
-import { useAuth } from '@/contexts/auth-context';
 import { ExpenseService } from '@/services/ExpenseService'; // Import the new service
 import { Expense as FormExpenseType } from '@/types/expense'; // Original type from the app
 import { formatCurrency } from '@/lib/format-utils';
@@ -79,30 +78,16 @@ const initialFormState: EnhancedFormState = {
 
 export const EnhancedAddExpenseForm: React.FC = () => {
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const [formState, setFormState] = useState<EnhancedFormState>(initialFormState);
   const [errors, setErrors] = useState<Partial<Record<keyof ValidatedExpenseFormData, string>>>({});
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
-    setFormState({ ...initialFormState, user_id: user?.uid }); // Set current user_id on reset
+    setFormState(initialFormState);
     setErrors({});
     setFormMessage(null);
-  }, [user]);
-
-  useEffect(() => {
-    // Effect to set user_id in formState if it's not already set or doesn't match current user
-    // This helps ensure that if the component mounts before user context is ready,
-    // it gets updated once the user is available.
-    if (user && formState.user_id !== user.uid) {
-      setFormState(prev => ({ ...prev, user_id: user.uid }));
-    }
-    // If user logs out while form is open, clear user_id or handle as needed
-    if (!user && formState.user_id) {
-        setFormState(prev => ({ ...prev, user_id: undefined }));
-    }
-  }, [user, formState.user_id]);
+  }, []);
 
   const handleInputChange = (
     field: keyof EnhancedFormState,
@@ -166,21 +151,10 @@ export const EnhancedAddExpenseForm: React.FC = () => {
       return;
     }
 
-    if (!user?.uid) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to add an expense.",
-        variant: "destructive",
-      });
-      setFormMessage("Login required to save expense.");
-      return;
-    }
-
     try {
       const newId = self.crypto.randomUUID();
       const expenseToSave: DexieExpenseRecord = {
         id: newId,
-        user_id: user.uid, // Use directly from auth context
         amount: Number(formState.amount) || 0,
         date: formState.date || new Date().toISOString().split('T')[0],
         category: formState.category || '',
@@ -342,8 +316,6 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
       <AdvancedExpenseOptions
         tags={formState.tags || []}
-        // Pass undefined if user is not available, AdvancedExpenseOptions should handle this
-        userId={user?.uid}
         onTagsChange={(newTags) => handleInputChange('tags', newTags)}
       />
        {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangleIcon AlertTriangleIcon aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}

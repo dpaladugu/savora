@@ -10,7 +10,6 @@ import { db } from '@/db';
 import { EncryptionService } from '@/services/encryptionService';
 import { useAppStore } from '@/store/appStore';
 import { PinEntryModal } from './pin-entry-modal';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth-context';
 
 const aiProviderOptions = [
@@ -32,7 +31,6 @@ export function LLMSettingsForm() {
   const { toast } = useToast();
   const decryptedAiConfig = useAppStore(state => state.decryptedAiConfig);
   const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig);
-  const { user } = useAuth();
 
   const [selectedProvider, setSelectedProvider] = useState<string>('');
   const [apiKeyInput, setApiKeyInput] = useState<string>('');
@@ -58,120 +56,38 @@ export function LLMSettingsForm() {
       let initialUseLocalLLM = false;
       let initialApiKeySet = false;
 
-      if (!user) { // No user, load from Dexie only
-        try {
-          const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
-          const providerSetting = settings[0];
-          const useLocalLLMSetting = settings[1];
-          const baseUrlSetting = settings[2];
-          const encryptedConfigSetting = settings[3];
+      try {
+        const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
+        const providerSetting = settings[0];
+        const useLocalLLMSetting = settings[1];
+        const baseUrlSetting = settings[2];
+        const encryptedConfigSetting = settings[3];
 
-          if (providerSetting?.value) initialProvider = providerSetting.value as string;
-          initialUseLocalLLM = useLocalLLMSetting?.value === true;
-          initialApiKeySet = !!encryptedConfigSetting?.value;
+        if (providerSetting?.value) initialProvider = providerSetting.value as string;
+        initialUseLocalLLM = useLocalLLMSetting?.value === true;
+        initialApiKeySet = !!encryptedConfigSetting?.value;
 
-          if (initialUseLocalLLM || initialProvider === 'ollama_local') {
-            initialProvider = 'ollama_local';
-            initialUseLocalLLM = true;
-            initialBaseUrl = baseUrlSetting?.value as string || '';
-            // For model, if Ollama, try to get from decrypted store, else default form model for Ollama
-            if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
-                initialModel = decryptedAiConfig.model;
-            } else {
-                initialModel = OLLAMA_DEFAULT_FORM_MODEL;
-            }
-          } else if (initialProvider === 'deepseek') {
-            // If Deepseek, try to get from decrypted store, else default deepseek model
-             if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
-                initialModel = decryptedAiConfig.model;
-            } else {
-                initialModel = deepSeekModels[0].value;
-            }
+        if (initialUseLocalLLM || initialProvider === 'ollama_local') {
+          initialProvider = 'ollama_local';
+          initialUseLocalLLM = true;
+          initialBaseUrl = baseUrlSetting?.value as string || '';
+          // For model, if Ollama, try to get from decrypted store, else default form model for Ollama
+          if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
+              initialModel = decryptedAiConfig.model;
+          } else {
+              initialModel = OLLAMA_DEFAULT_FORM_MODEL;
           }
-
-        } catch (dexieError) {
-          console.error("Error loading LLM settings from Dexie (no user):", dexieError);
-        }
-      } else { // User is authenticated
-        try {
-          const { data, error: supabaseError } = await supabase
-            .from('user_llm_configurations')
-            .select('provider_id, encrypted_config, base_url, model_id')
-            .eq('user_id', user.uid);
-
-          if (supabaseError) throw supabaseError;
-
-          const supabaseConfig = data?.[0];
-
-          if (supabaseConfig) {
-            initialProvider = supabaseConfig.provider_id || initialProvider;
-            initialBaseUrl = supabaseConfig.base_url || '';
-            initialApiKeySet = !!supabaseConfig.encrypted_config;
-            initialUseLocalLLM = initialProvider === 'ollama_local';
-            initialModel = supabaseConfig.model_id || ''; // Load model_id from Supabase
-
-            if(initialUseLocalLLM && !initialModel) initialModel = OLLAMA_DEFAULT_FORM_MODEL;
-            if(initialProvider === 'deepseek' && !initialModel) initialModel = deepSeekModels[0].value;
-
-          } else { // No config in Supabase, try Dexie
-             const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
-            const providerSetting = settings[0];
-            const useLocalLLMSetting = settings[1];
-            const baseUrlSetting = settings[2];
-            const encryptedConfigSetting = settings[3];
-
-            if (providerSetting?.value) initialProvider = providerSetting.value as string;
-            initialUseLocalLLM = useLocalLLMSetting?.value === true;
-            initialApiKeySet = !!encryptedConfigSetting?.value;
-
-            if (initialUseLocalLLM || initialProvider === 'ollama_local') {
-                initialProvider = 'ollama_local';
-                initialUseLocalLLM = true;
-                initialBaseUrl = baseUrlSetting?.value as string || '';
-                 if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
-                    initialModel = decryptedAiConfig.model;
-                } else {
-                    initialModel = OLLAMA_DEFAULT_FORM_MODEL;
-                }
-            } else if (initialProvider === 'deepseek') {
-                 if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
-                    initialModel = decryptedAiConfig.model;
-                } else {
-                    initialModel = deepSeekModels[0].value;
-                }
-            }
-          }
-        } catch (error) {
-          console.error("Error loading LLM settings (with user):", error);
-          toast({ title: "Error", description: "Cloud sync for LLM settings failed. Using local cache.", variant: "destructive" });
-          // Fallback to Dexie
-          const settings = await db.appSettings.bulkGet(['currentAiProvider', 'useLocalLLM', 'aiServiceBaseUrl', 'encryptedAiConfig']);
-          const providerSetting = settings[0];
-          const useLocalLLMSetting = settings[1];
-          const baseUrlSetting = settings[2];
-          const encryptedConfigSetting = settings[3];
-
-          if (providerSetting?.value) initialProvider = providerSetting.value as string;
-          initialUseLocalLLM = useLocalLLMSetting?.value === true;
-          initialApiKeySet = !!encryptedConfigSetting?.value;
-
-          if (initialUseLocalLLM || initialProvider === 'ollama_local') {
-              initialProvider = 'ollama_local';
-              initialUseLocalLLM = true;
-              initialBaseUrl = baseUrlSetting?.value as string || '';
-              if (decryptedAiConfig?.provider === 'ollama_local' && decryptedAiConfig.model) {
-                  initialModel = decryptedAiConfig.model;
-              } else {
-                  initialModel = OLLAMA_DEFAULT_FORM_MODEL;
-              }
-          } else if (initialProvider === 'deepseek') {
-              if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
-                  initialModel = decryptedAiConfig.model;
-              } else {
-                  initialModel = deepSeekModels[0].value;
-              }
+        } else if (initialProvider === 'deepseek') {
+          // If Deepseek, try to get from decrypted store, else default deepseek model
+           if (decryptedAiConfig?.provider === 'deepseek' && decryptedAiConfig.model) {
+              initialModel = decryptedAiConfig.model;
+          } else {
+              initialModel = deepSeekModels[0].value;
           }
         }
+
+      } catch (dexieError) {
+        console.error("Error loading LLM settings from Dexie:", dexieError);
       }
 
       setSelectedProvider(initialProvider);
@@ -200,20 +116,7 @@ export function LLMSettingsForm() {
         actualProviderToSave === 'deepseek' ? model :
         null;
 
-    if (!user) {
-      toast({ title: "Error", description: "User not authenticated.", variant: "destructive" });
-      setIsLoading(false); setIsPinModalOpen(false); return;
-    }
-
     try {
-      const configToUpsertSupabase: any = {
-        user_id: user.uid,
-        provider_id: actualProviderToSave,
-        base_url: isActualOllama ? baseUrl : null,
-        model_id: modelToSaveForSupabase,
-        encrypted_config: null,
-      };
-
       if (!apiKey && !isActualOllama && !useLocalLLMFlag) { // Clearing API key for a cloud provider
         await db.transaction('rw', db.appSettings, async () => {
           await db.appSettings.put({ key: 'currentAiProvider', value: actualProviderToSave });
@@ -221,7 +124,6 @@ export function LLMSettingsForm() {
           if (!isActualOllama) await db.appSettings.delete('aiServiceBaseUrl');
           await db.appSettings.put({ key: 'useLocalLLM', value: false }); // Explicitly false
         });
-        configToUpsertSupabase.encrypted_config = null; // Ensure it's null for Supabase
       } else {
         const dataToEncrypt = {
           apiKey: isActualOllama ? '' : apiKey, // Don't encrypt API key for Ollama
@@ -236,7 +138,6 @@ export function LLMSettingsForm() {
         if (!isActualOllama && apiKey && !ciphertext) {
           throw new Error("Encryption failed.");
         }
-        configToUpsertSupabase.encrypted_config = ciphertext;
 
         await db.transaction('rw', db.appSettings, async () => {
           if (ciphertext) {
@@ -254,12 +155,6 @@ export function LLMSettingsForm() {
           await db.appSettings.put({ key: 'useLocalLLM', value: useLocalLLMFlag });
         });
       }
-
-      const { error: supabaseError } = await supabase
-        .from('user_llm_configurations')
-        .upsert(configToUpsertSupabase, { onConflict: 'user_id' });
-
-      if (supabaseError) throw new Error(`Cloud sync failed: ${supabaseError.message}`);
 
       setDecryptedAiConfig({ // Update Zustand store
         apiKey: isActualOllama ? null : apiKey,

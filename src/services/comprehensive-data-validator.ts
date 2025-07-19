@@ -90,4 +90,53 @@ export class ComprehensiveDataValidator {
 
   // Utility methods like formatCurrency, formatPercentage, sanitizeInput, isValidDate, isValidAmount
   // have been removed from here. They should be used from DataValidator.ts or a similar utility file.
+
+  static formatCurrency(amount: number): string {
+    if (typeof amount !== 'number') {
+      return 'N/A';
+    }
+    return amount.toLocaleString("en-IN", {
+      style: "currency",
+      currency: "INR",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    });
+  }
+}
+
+export interface ValidationResult {
+  isValid: boolean;
+  data?: any;
+  errors?: any;
+}
+
+export function validateFinancialData(data: unknown): ValidationResult {
+  const { jsonPreloadMVPDataSchema } = require('./jsonPreloadValidators');
+  try {
+    const validatedData = jsonPreloadMVPDataSchema.parse(data);
+    return {
+      isValid: true,
+      data: validatedData
+    };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error("JSON validation errors (MVP sections):", error.errors);
+      const formattedErrors = error.errors.map(err => ({
+        path: err.path.map(p => String(p)),
+        message: err.message
+      }));
+      return {
+        isValid: false,
+        errors: formattedErrors
+      };
+    }
+    console.error("Unexpected validation error:", error);
+    return {
+      isValid: false,
+      errors: [{
+        path: [],
+        message: "Unexpected validation error"
+      }]
+    };
+  }
 }

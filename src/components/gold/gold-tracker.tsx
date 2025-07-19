@@ -14,7 +14,6 @@ import { useToast } from "@/hooks/use-toast";
 import { db, DexieGoldInvestmentRecord } from "@/db";
 import { GoldInvestmentService } from "@/services/GoldInvestmentService"; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import {
   AlertDialog,
@@ -51,13 +50,10 @@ export function GoldTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<DexieGoldInvestmentRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
 
   const liveInvestments = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-
-      const userInvestments = await GoldInvestmentService.getGoldInvestments(user.uid);
+      const userInvestments = await GoldInvestmentService.getGoldInvestments();
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -70,7 +66,7 @@ export function GoldTracker() {
       }
       return userInvestments.sort((a, b) => parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime());
     },
-    [searchTerm, user?.uid],
+    [searchTerm],
     []
   );
 
@@ -209,8 +205,11 @@ export function GoldTracker() {
       {/* Add Investment Form */}
       {showAddForm && (
         <AddGoldForm 
-          onSubmit={handleAddInvestment}
-          onCancel={() => setShowAddForm(false)}
+          initialData={editingInvestment}
+          onClose={() => {
+            setShowAddForm(false);
+            setEditingInvestment(null);
+          }}
         />
       )}
 
@@ -229,7 +228,7 @@ export function GoldTracker() {
 
       {/* Investment List */}
       <div className="space-y-3">
-        {filteredInvestments.map((investment, index) => (
+        {investments.map((investment, index) => (
           <motion.div
             key={investment.id}
             initial={{ opacity: 0, y: 20 }}
@@ -288,7 +287,7 @@ export function GoldTracker() {
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      onClick={() => handleDeleteInvestment(investment.id)}
+                      onClick={() => openDeleteConfirm(investment)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -326,13 +325,11 @@ function AddGoldForm({ initialData, onClose }: {
   onClose: () => void;
 }) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user for user_id
   const [formData, setFormData] = useState<GoldInvestmentFormData>(() => {
     const defaults: GoldInvestmentFormData = {
       weight: '', purity: '999', purchasePrice: '', currentPrice: '',
       purchaseDate: format(new Date(), 'yyyy-MM-dd'), paymentMethod: 'Bank Transfer',
       storageLocation: '', form: 'coins', vendor: '', note: '',
-      user_id: user?.uid, // Initialize with current user's ID
     };
     if (initialData) {
       return {
@@ -343,7 +340,6 @@ function AddGoldForm({ initialData, onClose }: {
         purity: initialData.purity as GoldPurity,
         form: initialData.form as GoldForm,
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
       };
     }
     return defaults;
@@ -361,7 +357,6 @@ function AddGoldForm({ initialData, onClose }: {
         purity: initialData.purity as GoldPurity,
         form: initialData.form as GoldForm,
         purchaseDate: initialData.purchaseDate ? format(parseISO(initialData.purchaseDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData, then current user
       });
     } else {
       // For new form, ensure user_id is from current auth context
@@ -369,10 +364,9 @@ function AddGoldForm({ initialData, onClose }: {
         weight: '', purity: '999', purchasePrice: '', currentPrice: '',
         purchaseDate: format(new Date(), 'yyyy-MM-dd'), paymentMethod: 'Bank Transfer',
         storageLocation: '', form: 'coins', vendor: '', note: '',
-        user_id: user?.uid,
       });
     }
-  }, [initialData, user]); // Rerun if initialData or user changes
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -397,10 +391,6 @@ function AddGoldForm({ initialData, onClose }: {
       return;
     }
 
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to save.", variant: "destructive" });
-      return;
-    }
     setIsSaving(true);
 
     const weightNum = parseFloat(formData.weight);
@@ -429,7 +419,6 @@ function AddGoldForm({ initialData, onClose }: {
       form: formData.form!,
       vendor: formData.vendor || '',
       note: formData.note || '',
-      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
