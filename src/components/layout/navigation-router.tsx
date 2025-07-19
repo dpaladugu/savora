@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import * as React from 'react';
 import { Logger } from '@/services/logger';
 
 export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investments' | 'goals' | 'upload' | 'settings' | 'more';
@@ -23,12 +23,12 @@ interface NavigationState {
 }
 
 export function useNavigationRouter() {
-  const [navigationState, setNavigationState] = useState<NavigationState>({
+  const [navigationState, setNavigationState] = React.useState<NavigationState>({
     activeTab: 'dashboard',
     activeMoreModule: null
   });
 
-  const handleTabChange = useCallback((tab: NavigationTab) => {
+  const handleTabChange = React.useCallback((tab: NavigationTab) => {
     try {
       Logger.debug('Navigation tab change:', { from: navigationState.activeTab, to: tab });
       setNavigationState(prev => ({
@@ -45,7 +45,7 @@ export function useNavigationRouter() {
     }
   }, [navigationState.activeTab]);
 
-  const handleMoreNavigation = useCallback((moduleId: string) => {
+  const handleMoreNavigation = React.useCallback((moduleId: string) => {
     try {
       Logger.debug('More navigation:', { moduleId });
       
@@ -72,7 +72,7 @@ export function useNavigationRouter() {
     }
   }, []);
 
-  const goBack = useCallback(() => {
+  const goBack = React.useCallback(() => {
     try {
       setNavigationState(prev => ({
         activeTab: prev.activeMoreModule ? 'more' : 'dashboard',

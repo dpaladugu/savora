@@ -1,4 +1,5 @@
 
+import * as React from 'react';
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { ExpenseTracker } from "@/components/expenses/expense-tracker";
 import { SimpleGoalsTracker } from "@/components/goals/simple-goals-tracker";
@@ -9,7 +10,6 @@ import { MoreModuleRouter } from "./more-module-router";
 import { CreditCardFlowTracker } from "@/components/credit-cards/credit-card-flow-tracker";
 import { InvestmentsTracker } from "@/components/investments/investments-tracker";
 import { ErrorBoundary } from "@/components/error/error-boundary";
-import { memo, Suspense } from "react";
 import { Logger } from "@/services/logger";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
 import { ModuleHeader } from "./module-header";
@@ -21,7 +21,7 @@ interface MainContentRouterProps {
   onTabChange: (tab: string) => void;
 }
 
-export const MainContentRouter = memo(function MainContentRouter({ 
+export const MainContentRouter = React.memo(function MainContentRouter({ 
   activeTab, 
   activeMoreModule, 
   onMoreNavigation,
@@ -49,23 +49,25 @@ export const MainContentRouter = memo(function MainContentRouter({
 
   const renderMoreContent = () => {
     if (!activeMoreModule) {
-      return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-          <ModuleHeader 
-            title="More Features"
-            subtitle="Explore additional modules"
-            onBack={handleBackFromMore}
-            showBackButton={true}
-            showHeader={true}
-            showThemeToggle={true}
-          />
-          <div className="px-4 py-4">
-            <MoreScreen onNavigate={onMoreNavigation} />
-          </div>
-        </div>
+      return React.createElement(
+        'div',
+        { className: "min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24" },
+        React.createElement(ModuleHeader, {
+          title: "More Features",
+          subtitle: "Explore additional modules",
+          onBack: handleBackFromMore,
+          showBackButton: true,
+          showHeader: true,
+          showThemeToggle: true
+        }),
+        React.createElement(
+          'div',
+          { className: "px-4 py-4" },
+          React.createElement(MoreScreen, { onNavigate: onMoreNavigation })
+        )
       );
     }
-    return <MoreModuleRouter activeModule={activeMoreModule} onBack={handleBackFromMore} />;
+    return React.createElement(MoreModuleRouter, { activeModule: activeMoreModule, onBack: handleBackFromMore });
   };
 
   const renderTabContent = (tabId: string) => {
@@ -74,21 +76,21 @@ export const MainContentRouter = memo(function MainContentRouter({
     const content = (() => {
       switch (tabId) {
         case "dashboard":
-          return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+          return React.createElement(Dashboard, { onTabChange: onTabChange, onMoreNavigation: onMoreNavigation });
         case "expenses":
-          return <ExpenseTracker />;
+          return React.createElement(ExpenseTracker);
         case "credit-cards":
-          return <CreditCardFlowTracker />;
+          return React.createElement(CreditCardFlowTracker);
         case "investments":
-          return <InvestmentsTracker />;
+          return React.createElement(InvestmentsTracker);
         case "goals":
-          return <SimpleGoalsTracker />;
+          return React.createElement(SimpleGoalsTracker);
         case "upload":
-          return <CSVImports />;
+          return React.createElement(CSVImports);
         case "settings":
-          return <SettingsScreen />;
+          return React.createElement(SettingsScreen);
         default:
-          return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+          return React.createElement(Dashboard, { onTabChange: onTabChange, onMoreNavigation: onMoreNavigation });
       }
     })();
 
@@ -96,18 +98,20 @@ export const MainContentRouter = memo(function MainContentRouter({
       return content;
     }
 
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-        <ModuleHeader 
-          title={config.title}
-          subtitle={config.subtitle}
-          showHeader={config.showHeader}
-          showThemeToggle={true}
-        />
-        <div className="px-4 py-4">
-          {content}
-        </div>
-      </div>
+    return React.createElement(
+      'div',
+      { className: "min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24" },
+      React.createElement(ModuleHeader, {
+        title: config.title,
+        subtitle: config.subtitle,
+        showHeader: config.showHeader,
+        showThemeToggle: true
+      }),
+      React.createElement(
+        'div',
+        { className: "px-4 py-4" },
+        content
+      )
     );
   };
 
@@ -124,18 +128,24 @@ export const MainContentRouter = memo(function MainContentRouter({
     }
   };
 
-  return (
-    <ErrorBoundary>
-      <Suspense fallback={
-        <EnhancedLoadingWrapper 
-          loading={true} 
-          loadingText="Loading module..."
-        >
-          <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800" />
-        </EnhancedLoadingWrapper>
-      }>
-        {renderContent()}
-      </Suspense>
-    </ErrorBoundary>
+  return React.createElement(
+    ErrorBoundary,
+    null,
+    React.createElement(
+      React.Suspense,
+      {
+        fallback: React.createElement(
+          EnhancedLoadingWrapper,
+          {
+            loading: true,
+            loadingText: "Loading module..."
+          },
+          React.createElement('div', {
+            className: "min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800"
+          })
+        )
+      },
+      renderContent()
+    )
   );
 });

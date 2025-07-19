@@ -1,9 +1,8 @@
 
-import React, { memo, useState, useEffect, useRef } from "react"; // Import React and useRef
+import * as React from 'react';
 import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
 import { AccessibleButton } from "@/components/ui/accessible-button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-// import { memo, useState, useEffect } from "react"; // Already imported via React.memo etc.
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
 
@@ -14,24 +13,24 @@ interface PersistentNavigationProps {
   onMoreNavigation: (moduleId: string) => void;
 }
 
-export const PersistentNavigation = memo(function PersistentNavigation({
+export const PersistentNavigation = React.memo(function PersistentNavigation({
   activeTab,
   onTabChange,
   activeMoreModule,
   onMoreNavigation
 }: PersistentNavigationProps) {
   
-  const [isMoreSheetOpen, setIsMoreSheetOpen] = useState(false);
+  const [isMoreSheetOpen, setIsMoreSheetOpen] = React.useState(false);
   
   // Close the sheet when activeTab changes away from 'more'
-  useEffect(() => {
+  React.useEffect(() => {
     if (activeTab !== 'more') {
       setIsMoreSheetOpen(false);
     }
   }, [activeTab]);
 
   // Close the sheet when a more module is selected
-  useEffect(() => {
+  React.useEffect(() => {
     if (activeMoreModule) {
       setIsMoreSheetOpen(false);
     }
@@ -106,77 +105,85 @@ export const PersistentNavigation = memo(function PersistentNavigation({
     return activeTab === tabId;
   };
 
-  return (
-    <nav 
-      className="fixed bottom-0 left-0 right-0 z-50 enhanced-nav-glass border-t border-border/30"
-      role="navigation" 
-      aria-label="Main navigation"
-    >
-      <div className="flex items-center justify-around py-2 px-4 max-w-md mx-auto">
-        {mainTabs.map((tab) => (
-          <AccessibleButton
-            key={tab.id}
-            variant="ghost"
-            size="sm"
-            onClick={() => handleTabClick(tab.id)}
-            ariaLabel={tab.ariaLabel}
-            className={`flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
-              isActiveTab(tab.id)
-                ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
-                : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
-            }`}
-          >
-            <tab.icon 
-              className={`w-5 h-5 transition-all duration-300 ${
-                isActiveTab(tab.id) ? "scale-110" : ""
-              }`} 
-              aria-hidden="true"
-              strokeWidth={isActiveTab(tab.id) ? 2.5 : 2}
-            />
-            <span className="text-xs font-medium">{tab.label}</span>
-          </AccessibleButton>
-        ))}
-        
-        <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
-          <SheetTrigger asChild>
-            <AccessibleButton
-              variant="ghost"
-              size="sm"
-              onClick={handleMoreClick}
-              ariaLabel="Open more options menu"
-              className={`flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
-                activeTab === "more" && !activeMoreModule
-                  ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
-              }`}
-            >
-              <MoreHorizontal 
-                className={`w-5 h-5 transition-all duration-300 ${
-                  activeTab === "more" && !activeMoreModule ? "scale-110" : ""
-                }`}
-                aria-hidden="true"
-                strokeWidth={activeTab === "more" && !activeMoreModule ? 2.5 : 2}
-              />
-              <span className="text-xs font-medium">More</span>
-            </AccessibleButton>
-          </SheetTrigger>
-          <SheetContent 
-            side="bottom" 
-            className="h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-t border-border/50"
-            onInteractOutside={handleMoreSheetClose}
-          >
-            <SheetHeader className="pb-4">
-              <SheetTitle className="text-left">More Features</SheetTitle>
-            </SheetHeader>
-            <div className="mt-2">
-              <MoreScreen 
-                onNavigate={handleMoreModuleClick}
-                onClose={handleMoreSheetClose}
-              />
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </nav>
+  return React.createElement(
+    'nav',
+    { 
+      className: "fixed bottom-0 left-0 right-0 z-50 enhanced-nav-glass border-t border-border/30",
+      role: "navigation",
+      'aria-label': "Main navigation"
+    },
+    React.createElement(
+      'div',
+      { className: "flex items-center justify-around py-2 px-4 max-w-md mx-auto" },
+      ...mainTabs.map((tab) =>
+        React.createElement(AccessibleButton, {
+          key: tab.id,
+          variant: "ghost",
+          size: "sm",
+          onClick: () => handleTabClick(tab.id),
+          ariaLabel: tab.ariaLabel,
+          className: `flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
+            isActiveTab(tab.id)
+              ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+          }`
+        },
+        React.createElement(tab.icon, {
+          className: `w-5 h-5 transition-all duration-300 ${
+            isActiveTab(tab.id) ? "scale-110" : ""
+          }`,
+          'aria-hidden': "true",
+          strokeWidth: isActiveTab(tab.id) ? 2.5 : 2
+        }),
+        React.createElement('span', {
+          className: "text-xs font-medium"
+        }, tab.label)
+        )
+      ),
+      React.createElement(Sheet, {
+        open: isMoreSheetOpen,
+        onOpenChange: setIsMoreSheetOpen
+      },
+      React.createElement(SheetTrigger, { asChild: true },
+        React.createElement(AccessibleButton, {
+          variant: "ghost",
+          size: "sm",
+          onClick: handleMoreClick,
+          ariaLabel: "Open more options menu",
+          className: `flex flex-col items-center gap-1 h-16 px-3 rounded-xl transition-all duration-300 min-w-[64px] min-h-[48px] ${
+            activeTab === "more" && !activeMoreModule
+              ? "text-primary bg-primary/20 border border-primary/30 shadow-lg backdrop-blur-sm"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/30"
+          }`
+        },
+        React.createElement(MoreHorizontal, {
+          className: `w-5 h-5 transition-all duration-300 ${
+            activeTab === "more" && !activeMoreModule ? "scale-110" : ""
+          }`,
+          'aria-hidden': "true",
+          strokeWidth: activeTab === "more" && !activeMoreModule ? 2.5 : 2
+        }),
+        React.createElement('span', {
+          className: "text-xs font-medium"
+        }, "More")
+        )
+      ),
+      React.createElement(SheetContent, {
+        side: "bottom",
+        className: "h-[80vh] overflow-y-auto bg-background/95 backdrop-blur-xl border-t border-border/50",
+        onInteractOutside: handleMoreSheetClose
+      },
+      React.createElement(SheetHeader, { className: "pb-4" },
+        React.createElement(SheetTitle, { className: "text-left" }, "More Features")
+      ),
+      React.createElement('div', { className: "mt-2" },
+        React.createElement(MoreScreen, {
+          onNavigate: handleMoreModuleClick,
+          onClose: handleMoreSheetClose
+        })
+      )
+      )
+      )
+    )
   );
 });
