@@ -223,6 +223,11 @@ export class SavoraDB extends Dexie {
       loans: '&id, user_id, loanType, lender, status, nextDueDate',
     });
 
+    // Version 18: Corrected loans primary key and removed user_id
+    this.version(18).stores({
+      loans: '++id, loanType, lender, status, nextDueDate',
+    });
+
     // Final, current version of the database.
     // This should be the highest version number.
 
@@ -269,9 +274,19 @@ export const dispatchDbErrorEvent = (error: any) => {
 };
 
 // Open the database and handle potential errors, especially schema-related ones.
-db.open().catch((error) => {
-  console.error("Failed to open Dexie database:", error);
-  dispatchDbErrorEvent(error);
+db.open().catch(async (err) => {
+  if (err.name === "UpgradeError") {
+    if (import.meta.env.DEV) {
+      console.warn("Dev only DB wipe due to schema mismatch");
+      await db.delete();
+      await db.open();
+    } else {
+      dispatchDbErrorEvent(err);
+    }
+  } else {
+    console.error("Failed to open Dexie database:", err);
+    dispatchDbErrorEvent(err);
+  }
 });
 
 export type Expense = ExpenseData;
