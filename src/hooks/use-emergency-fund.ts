@@ -1,5 +1,4 @@
 
-
 import { useState, useEffect } from "react";
 import { ExpenseService } from "@/services/ExpenseService";
 import { InsuranceService } from "@/services/InsuranceService";
@@ -67,8 +66,8 @@ export function useEmergencyFund() {
       // Load data from all modules concurrently using Dexie services
       const [expenses, insurances, emis, incomes] = await Promise.all([
         ExpenseService.getExpenses(user.uid),
-        InsuranceService.getPolicies(user.uid),
-        LoanService.getLoans(user.uid),
+        InsuranceService.getPolicies(),
+        LoanService.getLoans(),
         IncomeService.getIncomes(user.uid),
       ]);
       

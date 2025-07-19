@@ -100,14 +100,14 @@ export class TagService {
   /**
    * Counts the usage of a tag in the expenses table.
    * In a real app, this would be expanded to check other tables that use tags.
-   * @param tagName The name of the tag (case-sensitive as it appears in tags_flat).
+   * @param tagName The name of the tag (case-sensitive as it appears in tags).
    * @returns A promise that resolves to the usage count.
    */
   static async getTagUsageCount(tagName: string): Promise<number> {
       try {
-          // Fix: Use where with anyOf or regular string matching since includesIgnoreCase doesn't exist
+          // Fix: Use tags field instead of tags_flat since that doesn't exist on Expense type
           const expensesWithTag = await db.expenses.filter(expense => 
-            expense.tags_flat?.toLowerCase().includes(tagName.toLowerCase())
+            expense.tags?.toLowerCase().includes(tagName.toLowerCase())
           ).count();
           return expensesWithTag;
       } catch (error) {
