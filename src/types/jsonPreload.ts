@@ -1,3 +1,4 @@
+
 // src/types/jsonPreload.ts
 
 export interface AppSetting { // Ensure this is exported
@@ -19,7 +20,7 @@ export interface JsonPersonalProfile {
 }
 
 export interface JsonExpenseTransaction {
-  date: string;
+  date: string; // Required field
   amount: number;
   description: string;
   category: string;
@@ -123,29 +124,29 @@ export interface ProfileData extends JsonPersonalProfile {
 }
 
 export interface ExpenseData extends Omit<JsonExpenseTransaction, 'id'> {
-  id?: number;
+  id?: string; // Changed from number to string for consistency
   type?: 'expense' | 'income';
   vehicle_id_json?: string;
   json_id?: string;
 }
 
-export interface IncomeSourceData extends Omit<JsonIncomeCashFlow, 'amount'> { // amount in JsonIncomeCashFlow is the actual transaction amount, here it's a default/expected
+export interface IncomeSourceData {
   id: string; // Changed to string for UUID
   user_id?: string; // Added for consistency
   name: string; // This will be the 'source' name, making it more explicit
   defaultAmount?: number; // Expected amount from this source
-  // frequency and account are inherited from JsonIncomeCashFlow
+  source: string; // Keep the original source field
+  frequency: "monthly" | "yearly" | "weekly" | string;
+  account?: string;
   created_at?: Date; // Added
   updated_at?: Date; // Added
-  // Note: JsonIncomeCashFlow has 'source: string'. We'll use 'name' as the primary identifier for the source.
-  // The 'source' field from JsonIncomeCashFlow can be mapped to 'name' when creating IncomeSourceData.
 }
-
 
 export interface VehicleData {
   // Core Identification
-  id?: number; // Used by forms, not by Dexie which uses string id
+  id?: string; // Changed to string for consistency
   vehicle_name: string; // Form field, maps to 'name' in DexieVehicleRecord
+  name?: string; // Add this to match DexieVehicleRecord
   registrationNumber?: string;
   make?: string;
   model?: string;
@@ -182,13 +183,10 @@ export interface VehicleData {
 
   // Misc
   notes?: string;
-
-  // Fields to explicitly exclude from VehicleData if they were only for UI or legacy:
-  // usage?: string; // Decided to remove this one for now
 }
 
 export interface LoanData {
-  id?: number;
+  id?: string; // Changed to string for consistency
   loan_name: string;
   lender?: string;
   interest_rate?: number;
@@ -197,6 +195,12 @@ export interface LoanData {
   account?: string;
   purpose?: string;
   notes?: string;
+  // Add fields to match DexieLoanEMIRecord
+  loanType?: string;
+  principalAmount?: number;
+  emiAmount?: number;
+  tenureMonths?: number;
+  status?: string;
 }
 
 export interface InvestmentData {
@@ -212,17 +216,24 @@ export interface InvestmentData {
   notes?: string; // Added
   created_at?: Date; // Added
   updated_at?: Date; // Added
-  // risk_category?: string; // Can be kept if used
+  risk_category?: string; // Added back for compatibility
 }
 
 export interface CreditCardData extends Omit<JsonCreditCard, 'due_date' | 'fee_waiver'> {
-  id?: number;
+  id?: string; // Changed to string for consistency
   due_date: string;
   fee_waiver_details?: string;
+  // Add fields to match DexieCreditCardRecord
+  name?: string;
+  issuer?: string;
+  limit?: number;
+  currentBalance?: number;
+  dueDate?: string;
+  last4Digits?: string;
 }
 
 export interface YearlySummary {
-    id?: number;
+    id?: string; // Changed to string for consistency
     year: number;
     category?: string;
     type: 'expense' | 'income' | 'investment' | string;

@@ -1,3 +1,4 @@
+
 import { z } from 'zod';
 import { Logger } from "./logger";
 import { jsonPreloadMVPDataSchema } from './jsonPreloadValidators';
@@ -115,7 +116,7 @@ export function validateFinancialData(data: unknown): ValidationResult {
     const validatedData = jsonPreloadMVPDataSchema.parse(data);
     return {
       isValid: true,
-      data: validatedData
+      data: validatedData as JsonPreloadMVPData
     };
   } catch (error) {
     if (error instanceof z.ZodError) {

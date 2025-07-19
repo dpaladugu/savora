@@ -21,8 +21,8 @@ export function useDashboardData() {
       ExpenseService.getExpenses(user.uid),
       InvestmentService.getInvestments(user.uid),
       IncomeService.getIncomes(user.uid),
-      InsuranceService.getPolicies(),
-      LoanService.getLoans(),
+      InsuranceService.getPolicies(user.uid),
+      LoanService.getLoans(user.uid),
     ]);
 
     return { expenses, investments, incomes, insurances, loans };
