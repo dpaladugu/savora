@@ -230,6 +230,9 @@ export interface CreditCardData extends Omit<JsonCreditCard, 'due_date' | 'fee_w
   currentBalance?: number;
   dueDate?: string;
   last4Digits?: string;
+  // Add missing fields for DexieCreditCardRecord compatibility
+  billCycleDay?: number;
+  autoDebit?: boolean;
 }
 
 export interface YearlySummary {
