@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -177,7 +178,7 @@ export function CreditCardFlowTracker() {
     if (!card) return [];
     
     return expenses.filter(expense => 
-      expense.paymentMethod === 'Credit Card' &&
+      expense.payment_method === 'Credit Card' &&
       (expense.description?.includes(card.lastFourDigits) ||
        expense.tags?.includes(card.nickname))
     );

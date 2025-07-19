@@ -1,13 +1,11 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { TrendingUp, TrendingDown, DollarSign, ArrowUpDown } from "lucide-react";
-import { SupabaseDataService } from "@/services/supabase-data-service"; // Changed
+import { SupabaseDataService } from "@/services/supabase-data-service";
 import { formatCurrency } from "@/lib/format-utils";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
-// Assuming Income and Expense types from SupabaseDataService will be compatible or we'll import them
-// For now, the internal processing relies on .date and .amount which should be common.
+import { useAuth } from "@/contexts/auth-context";
 
 interface CashflowChartEntry {
   month: string;
@@ -23,6 +21,7 @@ interface CategoryChartEntry {
 }
 
 export function CashflowAnalysis() {
+  const { user } = useAuth();
   const [cashflowData, setCashflowData] = useState<CashflowChartEntry[]>([]);
   const [categoryData, setCategoryData] = useState<CategoryChartEntry[]>([]);
   const [timeFilter, setTimeFilter] = useState<'3m' | '6m' | '1y'>('6m');
@@ -33,15 +32,18 @@ export function CashflowAnalysis() {
   }, [timeFilter]);
 
   const loadCashflowData = async () => {
-    setLoading(true); // Ensure loading is true at the start of data fetching
+    setLoading(true);
     
     try {
-      // Fetch incomes and expenses from SupabaseDataService
-      // Commenting out investments for now as it's not part of SupabaseDataService yet
-      const [incomes, expenses /*, investments */] = await Promise.all([
-        SupabaseDataService.getIncomes(),
-        SupabaseDataService.getExpenses(),
-        // Promise.resolve([]) // Placeholder for investments if needed for array structure
+      if (!user?.uid) {
+        setLoading(false);
+        return;
+      }
+
+      // Pass user_id to the service methods
+      const [incomes, expenses] = await Promise.all([
+        SupabaseDataService.getIncomes(user.uid),
+        SupabaseDataService.getExpenses(user.uid),
       ]);
       const investments: any[] = []; // Mock empty investments
 
@@ -136,8 +138,6 @@ export function CashflowAnalysis() {
   const savingsRate = totalIncome > 0 ? ((totalInvestments / totalIncome) * 100) : 0;
 
   return (
-    // Removed min-h-screen, bg-gradient, pb-24, GlobalHeader, and pt-20.
-    // These are expected to be handled by the parent router using ModuleHeader.
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -279,7 +279,7 @@ export function CashflowAnalysis() {
             </Card>
           </>
         )}
-      {/* Removed extra closing </div> tag that was here */}
+      </div>
     </div>
   );
 }
