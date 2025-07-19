@@ -1,6 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Settings, User, Palette, Database, LogOut, Shield, FileJson, BrainCircuit, Tag as TagIcon } from "lucide-react"; // Added TagIcon
@@ -11,44 +10,7 @@ import { LLMSettingsForm } from "./llm-settings-form";
 import { TagManager } from "@/components/tags/TagManager"; // Import TagManager
 
 export function SettingsScreen() {
-  const { user, signOut } = useAuth();
   const { toast } = useToast();
-  const [isSigningOut, setIsSigningOut] = useState(false);
-
-  const handleSignOut = async () => {
-    if (isSigningOut) return;
-    
-    try {
-      setIsSigningOut(true);
-      Logger.info('User signing out', { userId: user?.uid });
-      await signOut();
-      toast({
-        title: "Signed out",
-        description: "You have been successfully signed out of Savora.",
-      });
-    } catch (error) {
-      Logger.error('Sign out error', error);
-      toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSigningOut(false);
-    }
-  };
-
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24 pt-16 px-4">
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">Please sign in to access settings.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
 
   return (
     // Removed min-h-screen, bg-gradient, pb-24, pt-16, px-4.
@@ -69,22 +31,9 @@ export function SettingsScreen() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                Email
-              </label>
-              <div className="text-sm text-muted-foreground bg-muted p-3 rounded-md">
-                {user.email || 'No email provided'}
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1">
-                User ID
-              </label>
-              <div className="text-xs text-muted-foreground bg-muted p-3 rounded-md font-mono">
-                {user.uid}
-              </div>
-            </div>
+            <p className="text-sm text-muted-foreground">
+              This is a local-only version of the application. There is no account to manage.
+            </p>
           </CardContent>
         </Card>
 
@@ -195,28 +144,6 @@ export function SettingsScreen() {
           </CardContent>
         </Card>
 
-        {/* Sign Out */}
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h4 className="font-medium text-foreground mb-1">Sign Out</h4>
-                <p className="text-sm text-muted-foreground">
-                  Sign out of your Savora account
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                onClick={handleSignOut}
-                disabled={isSigningOut}
-                className="text-destructive border-destructive hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <LogOut aria-hidden="true" className="w-4 h-4 mr-2" />
-                {isSigningOut ? 'Signing Out...' : 'Sign Out'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="text-center text-sm text-muted-foreground">
           Savora v1.0.0 - Built for comprehensive personal finance tracking

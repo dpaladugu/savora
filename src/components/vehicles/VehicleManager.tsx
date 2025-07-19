@@ -11,26 +11,19 @@ import { useToast } from '@/hooks/use-toast';
 import { EnhancedLoadingWrapper } from '@/components/ui/enhanced-loading-wrapper';
 import { CriticalErrorBoundary } from '@/components/ui/critical-error-boundary';
 import type { VehicleData } from '@/types/jsonPreload';
-import { useAuth } from '@/contexts/auth-context';
 
 export function VehicleManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const vehicles = useLiveQuery(() => {
-    if (!user?.uid) return [];
-    return VehicleService.getVehicles(user.uid).then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
-  }, [user?.uid], []);
+    return VehicleService.getVehicles().then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
+  }, [], []);
 
-  const isLoading = vehicles === undefined && user !== undefined;
+  const isLoading = vehicles === undefined;
 
   const handleAddVehicle = async (vehicleFormData: Omit<VehicleData, 'id'>) => {
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to add a vehicle.", variant: "destructive" });
-      return;
-    }
     try {
       const vehicleRecord: Omit<Vehicle, 'id' | 'user_id'> & { user_id?: string } = {
         name: vehicleFormData.name,
@@ -62,7 +55,7 @@ export function VehicleManager() {
         notes: vehicleFormData.notes,
       };
 
-      const recordToSave: Partial<Vehicle> = { ...vehicleRecord, user_id: user.uid };
+      const recordToSave: Partial<Vehicle> = { ...vehicleRecord };
 
       if (editingVehicle && editingVehicle.id) {
         await VehicleService.updateVehicle(editingVehicle.id, recordToSave);

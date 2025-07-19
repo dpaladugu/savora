@@ -8,9 +8,8 @@ import type { Expense as AppExpense } from "@/services/supabase-data-service";
 import type { Income as AppIncome } from "@/components/income/income-tracker";
 import { db } from "@/db";
 import { SupabaseDataService } from "@/services/supabase-data-service";
-import { useAuth } from "@/contexts/auth-context";
 import { ExpenseService } from "@/services/ExpenseService";
-import { TransactionService } from "@/services/TransactionService"; // Import the new service
+import { TransactionService } from "@/services/TransactionService";
 import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
 import { useToast } from "@/hooks/use-toast";
 import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
@@ -34,7 +33,6 @@ const initialFiltersState: ExpenseFilterCriteria = {
 };
 
 export function ExpenseTracker() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading } = useSingleLoading();
@@ -44,41 +42,14 @@ export function ExpenseTracker() {
   EnhancedNotificationService.setToastFunction(toast);
 
   const allTransactions = useLiveQuery(
-    () => {
-      if (!user?.uid) return [];
-      return TransactionService.getTransactions(user.uid);
-    },
-    [user?.uid],
+    () => TransactionService.getTransactions(),
+    [],
     []
   );
 
-  const isDataLoading = allTransactions === undefined && user !== null;
+  const isDataLoading = allTransactions === undefined;
   const expenses = useMemo(() => allTransactions?.filter(t => 'payment_method' in t) as AppExpense[] || [], [allTransactions]);
   const incomes = useMemo(() => allTransactions?.filter(t => !('payment_method' in t)) as AppIncome[] || [], [allTransactions]);
-
-
-  useEffect(() => {
-    const syncData = async () => {
-      if (!user) return;
-      try {
-        const [supabaseExpenses, supabaseIncomes] = await Promise.all([
-          SupabaseDataService.getExpenses(user.uid),
-          SupabaseDataService.getIncomes(user.uid) // Assuming this method exists
-        ]);
-
-        const expensesToCache = supabaseExpenses.map(exp => ({ ...exp, user_id: user.uid }));
-        await db.expenses.bulkPut(expensesToCache);
-
-        const incomesToCache = supabaseIncomes.map(inc => ({ ...inc, user_id: user.uid }));
-        await db.incomes.bulkPut(incomesToCache);
-
-      } catch (error) {
-        console.error("Error syncing data with Supabase:", error);
-        toast({ title: "Sync Error", description: "Could not sync all data with cloud.", variant: "destructive" });
-      }
-    };
-    syncData();
-  }, [user, toast]);
 
   const handleOpenEditForm = (expense: AppExpense) => {
     setEditingExpense(expense);
@@ -86,12 +57,9 @@ export function ExpenseTracker() {
   };
 
   const handleUpdateExpense = async (expenseId: string, updates: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
     startMutationLoading("Updating expense...");
     try {
-      // Still calling Supabase first, then our service for local update
-      const updatedExpenseFromSupabase = await SupabaseDataService.updateExpense(expenseId, updates);
-      await ExpenseService.updateExpense(expenseId, { ...updatedExpenseFromSupabase, user_id: user.uid });
+      await ExpenseService.updateExpense(expenseId, updates);
       setShowAddForm(false); setEditingExpense(null);
       toast({ title: "Success", description: "Expense updated." });
     } catch (error) {
@@ -100,15 +68,8 @@ export function ExpenseTracker() {
   };
 
   const handleDeleteTransaction = async (itemId: string, type: 'expense' | 'income') => {
-    if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
-
     startMutationLoading(`Deleting ${type}...`);
     try {
-      if (type === 'expense') {
-        await SupabaseDataService.deleteExpense(itemId); // Also delete from Supabase if needed
-      } else {
-        // await SupabaseDataService.deleteIncome(itemId); // Assuming this exists
-      }
       await TransactionService.deleteTransaction(itemId, type);
       toast({ title: "Success", description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted.` });
     } catch (error) {
@@ -116,14 +77,10 @@ export function ExpenseTracker() {
     } finally { stopMutationLoading(); }
   };
 
-  const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (!user) { toast({ title: "Error", description: "User not authenticated.", variant: "destructive" }); return; }
+  const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'created_at' | 'updated_at'>) => {
     startMutationLoading("Adding expense...");
-    const expensePayload = { ...expenseFormData, user_id: user.uid, tags: expenseFormData.tags || [] };
     try {
-      const newExpenseFromSupabase = await SupabaseDataService.addExpense(expensePayload);
-      // The service expects the full AppExpense object, which newExpenseFromSupabase is
-      await ExpenseService.addExpense(newExpenseFromSupabase);
+      await ExpenseService.addExpense(expenseFormData);
       setShowAddForm(false);
       toast({ title: "Success", description: "Expense added." });
     } catch (error) {
