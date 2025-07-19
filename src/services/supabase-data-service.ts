@@ -1,11 +1,9 @@
+
 import { supabase } from '@/integrations/supabase/client';
-import type { Income } from '@/components/income/income-tracker'; // Assuming Income interface is here
 
 // This interface defines the structure for expenses when interacting with the Supabase backend.
 // It should align with the 'expenses' table schema in Supabase.
-// Local app components might use a slightly different structure (e.g., for forms or Dexie),
-// and this service will handle mapping between those structures and this Supabase-specific one if needed during sync.
-export interface Expense { // Renaming to SupabaseExpense for clarity if a global AppExpense type is defined elsewhere
+export interface Expense {
   id?: string; // UUID from Supabase will be string
   user_id?: string; // Foreign key to your users table in Supabase
   amount: number;
@@ -19,9 +17,21 @@ export interface Expense { // Renaming to SupabaseExpense for clarity if a globa
   updated_at?: string;
 }
 
-
-// Helper to map Supabase user_id to your app's convention if different, though likely the same.
-// For now, assume direct mapping.
+// Define Income interface that matches the database schema
+export interface Income {
+  id?: string;
+  user_id?: string;
+  amount: number;
+  date: string;
+  category: string;
+  description?: string;
+  frequency?: string;
+  source_name?: string;
+  tags_flat?: string;
+  account_id?: string;
+  created_at?: string;
+  updated_at?: string;
+}
 
 export class SupabaseDataService {
   // === INCOME METHODS ===
@@ -38,8 +48,6 @@ export class SupabaseDataService {
       console.error("Error fetching incomes from Supabase:", error);
       throw error;
     }
-    // Assuming Supabase returns `id` as string (UUID) and dates as ISO strings.
-    // The Income interface might need id to be string.
     return data as Income[];
   }
 
@@ -48,7 +56,7 @@ export class SupabaseDataService {
       .from('incomes')
       .insert([incomeData])
       .select()
-      .single(); // Assuming you want the inserted row back
+      .single();
 
     if (error) {
       console.error("Error adding income to Supabase:", error);
