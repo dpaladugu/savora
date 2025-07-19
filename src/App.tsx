@@ -1,12 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/auth-context";
-import { ThemeProvider } from "@/contexts/theme-context";
 import { ErrorBoundary } from "@/components/error/error-boundary"; // Changed import
-import { Toaster } from "@/components/ui/toaster";
+import { Toaster } from "@/components/ui/sonner";
 import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
-import { AuthScreen } from "@/components/auth/enhanced-auth-screen";
+import { DbErrorListener } from "@/components/error/DbErrorListener";
 import { Logger } from "@/services/logger";
 import "./App.css";
 
@@ -25,25 +24,19 @@ function App() {
   Logger.info('App initialized');
 
   return (
-    <ErrorBoundary> {/* Changed component */}
+<ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AuthProvider>
-            <Router future={{ v7_startTransition: true }}>
-              <div className="min-h-screen bg-background text-foreground">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<AuthScreen />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </div>
-              <future>
-                {/* All v7 behavior is opt-in. The future flag will enable all of them. */}
-                <v7_startTransition>true</v7_startTransition>
-              </future>
-            </Router>
-          </AuthProvider>
+          <Router>
+            <div className="min-h-screen bg-background text-foreground">
+              <DbErrorListener />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+            </div>
+          </Router>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>

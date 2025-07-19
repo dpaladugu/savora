@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { InvestmentService } from "@/services/InvestmentService"; // Use Dexie service
 import { InvestmentData } from "@/types/jsonPreload"; // Use Dexie data type
-import { useAuth } from "@/contexts/auth-context";
 import { useEffect } from "react";
 import { Textarea } from '@/components/ui/textarea';
 
@@ -49,7 +48,6 @@ const INVESTMENT_TYPES = ['Mutual Fund', 'PPF', 'EPF', 'NPS', 'Gold', 'Stock', '
 const INVESTMENT_CATEGORIES = ['Equity', 'Debt', 'Hybrid', 'Retirement', 'Commodity', 'Real Estate', 'Other'];
 
 export function AddInvestmentForm({ onSuccess, onCancel, initialData }: AddInvestmentFormProps) {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -93,11 +91,6 @@ export function AddInvestmentForm({ onSuccess, onCancel, initialData }: AddInves
 
 
   const onSubmit = async (data: InvestmentFormData) => {
-    if (!user) {
-      toast({ title: "Error", description: "You must be logged in to add investments", variant: "destructive" });
-      return;
-    }
-
     setIsLoading(true);
     try {
       const recordData: Omit<InvestmentData, 'id'> = {
@@ -109,7 +102,6 @@ export function AddInvestmentForm({ onSuccess, onCancel, initialData }: AddInves
         purchaseDate: data.purchaseDate,
         quantity: data.quantity,
         notes: data.notes,
-        user_id: user.uid,
       };
 
       if (initialData?.id) {

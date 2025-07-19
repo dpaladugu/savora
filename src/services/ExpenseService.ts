@@ -52,20 +52,6 @@ export class ExpenseService {
   static async bulkAddExpenses(expensesData: AppExpense[]): Promise<void> {
     try {
       await db.expenses.bulkAdd(expensesData);
-    } catch (error) {
-      console.error("Error in ExpenseService.bulkAddExpenses:", error);
-      throw error;
-    }
-  }
-
-  /**
-   * Bulk adds an array of expense records to the database.
-   * @param expensesData An array of expense data to add.
-   * @returns A promise that resolves when the operation is complete.
-   */
-  static async bulkAddExpenses(expensesData: AppExpense[]): Promise<void> {
-    try {
-      await db.expenses.bulkAdd(expensesData);
       console.log(`Bulk added ${expensesData.length} expenses.`);
     } catch (error) {
       console.error("Error in ExpenseService.bulkAddExpenses:", error);
@@ -87,36 +73,17 @@ export class ExpenseService {
   }
 
   /**
-   * Bulk adds an array of investment records to the database.
-   * @param investmentsData An array of investment data to add.
-   * @returns A promise that resolves when the operation is complete.
-   */
-  static async bulkAddInvestments(investmentsData: AppInvestment[]): Promise<void> {
-    try {
-      await db.investments.bulkAdd(investmentsData);
-      console.log(`Bulk added ${investmentsData.length} investments.`);
-    } catch (error) {
-      console.error("Error in InvestmentService.bulkAddInvestments:", error);
-      throw error;
-    }
-  }
-
-  /**
    * Retrieves all expenses for a given user.
    * In a real app, this might include pagination, filtering, and sorting options.
    * @param userId The ID of the user whose expenses to fetch.
    * @returns A promise that resolves to an array of expenses.
    */
-  static async getExpenses(userId: string): Promise<AppExpense[]> {
+  static async getExpenses(): Promise<AppExpense[]> {
     try {
-      if (!userId) {
-        console.warn("getExpenses called without a userId.");
-        return [];
-      }
-      const expenses = await db.expenses.where('user_id').equals(userId).toArray();
+      const expenses = await db.expenses.toArray();
       return expenses;
     } catch (error) {
-      console.error(`Error in ExpenseService.getExpenses for user ${userId}:`, error);
+      console.error(`Error in ExpenseService.getExpenses:`, error);
       throw error;
     }
   }

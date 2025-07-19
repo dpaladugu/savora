@@ -1,7 +1,5 @@
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAuth } from "@/contexts/auth-context";
-import { DashboardData } from "@/types/dashboard";
+import { useMemo } from "react";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ExpenseService } from "@/services/ExpenseService";
 import { InvestmentService } from "@/services/InvestmentService";
@@ -12,25 +10,18 @@ import { Logger } from "@/services/logger";
 import { useErrorHandler } from "./use-error-handler";
 import { useLoadingState } from "./use-loading-state";
 
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 export function useDashboardData() {
-  const { user } = useAuth();
-  
   const allData = useLiveQuery(async () => {
-    if (!user?.uid) {
-      return null;
-    }
-    
     const [expenses, investments, incomes, insurances, loans] = await Promise.all([
-      ExpenseService.getExpenses(user.uid),
-      InvestmentService.getInvestments(user.uid),
-      IncomeService.getIncomes(user.uid),
-      InsuranceService.getPolicies(user.uid),
-      LoanService.getLoans(user.uid),
+      ExpenseService.getExpenses(),
+      InvestmentService.getInvestments(),
+      IncomeService.getIncomes(),
+      InsuranceService.getPolicies(),
+      LoanService.getLoans(),
     ]);
 
     return { expenses, investments, incomes, insurances, loans };
-  }, [user?.uid]);
+  }, []);
 
   const loading = allData === undefined;
 

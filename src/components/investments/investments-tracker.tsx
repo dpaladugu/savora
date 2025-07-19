@@ -16,7 +16,6 @@ import { InvestmentData } from "@/types/jsonPreload";
 import { InvestmentService } from '@/services/InvestmentService';
 import { AddInvestmentForm } from '@/components/forms/add-investment-form'; // Import the unified form
 import { useLiveQuery } from "dexie-react-hooks";
-import { useAuth } from '@/contexts/auth-context';
 import { format, parseISO, isValid as isValidDate } from 'date-fns';
 import { formatCurrency } from "@/lib/format-utils";
 import {
@@ -49,13 +48,10 @@ export function InvestmentsTracker() {
   const [investmentToDelete, setInvestmentToDelete] = useState<InvestmentData | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
 
   const liveInvestments = useLiveQuery(
     async () => {
-      if (!user?.uid) return [];
-
-      const userInvestments = await InvestmentService.getInvestments(user.uid);
+      const userInvestments = await InvestmentService.getInvestments();
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -68,7 +64,7 @@ export function InvestmentsTracker() {
       // The service doesn't sort, so we sort here.
       return userInvestments.sort((a, b) => (b.purchaseDate && a.purchaseDate) ? parseISO(b.purchaseDate).getTime() - parseISO(a.purchaseDate).getTime() : 0);
     },
-    [searchTerm, user?.uid],
+    [searchTerm],
     []
   );
   const investments = liveInvestments || [];
@@ -304,4 +300,3 @@ export function InvestmentsTracker() {
   );
 }
 
-// The AddInvestmentForm sub-component is now removed from this file.
