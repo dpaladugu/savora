@@ -12,6 +12,17 @@ import { format as formatDateFns, parseISO, isValid } from 'date-fns';
  * @param amount The number to format.
  * @returns The formatted currency string, or 'N/A' if amount is invalid.
  */
+export function formatCurrency(amount: number): string {
+  if (typeof amount !== 'number') {
+    return 'N/A';
+  }
+  return amount.toLocaleString("en-IN", {
+    style: "currency",
+    currency: "INR",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  });
+}
 
 /**
  * Formats a number as a percentage string with one decimal place.
