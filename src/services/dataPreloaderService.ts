@@ -22,7 +22,6 @@ import type {
   ProfileData // Assuming personal_profile maps to ProfileData for appSettings
 } from '@/types/jsonPreload';
 
-
 export interface ValidatedPreloadData {
   success: true;
   data: JsonPreloadMVPData; // Use the inferred type from Zod schema if preferred
@@ -33,7 +32,6 @@ export interface FailedValidationResult {
   message: string;
 }
 export type ValidationResult = ValidatedPreloadData | FailedValidationResult;
-
 
 // Validates the JSON data against the Zod schema for MVP sections
 export function validateFinancialData(data: unknown): ValidationResult {
@@ -58,6 +56,7 @@ export function validateFinancialData(data: unknown): ValidationResult {
 // Maps JsonExpenseTransaction to ExpenseData for Dexie
 function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): ExpenseData {
   return {
+    id: self.crypto.randomUUID(),
     date: jsonExpense.date,
     amount: jsonExpense.amount,
     description: jsonExpense.description,
@@ -111,7 +110,6 @@ function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): VehicleData {
     status: jsonVehicle.status,
     location: jsonVehicle.location,
     repair_estimate: jsonVehicle.repair_estimate,
-    // Ensure all fields from VehicleData (derived from JsonVehicleAsset) are covered
   };
 }
 
@@ -130,6 +128,8 @@ function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): LoanData {
     principalAmount: jsonLoan.amount,
     emiAmount: jsonLoan.emi,
     status: 'active', // Default status
+    loanType: jsonLoan.purpose || 'Personal', // Default loan type
+    tenureMonths: 12, // Default tenure
   };
 }
 
@@ -142,7 +142,6 @@ function mapJsonInvestmentMFToDbInvestment(jsonMf: JsonInvestmentMutualFund): In
     current_value: jsonMf.current_value,
     invested_value: jsonMf.invested, // JSON 'invested' maps here
     category: jsonMf.category,
-    risk_category: jsonMf.risk_category,
   };
 }
 
@@ -169,7 +168,6 @@ function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): CreditCardDa
     autoDebit: false, // Default value
   };
 }
-
 
 export async function preloadFinancialData(jsonData: unknown): Promise<{success: boolean; message: string; summary?: any}> {
   Logger.info('Starting data preload process...');
