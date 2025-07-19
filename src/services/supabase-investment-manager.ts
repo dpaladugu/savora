@@ -1,7 +1,31 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { Investment, Portfolio } from './investment-manager';
 import { Logger } from './logger';
+
+export interface Investment {
+  id?: string;
+  userId: string;
+  name: string;
+  type: 'stocks' | 'bonds' | 'mutual_funds' | 'etf' | 'crypto' | 'real_estate' | 'other';
+  amount: number;
+  units?: number;
+  price?: number;
+  currentValue?: number;
+  purchaseDate: string;
+  maturityDate?: string;
+  expectedReturn?: number;
+  actualReturn?: number;
+  riskLevel: 'low' | 'medium' | 'high';
+}
+
+export interface Portfolio {
+  totalValue: number;
+  totalInvested: number;
+  totalReturns: number;
+  returnPercentage: number;
+  assetAllocation: { [type: string]: number };
+  riskDistribution: { [risk: string]: number };
+}
 
 export class SupabaseInvestmentManager {
   static async addInvestment(userId: string, investment: Omit<Investment, 'id' | 'userId'>): Promise<string> {
