@@ -1,3 +1,4 @@
+
 import { GlobalHeader } from "@/components/layout/global-header";
 import { useEmergencyFund } from "@/hooks/use-emergency-fund";
 import { MissingDataAlert } from "./missing-data-alert";
@@ -13,8 +14,6 @@ import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatServic
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAppStore } from "@/store/appStore";
 import { useToast } from "@/components/ui/use-toast";
-// import ReactMarkdown from 'react-markdown'; // Placeholder for markdown rendering
-// import remarkGfm from 'remark-gfm';         // For GitHub Flavored Markdown
 
 export function EmergencyFundCalculator() {
   const { data, updateData, loading: initialDataLoading, missingData, calculation, refreshData } = useEmergencyFund();
@@ -33,15 +32,12 @@ export function EmergencyFundCalculator() {
     setIsAiConfigured(!!decryptedAiApiKey && !!currentAiProvider);
 
     const unsubscribe = useAppStore.subscribe(
-      (state) => ({ decryptedAiApiKey: state.decryptedAiApiKey, currentAiProvider: state.currentAiProvider }),
-      (newState, oldState) => {
-        const configured = !!newState.decryptedAiApiKey && !!newState.currentAiProvider;
+      (state) => {
+        const configured = !!state.decryptedAiApiKey && !!state.currentAiProvider;
         setIsAiConfigured(configured);
         if (configured) {
             // Re-initialize if relevant parts of store change
-            if (newState.decryptedAiApiKey !== oldState.decryptedAiApiKey || newState.currentAiProvider !== oldState.currentAiProvider) {
-                aiChatServiceInstance.initializeProvider();
-            }
+            aiChatServiceInstance.initializeProvider();
         }
       }
     );
@@ -124,8 +120,6 @@ Please use Markdown for formatting your response, including headings for each se
 
   return (
     <ErrorBoundary>
-      {/* GlobalHeader is removed as ModuleHeader from a router should handle it if this component is used within such a router */}
-      {/* Assuming this component might be used standalone or its parent provides padding/layout */}
       <div className="space-y-6">
         <LoadingWrapper
           loading={initialDataLoading}
@@ -195,10 +189,6 @@ Please use Markdown for formatting your response, including headings for each se
               {aiResponse?.advice && !aiAdviceLoading && (
                 <Card className="bg-background/50 p-4 border">
                   <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
-                  {/* For proper markdown rendering, a library like react-markdown would be used:
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
-                      For now, displaying as preformatted text.
-                  */}
                   <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
                     {aiResponse.advice}
                   </pre>
