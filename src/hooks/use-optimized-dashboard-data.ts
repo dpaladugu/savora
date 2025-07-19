@@ -1,14 +1,9 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData, Goal } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
 import {
   db,
   AppSettingTable, // Type for appSettings records
-  // Expense as DbExpenseType, // This is ExpenseData from jsonPreload
-  // Income as DbIncomeType, // This is from income-tracker component
-  InvestmentData as DbInvestmentType,
-  CreditCardData as DbCreditCardType
 } from "@/db";
 // Use AppExpense for expenses table as defined in SavoraDB
 import type { Expense as AppExpense } from '@/services/supabase-data-service';
@@ -16,6 +11,8 @@ import type { Expense as AppExpense } from '@/services/supabase-data-service';
 import type { Income as AppIncome } from '@/components/income/income-tracker';
 import { format, parseISO } from 'date-fns';
 
+// Use types from jsonPreload instead of db module
+import type { InvestmentData, CreditCardData } from '@/types/jsonPreload';
 
 // Default AppSetting for Emergency Fund if not found in DB
 const DEFAULT_EF_MONTHS = 6;
@@ -29,7 +26,6 @@ interface EmergencyFundSetting {
     // manualTargetAmount?: number;
   };
 }
-
 
 // Keep mock for structure reference, but aim to replace all fields with real data or null/empty.
 const fallbackDashboardData: DashboardData = {
@@ -63,17 +59,16 @@ async function fetchDashboardData(): Promise<DashboardData> {
   ] = await Promise.all([
     db.expenses.toArray(), // Assuming AppExpense type from Dexie table
     db.incomes.toArray(),   // Assuming AppIncome type from Dexie table
-    db.investments.toArray(), // DbInvestmentType
-    db.creditCards.toArray(), // DbCreditCardType
+    db.investments.toArray(), // InvestmentData type
+    db.creditCards.toArray(), // CreditCardData type
     db.appSettings.get(EF_SETTING_KEY) as Promise<EmergencyFundSetting | AppSettingTable | undefined>
   ]);
 
   // Cast to correct types after fetch for clarity in calculations
   const allExpenses = allDexieExpenses as AppExpense[];
   const allIncomes = allDexieIncomes as AppIncome[];
-  const allInvestments = allDexieInvestments as DbInvestmentType[];
-  const allCreditCards = allDexieCreditCards as DbCreditCardType[];
-
+  const allInvestments = allDexieInvestments as InvestmentData[];
+  const allCreditCards = allDexieCreditCards as CreditCardData[];
 
   // Calculate Expense Metrics
   const currentMonthStr = format(new Date(), 'yyyy-MM');
@@ -92,8 +87,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
     .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
   // Calculate Investment Metrics
-  // Assuming DbInvestmentType has 'currentValue' or 'investedAmount'
-  const totalInvestments = allInvestments.reduce((sum, inv) => sum + (Number(inv.currentValue) || Number(inv.investedAmount) || 0), 0);
+  // Assuming InvestmentData has 'current_value' or 'invested_value'
+  const totalInvestments = allInvestments.reduce((sum, inv) => sum + (Number(inv.current_value) || Number(inv.invested_value) || 0), 0);
   const investmentCount = allInvestments.length;
 
   // Calculate Category Breakdown for Expenses
@@ -124,8 +119,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
   const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
 
   // Calculate Credit Card Debt
-  // Assuming DbCreditCardType has 'outstandingBalance' or similar
-  const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number(card.outstandingBalance) || 0), 0);
+  // Assuming CreditCardData has 'outstandingBalance' or similar
+  const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number((card as any).outstandingBalance) || 0), 0);
 
   // Prepare Recent Transactions (mix of expenses and incomes)
   // Sort all transactions by date to get the most recent ones

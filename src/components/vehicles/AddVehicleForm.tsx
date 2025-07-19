@@ -17,7 +17,7 @@ interface AddVehicleFormProps {
   existingVehicle?: VehicleData | null;
 }
 
-// Zod schema for validation
+// Zod schema for validation - ensuring vehicle_name is required
 const vehicleSchema = z.object({
   vehicle_name: z.string().min(1, "Vehicle Name is required."),
   registrationNumber: z.string().min(1, "Registration Number is required."),
@@ -108,7 +108,12 @@ export function AddVehicleForm({ onSubmit, onCancel, existingVehicle = null }: A
   }, [existingVehicle, reset]);
 
   const processSubmit = (data: VehicleFormData) => {
-    onSubmit(data);
+    // Ensure vehicle_name is always provided
+    const submissionData: Omit<VehicleData, 'id'> = {
+      ...data,
+      vehicle_name: data.vehicle_name || '', // This should never be empty due to validation
+    };
+    onSubmit(submissionData);
   };
 
   return (
