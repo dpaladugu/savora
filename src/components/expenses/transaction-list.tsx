@@ -27,7 +27,7 @@ export interface AppIncome {
 // Extended transaction types
 interface ExtendedExpense extends AppExpense {
   tags_flat?: string;
-  type?: 'expense';
+  type: string; // Make type required to match Expense interface
 }
 
 type Transaction = ExtendedExpense | AppIncome;

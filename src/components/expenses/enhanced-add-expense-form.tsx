@@ -43,7 +43,7 @@ interface DexieExpenseRecord {
   account: string;
   created_at?: string;
   updated_at?: string;
-  type: string;
+  type: string; // Added required type field
   source: string;
 }
 
@@ -184,7 +184,7 @@ export const EnhancedAddExpenseForm: React.FC<EnhancedAddExpenseFormProps> = ({
           account: formState.account || '',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-          type: 'expense',
+          type: 'expense', // Added required type field
           source: formState.source || 'manual',
         };
 

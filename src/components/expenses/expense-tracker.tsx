@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,17 +42,20 @@ interface ExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
+  type: string; // Make type required to match Expense interface
 }
 
 // Extended types for union handling
 interface ExtendedAppExpense extends AppExpense {
   tags_flat?: string;
-  type?: 'expense';
+  type: string; // Make type required to match Expense interface
 }
 
 interface ExtendedAppIncome extends AppIncome {
   type?: 'income';
 }
+
+type Transaction = ExtendedAppExpense | ExtendedAppIncome;
 
 const initialFiltersState: ExpenseFilterCriteria = {
   searchTerm: "",
@@ -87,7 +89,7 @@ export function ExpenseTracker() {
     return expenseTransactions.map(expense => ({
       ...expense,
       tags_flat: expense.tags || expense.tags_flat || '',
-      type: 'expense' as const
+      type: expense.type || 'expense'
     }));
   }, [allTransactions]);
   
@@ -99,9 +101,13 @@ export function ExpenseTracker() {
     }));
   }, [allTransactions]);
 
-  const handleOpenEditForm = (expense: ExtendedExpense) => {
-    setEditingExpense(expense);
-    setShowAddForm(true);
+  const handleOpenEditForm = (item: Transaction) => {
+    // Only allow editing expenses, not incomes
+    if ('payment_method' in item) {
+      const expense = item as ExtendedExpense;
+      setEditingExpense(expense);
+      setShowAddForm(true);
+    }
   };
 
   const handleUpdateExpense = async (expenseId: string, updates: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
@@ -145,7 +151,7 @@ export function ExpenseTracker() {
   };
 
   const filteredData = useMemo(() => {
-    let transactions: (ExtendedAppExpense | ExtendedAppIncome)[] = [];
+    let transactions: Transaction[] = [];
 
     if (filters.type === 'expense') {
       transactions = expenses;
