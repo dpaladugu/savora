@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { db, DexieAccountRecord } from "@/db";
 import { AccountService } from "@/services/AccountService";
 import { useLiveQuery } from "dexie-react-hooks";
+import { useAuth } from "@/contexts/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,10 +41,13 @@ export function AccountManager() {
   const [accountToDelete, setAccountToDelete] = useState<DexieAccountRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const liveAccounts = useLiveQuery(
     async () => {
-      const allUserAccounts = await AccountService.getAccounts();
+      if (!user?.uid) return [];
+
+      const allUserAccounts = await AccountService.getAccounts(user.uid);
 
       if (searchTerm) {
         const lowerSearchTerm = searchTerm.toLowerCase();
@@ -55,7 +59,7 @@ export function AccountManager() {
       }
       return allUserAccounts.sort((a,b) => a.name.localeCompare(b.name));
     },
-    [searchTerm],
+    [searchTerm, user?.uid],
     []
   );
   const accounts = liveAccounts || [];
@@ -287,9 +291,10 @@ interface AddAccountFormProps {
 
 function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [formData, setFormData] = useState<AccountFormData>(() => {
     const defaults: AccountFormData = {
-      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: ''
+      name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
     };
     if (initialData) {
       return {
@@ -313,11 +318,11 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
       });
     } else {
       setFormData({
-        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: ''
+        name: '', type: 'Bank', balance: '0', accountNumber: '', provider: '', isActive: true, notes: '', user_id: user?.uid
       });
     }
     setFormErrors({});
-  }, [initialData]);
+  }, [initialData, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -353,6 +358,10 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
       return;
     }
+    if (!user?.uid) {
+      toast({ title: "Authentication Error", description: "You must be logged in to save an account.", variant: "destructive" });
+      return;
+    }
     setIsSaving(true);
 
     const balanceNum = parseFloat(formData.balance || '0');
@@ -365,6 +374,7 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
       provider: formData.provider!,
       isActive: formData.isActive !== undefined ? formData.isActive : true,
       notes: formData.notes || '',
+      user_id: user.uid,
     };
 
     try {

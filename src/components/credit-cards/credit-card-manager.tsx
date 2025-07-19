@@ -1,17 +1,19 @@
 
 import { motion } from "framer-motion";
-import React, { useState, useEffect, useCallback } from "react"; // Added useEffect, useCallback
-import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2 } from "lucide-react"; // Added Loader2
+import React, { useState, useEffect, useCallback } from "react";
+import { Plus, CreditCard, Search, Trash2, Edit, AlertCircle, Loader2, CalendarDays, AlertTriangle as AlertTriangleIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieCreditCardRecord } from "@/db";
-import { CreditCardService } from "@/services/CreditCardService"; // Import the new service
+import { CreditCardService } from "@/services/CreditCardService";
 import { useLiveQuery } from "dexie-react-hooks";
 import { format, parseISO, isValid } from 'date-fns';
+import { useAuth } from "@/contexts/auth-context";
 import {
   Dialog,
   DialogContent,
@@ -29,9 +31,13 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 
 // Form data can be a partial of DexieCreditCardRecord, with some fields as string for input
 export type CreditCardFormData = Partial<Omit<DexieCreditCardRecord, 'limit' | 'currentBalance' | 'billCycleDay' | 'created_at' | 'updated_at'>> & {
@@ -40,9 +46,12 @@ export type CreditCardFormData = Partial<Omit<DexieCreditCardRecord, 'limit' | '
   billCycleDay: string;
 };
 
+const isValidDate = (date: Date) => {
+  return date instanceof Date && !isNaN(date.getTime());
+};
 
 export function CreditCardManager() {
-  const [showAddFormDialog, setShowAddFormDialog] = useState(false); // Renamed for clarity
+  const [showAddFormDialog, setShowAddFormDialog] = useState(false);
   const [editingCard, setEditingCard] = useState<DexieCreditCardRecord | null>(null);
   const [cardToDelete, setCardToDelete] = useState<DexieCreditCardRecord | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,12 +78,12 @@ export function CreditCardManager() {
 
   const handleAddNew = () => {
     setEditingCard(null);
-    setShowAddForm(true);
+    setShowAddFormDialog(true);
   };
 
   const handleEdit = (card: DexieCreditCardRecord) => {
     setEditingCard(card);
-    setShowAddForm(true);
+    setShowAddFormDialog(true);
   };
 
   const openDeleteConfirm = (card: DexieCreditCardRecord) => {
@@ -114,6 +123,8 @@ export function CreditCardManager() {
     );
   }
 
+  const filteredCards = cards || [];
+
   return (
     <div className="space-y-6 p-4 md:p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -152,9 +163,9 @@ export function CreditCardManager() {
         </Card>
       </div>
 
-      {showAddForm && (
+      {showAddFormDialog && (
         <AddCreditCardForm 
-          onClose={() => setShowAddForm(false)}
+          onClose={() => setShowAddFormDialog(false)}
           initialData={editingCard}
         />
       )}
@@ -223,14 +234,14 @@ export function CreditCardManager() {
                   </div>
                   
                   <div className="flex gap-1 ml-4">
-                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => handleEdit(card)}>
                       <Edit className="w-3 h-3" />
                     </Button>
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-8 w-8 p-0"
-                      onClick={() => handleDeleteCard(card.id)}
+                      onClick={() => openDeleteConfirm(card)}
                     >
                       <Trash2 className="w-3 h-3" />
                     </Button>
@@ -252,12 +263,28 @@ export function CreditCardManager() {
           <CreditCard className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-foreground mb-2">No Credit Cards</h3>
           <p className="text-muted-foreground mb-4">Add your first credit card</p>
-          <Button onClick={() => setShowAddForm(true)} className="bg-gradient-blue hover:opacity-90">
+          <Button onClick={() => setShowAddFormDialog(true)} className="bg-gradient-blue hover:opacity-90">
             <Plus className="w-4 h-4 mr-2" />
             Add Your First Card
           </Button>
         </motion.div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!cardToDelete} onOpenChange={() => setCardToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Credit Card</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{cardToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteCard}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -265,7 +292,6 @@ export function CreditCardManager() {
 interface AddCreditCardFormProps {
   initialData?: DexieCreditCardRecord | null;
   onClose: () => void;
-  // userId?: string; // Already part of DexieCreditCardRecord or formData
 }
 
 function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
@@ -275,7 +301,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
     const defaults: CreditCardFormData = {
       name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
       currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
-      last4Digits: '', user_id: user?.uid, // Initialize with user?.uid
+      last4Digits: '', user_id: user?.uid,
     };
     if (initialData) {
       return {
@@ -284,7 +310,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
         currentBalance: initialData.currentBalance.toString(),
         billCycleDay: initialData.billCycleDay.toString(),
         dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : defaults.dueDate,
-        user_id: initialData.user_id || user?.uid, // Ensure user_id is set
+        user_id: initialData.user_id || user?.uid,
       };
     }
     return defaults;
@@ -301,10 +327,9 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
         currentBalance: initialData.currentBalance.toString(),
         billCycleDay: initialData.billCycleDay.toString(),
         dueDate: initialData.dueDate ? format(parseISO(initialData.dueDate), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        user_id: initialData.user_id || user?.uid, // Prioritize initialData, fallback to current user
+        user_id: initialData.user_id || user?.uid,
       });
     } else {
-      // For new form, ensure user_id is from current auth context
       setFormData({
         name: '', limit: '', issuer: '', billCycleDay: '15', autoDebit: true,
         currentBalance: '0', dueDate: format(new Date(), 'yyyy-MM-dd'),
@@ -312,7 +337,7 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       });
     }
     setFormErrors({});
-  }, [initialData, user]); // Rerun if initialData or user changes
+  }, [initialData, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -339,7 +364,6 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
     if (formData.currentBalance && isNaN(parseFloat(formData.currentBalance))) newErrors.currentBalance = "Current Balance must be a valid number.";
      if (formData.last4Digits && (isNaN(parseInt(formData.last4Digits)) || formData.last4Digits.length !== 4)) newErrors.last4Digits = "Last 4 digits must be a 4-digit number.";
 
-
     setFormErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -365,12 +389,11 @@ function AddCreditCardForm({ initialData, onClose }: AddCreditCardFormProps) {
       dueDate: formData.dueDate!,
       autoDebit: formData.autoDebit || false,
       last4Digits: formData.last4Digits || '',
-      user_id: user.uid, // Use authenticated user's ID
+      user_id: user.uid,
     };
 
     try {
       if (formData.id) {
-        // Optional: Check if existingRecord.user_id matches user.uid
         await db.creditCards.update(formData.id, { ...cardRecord, updated_at: new Date() });
         toast({ title: "Success", description: `Card "${cardRecord.name}" updated.` });
       } else {
