@@ -50,10 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  return React.createElement(
-    AuthContext.Provider,
-    { value: { user, loading, signIn, signUp, signOut } },
-    children
+  return (
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+      {children}
+    </AuthContext.Provider>
   );
 }
 
