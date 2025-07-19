@@ -1,10 +1,9 @@
 
 import * as React from 'react';
-import { useEffect } from 'react';
 import { toast } from 'sonner';
 
 export const DbErrorListener = () => {
-  useEffect(() => {
+  React.useEffect(() => {
     const handleDbError = (event: Event) => {
       const customEvent = event as CustomEvent;
       const error = customEvent.detail;

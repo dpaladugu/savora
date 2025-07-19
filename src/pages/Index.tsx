@@ -1,24 +1,23 @@
 
 import * as React from "react";
-import { useState, useEffect } from "react";
 import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
 import { MainContentRouter } from "@/components/layout/main-content-router";
 import { GlobalErrorBoundary } from "@/components/ui/global-error-boundary";
 import { useNavigationRouter } from "@/components/layout/navigation-router";
-import { useAppStore, useIsUnlocked } from "@/store/appStore"; // Import Zustand store & specific selector
-import { PinLock } from "@/components/auth/PinLock"; // Import PinLock component
+import { useAppStore, useIsUnlocked } from "@/store/appStore";
+import { PinLock } from "@/components/auth/PinLock";
 import { db } from "@/db";
 
 const Index = () => {
   const isUnlocked = useIsUnlocked();
   const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
-  const [isAppInitialized, setAppInitialized] = useState(false);
-  const [hasExistingUser, setHasExistingUser] = useState<boolean | undefined>(undefined);
-  const [hasPin, setHasPin] = useState(false);
+  const [isAppInitialized, setAppInitialized] = React.useState(false);
+  const [hasExistingUser, setHasExistingUser] = React.useState<boolean | undefined>(undefined);
+  const [hasPin, setHasPin] = React.useState(false);
 
-  useEffect(() => {
+  React.useEffect(() => {
     async function checkInitialState() {
       try {
         const existingUser = await db.appSettings.get('userPersonalProfile_v1');
@@ -30,7 +29,6 @@ const Index = () => {
         }
       } catch (error) {
         console.error("Error checking initial state:", error);
-        // Handle potential DB errors gracefully
         setHasExistingUser(false);
         setHasPin(false);
       } finally {
@@ -42,19 +40,13 @@ const Index = () => {
   }, []);
 
   const handleUnlockSuccess = () => {
-    // This function is called by PinLock on successful unlock.
-    // The global state `isUnlocked` will change, causing a re-render.
-    // We can also force a re-check of user state if needed.
-    setHasExistingUser(true); // Should already be true, but reaffirms
-    setHasPin(true); // Should already be true
+    setHasExistingUser(true);
+    setHasPin(true);
   };
 
   const handleOnboardingComplete = () => {
     setHasExistingUser(true);
-    // After onboarding, the user is typically directed to set up a PIN.
-    // The PinLock component handles both setup and unlock.
-    // We just need to ensure the UI flows to it.
-    setHasPin(true); // This will now render the PinLock in 'setup' mode.
+    setHasPin(true);
   };
 
   if (!isAppInitialized) {
