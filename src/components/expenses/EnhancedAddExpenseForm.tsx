@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
@@ -26,10 +27,8 @@ const expenseValidationSchema = z.object({
   tags: z.array(z.string()).optional(),
   merchant: z.string().optional(),
   account: z.string().optional(),
-  source: z.string().optional(),
   user_id: z.string().optional(),
   id: z.string().optional(),
-  type: z.literal('expense').optional(),
 });
 
 // This is the type for data actually saved to Dexie (aligns with AppExpense for db.expenses)
@@ -41,12 +40,12 @@ interface DexieExpenseRecord {
   amount: number;
   description: string;
   payment_method: string;
-  tags_flat: string;
-  source: string;
-  merchant: string;
+  tags: string;
   account: string;
   created_at?: string;
   updated_at?: string;
+  type: string; // Required type field
+  source: string;
 }
 
 // Form data type, derived from Zod schema for type safety in the form state
@@ -75,11 +74,30 @@ const initialFormState: EnhancedFormState = {
   user_id: undefined,
 };
 
-export const EnhancedAddExpenseForm: React.FC = () => {
+interface EnhancedAddExpenseFormProps {
+  initialData?: any;
+  onSubmit?: (formData: any) => Promise<void>;
+  onCancel?: () => void;
+}
+
+export const EnhancedAddExpenseForm: React.FC<EnhancedAddExpenseFormProps> = ({ 
+  initialData, 
+  onSubmit, 
+  onCancel 
+}) => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  const [formState, setFormState] = useState<EnhancedFormState>(initialFormState);
+  const [formState, setFormState] = useState<EnhancedFormState>(() => {
+    if (initialData) {
+      return {
+        ...initialFormState,
+        ...initialData,
+        tags: initialData.tags || [],
+      };
+    }
+    return initialFormState;
+  });
   const [errors, setErrors] = useState<Partial<Record<keyof ValidatedExpenseFormData, string>>>({});
   const [formMessage, setFormMessage] = useState<string | null>(null);
 
@@ -150,27 +168,33 @@ export const EnhancedAddExpenseForm: React.FC = () => {
     }
 
     try {
-      const newId = self.crypto.randomUUID();
-      const expenseToSave: DexieExpenseRecord = {
-        id: newId,
-        amount: Number(formState.amount) || 0,
-        date: formState.date || new Date().toISOString().split('T')[0],
-        category: formState.category || '',
-        description: formState.description || '',
-        payment_method: formState.payment_method || '',
-        tags_flat: (formState.tags || []).map(t => t.toLowerCase()).join(','),
-        source: formState.source || '',
-        merchant: formState.merchant || '',
-        account: formState.account || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      if (onSubmit) {
+        // Use custom onSubmit if provided
+        await onSubmit(formState);
+      } else {
+        // Default behavior
+        const newId = self.crypto.randomUUID();
+        const expenseToSave: DexieExpenseRecord = {
+          id: newId,
+          amount: Number(formState.amount) || 0,
+          date: formState.date || new Date().toISOString().split('T')[0],
+          category: formState.category || '',
+          description: formState.description || '',
+          payment_method: formState.payment_method || '',
+          tags: (formState.tags || []).map(t => t.toLowerCase()).join(','),
+          account: formState.account || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          type: 'expense', // Required type field
+          source: formState.source || 'manual',
+        };
 
-      await ExpenseService.addExpense(expenseToSave);
+        await ExpenseService.addExpense(expenseToSave);
+      }
 
       toast({
         title: "Expense Added",
-        description: `Expense "${expenseToSave.description || 'Unnamed'}" for ${formatCurrency(expenseToSave.amount)} added.`,
+        description: `Expense "${formState.description || 'Unnamed'}" for ${formatCurrency(formState.amount)} added.`,
       });
       setFormMessage('Expense added successfully!');
       resetForm();
@@ -188,7 +212,16 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 p-6 border rounded-lg shadow-lg bg-white dark:bg-slate-900">
-      <h2 className="text-2xl font-semibold mb-6 text-gray-800 dark:text-gray-100">Add New Expense</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+          {initialData ? 'Edit Expense' : 'Add New Expense'}
+        </h2>
+        {onCancel && (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+      </div>
 
       {!user && (
         <div className="p-3 mb-4 text-sm text-yellow-800 bg-yellow-100 rounded-lg dark:bg-yellow-900 dark:text-yellow-300" role="alert">
@@ -299,19 +332,6 @@ export const EnhancedAddExpenseForm: React.FC = () => {
         {errors.account && <p id="account-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.account}</p>}
       </div>
 
-      <div>
-        <Label htmlFor="source" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Source (Optional)</Label>
-        <Input
-          id="source" name="source" type="text"
-          value={formState.source || ''}
-          onChange={(e) => handleInputChange('source', e.target.value)}
-          onBlur={() => handleBlur('source')}
-          className="mt-1 block w-full"
-          placeholder="e.g., Online Purchase, Store Visit"
-        />
-         {errors.source && <p id="source-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.source}</p>}
-      </div>
-
       <AdvancedExpenseOptions
         tags={formState.tags || []}
         onTagsChange={(newTags) => handleInputChange('tags', newTags)}
@@ -330,7 +350,7 @@ export const EnhancedAddExpenseForm: React.FC = () => {
 
       <div className="flex space-x-4 pt-3">
         <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md">
-          Add Expense
+          {initialData ? 'Update Expense' : 'Add Expense'}
         </Button>
         <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
           Reset Form

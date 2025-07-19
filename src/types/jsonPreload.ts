@@ -125,7 +125,7 @@ export interface ProfileData extends JsonPersonalProfile {
 
 export interface ExpenseData extends Omit<JsonExpenseTransaction, 'id'> {
   id?: string; // Changed from number to string for consistency
-  type?: 'expense' | 'income';
+  type: 'expense' | 'income'; // Make type required
   vehicle_id_json?: string;
   json_id?: string;
 }
