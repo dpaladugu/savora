@@ -7,8 +7,6 @@ import { AlertTriangle, Info, RefreshCw, Sparkles } from "lucide-react";
 import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatService";
 import { useAppStore } from "@/store/appStore";
 import { useToast } from "@/hooks/use-toast";
-// import ReactMarkdown from 'react-markdown'; // Optional: for rendering markdown
-// import remarkGfm from 'remark-gfm'; // Optional: for rendering markdown
 
 export function RecommendationsEngine() {
   const { toast } = useToast();
@@ -27,14 +25,11 @@ export function RecommendationsEngine() {
     setIsAiConfigured(!!decryptedAiApiKey && !!currentAiProvider);
 
     const unsubscribe = useAppStore.subscribe(
-      (state) => ({ decryptedAiApiKey: state.decryptedAiApiKey, currentAiProvider: state.currentAiProvider }),
-      (newState, oldState) => {
-        const configured = !!newState.decryptedAiApiKey && !!newState.currentAiProvider;
+      (state) => {
+        const configured = !!state.decryptedAiApiKey && !!state.currentAiProvider;
         setIsAiConfigured(configured);
         if (configured) {
-            if (newState.decryptedAiApiKey !== oldState.decryptedAiApiKey || newState.currentAiProvider !== oldState.currentAiProvider) {
-                aiChatServiceInstance.initializeProvider();
-            }
+          aiChatServiceInstance.initializeProvider();
         }
       }
     );
@@ -62,8 +57,6 @@ export function RecommendationsEngine() {
     setAiResponse(null);
 
     try {
-      // For now, no extensive context is passed, just a generic system prompt.
-      // This can be expanded later to include summarized financial data.
       const systemPrompt = "You are a helpful and insightful financial advisor. Provide clear, actionable advice based on the user's query. If the query is too vague, ask for clarification. Keep responses concise yet comprehensive.";
       const response = await aiChatServiceInstance.getFinancialAdvice(query, systemPrompt);
       setAiResponse(response);
@@ -130,10 +123,6 @@ export function RecommendationsEngine() {
           {aiResponse?.advice && !isLoading && (
             <Card className="bg-background/50 p-4 border">
               <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
-              {/*
-                For proper markdown rendering, use:
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{aiResponse.advice}</ReactMarkdown>
-              */}
               <pre className="whitespace-pre-wrap text-sm font-sans bg-muted p-3 rounded-md overflow-x-auto">
                 {aiResponse.advice}
               </pre>

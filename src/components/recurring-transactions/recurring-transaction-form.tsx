@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,12 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox"; // For is_active
+import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { CalendarIcon, AlertCircle } from 'lucide-react';
 import { format, parseISO, addDays, addWeeks, addMonths, addYears, isValid, set } from 'date-fns';
 import { db, RecurringTransactionRecord } from '@/db';
-import { RecurringTransactionService } from '@/services/RecurringTransactionService'; // Import the service
+import { RecurringTransactionService } from '@/services/RecurringTransactionService';
 import { useToast } from "@/hooks/use-toast";
 
 export type RecurringTransactionFormData = Partial<Omit<RecurringTransactionRecord, 'amount' | 'interval' | 'created_at' | 'updated_at'>> & {
@@ -77,7 +78,6 @@ const calculateNextOccurrenceDate = (
   return format(nextDate, 'yyyy-MM-dd');
 };
 
-
 const defaultInitialFormData: RecurringTransactionFormData = {
   description: '',
   amount: '',
@@ -102,7 +102,6 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
   const categories = ["Salary", "Rent", "Groceries", "Utilities", "Subscription", "Loan Payment", "Investment", "Other Income", "Other Expense"];
   const paymentMethods = ["Bank Transfer", "Credit Card", "Debit Card", "Cash", "UPI", "Wallet"];
 
-
   const resetForm = useCallback(() => {
     setFormData(defaultInitialFormData);
     setErrors({});
@@ -121,11 +120,10 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
       } else {
         setFormData(defaultInitialFormData);
       }
-    } else if (!isOpen && initialData) { // Reset if form closes after editing
+    } else if (!isOpen && initialData) {
         resetForm();
     }
   }, [initialData, isOpen, resetForm]);
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
@@ -139,16 +137,16 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
     }
   };
 
-  const handleSelectChange = (name: keyof RecurringTransactionFormData, value: string | number | undefined) => {
+  const handleSelectChange = (name: keyof RecurringTransactionFormData, value: string | number | boolean | undefined) => {
     setFormData(prev => ({ ...prev, [name]: value }));
-     if (errors[name as keyof RecurringTransactionFormData]) { // Corrected key access
+     if (errors[name as keyof RecurringTransactionFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
 
   const handleDateChange = (name: keyof RecurringTransactionFormData, date: Date | undefined) => {
     setFormData(prev => ({ ...prev, [name]: date ? format(date, 'yyyy-MM-dd') : undefined }));
-     if (errors[name as keyof RecurringTransactionFormData]) { // Corrected key access
+     if (errors[name as keyof RecurringTransactionFormData]) {
       setErrors(prev => ({ ...prev, [name]: undefined }));
     }
   };
@@ -231,7 +229,6 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
 
   const FieldError: React.FC<{ field: keyof RecurringTransactionFormData }> = ({ field }) =>
     errors[field] ? <p id={`${field}-error`} className="text-xs text-red-500 mt-1 flex items-center"><AlertCircle aria-hidden="true" className="w-3 h-3 mr-1"/> {errors[field]}</p> : null;
-
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

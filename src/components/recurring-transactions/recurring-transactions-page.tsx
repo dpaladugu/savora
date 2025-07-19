@@ -1,12 +1,14 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Repeat, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { RecurringTransactionForm } from './recurring-transaction-form';
 import { db, RecurringTransactionRecord } from '@/db';
-import { RecurringTransactionService } from '@/services/RecurringTransactionService'; // Import the service
+import { RecurringTransactionService } from '@/services/RecurringTransactionService';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO, isValid } from 'date-fns';
+import { useAuth } from "@/contexts/auth-context";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,20 +20,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// Using RecurringTransactionRecord directly for display or can create a specific Display type
-// For simplicity, we'll use fields from RecurringTransactionRecord directly in JSX
-
 export function RecurringTransactionsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<RecurringTransactionRecord | null>(null);
   const [transactionToDelete, setTransactionToDelete] = useState<RecurringTransactionRecord | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const recurringTransactions = useLiveQuery(
     () => {
-      return RecurringTransactionService.getRecurringTransactions();
+      return RecurringTransactionService.getRecurringTransactions(user?.uid || '');
     },
-    []
+    [user?.uid]
   );
 
   const handleAddNew = () => {
@@ -64,7 +64,7 @@ export function RecurringTransactionsPage() {
         variant: "destructive",
       });
     } finally {
-      setTransactionToDelete(null); // Close confirmation dialog
+      setTransactionToDelete(null);
     }
   };
 
@@ -80,7 +80,6 @@ export function RecurringTransactionsPage() {
     }
     return text;
   };
-
 
   if (recurringTransactions === undefined) {
     return (
