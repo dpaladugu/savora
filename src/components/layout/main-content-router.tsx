@@ -36,7 +36,7 @@ export const MainContentRouter = React.memo(function MainContentRouter({
 
   const getTabConfig = (tabId: string) => {
     const configs = {
-      "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: true }, // Changed showHeader to true
+      "dashboard": { title: "Dashboard", subtitle: "Your financial overview", showHeader: true },
       "expenses": { title: "Expenses", subtitle: "Track your spending", showHeader: true },
       "credit-cards": { title: "Credit Cards", subtitle: "Manage your credit cards", showHeader: true },
       "investments": { title: "Investments", subtitle: "Track your portfolio", showHeader: true },
@@ -138,11 +138,11 @@ export const MainContentRouter = React.memo(function MainContentRouter({
           EnhancedLoadingWrapper,
           {
             loading: true,
-            loadingText: "Loading module..."
-          },
-          React.createElement('div', {
-            className: "min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800"
-          })
+            loadingText: "Loading module...",
+            children: React.createElement('div', {
+              className: "min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800"
+            })
+          }
         )
       },
       renderContent()
