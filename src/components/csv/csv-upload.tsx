@@ -1,3 +1,4 @@
+
 import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 import { Upload, FileText, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
@@ -8,14 +9,13 @@ import Papa from 'papaparse';
 import { db } from '@/db';
 import { format, parse, isValid as isValidDate, parseISO } from 'date-fns';
 
-// Interface for records to be saved in Dexie (aligns with DexieExpenseRecord used elsewhere)
 interface DexieExpenseRecordToSave {
   id: string;
   user_id?: string;
-  date: string; // YYYY-MM-DD
+  date: string;
   amount: number;
   description: string;
-  category?: string;
+  category: string; // Make required to match Expense type
   payment_method?: string;
   tags_flat?: string;
   source?: string;
@@ -24,9 +24,8 @@ interface DexieExpenseRecordToSave {
 }
 
 interface CSVUploadProps {
-  // onDataParsed could be used for preview or further processing if needed
   onDataParsed?: (data: DexieExpenseRecordToSave[]) => void;
-  onImportComplete?: (count: number) => void; // Callback after successful import
+  onImportComplete?: (count: number) => void;
 }
 
 export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
@@ -67,8 +66,8 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
   const validateCSVHeaders = (csvFile: File) => {
     setIsProcessing(true);
     Papa.parse(csvFile, {
-      preview: 1, // Only parse the first row for headers
-      header: false, // We'll get the first row as an array
+      preview: 1,
+      header: false,
       skipEmptyLines: true,
       complete: (results) => {
         const validationErrors: string[] = [];
@@ -88,7 +87,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
         setValidationResult({
           isValid,
           errors: validationErrors,
-          // We don't know rowCount yet, will get it during full parse or can estimate
         });
 
         if (isValid) {
@@ -183,7 +181,7 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             date: parsedDate,
             amount: amountNum,
             description: String(row.description || '').trim(),
-            category: String(row.category || 'Uncategorized').trim(),
+            category: String(row.category || 'Uncategorized').trim(), // Required field
             payment_method: String(row.payment_mode || row.payment_method || '').trim(),
             tags_flat: tagsArray.join(','),
             source: String(row.source || 'CSV Import').trim(),
@@ -204,7 +202,8 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
 
         if (dataToSave.length > 0) {
           try {
-            await db.expenses.bulkAdd(dataToSave);
+            // Cast to compatible type for bulkAdd - the interface ensures required fields are present
+            await db.expenses.bulkAdd(dataToSave as any);
             toast({
               title: "Import Successful",
               description: `${dataToSave.length} expenses imported. ${currentDataErrors.length > 0 ? `${currentDataErrors.length} rows had errors and were skipped.` : ''}`,
@@ -256,7 +255,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* File Selection */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">
               Select CSV File
@@ -282,7 +280,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             />
           </div>
 
-          {/* File Info */}
           {file && (
             <div className="bg-muted/30 rounded-lg p-3">
               <p className="text-sm font-medium text-foreground">{file.name}</p>
@@ -292,7 +289,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             </div>
           )}
 
-          {/* Validation Results */}
           {validationResult && (
             <div className={`rounded-lg p-3 ${
               validationResult.isValid 
@@ -327,13 +323,11 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
             </div>
           )}
 
-          {/* Required Headers Info */}
           <div className="text-xs text-muted-foreground space-y-1">
             <p><strong>Required headers:</strong> {requiredHeaders.join(', ')}</p>
             <p><strong>Optional headers:</strong> {optionalHeaders.join(', ')}</p>
           </div>
 
-          {/* Upload Button */}
           <Button
             onClick={handleUploadAndProcess}
             disabled={!validationResult?.isValid || isProcessing}

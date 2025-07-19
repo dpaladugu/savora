@@ -1,470 +1,424 @@
 
-import { motion } from "framer-motion";
-import React, { useState, useEffect, useCallback } from "react";
-import { Plus, DollarSign, Search, Filter, Trash2, Edit, Loader2, AlertTriangle as AlertTriangleIcon, CalendarDays } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Plus, TrendingUp, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { db } from "@/db";
-import { IncomeSourceData } from '@/types/jsonPreload';
-import { DexieAccountRecord } from '@/db';
-import { formatCurrency } from '@/lib/format-utils'; // Import from new utility file
-import { TagsInput } from '@/components/tags/TagsInput';
-import { useLiveQuery } from "dexie-react-hooks";
-import { format, parseISO, isValidDate } from 'date-fns';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle as AlertDialogTitleComponent,
-} from "@/components/ui/alert-dialog";
-import { Controller, useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { motion } from "framer-motion";
+import { formatCurrency, formatDate } from "@/lib/format-utils";
+import { parseISO, isValid as isDateValid } from "date-fns";
 
-// This is the type for records in db.incomes (defined in SavoraDB class in db.ts)
-// It should align with AppIncome interface if AppIncome is the intended structure for Dexie.
-// Assuming AppIncome is the structure for db.incomes.
-// Define the AppIncome interface to match the new Dexie schema for 'incomes' (v16)
-export interface AppIncome {
-  id: string; // UUID
-  user_id?: string;
-  date: string; // YYYY-MM-DD
+export interface Income {
+  id?: string;
+  date: string;
   amount: number;
   category: string;
-  source_name?: string; // Name of the income source (e.g., "Salary", "Freelance Project X") - previously 'source'
-  description?: string; // More detailed description of the income
-  frequency?: 'one-time' | 'monthly' | 'quarterly' | 'yearly' | 'weekly' | 'bi-weekly' | string;
-  tags_flat?: string; // Comma-separated for Dexie FTS
-  account_id?: string; // FK to Accounts table (where it was received)
-  // Denormalized fields for display (optional, can be fetched via relations)
-  // source_id?: string; // Optional: if you want to store relation to IncomeSources table
-  // account_name?: string;
-  created_at?: string; // ISO string
-  updated_at?: string; // ISO string
+  description?: string;
+  frequency: string;
+  tags?: string[];
+  tags_flat?: string;
+  source_name?: string;
+  account_id?: string;
+  type: 'income';
+  source_recurring_transaction_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
+// Type alias for backward compatibility
+export type AppIncome = Income;
 
-// Form data type
-type IncomeFormData = Partial<Omit<AppIncome, 'amount' | 'created_at' | 'updated_at' | 'user_id'>> & {
-  amount?: string; // Amount as string for form input
-  tags?: string[]; // For tag input component
+interface IncomeFormData {
+  date: string;
+  amount: number;
+  category: string;
+  description: string;
+  frequency: string;
+  tags: string[];
+  source_name: string;
+  account_id: string;
+}
+
+const initialFormData: IncomeFormData = {
+  date: new Date().toISOString().split('T')[0],
+  amount: 0,
+  category: 'Salary',
+  description: '',
+  frequency: 'monthly',
+  tags: [],
+  source_name: '',
+  account_id: '',
 };
-
-const INCOME_CATEGORIES = ['Salary', 'Freelance', 'Investment', 'Rental', 'Bonus', 'Gift', 'Other'] as const;
-const INCOME_FREQUENCIES = ['one-time', 'monthly', 'quarterly', 'yearly', 'weekly', 'bi-weekly'] as const;
-
 
 export function IncomeTracker() {
   const { toast } = useToast();
+  const [showForm, setShowForm] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
+  const [formData, setFormData] = useState<IncomeFormData>(initialFormData);
+  const [tagInput, setTagInput] = useState('');
 
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingIncome, setEditingIncome] = useState<AppIncome | null>(null);
-  const [incomeToDelete, setIncomeToDelete] = useState<AppIncome | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const incomes = useLiveQuery(() => db.income.orderBy('date').reverse().toArray(), []);
 
-  const liveIncomes = useLiveQuery(async () => {
-    let query = db.incomes;
+  const handleInputChange = (field: keyof IncomeFormData, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAddTag = () => {
+    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, tagInput.trim()]
+      }));
+      setTagInput('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    const userIncomes = await query.toArray(); // Fetch all user incomes first
-
-    if (searchTerm) {
-      const lowerSearchTerm = searchTerm.toLowerCase();
-      return userIncomes.filter(income =>
-        (income.source_name && income.source_name.toLowerCase().includes(lowerSearchTerm)) ||
-        (income.description && income.description.toLowerCase().includes(lowerSearchTerm)) ||
-        income.category.toLowerCase().includes(lowerSearchTerm)
-      ).sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+    if (!formData.date || !formData.amount || !formData.category) {
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
     }
-    return userIncomes.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
-  }, [searchTerm], []);
 
-  const incomes = liveIncomes || [];
-
-  // These handlers would be part of IncomeTracker if form submission is managed here
-  // For now, AddIncomeForm handles its own submission.
-  // const handleAddIncome = async (formData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'>) => { /* ... */ };
-  // const handleUpdateIncome = async (id: string, formData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'>) => { /* ... */ };
-
-
-  const handleAddNew = () => {
-    setEditingIncome(null);
-    setShowAddForm(true);
-  };
-
-  const handleOpenEditForm = (income: AppIncome) => {
-    setEditingIncome(income);
-    setShowAddForm(true);
-  };
-
-  const openDeleteConfirm = (income: AppIncome) => {
-    setIncomeToDelete(income);
-  };
-
-  const handleDeleteIncomeExecute = async () => {
-    if (!incomeToDelete || !incomeToDelete.id) return;
     try {
-      await db.incomes.delete(incomeToDelete.id);
-      toast({ title: "Success", description: `Income "${incomeToDelete.source}" deleted.` });
+      const incomeData: Omit<Income, 'id' | 'created_at' | 'updated_at'> = {
+        date: formData.date,
+        amount: formData.amount,
+        category: formData.category,
+        description: formData.description,
+        frequency: formData.frequency,
+        tags_flat: formData.tags.join(','),
+        source_name: formData.source_name,
+        account_id: formData.account_id,
+        type: 'income',
+      };
+
+      if (editingIncome) {
+        await db.income.update(editingIncome.id!, incomeData);
+        toast({
+          title: "Income Updated",
+          description: "Income entry has been updated successfully.",
+        });
+      } else {
+        await db.income.add({
+          ...incomeData,
+          id: crypto.randomUUID(),
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+        toast({
+          title: "Income Added",
+          description: "New income entry has been added successfully.",
+        });
+      }
+
+      setFormData(initialFormData);
+      setShowForm(false);
+      setEditingIncome(null);
     } catch (error) {
-      console.error("Error deleting income:", error);
-      toast({ title: "Error", description: "Could not delete income.", variant: "destructive" });
-    } finally {
-      setIncomeToDelete(null);
+      console.error('Error saving income:', error);
+      toast({
+        title: "Error",
+        description: "Failed to save income entry. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const totalMonthlyIncome = incomes
-    .filter(inc => inc.frequency === 'monthly') // Consider only active if status field is added
-    .reduce((sum, inc) => sum + Number(inc.amount || 0), 0);
-
-  const getCategoryColor = (category: string) => {
-    const colors: Record<string, string> = {
-      'salary': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'rental': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'side-business': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'investment': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-      'other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
-    };
-    return colors[category] || colors['other'];
+  const handleEdit = (income: Income) => {
+    setEditingIncome(income);
+    setFormData({
+      date: income.date,
+      amount: income.amount,
+      category: income.category,
+      description: income.description || '',
+      frequency: income.frequency,
+      tags: income.tags_flat ? income.tags_flat.split(',').filter(Boolean) : [],
+      source_name: income.source_name || '',
+      account_id: income.account_id || '',
+    });
+    setShowForm(true);
   };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await db.income.delete(id);
+      toast({
+        title: "Income Deleted",
+        description: "Income entry has been deleted successfully.",
+      });
+    } catch (error) {
+      console.error('Error deleting income:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete income entry. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const totalIncome = incomes?.reduce((sum, income) => sum + income.amount, 0) || 0;
 
   return (
-    <div className="space-y-6 p-4 md:p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">Income Tracker</h1>
-          <p className="text-muted-foreground">Manage and review your income entries.</p>
-        </div>
-        <Button onClick={handleAddNew} className="bg-blue-600 hover:bg-blue-700 text-white">
+    <div className="space-y-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 md:grid-cols-2 gap-4"
+      >
+        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-green-100 text-sm">Total Income</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalIncome)}</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-green-200" />
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-sm">Income Entries</p>
+                <p className="text-2xl font-bold">{incomes?.length || 0}</p>
+              </div>
+              <Plus className="w-8 h-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      <div className="flex justify-end">
+        <Button onClick={() => setShowForm(true)}>
           <Plus className="w-4 h-4 mr-2" />
           Add Income
         </Button>
       </div>
 
-      {/* Summary Card */}
-      <Card className="shadow">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-gradient-green text-white">
-              <DollarSign aria-hidden="true" className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Monthly Income</p>
-              <p className="text-lg font-bold text-foreground">₹{totalMonthlyIncome.toLocaleString()}</p>
-            </div>
+      {showForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingIncome ? 'Edit Income' : 'Add New Income'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="date">Date</Label>
+                  <Input
+                    id="date"
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => handleInputChange('date', e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="amount">Amount</Label>
+                  <Input
+                    id="amount"
+                    type="number"
+                    step="0.01"
+                    value={formData.amount || ''}
+                    onChange={(e) => handleInputChange('amount', parseFloat(e.target.value) || 0)}
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="category">Category</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => handleInputChange('category', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Salary">Salary</SelectItem>
+                      <SelectItem value="Freelance">Freelance</SelectItem>
+                      <SelectItem value="Business">Business</SelectItem>
+                      <SelectItem value="Investment">Investment</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="frequency">Frequency</Label>
+                  <Select
+                    value={formData.frequency}
+                    onValueChange={(value) => handleInputChange('frequency', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="one-time">One-time</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => handleInputChange('description', e.target.value)}
+                  placeholder="Enter income description"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="source_name">Source</Label>
+                <Input
+                  id="source_name"
+                  value={formData.source_name}
+                  onChange={(e) => handleInputChange('source_name', e.target.value)}
+                  placeholder="Income source"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="account_id">Account</Label>
+                <Input
+                  id="account_id"
+                  value={formData.account_id}
+                  onChange={(e) => handleInputChange('account_id', e.target.value)}
+                  placeholder="Account ID"
+                />
+              </div>
+
+              <div>
+                <Label>Tags</Label>
+                <div className="flex gap-2 mb-2">
+                  <Input
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    placeholder="Add a tag"
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
+                  />
+                  <Button type="button" onClick={handleAddTag} variant="outline">
+                    Add
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {formData.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveTag(tag)}>
+                      {tag} ×
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button type="submit" className="flex-1">
+                  {editingIncome ? 'Update Income' : 'Add Income'}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingIncome(null);
+                    setFormData(initialFormData);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Income History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {incomes?.map((income) => (
+              <Card key={income.id} className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/50">
+                        <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-300" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{income.description || income.category}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {formatDate(income.date)} • {income.frequency}
+                        </p>
+                      </div>
+                    </div>
+                    {income.tags_flat && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {income.tags_flat.split(',').filter(Boolean).map((tag) => (
+                          <Badge key={tag} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        +{formatCurrency(income.amount)}
+                      </p>
+                      <Badge variant="outline">{income.category}</Badge>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(income)}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(income.id!)}
+                        className="text-destructive hover:text-destructive/80"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+            {!incomes?.length && (
+              <p className="text-center text-muted-foreground py-8">
+                No income entries found. Add your first income entry to get started.
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
-
-      {/* Add/Edit Income Form */}
-      {showAddForm && (
-        <AddIncomeForm
-          initialData={editingIncome} // Pass editingIncome here
-          onClose={() => {
-            setShowAddForm(false);
-            setEditingIncome(null); // Clear editing state on cancel
-          }}
-        />
-      )}
-
-      {/* Search */}
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
-          <Search aria-hidden="true" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
-          <Input
-            placeholder="Search income sources..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            aria-label="Search income by source or category"
-          />
-        </div>
-        <Button variant="outline" aria-label="Filter income entries">
-          <Filter className="w-4 h-4" />
-        </Button>
-      </div>
-
-      {/* Income List */}
-      <div className="space-y-3">
-        {incomes.map((income, index) => ( // Changed filteredIncomes to incomes to match state
-          <motion.div
-            key={income.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card className="metric-card border-border/50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h4 className="font-semibold text-foreground text-lg">
-                        {formatCurrency(income.amount)}
-                      </h4>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(income.category)}`}>
-                        {income.category}
-                      </span>
-                      <span className="px-2 py-1 rounded-full text-xs bg-muted text-muted-foreground">
-                        {income.frequency}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <p className="font-medium text-foreground">{income.source_name}</p>
-                       {income.description && income.description !== income.source_name && (
-                        <p className="text-xs text-muted-foreground">{income.description}</p>
-                      )}
-                      <p className="text-sm text-muted-foreground">
-                        Date: {income.date && isValidDate(parseISO(income.date)) ? format(parseISO(income.date), 'PPP') : 'N/A'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex gap-1 ml-4">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      onClick={() => handleOpenEditForm(income)}
-                      aria-label={`Edit income from ${income.source_name}`}
-                    >
-                      <Edit className="w-3 h-3" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0"
-                      onClick={() => openDeleteConfirm(income)}
-                      aria-label={`Delete income from ${income.source_name}`}
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Delete Confirmation Dialog */}
-      {incomeToDelete && (
-        <AlertDialog open={!!incomeToDelete} onOpenChange={() => setIncomeToDelete(null)}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitleComponent className="flex items-center">
-                <AlertTriangleIcon aria-hidden="true" className="w-5 h-5 mr-2 text-destructive"/>Are you sure?
-              </AlertDialogTitleComponent>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the income from "{incomeToDelete.source_name || 'this entry'}".
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
-              <AlertDialogAction onClick={handleDeleteIncomeExecute} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
     </div>
-  );
-}
-
-// --- AddIncomeForm Sub-Component ---
-
-const incomeSchema = z.object({
-  amount: z.preprocess(
-    (val) => (val === "" ? undefined : Number(val)),
-    z.number({ required_error: "Amount is required.", invalid_type_error: "Amount must be a number."}).positive()
-  ),
-  source_name: z.string().min(1, "Source/Title is required."),
-  description: z.string().optional(),
-  category: z.string().min(1, "Category is required."),
-  date: z.string().min(1, "Date is required."),
-  frequency: z.string().min(1, "Frequency is required."),
-  account_id: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-});
-
-type AddIncomeFormData = z.infer<typeof incomeSchema>;
-
-interface AddIncomeFormProps {
-  initialData?: AppIncome | null;
-  onClose: () => void;
-}
-
-function AddIncomeForm({ initialData, onClose }: AddIncomeFormProps) {
-  const { toast } = useToast();
-
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<AddIncomeFormData>({
-    resolver: zodResolver(incomeSchema),
-    defaultValues: {
-      amount: undefined,
-      source_name: '',
-      description: '',
-      category: 'Salary',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      frequency: 'monthly',
-      account_id: '',
-      tags: [],
-    }
-  });
-
-  const accountList = useLiveQuery(() => db.accounts.where('isActive').equals(true).toArray(), [], []);
-
-  useEffect(() => {
-    if (initialData) {
-      reset({
-        amount: initialData.amount,
-        source_name: initialData.source_name,
-        description: initialData.description,
-        category: initialData.category,
-        date: initialData.date ? format(parseISO(initialData.date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
-        frequency: initialData.frequency,
-        account_id: initialData.account_id,
-        tags: initialData.tags_flat ? initialData.tags_flat.split(',').filter(Boolean) : [],
-      });
-    } else {
-      reset({
-        amount: undefined, source_name: '', description: '', category: 'Salary',
-        date: format(new Date(), 'yyyy-MM-dd'), frequency: 'monthly', account_id: '', tags: [],
-      });
-    }
-  }, [initialData, reset]);
-
-  const processSubmit = async (data: AddIncomeFormData) => {
-    const recordData: Omit<AppIncome, 'id' | 'created_at' | 'updated_at'> = {
-      ...data,
-      tags_flat: data.tags?.join(',').toLowerCase() || '',
-    };
-
-    try {
-      if (initialData?.id) {
-        await db.incomes.update(initialData.id, { ...recordData, updated_at: new Date().toISOString() });
-        toast({ title: "Success", description: `Income from "${recordData.source_name}" updated.` });
-      } else {
-        const newId = self.crypto.randomUUID();
-        await db.incomes.add({
-          ...recordData,
-          id: newId,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        } as AppIncome);
-        toast({ title: "Success", description: `Income from "${recordData.source_name}" added.` });
-      }
-      onClose();
-    } catch (error) {
-      console.error("Failed to save income record:", error);
-      toast({ title: "Database Error", description: (error as Error).message || "Could not save income record.", variant: "destructive"});
-    }
-  };
-
-  return (
-    <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto" aria-describedby="add-income-description">
-        <DialogHeader>
-          <DialogTitle>{initialData?.id ? 'Edit' : 'Add New'} Income</DialogTitle>
-          <DialogDescription id="add-income-description">
-            {initialData?.id ? 'Update the details of your income entry.' : 'Add a new income entry to your records.'}
-          </DialogDescription>
-        </DialogHeader>
-        <form onSubmit={handleSubmit(processSubmit)} className="space-y-4 py-4">
-          <div>
-            <Label htmlFor="amount">Amount (₹) *</Label>
-            <Input id="amount" type="number" step="0.01" placeholder="0.00" {...register('amount')} />
-            {errors.amount && <p className="mt-1 text-xs text-destructive">{errors.amount.message}</p>}
-          </div>
-          <div>
-            <Label htmlFor="source_name">Source/Title *</Label>
-            <Input id="source_name" placeholder="e.g., Monthly Salary" {...register('source_name')} />
-            {errors.source_name && <p className="mt-1 text-xs text-destructive">{errors.source_name.message}</p>}
-          </div>
-           <div>
-            <Label htmlFor="description">Description (Optional)</Label>
-            <Textarea id="description" placeholder="More details..." {...register('description')} />
-          </div>
-           <div>
-            <Label htmlFor="category">Category *</Label>
-            <Controller
-              name="category"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{INCOME_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
-                </Select>
-              )}
-            />
-            {errors.category && <p className="mt-1 text-xs text-destructive">{errors.category.message}</p>}
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="date">Date *</Label>
-               <Input id="date" type="date" {...register('date')} />
-               {errors.date && <p className="mt-1 text-xs text-destructive">{errors.date.message}</p>}
-            </div>
-            <div>
-              <Label htmlFor="frequency">Frequency *</Label>
-              <Controller
-                name="frequency"
-                control={control}
-                render={({ field }) => (
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{INCOME_FREQUENCIES.map(f => <SelectItem key={f} value={f}>{f.charAt(0).toUpperCase() + f.slice(1)}</SelectItem>)}</SelectContent>
-                  </Select>
-                )}
-              />
-              {errors.frequency && <p className="mt-1 text-xs text-destructive">{errors.frequency.message}</p>}
-            </div>
-          </div>
-           <div>
-            <Label htmlFor="account_id">Credited To Account (Optional)</Label>
-            <Controller
-              name="account_id"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <SelectTrigger><SelectValue placeholder="Select account..."/></SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value=""><em>None/Not Specified</em></SelectItem>
-                        {accountList?.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.provider})</SelectItem>)}
-                    </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-          <div>
-            <Label htmlFor="tags">Tags (Optional)</Label>
-            <Controller
-                name="tags"
-                control={control}
-                render={({ field }) => (
-                    <TagsInput
-                        tags={field.value || []}
-                        onTagsChange={field.onChange}
-                        placeholder="Add relevant tags..."
-                    />
-                )}
-            />
-          </div>
-          <DialogFooter className="pt-5">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? 'Saving...' : (initialData?.id ? 'Update Income' : 'Save Income')}</Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }

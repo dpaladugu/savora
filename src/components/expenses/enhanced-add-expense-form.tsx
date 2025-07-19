@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +16,17 @@ import { Logger } from "@/services/logger";
 import { useEffect } from "react";
 import type { PaymentMethod } from "./category-payment-selectors";
 
+// Extended Expense type with additional properties
+interface ExtendedExpense extends AppExpense {
+  note?: string;
+  merchant?: string;
+  source?: string;
+}
+
 interface EnhancedAddExpenseFormProps {
   onSubmit: (expense: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => Promise<void>;
   onCancel: () => void;
-  initialData?: AppExpense | null;
+  initialData?: ExtendedExpense | null;
 }
 
 export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: EnhancedAddExpenseFormProps) {
@@ -33,7 +39,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     isValidating,
   } = useEnhancedExpenseValidation();
   
-  const [formData, setFormData] = useState<{
+  const [formData, setFormData<{
     amount: string;
     date: string;
     category: string;
@@ -50,7 +56,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     category: initialData?.category || 'Food',
     description: initialData?.description || '',
     payment_method: (initialData?.payment_method || 'UPI') as PaymentMethod,
-    tags: Array.isArray(initialData?.tags) ? initialData.tags : (initialData?.tags ? [initialData.tags] : []),
+    tags: typeof initialData?.tags === 'string' ? initialData.tags.split(',').filter(Boolean) : (Array.isArray(initialData?.tags) ? initialData.tags : []),
     note: initialData?.note || '',
     merchant: initialData?.merchant || '',
     account: initialData?.account || '',
@@ -67,7 +73,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         category: initialData.category,
         description: initialData.description || '',
         payment_method: (initialData.payment_method || 'UPI') as PaymentMethod,
-        tags: Array.isArray(initialData.tags) ? initialData.tags : (initialData.tags ? [initialData.tags] : []),
+        tags: typeof initialData.tags === 'string' ? initialData.tags.split(',').filter(Boolean) : (Array.isArray(initialData.tags) ? initialData.tags : []),
         note: initialData.note || '',
         merchant: initialData.merchant || '',
         account: initialData.account || '',
@@ -145,10 +151,6 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         description: formData.description.trim(),
         payment_method: formData.payment_method,
         tags: formData.tags.join(','), // Convert to flat string for compatibility
-        note: formData.note?.trim() || undefined,
-        merchant: formData.merchant?.trim() || undefined,
-        account: formData.account?.trim() || undefined,
-        source: formData.source,
         type: 'expense',
       };
 

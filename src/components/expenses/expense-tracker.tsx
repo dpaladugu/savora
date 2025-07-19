@@ -1,7 +1,8 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-react"; // Added DollarSign
+import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
 import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
 import { TransactionList } from "./transaction-list";
 import type { Expense as AppExpense } from "@/services/supabase-data-service";
@@ -21,6 +22,13 @@ import { ComprehensiveDataValidator } from "@/services/comprehensive-data-valida
 import { motion } from "framer-motion";
 import { parseISO, isValid } from "date-fns";
 
+// Extended Expense type with additional properties
+interface ExtendedExpense extends AppExpense {
+  note?: string;
+  merchant?: string;
+  source?: string;
+}
+
 const initialFiltersState: ExpenseFilterCriteria = {
   searchTerm: "",
   category: "All",
@@ -29,14 +37,14 @@ const initialFiltersState: ExpenseFilterCriteria = {
   dateTo: null,
   minAmount: "",
   maxAmount: "",
-  type: "All", // Default to show all types (expenses and potentially income if data model supports it in future)
+  type: "All",
 };
 
 export function ExpenseTracker() {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading } = useSingleLoading();
-  const [editingExpense, setEditingExpense] = useState<AppExpense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<ExtendedExpense | null>(null);
   const [filters, setFilters] = useState<ExpenseFilterCriteria>(initialFiltersState);
 
   EnhancedNotificationService.setToastFunction(toast);
@@ -51,7 +59,7 @@ export function ExpenseTracker() {
   const expenses = useMemo(() => allTransactions?.filter(t => 'payment_method' in t) as AppExpense[] || [], [allTransactions]);
   const incomes = useMemo(() => allTransactions?.filter(t => !('payment_method' in t)) as AppIncome[] || [], [allTransactions]);
 
-  const handleOpenEditForm = (expense: AppExpense) => {
+  const handleOpenEditForm = (expense: ExtendedExpense) => {
     setEditingExpense(expense);
     setShowAddForm(true);
   };
@@ -109,7 +117,7 @@ export function ExpenseTracker() {
 
     const filtered = transactions.filter(t => {
       const searchTermLower = filters.searchTerm.toLowerCase();
-      const description = 'description' in t ? t.description : t.source_name; // Handle different field names
+      const description = 'description' in t ? t.description : (t.source_name || '');
       const matchesSearch = !filters.searchTerm ||
                             (description || "").toLowerCase().includes(searchTermLower) ||
                             (t.category || "").toLowerCase().includes(searchTermLower) ||
@@ -136,14 +144,12 @@ export function ExpenseTracker() {
 
   const totalShownExpenses = filteredData.reduce((sum, item) => item.type === 'expense' || filters.type === 'All' || filters.type === 'expense' ? sum + (item.amount || 0) : sum, 0);
 
-  // Calculate total income based on *original* incomes array, but filtered by date/search if specified in 'filters'
-  // This is a simplified income calculation for the summary cards.
   const relevantIncomes = useMemo(() => incomes.filter(income => {
     const searchTermLower = filters.searchTerm.toLowerCase();
     const date = income.date ? parseISO(income.date) : null;
     const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
     const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
-    const matchesSearch = !filters.searchTerm || (income.source || "").toLowerCase().includes(searchTermLower) || (income.category || "").toLowerCase().includes(searchTermLower);
+    const matchesSearch = !filters.searchTerm || (income.source_name || "").toLowerCase().includes(searchTermLower) || (income.category || "").toLowerCase().includes(searchTermLower);
     return matchesDateFrom && matchesDateTo && matchesSearch;
   }), [incomes, filters.dateFrom, filters.dateTo, filters.searchTerm]);
 
@@ -153,11 +159,10 @@ export function ExpenseTracker() {
   const uniqueCategories = useMemo(() => ["All", ...new Set(expenses.map(e => e.category || "Uncategorized").filter(Boolean).sort())], [expenses]);
   const uniquePaymentMethods = useMemo(() => ["All", ...new Set(expenses.map(e => e.payment_method || "N/A").filter(Boolean).sort())], [expenses]);
 
-  const exportData = () => { // Renamed from exportExpenses
+  const exportData = () => {
     try {
-      // For now, only exports filtered expenses. Can be expanded.
       const csvContent = "data:text/csv;charset=utf-8," 
-        + "Date,Description,Category,Amount,Payment Method,Tags\n" // Added Tags
+        + "Date,Description,Category,Amount,Payment Method,Tags\n"
         + filteredData.map(item =>
             `${item.date},${item.description || ''},${item.category || ''},${item.amount},${item.payment_method || ''},${item.tags_flat || ''}`
           ).join("\n");
@@ -178,14 +183,9 @@ export function ExpenseTracker() {
   if (showAddForm) {
     return (
       <CriticalErrorBoundary>
-        <div className="space-y-4 p-4 md:p-0"> {/* Adjusted padding for when form is shown */}
+        <div className="space-y-4 p-4 md:p-0">
           <EnhancedAddExpenseForm
-            // initialData expects FormExpenseType, ensure mapping if AppExpense is different for form
-            initialData={editingExpense ? {
-              ...editingExpense,
-              tags: editingExpense.tags_flat ? editingExpense.tags_flat.split(',') : [],
-              // Ensure all fields expected by FormExpenseType are present
-            } as any : undefined}
+            initialData={editingExpense}
             onSubmit={handleSubmitExpenseForm}
             onCancel={() => { setShowAddForm(false); setEditingExpense(null); }}
           />
@@ -198,7 +198,6 @@ export function ExpenseTracker() {
     <CriticalErrorBoundary>
       <EnhancedLoadingWrapper loading={isDataLoading || isMutationLoading} loadingText="Loading transactions...">
         <div className="space-y-6">
-          {/* Enhanced Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
               <Card className="bg-gradient-to-br from-red-500 to-pink-600 text-white">
@@ -244,8 +243,8 @@ export function ExpenseTracker() {
           <AdvancedExpenseFilters
             onFiltersChange={setFilters}
             totalResults={filteredData.length}
-            availableCategories={uniqueCategories.filter(c => c !== "All")} // Pass dynamic categories
-            availablePaymentMethods={uniquePaymentMethods.filter(pm => pm !== "All")} // Pass dynamic payment methods
+            availableCategories={uniqueCategories.filter(c => c !== "All")}
+            availablePaymentMethods={uniquePaymentMethods.filter(pm => pm !== "All")}
           />
 
           <Card>

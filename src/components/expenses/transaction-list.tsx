@@ -34,7 +34,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
     <div className="space-y-3">
       {transactions.map((item) => {
         const itemIsExpense = isExpense(item);
-        const description = itemIsExpense ? item.description : item.source_name;
+        const description = itemIsExpense ? item.description : (item.source_name || item.description);
         const subLine = itemIsExpense ? item.payment_method : item.frequency;
 
         return (
@@ -52,7 +52,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.date)}
                         {'source_recurring_transaction_id' in item && item.source_recurring_transaction_id && (
-                          <Repeat className="w-3 h-3 ml-1 text-blue-500" title="Recurring" />
+                          <Repeat className="w-3 h-3 ml-1 text-blue-500" />
                         )}
                       </span>
                       {subLine && (
