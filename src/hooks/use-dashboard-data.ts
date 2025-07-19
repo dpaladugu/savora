@@ -1,4 +1,5 @@
 
+
 import { useMemo } from "react";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ExpenseService } from "@/services/ExpenseService";
@@ -9,19 +10,24 @@ import { LoanService } from "@/services/LoanService";
 import { Logger } from "@/services/logger";
 import { useErrorHandler } from "./use-error-handler";
 import { useLoadingState } from "./use-loading-state";
+import { useAuth } from "@/contexts/auth-context";
 
 export function useDashboardData() {
+  const { user } = useAuth();
+
   const allData = useLiveQuery(async () => {
+    if (!user?.uid) return null;
+    
     const [expenses, investments, incomes, insurances, loans] = await Promise.all([
-      ExpenseService.getExpenses(),
-      InvestmentService.getInvestments(),
-      IncomeService.getIncomes(),
-      InsuranceService.getPolicies(),
-      LoanService.getLoans(),
+      ExpenseService.getExpenses(user.uid),
+      InvestmentService.getInvestments(user.uid),
+      IncomeService.getIncomes(user.uid),
+      InsuranceService.getPolicies(user.uid),
+      LoanService.getLoans(user.uid),
     ]);
 
     return { expenses, investments, incomes, insurances, loans };
-  }, []);
+  }, [user?.uid]);
 
   const loading = allData === undefined;
 

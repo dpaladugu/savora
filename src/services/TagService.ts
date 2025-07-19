@@ -1,3 +1,4 @@
+
 /**
  * src/services/TagService.ts
  *
@@ -104,8 +105,11 @@ export class TagService {
    */
   static async getTagUsageCount(tagName: string): Promise<number> {
       try {
-          const usageCount = await db.expenses.where('tags_flat').includesIgnoreCase(tagName).count();
-          return usageCount;
+          // Fix: Use where with anyOf or regular string matching since includesIgnoreCase doesn't exist
+          const expensesWithTag = await db.expenses.filter(expense => 
+            expense.tags_flat?.toLowerCase().includes(tagName.toLowerCase())
+          ).count();
+          return expensesWithTag;
       } catch (error) {
           console.error(`Error in TagService.getTagUsageCount for tag ${tagName}:`, error);
           throw error;

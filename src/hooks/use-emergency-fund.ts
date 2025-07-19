@@ -1,9 +1,11 @@
 
+
 import { useState, useEffect } from "react";
 import { ExpenseService } from "@/services/ExpenseService";
 import { InsuranceService } from "@/services/InsuranceService";
 import { LoanService } from "@/services/LoanService";
 import { IncomeService } from "@/services/IncomeService";
+import { useAuth } from "@/contexts/auth-context";
 
 interface EmergencyFundData {
   monthlyExpenses: number;
@@ -31,6 +33,7 @@ interface EmergencyFundCalculation {
 export function useEmergencyFund() {
   const [loading, setLoading] = useState(true);
   const [missingData, setMissingData] = useState<string[]>([]);
+  const { user } = useAuth();
   
   const [data, setData] = useState<EmergencyFundData>({
     monthlyExpenses: 0,
@@ -50,18 +53,23 @@ export function useEmergencyFund() {
 
   useEffect(() => {
     loadIntegratedData();
-  }, []);
+  }, [user?.uid]);
 
   const loadIntegratedData = async () => {
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
       
       // Load data from all modules concurrently using Dexie services
       const [expenses, insurances, emis, incomes] = await Promise.all([
-        ExpenseService.getExpenses(),
-        InsuranceService.getPolicies(),
-        LoanService.getLoans(),
-        IncomeService.getIncomes(),
+        ExpenseService.getExpenses(user.uid),
+        InsuranceService.getPolicies(user.uid),
+        LoanService.getLoans(user.uid),
+        IncomeService.getIncomes(user.uid),
       ]);
       
       // Calculate essential expenses from expense data

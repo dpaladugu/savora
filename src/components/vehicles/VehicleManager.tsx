@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, Vehicle } from '@/db';
@@ -11,22 +12,31 @@ import { useToast } from '@/hooks/use-toast';
 import { EnhancedLoadingWrapper } from '@/components/ui/enhanced-loading-wrapper';
 import { CriticalErrorBoundary } from '@/components/ui/critical-error-boundary';
 import type { VehicleData } from '@/types/jsonPreload';
+import { useAuth } from '@/contexts/auth-context';
 
 export function VehicleManager() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const vehicles = useLiveQuery(() => {
-    return VehicleService.getVehicles().then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
-  }, [], []);
+    if (!user?.uid) return [];
+    return VehicleService.getVehicles(user.uid).then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
+  }, [user?.uid], []);
 
   const isLoading = vehicles === undefined;
 
   const handleAddVehicle = async (vehicleFormData: Omit<VehicleData, 'id'>) => {
+    if (!user?.uid) {
+      toast({ title: "Error", description: "User not authenticated", variant: "destructive" });
+      return;
+    }
+
     try {
-      const vehicleRecord: Omit<Vehicle, 'id' | 'user_id'> & { user_id?: string } = {
-        name: vehicleFormData.name,
+      const vehicleRecord: Omit<Vehicle, 'id'> = {
+        user_id: user.uid,
+        name: vehicleFormData.vehicle_name, // Map from vehicle_name to name
         registrationNumber: vehicleFormData.registrationNumber!,
         make: vehicleFormData.make,
         model: vehicleFormData.model,
@@ -53,16 +63,16 @@ export function VehicleManager() {
         location: vehicleFormData.location,
         repair_estimate: vehicleFormData.repair_estimate,
         notes: vehicleFormData.notes,
+        created_at: new Date(),
+        updated_at: new Date(),
       };
 
-      const recordToSave: Partial<Vehicle> = { ...vehicleRecord };
-
       if (editingVehicle && editingVehicle.id) {
-        await VehicleService.updateVehicle(editingVehicle.id, recordToSave);
-        toast({ title: "Vehicle Updated", description: `${recordToSave.name} has been successfully updated.` });
+        await VehicleService.updateVehicle(editingVehicle.id, vehicleRecord);
+        toast({ title: "Vehicle Updated", description: `${vehicleRecord.name} has been successfully updated.` });
       } else {
-        await VehicleService.addVehicle(recordToSave as Omit<Vehicle, 'id'>);
-        toast({ title: "Vehicle Added", description: `${recordToSave.name} has been successfully added.` });
+        await VehicleService.addVehicle(vehicleRecord);
+        toast({ title: "Vehicle Added", description: `${vehicleRecord.name} has been successfully added.` });
       }
 
       setShowAddForm(false);
@@ -116,7 +126,7 @@ export function VehicleManager() {
             setEditingVehicle(null);
           }}
           existingVehicle={editingVehicle ? {
-            name: editingVehicle.name,
+            vehicle_name: editingVehicle.name, // Map from name to vehicle_name
             registrationNumber: editingVehicle.registrationNumber,
             make: editingVehicle.make,
             model: editingVehicle.model,

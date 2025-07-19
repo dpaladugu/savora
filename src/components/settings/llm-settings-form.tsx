@@ -29,7 +29,13 @@ const OLLAMA_DEFAULT_FORM_MODEL = 'llama2';
 
 export function LLMSettingsForm() {
   const { toast } = useToast();
-  const decryptedAiConfig = useAppStore(state => state.decryptedAiConfig);
+  const { user } = useAuth();
+  const decryptedAiConfig = useAppStore(state => ({
+    apiKey: state.decryptedAiApiKey,
+    provider: state.currentAiProvider,
+    baseUrl: state.aiServiceBaseUrl,
+    model: state.currentAiModel,
+  }));
   const setDecryptedAiConfig = useAppStore(state => state.setDecryptedAiConfig);
 
   const [selectedProvider, setSelectedProvider] = useState<string>('');
@@ -100,7 +106,7 @@ export function LLMSettingsForm() {
       setIsConfigLoaded(true);
     };
     loadConfig();
-  }, [user?.uid, toast]); // Removed decryptedAiConfig from deps to avoid re-triggering on its own update
+  }, [user?.uid, toast, decryptedAiConfig]); // Added decryptedAiConfig back to deps
 
   const performSave = async (pin: string) => {
     if (!dataToSave) return;

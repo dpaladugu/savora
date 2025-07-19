@@ -1,3 +1,4 @@
+
 /**
  * src/services/VehicleService.ts
  *
@@ -96,7 +97,7 @@ export class VehicleService {
     try {
       const vehicle = await db.vehicles.get(id);
       return vehicle;
-    } catch (error)      {
+    } catch (error) {
       console.error(`Error in VehicleService.getVehicleById for id ${id}:`, error);
       throw error;
     }

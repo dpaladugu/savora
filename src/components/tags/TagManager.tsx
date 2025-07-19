@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +21,7 @@ import {
   AlertDialogTitle as AlertDialogTitleComponent,
 } from "@/components/ui/alert-dialog";
 import { Label } from '@/components/ui/label'; // Import Label
+import { useAuth } from '@/contexts/auth-context';
 
 type TagFormData = Partial<Omit<DexieTagRecord, 'created_at' | 'updated_at' | 'name'>> & {
   name: string; // Name is always required for form, even if initially empty
@@ -31,12 +33,14 @@ export function TagManager() {
   const [tagToDelete, setTagToDelete] = useState<DexieTagRecord | null>(null);
   const [deleteUsageCount, setDeleteUsageCount] = useState<number | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const tags = useLiveQuery(
     () => {
-      return TagService.getTags();
+      if (!user?.uid) return [];
+      return TagService.getTags(user.uid);
     },
-    [],
+    [user?.uid],
     []
   );
 
@@ -97,9 +101,10 @@ export function TagManager() {
       </div>
 
       {showForm && (
-        <AddEditTagForm // userId prop will be removed from AddEditTagForm
+        <AddEditTagForm
           initialData={editingTag}
           onClose={() => { setShowForm(false); setEditingTag(null); }}
+          userId={user?.uid || ''}
         />
       )}
 
@@ -171,10 +176,10 @@ export function TagManager() {
 interface AddEditTagFormProps {
   initialData?: DexieTagRecord | null;
   onClose: () => void;
-  // userId prop removed
+  userId: string;
 }
 
-function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
+function AddEditTagForm({ initialData, onClose, userId }: AddEditTagFormProps) {
   const { toast } = useToast();
   const [formData, setFormData] = useState<TagFormData>(() => {
     const defaults: TagFormData = { name: '', color: '#cccccc' };
@@ -240,23 +245,24 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
     const recordData: Omit<DexieTagRecord, 'id' | 'created_at' | 'updated_at'> = {
       name: normalizedName,
       color: formData.color || undefined,
+      user_id: userId,
     };
 
     try {
       if (formData.id) { // Editing existing tag
         if (initialData && normalizedName !== initialData.name.toLowerCase()) {
-            const conflictingTag = await TagService.getTagByName(normalizedName);
+            const conflictingTag = await TagService.getTagByName(normalizedName, userId);
             if (conflictingTag && conflictingTag.id !== formData.id) {
-                 toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
+                 toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "destructive" });
                  setIsSaving(false); return;
             }
         }
         await TagService.updateTag(formData.id, recordData);
         toast({ title: "Success", description: "Tag updated." });
       } else { // Adding new tag
-        const existingTag = await TagService.getTagByName(normalizedName);
+        const existingTag = await TagService.getTagByName(normalizedName, userId);
         if (existingTag) {
-            toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
+            toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "destructive" });
             setIsSaving(false); return;
         }
         await TagService.addTag(recordData as Omit<DexieTagRecord, 'id'>);
