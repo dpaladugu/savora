@@ -22,6 +22,13 @@ import type {
   ProfileData // Assuming personal_profile maps to ProfileData for appSettings
 } from '@/types/jsonPreload';
 
+// Import Dexie record types
+import type { 
+  DexieVehicleRecord, 
+  DexieLoanEMIRecord, 
+  DexieCreditCardRecord 
+} from '@/db';
+
 export interface ValidatedPreloadData {
   success: true;
   data: JsonPreloadMVPData; // Use the inferred type from Zod schema if preferred
@@ -93,43 +100,61 @@ function mapJsonIncomeToDbIncomeSource(jsonIncome: JsonIncomeCashFlow): IncomeSo
   };
 }
 
-// Maps JsonVehicleAsset to VehicleData for Dexie
-function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): VehicleData {
+// Maps JsonVehicleAsset to DexieVehicleRecord for Dexie
+function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): DexieVehicleRecord {
   return {
     id: self.crypto.randomUUID(), // Generate UUID
-    vehicle_name: jsonVehicle.vehicle, // JSON 'vehicle' field is the name
-    name: jsonVehicle.vehicle, // Also map to name for DexieVehicleRecord compatibility
+    name: jsonVehicle.vehicle, // JSON 'vehicle' field is the name
+    registrationNumber: '', // Default empty
+    make: '',
+    model: '',
+    year: undefined,
+    color: '',
+    type: '',
+    owner: jsonVehicle.owner || '',
+    status: jsonVehicle.status || 'Active',
+    purchaseDate: undefined,
+    purchasePrice: undefined,
+    fuelType: '',
+    engineNumber: '',
+    chassisNumber: '',
+    currentOdometer: undefined,
+    fuelEfficiency: '',
+    insuranceProvider: jsonVehicle.insurance?.provider,
+    insurancePolicyNumber: '',
+    insuranceExpiryDate: jsonVehicle.insurance?.next_renewal,
     insurance_premium: jsonVehicle.insurance?.premium,
-    insurance_provider: jsonVehicle.insurance?.provider,
     insurance_frequency: jsonVehicle.insurance?.frequency,
-    insurance_next_renewal: jsonVehicle.insurance?.next_renewal,
     tracking_type: jsonVehicle.tracking?.type,
     tracking_last_service_odometer: jsonVehicle.tracking?.last_service_odometer,
     next_pollution_check: jsonVehicle.tracking?.next_pollution_check,
-    owner: jsonVehicle.owner,
-    status: jsonVehicle.status,
     location: jsonVehicle.location,
     repair_estimate: jsonVehicle.repair_estimate,
+    notes: '',
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 }
 
-// Maps JsonLoan to LoanData for Dexie
-function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): LoanData {
+// Maps JsonLoan to DexieLoanEMIRecord for Dexie
+function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): DexieLoanEMIRecord {
   return {
     id: self.crypto.randomUUID(), // Generate UUID
-    loan_name: jsonLoan.loan, // JSON 'loan' field is the name
-    amount: jsonLoan.amount,
-    emi: jsonLoan.emi,
-    account: jsonLoan.account,
-    purpose: jsonLoan.purpose,
-    interest_rate: jsonLoan.interest_rate,
-    lender: jsonLoan.lender,
-    notes: jsonLoan.notes,
+    loanType: jsonLoan.purpose || 'Personal',
+    lender: jsonLoan.lender || '',
     principalAmount: jsonLoan.amount,
     emiAmount: jsonLoan.emi,
-    status: 'active', // Default status
-    loanType: jsonLoan.purpose || 'Personal', // Default loan type
+    interestRate: jsonLoan.interest_rate,
     tenureMonths: 12, // Default tenure
+    startDate: '',
+    endDate: '',
+    nextDueDate: '',
+    remainingAmount: jsonLoan.amount,
+    status: 'active',
+    account: jsonLoan.account,
+    note: jsonLoan.notes,
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 }
 
@@ -145,27 +170,20 @@ function mapJsonInvestmentMFToDbInvestment(jsonMf: JsonInvestmentMutualFund): In
   };
 }
 
-// Maps JsonCreditCard to CreditCardData for Dexie
-function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): CreditCardData {
+// Maps JsonCreditCard to DexieCreditCardRecord for Dexie
+function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): DexieCreditCardRecord {
   return {
     id: self.crypto.randomUUID(), // Generate UUID
-    bank_name: jsonCard.bank_name,
-    card_name: jsonCard.card_name,
-    last_digits: jsonCard.last_digits,
-    due_date: typeof jsonCard.due_date === 'number' ? jsonCard.due_date.toString() : jsonCard.due_date, // Store as string for consistency
-    fee_waiver_details: typeof jsonCard.fee_waiver === 'number' ? jsonCard.fee_waiver.toString() : jsonCard.fee_waiver,
-    credit_limit: jsonCard.credit_limit,
-    anniversary_date: jsonCard.anniversary_date,
-    payment_method: jsonCard.payment_method,
-    status: jsonCard.status,
     name: jsonCard.card_name,
     issuer: jsonCard.bank_name,
     limit: jsonCard.credit_limit,
     currentBalance: 0, // Default value
-    dueDate: typeof jsonCard.due_date === 'number' ? jsonCard.due_date.toString() : jsonCard.due_date,
-    last4Digits: jsonCard.last_digits,
     billCycleDay: typeof jsonCard.due_date === 'number' ? jsonCard.due_date : parseInt(jsonCard.due_date) || 1,
+    dueDate: typeof jsonCard.due_date === 'number' ? jsonCard.due_date.toString() : jsonCard.due_date,
     autoDebit: false, // Default value
+    last4Digits: jsonCard.last_digits,
+    created_at: new Date(),
+    updated_at: new Date(),
   };
 }
 
@@ -174,7 +192,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
 
   const validationResult = validateFinancialData(jsonData);
   if (!validationResult.success) {
-    Logger.error('JSON data failed validation for MVP sections.', (validationResult as FailedValidationResult).errors);
+    Logger.error('JSON data failed validation for MVP sections.');
     const errorMessage = (validationResult as FailedValidationResult).errors?.map(err => `${err.path.join('.')} - ${err.message}`).join('\n') || 'JSON data structure is invalid for MVP sections.';
     return { success: false, message: errorMessage };
   }
@@ -228,7 +246,10 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonExpenseToDbExpense(item));
-          } catch (e) { Logger.error('Error mapping expense:', item, e); importSummary.expenses.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping expense:', item); 
+            importSummary.expenses.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.expenses.bulkAdd(mappedItems); 
@@ -245,7 +266,10 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonIncomeToDbIncomeSource(item));
-          } catch (e) { Logger.error('Error mapping income source:', item, e); importSummary.incomeSources.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping income source:', item); 
+            importSummary.incomeSources.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.incomeSources.bulkAdd(mappedItems); 
@@ -258,11 +282,14 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.assets?.vehicles) {
         const rawItems = validatedData.assets.vehicles;
         importSummary.vehicles.found = rawItems.length;
-        const mappedItems: VehicleData[] = [];
+        const mappedItems: DexieVehicleRecord[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonVehicleToDbVehicle(item));
-          } catch (e) { Logger.error('Error mapping vehicle:', item, e); importSummary.vehicles.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping vehicle:', item); 
+            importSummary.vehicles.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.vehicles.bulkAdd(mappedItems); 
@@ -275,11 +302,14 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.liabilities) {
         const rawItems = validatedData.liabilities;
         importSummary.loans.found = rawItems.length;
-        const mappedItems: LoanData[] = [];
+        const mappedItems: DexieLoanEMIRecord[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonLoanToDbLoan(item));
-          } catch (e) { Logger.error('Error mapping loan:', item, e); importSummary.loans.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping loan:', item); 
+            importSummary.loans.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.loans.bulkAdd(mappedItems); 
@@ -296,7 +326,10 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonInvestmentMFToDbInvestment(item));
-          } catch (e) { Logger.error('Error mapping investment (MF):', item, e); importSummary.investments.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping investment (MF):', item); 
+            importSummary.investments.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.investments.bulkAdd(mappedItems); 
@@ -309,11 +342,14 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.credit_card_management?.cards) {
         const rawItems = validatedData.credit_card_management.cards;
         importSummary.creditCards.found = rawItems.length;
-        const mappedItems: CreditCardData[] = [];
+        const mappedItems: DexieCreditCardRecord[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonCreditCardToDbCreditCard(item));
-          } catch (e) { Logger.error('Error mapping credit card:', item, e); importSummary.creditCards.failed++; }
+          } catch (e) { 
+            Logger.error('Error mapping credit card:', item); 
+            importSummary.creditCards.failed++; 
+          }
         }
         if (mappedItems.length > 0) { 
           await db.creditCards.bulkAdd(mappedItems); 

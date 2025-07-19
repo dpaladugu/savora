@@ -18,11 +18,11 @@ export function useDashboardData() {
     if (!user?.uid) return null;
     
     const [expenses, investments, incomes, insurances, loans] = await Promise.all([
-      ExpenseService.getExpenses(),
-      InvestmentService.getInvestments(),
-      IncomeService.getIncomes(),
-      InsuranceService.getPolicies(),
-      LoanService.getLoans(),
+      ExpenseService.getExpenses(user.uid),
+      InvestmentService.getInvestments(user.uid),
+      IncomeService.getIncomes(user.uid),
+      InsuranceService.getPolicies(user.uid),
+      LoanService.getLoans(user.uid),
     ]);
 
     return { expenses, investments, incomes, insurances, loans };

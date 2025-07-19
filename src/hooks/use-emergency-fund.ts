@@ -65,10 +65,10 @@ export function useEmergencyFund() {
       
       // Load data from all modules concurrently using Dexie services
       const [expenses, insurances, emis, incomes] = await Promise.all([
-        ExpenseService.getExpenses(),
-        InsuranceService.getPolicies(),
-        LoanService.getLoans(),
-        IncomeService.getIncomes(),
+        ExpenseService.getExpenses(user.uid),
+        InsuranceService.getPolicies(user.uid),
+        LoanService.getLoans(user.uid),
+        IncomeService.getIncomes(user.uid),
       ]);
       
       // Calculate essential expenses from expense data
