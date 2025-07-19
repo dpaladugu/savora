@@ -9,7 +9,6 @@ import { TagService } from '@/services/TagService'; // Import the new service
 import { useLiveQuery } from "dexie-react-hooks";
 import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { useAuth } from '@/contexts/auth-context';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,14 +31,12 @@ export function TagManager() {
   const [tagToDelete, setTagToDelete] = useState<DexieTagRecord | null>(null);
   const [deleteUsageCount, setDeleteUsageCount] = useState<number | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user
 
   const tags = useLiveQuery(
     () => {
-      if (!user?.uid) return [];
-      return TagService.getTags(user.uid);
+      return TagService.getTags();
     },
-    [user?.uid],
+    [],
     []
   );
 
@@ -179,10 +176,9 @@ interface AddEditTagFormProps {
 
 function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
   const { toast } = useToast();
-  const { user } = useAuth(); // Get user directly in the form
   const [formData, setFormData] = useState<TagFormData>(() => {
-    const defaults: TagFormData = { name: '', color: '#cccccc', user_id: user?.uid };
-    return initialData ? { ...initialData, name: initialData.name, user_id: initialData.user_id || user?.uid } : defaults;
+    const defaults: TagFormData = { name: '', color: '#cccccc' };
+    return initialData ? { ...initialData, name: initialData.name } : defaults;
   });
   const [formErrors, setFormErrors] = useState<Partial<Record<keyof TagFormData, string>>>({});
   const [isSaving, setIsSaving] = useState(false);
@@ -194,13 +190,12 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
         id: initialData.id,
         name: initialData.name,
         color: initialData.color || '#cccccc',
-        user_id: initialData.user_id || user?.uid
       });
     } else {
-      setFormData({ name: '', color: '#cccccc', user_id: user?.uid });
+      setFormData({ name: '', color: '#cccccc' });
     }
     setFormErrors({});
-  }, [initialData, user]); // Rerun if initialData or user changes
+  }, [initialData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -238,10 +233,6 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
         return;
     }
 
-    if (!user?.uid) {
-      toast({ title: "Authentication Error", description: "You must be logged in to save a tag.", variant: "destructive" });
-      return;
-    }
     setIsSaving(true);
 
     const normalizedName = formData.name!.trim().toLowerCase();
@@ -249,13 +240,12 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
     const recordData: Omit<DexieTagRecord, 'id' | 'created_at' | 'updated_at'> = {
       name: normalizedName,
       color: formData.color || undefined,
-      user_id: user.uid, // Use authenticated user's ID
     };
 
     try {
       if (formData.id) { // Editing existing tag
         if (initialData && normalizedName !== initialData.name.toLowerCase()) {
-            const conflictingTag = await TagService.getTagByName(normalizedName, user.uid);
+            const conflictingTag = await TagService.getTagByName(normalizedName);
             if (conflictingTag && conflictingTag.id !== formData.id) {
                  toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
                  setIsSaving(false); return;
@@ -264,7 +254,7 @@ function AddEditTagForm({ initialData, onClose }: AddEditTagFormProps) {
         await TagService.updateTag(formData.id, recordData);
         toast({ title: "Success", description: "Tag updated." });
       } else { // Adding new tag
-        const existingTag = await TagService.getTagByName(normalizedName, user.uid);
+        const existingTag = await TagService.getTagByName(normalizedName);
         if (existingTag) {
             toast({ title: "Duplicate Tag", description: `Tag "${formData.name!.trim()}" already exists.`, variant: "warning" });
             setIsSaving(false); return;

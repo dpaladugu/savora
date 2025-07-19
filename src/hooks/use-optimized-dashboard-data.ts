@@ -2,7 +2,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData, Goal } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { useAuth } from "@/contexts/auth-context";
 import {
   db,
   AppSettingTable, // Type for appSettings records
@@ -15,6 +14,7 @@ import {
 import type { Expense as AppExpense } from '@/services/supabase-data-service';
 // Use Income from income-tracker for incomes table as defined in SavoraDB
 import type { Income as AppIncome } from '@/components/income/income-tracker';
+import { format, parseISO } from 'date-fns';
 
 
 // Default AppSetting for Emergency Fund if not found in DB
@@ -50,8 +50,8 @@ const fallbackDashboardData: DashboardData = {
   categoryBreakdown: []
 };
 
-async function fetchDashboardData(userId?: string): Promise<DashboardData> { // userId can be optional for local-first
-  Logger.info('Fetching dashboard data from Dexie for user (optional):', userId);
+async function fetchDashboardData(): Promise<DashboardData> {
+  Logger.info('Fetching dashboard data from Dexie');
 
   // Fetch all necessary data concurrently
   const [
@@ -171,12 +171,9 @@ async function fetchDashboardData(userId?: string): Promise<DashboardData> { // 
 }
 
 export function useOptimizedDashboardData() {
-  const { user } = useAuth();
-
   const query = useQuery({
-    queryKey: ['dashboard-data', user?.uid],
-    queryFn: () => fetchDashboardData(user?.uid || ''),
-    enabled: !!user?.uid,
+    queryKey: ['dashboard-data'],
+    queryFn: () => fetchDashboardData(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,

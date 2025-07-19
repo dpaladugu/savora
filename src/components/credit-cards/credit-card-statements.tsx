@@ -7,23 +7,13 @@ import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/format-utils";
 // import { GlobalHeader } from "@/components/layout/global-header"; // Removed
 import { CSVParser, ParsedCreditCard } from "@/services/csv-parser";
-import { useAuth } from "@/contexts/auth-context";
 
 export function CreditCardStatements() {
   const [statements, setStatements] = useState<ParsedCreditCard[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { user } = useAuth();
 
   const handleFileUpload = async (file: File) => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "Please sign in to upload files.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     setLoading(true);
     

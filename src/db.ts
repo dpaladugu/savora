@@ -225,12 +225,6 @@ export class SavoraDB extends Dexie {
 
     // Final, current version of the database.
     // This should be the highest version number.
-    this.version(19).stores({}).upgrade(async () => {
-      // This is a destructive upgrade. A real app should migrate data.
-      console.warn("Performing a destructive database upgrade. All data will be lost.");
-      await Dexie.delete('SavoraFinanceDB');
-      window.location.reload();
-    });
 
 
     // Initialize table properties
@@ -262,17 +256,23 @@ export class SavoraDB extends Dexie {
 
 export const db = new SavoraDB();
 
-if (import.meta.env.DEV) {
-  db.open().catch(async (err) => {
-    if (err.name === "UpgradeError") {
-      console.warn("Dev only DB wipe due to schema mismatch");
-      await db.delete();
-      await db.open();
-    } else {
-      throw err;
-    }
+// A custom event to notify the UI about critical DB errors.
+export const dispatchDbErrorEvent = (error: any) => {
+  const event = new CustomEvent('db-error', {
+    detail: {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    },
   });
-}
+  window.dispatchEvent(event);
+};
+
+// Open the database and handle potential errors, especially schema-related ones.
+db.open().catch((error) => {
+  console.error("Failed to open Dexie database:", error);
+  dispatchDbErrorEvent(error);
+});
 
 export type Expense = ExpenseData;
 export { YearlySummary };

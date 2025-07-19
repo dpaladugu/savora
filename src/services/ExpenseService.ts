@@ -78,16 +78,12 @@ export class ExpenseService {
    * @param userId The ID of the user whose expenses to fetch.
    * @returns A promise that resolves to an array of expenses.
    */
-  static async getExpenses(userId: string): Promise<AppExpense[]> {
+  static async getExpenses(): Promise<AppExpense[]> {
     try {
-      if (!userId) {
-        console.warn("getExpenses called without a userId.");
-        return [];
-      }
-      const expenses = await db.expenses.where('user_id').equals(userId).toArray();
+      const expenses = await db.expenses.toArray();
       return expenses;
     } catch (error) {
-      console.error(`Error in ExpenseService.getExpenses for user ${userId}:`, error);
+      console.error(`Error in ExpenseService.getExpenses:`, error);
       throw error;
     }
   }
