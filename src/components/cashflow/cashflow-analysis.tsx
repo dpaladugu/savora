@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,137 +150,136 @@ export function CashflowAnalysis() {
           </p>
         </div>
         <div className="flex gap-2">
-            {(['3m', '6m', '1y'] as const).map((period) => (
-              <Button
-                key={period}
-                variant={timeFilter === period ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setTimeFilter(period)}
-              >
-                {period.toUpperCase()}
-              </Button>
-            ))}
-          </div>
+          {(['3m', '6m', '1y'] as const).map((period) => (
+            <Button
+              key={period}
+              variant={timeFilter === period ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setTimeFilter(period)}
+            >
+              {period.toUpperCase()}
+            </Button>
+          ))}
         </div>
+      </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Analyzing cashflow...</p>
-          </div>
-        ) : (
-          <>
-            {/* Summary Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="metric-card border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-green-500" />
-                    <span className="text-sm text-muted-foreground">Income</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalIncome)}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="metric-card border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingDown className="w-4 h-4 text-red-500" />
-                    <span className="text-sm text-muted-foreground">Expenses</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalExpenses)}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="metric-card border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <DollarSign className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm text-muted-foreground">Investments</span>
-                  </div>
-                  <div className="text-2xl font-bold text-foreground">{formatCurrency(totalInvestments)}</div>
-                </CardContent>
-              </Card>
-
-              <Card className="metric-card border-border/50">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <ArrowUpDown className="w-4 h-4 text-purple-500" />
-                    <span className="text-sm text-muted-foreground">Surplus</span>
-                  </div>
-                  <div className={`text-2xl font-bold ${netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {formatCurrency(netSurplus)}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Savings Rate */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Analyzing cashflow...</p>
+        </div>
+      ) : (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <Card className="metric-card border-border/50">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">Savings Rate</span>
-                  <span className="text-lg font-bold text-foreground">{savingsRate.toFixed(1)}%</span>
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <span className="text-sm text-muted-foreground">Income</span>
                 </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      savingsRate >= 20 ? 'bg-green-500' : 
-                      savingsRate >= 10 ? 'bg-yellow-500' : 'bg-red-500'
-                    }`}
-                    style={{ width: `${Math.min(savingsRate, 100)}%` }}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Target: 20% | Current: {savingsRate.toFixed(1)}%
-                </p>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalIncome)}</div>
               </CardContent>
             </Card>
 
-            {/* Cashflow Chart */}
             <Card className="metric-card border-border/50">
-              <CardHeader>
-                <CardTitle>Monthly Cashflow Trend</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={cashflowData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, '']} />
-                      <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} name="Income" />
-                      <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} name="Expenses" />
-                      <Line type="monotone" dataKey="investments" stroke="#3b82f6" strokeWidth={2} name="Investments" />
-                    </LineChart>
-                  </ResponsiveContainer>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <span className="text-sm text-muted-foreground">Expenses</span>
                 </div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalExpenses)}</div>
               </CardContent>
             </Card>
 
-            {/* Category Breakdown */}
             <Card className="metric-card border-border/50">
-              <CardHeader>
-                <CardTitle>Expense Categories (This Month)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={categoryData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="category" angle={-45} textAnchor="end" height={80} />
-                      <YAxis />
-                      <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
-                      <Bar dataKey="amount" fill="hsl(var(--primary))" />
-                    </BarChart>
-                  </ResponsiveContainer>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <DollarSign className="w-4 h-4 text-blue-500" />
+                  <span className="text-sm text-muted-foreground">Investments</span>
+                </div>
+                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalInvestments)}</div>
+              </CardContent>
+            </Card>
+
+            <Card className="metric-card border-border/50">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <ArrowUpDown className="w-4 h-4 text-purple-500" />
+                  <span className="text-sm text-muted-foreground">Surplus</span>
+                </div>
+                <div className={`text-2xl font-bold ${netSurplus >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {formatCurrency(netSurplus)}
                 </div>
               </CardContent>
             </Card>
-          </>
-        )}
-      </div>
+          </div>
+
+          {/* Savings Rate */}
+          <Card className="metric-card border-border/50">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-foreground">Savings Rate</span>
+                <span className="text-lg font-bold text-foreground">{savingsRate.toFixed(1)}%</span>
+              </div>
+              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                <div 
+                  className={`h-2 rounded-full transition-all duration-300 ${
+                    savingsRate >= 20 ? 'bg-green-500' : 
+                    savingsRate >= 10 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${Math.min(savingsRate, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Target: 20% | Current: {savingsRate.toFixed(1)}%
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Cashflow Chart */}
+          <Card className="metric-card border-border/50">
+            <CardHeader>
+              <CardTitle>Monthly Cashflow Trend</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={cashflowData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, '']} />
+                    <Line type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} name="Income" />
+                    <Line type="monotone" dataKey="expenses" stroke="#ef4444" strokeWidth={2} name="Expenses" />
+                    <Line type="monotone" dataKey="investments" stroke="#3b82f6" strokeWidth={2} name="Investments" />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Category Breakdown */}
+          <Card className="metric-card border-border/50">
+            <CardHeader>
+              <CardTitle>Expense Categories (This Month)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={categoryData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="category" angle={-45} textAnchor="end" height={80} />
+                    <YAxis />
+                    <Tooltip formatter={(value: any) => [`₹${Number(value).toLocaleString()}`, 'Amount']} />
+                    <Bar dataKey="amount" fill="hsl(var(--primary))" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </>
+      )}
     </div>
   );
 }
