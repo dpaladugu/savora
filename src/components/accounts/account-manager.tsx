@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency } from "@/lib/format-utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { db, DexieAccountRecord } from "@/db";
-import { AccountService } from "@/services/AccountService"; // Import the new service
+import { AccountService } from "@/services/AccountService";
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   AlertDialog,
@@ -31,7 +33,6 @@ type AccountFormData = Partial<Omit<DexieAccountRecord, 'balance' | 'created_at'
 
 const ACCOUNT_TYPES = ['Bank', 'Wallet', 'Cash', 'Other'] as const;
 type AccountType = typeof ACCOUNT_TYPES[number];
-
 
 export function AccountManager() {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -58,6 +59,7 @@ export function AccountManager() {
     []
   );
   const accounts = liveAccounts || [];
+  const filteredAccounts = accounts; // Since filtering is already done in liveQuery
 
   const handleAddNew = () => {
     setEditingAccount(null);
@@ -87,8 +89,6 @@ export function AccountManager() {
   };
 
   const totalBalance = accounts.reduce((sum, account) => sum + (Number(account.balance) || 0), 0);
-  // const bankAccounts = accounts.filter(acc => acc.type === 'Bank');
-  // const walletAccounts = accounts.filter(acc => acc.type === 'Wallet');
 
   if (liveAccounts === undefined) {
      return (
@@ -112,7 +112,6 @@ export function AccountManager() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
       <div className="grid grid-cols-2 gap-4">
         <Card className="metric-card border-border/50">
           <CardContent className="p-4">
@@ -143,13 +142,11 @@ export function AccountManager() {
         </Card>
       </div>
 
-      {/* Add Account Form - onSubmit needs to be defined or passed if this is the intended structure */}
-      {/* Assuming handleAddAccount is a method that will call db.accounts.add/update after getting data from AddAccountForm */}
+      {/* Add Account Form */}
       {showAddForm && (
-        <AddAccountForm // Remove onSubmit for now, as AddAccountForm will handle its own submission
-          initialData={editingAccount} // Pass editingAccount here
+        <AddAccountForm
+          initialData={editingAccount}
           onClose={() => { setShowAddForm(false); setEditingAccount(null); }}
-          // userId prop will be removed from AddAccountForm
         />
       )}
 
@@ -262,6 +259,22 @@ export function AccountManager() {
           </Button>
         </motion.div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!accountToDelete} onOpenChange={() => setAccountToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitleComponent>Delete Account</AlertDialogTitleComponent>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{accountToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteExecute}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -270,7 +283,6 @@ export function AccountManager() {
 interface AddAccountFormProps {
   initialData?: DexieAccountRecord | null;
   onClose: () => void;
-  // userId prop removed
 }
 
 function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
@@ -312,11 +324,13 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
     setFormData(prev => ({ ...prev, [name]: value }));
     if (formErrors[name as keyof AccountFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
   };
+
   const handleSelectChange = (name: keyof AccountFormData, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value as any }));
-     if (formErrors[name as keyof AccountFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
+    if (formErrors[name as keyof AccountFormData]) setFormErrors(prev => ({...prev, [name]: undefined}));
   };
-   const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
+
+  const handleCheckboxChange = (checked: boolean | 'indeterminate') => {
     setFormData(prev => ({ ...prev, isActive: !!checked }));
   };
 
@@ -335,12 +349,6 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if(!validateCurrentForm()){
-      toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
-      return;
-    }
-    setIsSaving(true);
-
     if(!validateCurrentForm()){
       toast({ title: "Validation Error", description: "Please correct the errors in the form.", variant: "destructive"});
       return;
@@ -425,7 +433,7 @@ function AddAccountForm({ initialData, onClose }: AddAccountFormProps) {
               </div>
             )}
           </div>
-           <div>
+          <div>
             <Label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</Label>
             <Textarea id="notes" name="notes" value={formData.notes || ''} onChange={handleChange} placeholder="Optional notes..."/>
           </div>
