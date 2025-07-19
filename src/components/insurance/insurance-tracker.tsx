@@ -50,23 +50,37 @@ interface InsuranceFormProps {
 const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, initialValues, title }) => {
   const [policyName, setPolicyName] = useState(initialValues?.policyName || '');
   const [policyNumber, setPolicyNumber] = useState(initialValues?.policyNumber || '');
+  const [insurer, setInsurer] = useState(initialValues?.insurer || '');
+  const [type, setType] = useState(initialValues?.type || '');
   const [premium, setPremium] = useState(initialValues?.premium?.toString() || '');
+  const [frequency, setFrequency] = useState(initialValues?.frequency || '');
   const [startDate, setStartDate] = useState(initialValues?.startDate || '');
   const [endDate, setEndDate] = useState(initialValues?.endDate || '');
+  const [status, setStatus] = useState(initialValues?.status || 'Active');
+  const [coverageAmount, setCoverageAmount] = useState(initialValues?.coverageAmount?.toString() || '');
+  const [nextDueDate, setNextDueDate] = useState(initialValues?.nextDueDate || '');
+  const [note, setNote] = useState(initialValues?.note || '');
 
   useEffect(() => {
     if (initialValues) {
       setPolicyName(initialValues.policyName || '');
       setPolicyNumber(initialValues.policyNumber || '');
+      setInsurer(initialValues.insurer || '');
+      setType(initialValues.type || '');
       setPremium(initialValues.premium?.toString() || '');
+      setFrequency(initialValues.frequency || '');
       setStartDate(initialValues.startDate || '');
       setEndDate(initialValues.endDate || '');
+      setStatus(initialValues.status || 'Active');
+      setCoverageAmount(initialValues.coverageAmount?.toString() || '');
+      setNextDueDate(initialValues.nextDueDate || '');
+      setNote(initialValues.note || '');
     }
   }, [initialValues]);
 
   const handleSubmit = () => {
-    if (!policyName || !policyNumber || !premium || !startDate || !endDate) {
-      alert('Please fill in all fields.');
+    if (!policyName || !insurer || !type || !premium || !frequency || !status) {
+      alert('Please fill in all required fields.');
       return;
     }
 
@@ -74,9 +88,16 @@ const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, 
       user_id: initialValues?.user_id || '',
       policyName,
       policyNumber,
+      insurer,
+      type,
       premium: parseFloat(premium),
+      frequency,
       startDate,
       endDate,
+      coverageAmount: coverageAmount ? parseFloat(coverageAmount) : undefined,
+      nextDueDate,
+      status,
+      note,
       created_at: new Date(),
       updated_at: new Date(),
     };
@@ -84,25 +105,45 @@ const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, 
     onClose();
   };
 
+  const resetForm = () => {
+    setPolicyName('');
+    setPolicyNumber('');
+    setInsurer('');
+    setType('');
+    setPremium('');
+    setFrequency('');
+    setStartDate('');
+    setEndDate('');
+    setStatus('Active');
+    setCoverageAmount('');
+    setNextDueDate('');
+    setNote('');
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
+
   if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <Button
             variant="ghost"
             size="icon"
             className="absolute right-4 top-4"
-            onClick={onClose}
+            onClick={handleClose}
           >
             <X className="h-4 w-4" />
           </Button>
         </DialogHeader>
         <div className="grid gap-4 py-4">
           <div className="grid gap-2">
-            <Label htmlFor="policyName">Policy Name</Label>
+            <Label htmlFor="policyName">Policy Name *</Label>
             <Input
               id="policyName"
               value={policyName}
@@ -111,16 +152,41 @@ const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, 
             />
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="insurer">Insurance Company *</Label>
+            <Input
+              id="insurer"
+              value={insurer}
+              onChange={(e) => setInsurer(e.target.value)}
+              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="type">Policy Type *</Label>
+            <Select value={type} onValueChange={setType}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select policy type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Life">Life Insurance</SelectItem>
+                <SelectItem value="Health">Health Insurance</SelectItem>
+                <SelectItem value="Auto">Auto Insurance</SelectItem>
+                <SelectItem value="Home">Home Insurance</SelectItem>
+                <SelectItem value="Travel">Travel Insurance</SelectItem>
+                <SelectItem value="Term">Term Insurance</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="policyNumber">Policy Number</Label>
             <Input
               id="policyNumber"
               value={policyNumber}
               onChange={(e) => setPolicyNumber(e.target.value)}
-              required
             />
           </div>
           <div className="grid gap-2">
-            <Label htmlFor="premium">Premium</Label>
+            <Label htmlFor="premium">Premium Amount *</Label>
             <Input
               id="premium"
               type="number"
@@ -130,13 +196,49 @@ const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, 
             />
           </div>
           <div className="grid gap-2">
+            <Label htmlFor="frequency">Premium Frequency *</Label>
+            <Select value={frequency} onValueChange={setFrequency}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select frequency" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Monthly">Monthly</SelectItem>
+                <SelectItem value="Quarterly">Quarterly</SelectItem>
+                <SelectItem value="Half-yearly">Half-yearly</SelectItem>
+                <SelectItem value="Annual">Annual</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="coverageAmount">Coverage Amount</Label>
+            <Input
+              id="coverageAmount"
+              type="number"
+              value={coverageAmount}
+              onChange={(e) => setCoverageAmount(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="status">Status *</Label>
+            <Select value={status} onValueChange={setStatus}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Active">Active</SelectItem>
+                <SelectItem value="Expired">Expired</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-2">
             <Label htmlFor="startDate">Start Date</Label>
             <Input
               id="startDate"
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              required
             />
           </div>
           <div className="grid gap-2">
@@ -146,12 +248,29 @@ const InsuranceForm: React.FC<InsuranceFormProps> = ({ open, onClose, onSubmit, 
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              required
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="nextDueDate">Next Due Date</Label>
+            <Input
+              id="nextDueDate"
+              type="date"
+              value={nextDueDate}
+              onChange={(e) => setNextDueDate(e.target.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="note">Notes</Label>
+            <Input
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="Additional notes..."
             />
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={handleClose}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>
@@ -284,9 +403,16 @@ const InsuranceTracker: React.FC = () => {
           user_id: userId,
           policyName: '',
           policyNumber: '',
+          insurer: '',
+          type: '',
           premium: 0,
+          frequency: '',
           startDate: '',
           endDate: '',
+          coverageAmount: 0,
+          nextDueDate: '',
+          status: 'Active',
+          note: '',
           created_at: new Date(),
           updated_at: new Date(),
         }}
@@ -305,9 +431,16 @@ const InsuranceTracker: React.FC = () => {
           user_id: userId,
           policyName: '',
           policyNumber: '',
+          insurer: '',
+          type: '',
           premium: 0,
+          frequency: '',
           startDate: '',
           endDate: '',
+          coverageAmount: 0,
+          nextDueDate: '',
+          status: 'Active',
+          note: '',
           created_at: new Date(),
           updated_at: new Date(),
         }}
@@ -340,17 +473,55 @@ const InsuranceTracker: React.FC = () => {
             <CardContent>
               <div className="grid gap-2 text-sm">
                 <div>
-                  <span className="font-medium">Policy Number:</span> {policy.policyNumber}
+                  <span className="font-medium">Insurance Company:</span> {policy.insurer}
                 </div>
                 <div>
-                  <span className="font-medium">Premium:</span> ${policy.premium}
+                  <span className="font-medium">Type:</span> {policy.type}
                 </div>
+                {policy.policyNumber && (
+                  <div>
+                    <span className="font-medium">Policy Number:</span> {policy.policyNumber}
+                  </div>
+                )}
                 <div>
-                  <span className="font-medium">Start Date:</span> {policy.startDate}
+                  <span className="font-medium">Premium:</span> ${policy.premium} ({policy.frequency})
                 </div>
+                {policy.coverageAmount && (
+                  <div>
+                    <span className="font-medium">Coverage Amount:</span> ${policy.coverageAmount}
+                  </div>
+                )}
                 <div>
-                  <span className="font-medium">End Date:</span> {policy.endDate}
+                  <span className="font-medium">Status:</span> 
+                  <span className={`ml-2 px-2 py-1 rounded-full text-xs ${
+                    policy.status === 'Active' ? 'bg-green-100 text-green-800' :
+                    policy.status === 'Expired' ? 'bg-red-100 text-red-800' :
+                    policy.status === 'Cancelled' ? 'bg-gray-100 text-gray-800' :
+                    'bg-yellow-100 text-yellow-800'
+                  }`}>
+                    {policy.status}
+                  </span>
                 </div>
+                {policy.startDate && (
+                  <div>
+                    <span className="font-medium">Start Date:</span> {policy.startDate}
+                  </div>
+                )}
+                {policy.endDate && (
+                  <div>
+                    <span className="font-medium">End Date:</span> {policy.endDate}
+                  </div>
+                )}
+                {policy.nextDueDate && (
+                  <div>
+                    <span className="font-medium">Next Due Date:</span> {policy.nextDueDate}
+                  </div>
+                )}
+                {policy.note && (
+                  <div>
+                    <span className="font-medium">Notes:</span> {policy.note}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
