@@ -39,7 +39,7 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     isValidating,
   } = useEnhancedExpenseValidation();
   
-  const [formData, setFormData<{
+  const [formData, setFormData] = useState<{
     amount: string;
     date: string;
     category: string;
@@ -57,10 +57,10 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
     description: initialData?.description || '',
     payment_method: (initialData?.payment_method || 'UPI') as PaymentMethod,
     tags: typeof initialData?.tags === 'string' ? initialData.tags.split(',').filter(Boolean) : (Array.isArray(initialData?.tags) ? initialData.tags : []),
-    note: initialData?.note || '',
-    merchant: initialData?.merchant || '',
+    note: (initialData as ExtendedExpense)?.note || '',
+    merchant: (initialData as ExtendedExpense)?.merchant || '',
     account: initialData?.account || '',
-    source: initialData?.source || 'manual',
+    source: (initialData as ExtendedExpense)?.source || 'manual',
   });
 
   const isEditMode = !!initialData;
@@ -74,10 +74,10 @@ export function EnhancedAddExpenseForm({ onSubmit, onCancel, initialData }: Enha
         description: initialData.description || '',
         payment_method: (initialData.payment_method || 'UPI') as PaymentMethod,
         tags: typeof initialData.tags === 'string' ? initialData.tags.split(',').filter(Boolean) : (Array.isArray(initialData.tags) ? initialData.tags : []),
-        note: initialData.note || '',
-        merchant: initialData.merchant || '',
+        note: (initialData as ExtendedExpense)?.note || '',
+        merchant: (initialData as ExtendedExpense)?.merchant || '',
         account: initialData.account || '',
-        source: initialData.source || 'manual',
+        source: (initialData as ExtendedExpense)?.source || 'manual',
       });
     } else {
       setFormData({
