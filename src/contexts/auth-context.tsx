@@ -1,6 +1,12 @@
 
-import React, { useState, useEffect, createContext, useContext } from 'react';
-import { AuthService, AuthUser } from '@/services/auth';
+import React from 'react';
+
+// Simplified auth context without hooks for now
+export interface AuthUser {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+}
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -10,58 +16,29 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = React.createContext<AuthContextType | undefined>(undefined);
 
+// Simple provider without hooks for now
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log('AuthProvider: Component initializing');
+  console.log('AuthProvider: Simple version loading');
   
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    console.log('AuthProvider: useEffect running');
-    // Check for stored user on mount
-    const storedUser = AuthService.getStoredUser();
-    if (storedUser) {
-      setUser(storedUser);
-    }
-    setLoading(false);
-
-    // Listen for auth state changes
-    const unsubscribe = AuthService.onAuthStateChange((authUser) => {
-      setUser(authUser);
-      setLoading(false);
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
-    const authUser = await AuthService.signIn(email, password);
-    setUser(authUser);
-    return authUser;
-  };
-
-  const signUp = async (email: string, password: string) => {
-    const authUser = await AuthService.signUp(email, password);
-    setUser(authUser);
-    return authUser;
-  };
-
-  const signOut = async () => {
-    await AuthService.signOut();
-    setUser(null);
+  const mockContextValue: AuthContextType = {
+    user: null,
+    loading: false,
+    signIn: async () => { throw new Error('Not implemented'); },
+    signUp: async () => { throw new Error('Not implemented'); },
+    signOut: async () => { throw new Error('Not implemented'); }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={mockContextValue}>
       {children}
     </AuthContext.Provider>
   );
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
