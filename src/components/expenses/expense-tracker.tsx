@@ -234,9 +234,9 @@ export function ExpenseTracker() {
       <CriticalErrorBoundary>
         <div className="space-y-4 p-4 md:p-0">
           <EnhancedAddExpenseForm
-            initialData={editingExpense}
-            onSubmit={handleSubmitExpenseForm}
-            onCancel={() => { setShowAddForm(false); setEditingExpense(null); }}
+            expenseId={editingExpense?.id}
+            onExpenseAdded={() => { setShowAddForm(false); setEditingExpense(null); }}
+            onExpenseUpdated={() => { setShowAddForm(false); setEditingExpense(null); }}
           />
         </div>
       </CriticalErrorBoundary>

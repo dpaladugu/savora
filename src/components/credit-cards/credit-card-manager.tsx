@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,12 +14,16 @@ import { useAuth } from "@/services/auth-service";
 interface CreditCardData {
   id?: string;
   name: string;
-  cardNumber: string;
-  expiryDate: string;
-  cvv: string;
+  issuer?: string;
+  currentBalance?: number;
+  billCycleDay?: number;
+  dueDate?: string;
+  autoDebit?: boolean;
   limit: number;
-  interestRate: number;
   userId?: string;
+  user_id?: string;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export function CreditCardManager() {
@@ -27,11 +32,9 @@ export function CreditCardManager() {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedCard, setSelectedCard] = useState<CreditCardData | null>(null);
   const [name, setName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [expiryDate, setExpiryDate] = useState("");
-  const [cvv, setCvv] = useState("");
+  const [issuer, setIssuer] = useState("");
   const [limit, setLimit] = useState<number>(0);
-  const [interestRate, setInterestRate] = useState<number>(0);
+  const [currentBalance, setCurrentBalance] = useState<number>(0);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -52,22 +55,18 @@ export function CreditCardManager() {
   const handleAddClick = () => {
     setIsAdding(true);
     setName("");
-    setCardNumber("");
-    setExpiryDate("");
-    setCvv("");
+    setIssuer("");
     setLimit(0);
-    setInterestRate(0);
+    setCurrentBalance(0);
   };
 
   const handleEditClick = (card: CreditCardData) => {
     setIsEditing(true);
     setSelectedCard(card);
     setName(card.name);
-    setCardNumber(card.cardNumber);
-    setExpiryDate(card.expiryDate);
-    setCvv(card.cvv);
+    setIssuer(card.issuer || "");
     setLimit(card.limit);
-    setInterestRate(card.interestRate);
+    setCurrentBalance(card.currentBalance || 0);
   };
 
   const handleCancel = () => {
@@ -75,11 +74,9 @@ export function CreditCardManager() {
     setIsEditing(false);
     setSelectedCard(null);
     setName("");
-    setCardNumber("");
-    setExpiryDate("");
-    setCvv("");
+    setIssuer("");
     setLimit(0);
-    setInterestRate(0);
+    setCurrentBalance(0);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,12 +89,10 @@ export function CreditCardManager() {
 
     const cardData: CreditCardData = {
       name,
-      cardNumber,
-      expiryDate,
-      cvv,
+      issuer,
       limit,
-      interestRate,
-      userId: user.uid,
+      currentBalance,
+      user_id: user.uid,
     };
 
     try {
@@ -164,20 +159,16 @@ export function CreditCardManager() {
                 <CardContent>
                   <div className="grid gap-2">
                     <div>
-                      <Label>Card Number</Label>
-                      <Input type="text" value={card.cardNumber} readOnly />
-                    </div>
-                    <div>
-                      <Label>Expiry Date</Label>
-                      <Input type="text" value={card.expiryDate} readOnly />
+                      <Label>Issuer</Label>
+                      <Input type="text" value={card.issuer || ""} readOnly />
                     </div>
                     <div>
                       <Label>Limit</Label>
                       <Input type="number" value={card.limit} readOnly />
                     </div>
                     <div>
-                      <Label>Interest Rate</Label>
-                      <Input type="number" value={card.interestRate} readOnly />
+                      <Label>Current Balance</Label>
+                      <Input type="number" value={card.currentBalance || 0} readOnly />
                     </div>
                   </div>
                 </CardContent>
@@ -205,33 +196,12 @@ export function CreditCardManager() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="cardNumber">Card Number</Label>
+                    <Label htmlFor="issuer">Issuer</Label>
                     <Input
                       type="text"
-                      id="cardNumber"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="expiryDate">Expiry Date</Label>
-                    <Input
-                      type="text"
-                      id="expiryDate"
-                      value={expiryDate}
-                      onChange={(e) => setExpiryDate(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cvv">CVV</Label>
-                    <Input
-                      type="text"
-                      id="cvv"
-                      value={cvv}
-                      onChange={(e) => setCvv(e.target.value)}
-                      required
+                      id="issuer"
+                      value={issuer}
+                      onChange={(e) => setIssuer(e.target.value)}
                     />
                   </div>
                   <div>
@@ -245,13 +215,12 @@ export function CreditCardManager() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="interestRate">Interest Rate</Label>
+                    <Label htmlFor="currentBalance">Current Balance</Label>
                     <Input
                       type="number"
-                      id="interestRate"
-                      value={interestRate}
-                      onChange={(e) => setInterestRate(Number(e.target.value))}
-                      required
+                      id="currentBalance"
+                      value={currentBalance}
+                      onChange={(e) => setCurrentBalance(Number(e.target.value))}
                     />
                   </div>
                   <div className="flex justify-end">

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,13 @@ export function AccountManager() {
     setLoading(true);
     AccountService.getAccounts(user.uid)
       .then((data) => {
-        setAccounts(data);
+        const mappedAccounts = data.map(acc => ({
+          id: acc.id!,
+          name: acc.name,
+          type: acc.type,
+          balance: acc.balance
+        }));
+        setAccounts(mappedAccounts);
       })
       .catch((error) => {
         toast.error("Failed to load accounts: " + error.message);
@@ -53,12 +60,21 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      const created = await AccountService.createAccount(user.uid, {
+      const accountId = await AccountService.addAccount({
+        user_id: user.uid,
         name: newAccountName.trim(),
         type: newAccountType,
         balance: 0,
+        created_at: new Date(),
+        updated_at: new Date()
       });
-      setAccounts((prev) => [...prev, created]);
+      const newAccount = {
+        id: accountId,
+        name: newAccountName.trim(),
+        type: newAccountType,
+        balance: 0
+      };
+      setAccounts((prev) => [...prev, newAccount]);
       setNewAccountName("");
       setNewAccountType("checking");
       toast.success("Account created");
@@ -76,7 +92,7 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      await AccountService.deleteAccount(user.uid, id);
+      await AccountService.deleteAccount(id);
       setAccounts((prev) => prev.filter((acc) => acc.id !== id));
       toast.success("Account deleted");
     } catch (error: any) {
@@ -93,9 +109,9 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      const updated = await AccountService.updateAccount(user.uid, id, updatedFields);
+      await AccountService.updateAccount(id, updatedFields);
       setAccounts((prev) =>
-        prev.map((acc) => (acc.id === id ? { ...acc, ...updated } : acc))
+        prev.map((acc) => (acc.id === id ? { ...acc, ...updatedFields } : acc))
       );
       toast.success("Account updated");
     } catch (error: any) {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CalendarIcon, Plus, X, Receipt, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -32,7 +34,8 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
   const [selectedTag, setSelectedTag] = useState("");
   const [selectedAccount, setSelectedAccount] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("");
-  const [location, setLocation] = useState("");
+  const [category, setCategory] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagName, setNewTagName] = useState("");
   const [newTagDescription, setNewTagDescription] = useState("");
@@ -48,7 +51,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchTags = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedTags = await TagService.getTags(user.uid);
+        const fetchedTags = await TagService.getTags();
         setTags(fetchedTags);
       } catch (error: any) {
         toast.error(`Failed to fetch tags: ${error.message}`);
@@ -68,7 +71,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchVehicles = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedVehicles = await VehicleService.getVehicles(user.uid);
+        const fetchedVehicles = await VehicleService.getVehicles();
         setVehicles(fetchedVehicles);
       } catch (error: any) {
         toast.error(`Failed to fetch vehicles: ${error.message}`);
@@ -84,16 +87,14 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchExpense = async () => {
       if (!expenseId || !user?.uid) return;
       try {
-        const expense = await ExpenseService.getExpenseById(user.uid, expenseId);
+        const expense = await ExpenseService.getExpenseById(expenseId);
         if (expense) {
           setIsNewExpense(false);
           setDescription(expense.description || "");
           setAmount(expense.amount ? expense.amount.toString() : "");
           setDate(expense.date ? new Date(expense.date) : undefined);
-          setSelectedTag(expense.tagId || "");
-          setSelectedAccount(expense.accountId || "");
-          setSelectedVehicle(expense.vehicleId || "");
-          setLocation(expense.location || "");
+          setCategory(expense.category || "");
+          setPaymentMethod(expense.payment_method || "");
         }
       } catch (error: any) {
         toast.error(`Failed to fetch expense: ${error.message}`);
@@ -107,10 +108,8 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
       setDescription("");
       setAmount("");
       setDate(new Date());
-      setSelectedTag("");
-      setSelectedAccount("");
-      setSelectedVehicle("");
-      setLocation("");
+      setCategory("");
+      setPaymentMethod("");
     }
   }, [expenseId, user?.uid]);
 
@@ -127,9 +126,12 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
 
     setIsSaving(true);
     try {
-      const newTag = await TagService.addTag(user.uid, {
+      const newTag = await TagService.addTag({
         name: newTagName,
         description: newTagDescription,
+        user_id: user.uid,
+        created_at: new Date(),
+        updated_at: new Date()
       });
       setTags([...tags, newTag]);
       setNewTagName("");
@@ -157,24 +159,30 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     setIsSaving(true);
     try {
       const expenseData = {
+        id: expenseId || crypto.randomUUID(),
+        user_id: user.uid,
         description,
         amount: parseFloat(amount),
-        date: date ? date.toISOString() : new Date().toISOString(),
-        tagId: selectedTag || null,
-        accountId: selectedAccount || null,
-        vehicleId: selectedVehicle || null,
-        location,
+        date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        category: category || "Other",
+        type: "expense",
+        payment_method: paymentMethod,
+        tags: selectedTag,
+        account: selectedAccount,
+        source: "manual",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       };
 
       if (isNewExpense && !expenseId) {
-        await ExpenseService.addExpense(user.uid, expenseData);
+        await ExpenseService.addExpense(expenseData);
         toast.success("Expense added successfully!");
         if (onExpenseAdded) {
           onExpenseAdded();
         }
       } else {
         if (expenseId) {
-          await ExpenseService.updateExpense(user.uid, expenseId, expenseData);
+          await ExpenseService.updateExpense(expenseId, expenseData);
           toast.success("Expense updated successfully!");
           if (onExpenseUpdated) {
             onExpenseUpdated();
@@ -198,7 +206,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
 
     setIsSaving(true);
     try {
-      await ExpenseService.deleteExpense(user.uid, expenseId);
+      await ExpenseService.deleteExpense(expenseId);
       toast.success("Expense deleted successfully!");
       if (onExpenseUpdated) {
         onExpenseUpdated();
@@ -235,6 +243,24 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="category">Category</Label>
+          <Input
+            id="category"
+            placeholder="Expense category"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="paymentMethod">Payment Method</Label>
+          <Input
+            id="paymentMethod"
+            placeholder="Cash, Card, etc."
+            value={paymentMethod}
+            onChange={(e) => setPaymentMethod(e.target.value)}
           />
         </div>
         <div className="grid gap-2">
@@ -313,15 +339,6 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
               ))}
             </SelectContent>
           </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="location">Location</Label>
-          <Input
-            id="location"
-            placeholder="Where was this expense incurred?"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          />
         </div>
         <Button onClick={handleSaveExpense} disabled={isSaving}>
           {isSaving ? "Saving..." : "Save Expense"}
