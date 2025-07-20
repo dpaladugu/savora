@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,7 @@ type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
 const GOLD_FORM_OPTIONS = ['coins', 'bars', 'jewelry', 'etf', 'other'] as const;
 type GoldForm = typeof GOLD_FORM_OPTIONS[number];
 
-export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'> & {
+export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'>> & {
   weight: string;
   purchasePrice: string;
   currentPrice?: string;
