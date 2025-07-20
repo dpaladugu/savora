@@ -1,5 +1,5 @@
 
-// Minimal auth context without React imports or hooks
+// Completely static auth context - no React dependencies
 export interface AuthUser {
   uid: string;
   email: string | null;
@@ -23,8 +23,8 @@ const mockContextValue: AuthContextType = {
   signOut: async () => { throw new Error('Not implemented'); }
 };
 
-// Simple provider component
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+// Simple provider component - no React types
+export function AuthProvider({ children }: { children: any }) {
   return children;
 }
 
