@@ -13,10 +13,13 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('AuthProvider: Component initializing');
+  
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: useEffect running');
     // Check for stored user on mount
     const storedUser = AuthService.getStoredUser();
     if (storedUser) {
