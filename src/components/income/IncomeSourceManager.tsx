@@ -1,431 +1,312 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Edit, DollarSign, CalendarIcon, TrendingUp } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { IncomeSourceService } from "@/services/IncomeSourceService";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Edit, Trash2 } from 'lucide-react';
 import { useAuth } from "@/services/auth-service";
+import { IncomeSourceService } from '@/services/IncomeSourceService';
+import { useToast } from "@/hooks/use-toast";
 
+// Define the interface to match what we're using
 interface IncomeSource {
-  id: string;
+  id?: string;
   name: string;
   type: string;
   amount: number;
-  description?: string;
-  startDate?: Date;
+  frequency: string;
+  user_id?: string;
 }
 
-const typeOptions = [
-  { value: "salary", label: "Salary" },
-  { value: "investment", label: "Investment" },
-  { value: "business", label: "Business" },
-  { value: "other", label: "Other" },
-];
-
+// Use IncomeSource consistently throughout
 export function IncomeSourceManager() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedIncomeSource, setSelectedIncomeSource] = useState<IncomeSource | null>(null);
-  const [name, setName] = useState("");
-  const [type, setType] = useState(typeOptions[0].value);
-  const [amount, setAmount] = useState<number | "">("");
-  const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [isStartDatePopoverOpen, setIsStartDatePopoverOpen] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingSource, setEditingSource] = useState<IncomeSource | null>(null);
+  const [name, setName] = useState('');
+  const [type, setType] = useState('');
+  const [amount, setAmount] = useState<number | ''>('');
+  const [frequency, setFrequency] = useState('monthly');
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
-
     const fetchIncomeSources = async () => {
+      if (!user?.uid) return;
       try {
         const sources = await IncomeSourceService.getIncomeSources(user.uid);
-        setIncomeSources(sources);
+        // Map the data to match our interface
+        const mappedSources = sources.map(source => ({
+          id: source.id,
+          name: source.name,
+          type: source.type || 'salary',
+          amount: source.amount || 0,
+          frequency: source.frequency || 'monthly',
+          user_id: source.user_id
+        }));
+        setIncomeSources(mappedSources);
       } catch (error: any) {
-        toast.error(`Failed to fetch income sources: ${error.message}`);
+        toast({
+          title: "Error",
+          description: `Failed to fetch income sources: ${error.message}`,
+          variant: "destructive",
+        });
       }
     };
 
     fetchIncomeSources();
-  }, [user]);
+  }, [user?.uid, toast]);
 
-  const handleAddIncomeSource = async () => {
-    if (!user) {
-      toast.error("User not authenticated.");
+  const handleAddSource = async () => {
+    if (!user?.uid) {
+      toast({
+        title: "Error",
+        description: "User not authenticated.",
+        variant: "destructive",
+      });
       return;
     }
 
-    if (!name || !type || !amount) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
-    const amountNumber = Number(amount);
-    if (isNaN(amountNumber)) {
-      toast.error("Amount must be a number.");
-      return;
-    }
-
-    const newIncomeSource = {
-      name,
-      type,
-      amount: amountNumber,
-      description,
-      startDate,
-    };
-
-    try {
-      await IncomeSourceService.addIncomeSource(user.uid, newIncomeSource);
-      const updatedIncomeSources = await IncomeSourceService.getIncomeSources(user.uid);
-      setIncomeSources(updatedIncomeSources);
-      toast.success("Income source added successfully!");
-      closeModal();
-    } catch (error: any) {
-      toast.error(`Failed to add income source: ${error.message}`);
-    }
-  };
-
-  const handleEditIncomeSource = async () => {
-    if (!user || !selectedIncomeSource) {
-      toast.error("User not authenticated or no income source selected.");
-      return;
-    }
-
-    if (!name || !type || !amount) {
-      toast.error("Please fill in all required fields.");
-      return;
-    }
-
-    const amountNumber = Number(amount);
-    if (isNaN(amountNumber)) {
-      toast.error("Amount must be a number.");
-      return;
-    }
-
-    const updatedIncomeSource = {
-      ...selectedIncomeSource,
-      name,
-      type,
-      amount: amountNumber,
-      description,
-      startDate,
-    };
-
-    try {
-      await IncomeSourceService.updateIncomeSource(user.uid, updatedIncomeSource);
-      const updatedIncomeSources = await IncomeSourceService.getIncomeSources(user.uid);
-      setIncomeSources(updatedIncomeSources);
-      toast.success("Income source updated successfully!");
-      closeModal();
-    } catch (error: any) {
-      toast.error(`Failed to update income source: ${error.message}`);
-    }
-  };
-
-  const handleDeleteIncomeSource = async (id: string) => {
-    if (!user) {
-      toast.error("User not authenticated.");
+    if (!name.trim() || !amount) {
+      toast({
+        title: "Error",
+        description: "Please fill all required fields.",
+        variant: "destructive",
+      });
       return;
     }
 
     try {
-      await IncomeSourceService.deleteIncomeSource(user.uid, id);
-      const updatedIncomeSources = await IncomeSourceService.getIncomeSources(user.uid);
-      setIncomeSources(updatedIncomeSources);
-      toast.success("Income source deleted successfully!");
+      await IncomeSourceService.addIncomeSource({
+        name: name.trim(),
+        type,
+        amount: Number(amount),
+        frequency,
+        user_id: user.uid,
+      });
+
+      const sources = await IncomeSourceService.getIncomeSources(user.uid);
+      const mappedSources = sources.map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type || 'salary',
+        amount: source.amount || 0,
+        frequency: source.frequency || 'monthly',
+        user_id: source.user_id
+      }));
+      setIncomeSources(mappedSources);
+      handleCancel();
+      toast({
+        title: "Success",
+        description: "Income source added successfully!",
+      });
     } catch (error: any) {
-      toast.error(`Failed to delete income source: ${error.message}`);
+      toast({
+        title: "Error",
+        description: `Failed to add income source: ${error.message}`,
+        variant: "destructive",
+      });
     }
   };
 
-  const openAddModal = () => {
-    setName("");
-    setType(typeOptions[0].value);
-    setAmount("");
-    setDescription("");
-    setStartDate(undefined);
-    setIsAddModalOpen(true);
+  const handleDeleteSource = async (id: string) => {
+    if (!user?.uid) return;
+    
+    try {
+      await IncomeSourceService.deleteIncomeSource(id);
+      const sources = await IncomeSourceService.getIncomeSources(user.uid);
+      const mappedSources = sources.map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type || 'salary',
+        amount: source.amount || 0,
+        frequency: source.frequency || 'monthly',
+        user_id: source.user_id
+      }));
+      setIncomeSources(mappedSources);
+      toast({
+        title: "Success",
+        description: "Income source deleted successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to delete income source: ${error.message}`,
+        variant: "destructive",
+      });
+    }
   };
 
-  const openEditModal = (incomeSource: IncomeSource) => {
-    setSelectedIncomeSource(incomeSource);
-    setName(incomeSource.name);
-    setType(incomeSource.type);
-    setAmount(incomeSource.amount);
-    setDescription(incomeSource.description || "");
-    setStartDate(incomeSource.startDate ? new Date(incomeSource.startDate) : undefined);
-    setIsEditModalOpen(true);
+  const handleUpdateSource = async () => {
+    if (!user?.uid || !editingSource?.id) return;
+
+    if (!name.trim() || !amount) {
+      toast({
+        title: "Error",
+        description: "Please fill all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await IncomeSourceService.updateIncomeSource(editingSource.id, {
+        name: name.trim(),
+        type,
+        amount: Number(amount),
+        frequency,
+        user_id: user.uid,
+      });
+
+      const sources = await IncomeSourceService.getIncomeSources(user.uid);
+      const mappedSources = sources.map(source => ({
+        id: source.id,
+        name: source.name,
+        type: source.type || 'salary',
+        amount: source.amount || 0,
+        frequency: source.frequency || 'monthly',
+        user_id: source.user_id
+      }));
+      setIncomeSources(mappedSources);
+      handleCancel();
+      toast({
+        title: "Success",
+        description: "Income source updated successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: `Failed to update income source: ${error.message}`,
+        variant: "destructive",
+      });
+    }
   };
 
-  const closeModal = () => {
-    setIsAddModalOpen(false);
-    setIsEditModalOpen(false);
-    setSelectedIncomeSource(null);
+  const handleEdit = (source: IncomeSource) => {
+    setEditingSource(source);
+    setName(source.name);
+    setType(source.type);
+    setAmount(source.amount);
+    setFrequency(source.frequency);
+    setShowAddForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowAddForm(false);
+    setEditingSource(null);
+    setName('');
+    setType('');
+    setAmount('');
+    setFrequency('monthly');
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Income Sources</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={openAddModal} className="mb-4">
-          <Plus className="mr-2 h-4 w-4" />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Income Sources</h2>
+          <p className="text-muted-foreground">Manage your income sources</p>
+        </div>
+        <Button onClick={() => setShowAddForm(true)}>
+          <Plus className="w-4 h-4 mr-2" />
           Add Income Source
         </Button>
-        {incomeSources.length === 0 ? (
-          <p>No income sources added yet.</p>
-        ) : (
-          <div className="grid gap-4">
-            {incomeSources.map((incomeSource) => (
-              <Card key={incomeSource.id}>
-                <CardContent className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold">{incomeSource.name}</h3>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant="secondary">{incomeSource.type}</Badge>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        <DollarSign className="inline-block h-4 w-4 mr-1" />
-                        {incomeSource.amount}
-                      </p>
-                      {incomeSource.startDate && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          <CalendarIcon className="inline-block h-4 w-4 mr-1" />
-                          {format(new Date(incomeSource.startDate), "MMM dd, yyyy")}
-                        </p>
-                      )}
-                    </div>
-                    {incomeSource.description && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        {incomeSource.description}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-x-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => openEditModal(incomeSource)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      onClick={() => handleDeleteIncomeSource(incomeSource.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+      </div>
 
-        {/* Add Income Source Modal */}
-        <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
+      <div className="grid gap-4">
+        {incomeSources.map((source) => (
+          <Card key={source.id}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold">{source.name}</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {source.type} • ₹{source.amount.toLocaleString()} {source.frequency}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => handleEdit(source)}>
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => source.id && handleDeleteSource(source.id)}>
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {showAddForm && (
+        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Income Source</DialogTitle>
+              <DialogTitle>{editingSource ? 'Edit' : 'Add'} Income Source</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
                 <Input
                   id="name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="col-span-3"
+                  placeholder="Salary, Freelance, etc."
                 />
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">
-                  Type
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="type">Type</Label>
                 <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="col-span-3">
+                  <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {typeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="salary">Salary</SelectItem>
+                    <SelectItem value="freelance">Freelance</SelectItem>
+                    <SelectItem value="business">Business</SelectItem>
+                    <SelectItem value="investment">Investment</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Amount
-                </Label>
+              <div className="grid gap-2">
+                <Label htmlFor="amount">Amount</Label>
                 <Input
                   id="amount"
                   type="number"
                   value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="col-span-3"
+                  onChange={(e) => setAmount(e.target.value ? Number(e.target.value) : '')}
+                  placeholder="0"
                 />
               </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="description" className="text-right mt-2">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Start Date</Label>
-                <Popover open={isStartDatePopoverOpen} onOpenChange={setIsStartDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "col-span-3 pl-3 text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      {startDate ? format(startDate, "MMM dd, yyyy") : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="secondary" onClick={closeModal}>
-                Cancel
-              </Button>
-              <Button type="submit" onClick={handleAddIncomeSource} className="ml-2">
-                Add Income Source
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-
-        {/* Edit Income Source Modal */}
-        <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Income Source</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="type" className="text-right">
-                  Type
-                </Label>
-                <Select value={type} onValueChange={setType}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select type" />
+              <div className="grid gap-2">
+                <Label htmlFor="frequency">Frequency</Label>
+                <Select value={frequency} onValueChange={setFrequency}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
                   <SelectContent>
-                    {typeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="monthly">Monthly</SelectItem>
+                    <SelectItem value="weekly">Weekly</SelectItem>
+                    <SelectItem value="yearly">Yearly</SelectItem>
+                    <SelectItem value="one-time">One-time</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="amount" className="text-right">
-                  Amount
-                </Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label htmlFor="description" className="text-right mt-2">
-                  Description
-                </Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="col-span-3"
-                />
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label className="text-right">Start Date</Label>
-                <Popover open={isStartDatePopoverOpen} onOpenChange={setIsStartDatePopoverOpen}>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant={"outline"}
-                      className={cn(
-                        "col-span-3 pl-3 text-left font-normal",
-                        !startDate && "text-muted-foreground"
-                      )}
-                    >
-                      {startDate ? format(startDate, "MMM dd, yyyy") : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={setStartDate}
-                      disabled={(date) => date > new Date()}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
             </div>
-            <div className="flex justify-end">
-              <Button type="button" variant="secondary" onClick={closeModal}>
+            <div className="flex justify-end space-x-2">
+              <Button variant="outline" onClick={handleCancel}>
                 Cancel
               </Button>
-              <Button type="submit" onClick={handleEditIncomeSource} className="ml-2">
-                Update Income Source
+              <Button onClick={editingSource ? handleUpdateSource : handleAddSource}>
+                {editingSource ? 'Update' : 'Add'} Source
               </Button>
             </div>
           </DialogContent>
         </Dialog>
-      </CardContent>
-    </Card>
+      )}
+    </div>
   );
 }

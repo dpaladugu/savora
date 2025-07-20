@@ -8,12 +8,42 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Edit, TrendingUp, TrendingDown, CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Trash2, Plus, Edit, TrendingUp, TrendingDown, CalendarIcon, Coins, Search, AlertTriangle } from "lucide-react";
+import { format, parseISO, isValid as isValidDate } from "date-fns";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { useToast } from "@/hooks/use-toast";
 import { GoldInvestmentService } from "@/services/GoldInvestmentService";
 import { useAuth } from "@/services/auth-service";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { motion } from "framer-motion";
+import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
+
+interface DexieGoldInvestmentRecord {
+  id?: string;
+  user_id: string;
+  weight: number;
+  purity: string;
+  purchasePrice: number;
+  currentPrice?: number;
+  purchaseDate: string;
+  paymentMethod: string;
+  storageLocation: string;
+  form: string;
+  vendor?: string;
+  note?: string;
+  created_at?: Date;
+  updated_at?: Date;
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 const GOLD_PURITY_OPTIONS = ['999', '995', '916', '750', 'other'] as const;
 type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
@@ -21,7 +51,7 @@ type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
 const GOLD_FORM_OPTIONS = ['coins', 'bars', 'jewelry', 'etf', 'other'] as const;
 type GoldForm = typeof GOLD_FORM_OPTIONS[number];
 
-export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'>> & {
+export type GoldInvestmentFormData = Partial<Omit<DexieGoldInvestmentRecord, 'weight' | 'purchasePrice' | 'currentPrice' | 'created_at' | 'updated_at'> & {
   weight: string;
   purchasePrice: string;
   currentPrice?: string;
