@@ -1,4 +1,6 @@
 
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+
 // Static auth service - no React dependencies
 export interface AuthUser {
   uid: string;
@@ -14,21 +16,62 @@ interface AuthContextType {
   signOut: () => Promise<void>;
 }
 
-// Static mock context value
-const mockAuthService: AuthContextType = {
-  user: null,
-  loading: false,
-  signIn: async () => { throw new Error('Not implemented'); },
-  signUp: async () => { throw new Error('Not implemented'); },
-  signOut: async () => { throw new Error('Not implemented'); }
-};
+// Create the auth context
+const AuthContext = createContext<AuthContextType | null>(null);
 
-// Hook that returns static mock value
-export function useAuth() {
-  return mockAuthService;
+// Auth provider component
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Check for stored user on mount
+    const storedUser = getStoredUser();
+    setUser(storedUser);
+    setLoading(false);
+  }, []);
+
+  const signIn = async (email: string, password: string): Promise<AuthUser> => {
+    // Mock implementation - replace with actual auth when configured
+    throw new Error('Authentication not configured');
+  };
+
+  const signUp = async (email: string, password: string): Promise<AuthUser> => {
+    // Mock implementation - replace with actual auth when configured
+    throw new Error('Authentication not configured');
+  };
+
+  const signOut = async (): Promise<void> => {
+    localStorage.removeItem('savora-user');
+    setUser(null);
+  };
+
+  const value: AuthContextType = {
+    user,
+    loading,
+    signIn,
+    signUp,
+    signOut
+  };
+
+  return React.createElement(AuthContext.Provider, { value }, children);
 }
 
-// Simple provider function - returns children as-is
-export function AuthProvider({ children }: { children: any }) {
-  return children;
+// Hook that uses the auth context
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
+
+// Helper function to get stored user
+function getStoredUser(): AuthUser | null {
+  try {
+    const stored = localStorage.getItem('savora-user');
+    return stored ? JSON.parse(stored) : null;
+  } catch {
+    return null;
+  }
 }
