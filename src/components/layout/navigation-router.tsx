@@ -1,5 +1,5 @@
 
-import * as React from 'react';
+import React from 'react';
 import { Logger } from '@/services/logger';
 
 export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investments' | 'goals' | 'upload' | 'settings' | 'more';

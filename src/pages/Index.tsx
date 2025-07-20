@@ -1,5 +1,5 @@
 
-import * as React from "react";
+import React from "react";
 import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
