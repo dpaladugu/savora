@@ -1,6 +1,4 @@
 
-import React from 'react';
-
 // Simplified auth context without any hooks
 export interface AuthUser {
   uid: string;
@@ -25,23 +23,18 @@ const mockContextValue: AuthContextType = {
   signOut: async () => { throw new Error('Not implemented'); }
 };
 
-const AuthContext = React.createContext<AuthContextType | undefined>(mockContextValue);
-
 // Simple provider that just passes through the mock value
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   console.log('AuthProvider: Static mock version');
   
   return (
-    <AuthContext.Provider value={mockContextValue}>
+    <div>
       {children}
-    </AuthContext.Provider>
+    </div>
   );
 }
 
 export function useAuth() {
-  const context = React.useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+  console.log('useAuth: Returning static mock value');
+  return mockContextValue;
 }
