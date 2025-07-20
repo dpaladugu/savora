@@ -25,6 +25,8 @@ const queryClient = new QueryClient({
 
 function App() {
   console.log('App: Component initializing');
+  console.log('App: React version check:', React.version || 'React version not available');
+  console.log('App: Router components check:', typeof Router, typeof Routes, typeof Route);
   Logger.info('App initialized');
 
   return (

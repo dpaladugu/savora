@@ -1,360 +1,198 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { z } from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { AlertTriangle } from 'lucide-react';
-import { AdvancedExpenseOptions } from './AdvancedExpenseOptions';
-import { db } from "@/db";
-import { useToast } from "@/hooks/use-toast";
-import { ExpenseService } from '@/services/ExpenseService';
-import { Expense as FormExpenseType } from '@/types/expense';
-import { formatCurrency } from '@/lib/format-utils';
-import { useAuth } from '@/contexts/auth-context';
+import React, { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, Plus, X, Receipt, MapPin } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { useAuth } from "@/services/auth-service";
 
-// Define the Zod schema for expense validation
-const expenseValidationSchema = z.object({
-  amount: z.number().positive({ message: "Amount must be a positive number." }),
-  date: z.string().min(1, { message: "Date is required." })
-    .regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Invalid date format. Please use YYYY-MM-DD."})
-    .refine(dateStr => new Date(dateStr) <= new Date(new Date().setHours(23,59,59,999)), {
-      message: "Date cannot be in the future."
-    }),
-  category: z.string().min(1, { message: "Category is required." }),
-  description: z.string().min(1, { message: "Description is required." }),
-  payment_method: z.string().optional(),
-  tags: z.array(z.string()).optional(),
-  merchant: z.string().optional(),
-  account: z.string().optional(),
-  user_id: z.string().optional(),
-  id: z.string().optional(),
-});
-
-// This is the type for data actually saved to Dexie (aligns with AppExpense for db.expenses)
-interface DexieExpenseRecord {
-  id: string;
-  user_id?: string;
-  date: string;
-  category: string;
-  amount: number;
-  description: string;
-  payment_method: string;
-  tags: string;
-  account: string;
-  created_at?: string;
-  updated_at?: string;
-  type: string; // Added required type field
-  source: string;
+interface ExpenseCategory {
+  value: string;
+  label: string;
 }
 
-// Form data type, derived from Zod schema for type safety in the form state
-type ValidatedExpenseFormData = z.infer<typeof expenseValidationSchema>;
-// Extended form state type to include all fields used in the form/Dexie, matching FormExpenseType where possible
-// This type is what our local `formState` will use.
-type EnhancedFormState = FormExpenseType & {
-    payment_method: string;
-    merchant: string;
-    account: string;
-    user_id?: string;
-};
+interface ExpenseLocation {
+  value: string;
+  label: string;
+}
 
-const initialFormState: EnhancedFormState = {
-  id: '',
-  amount: 0,
-  date: new Date().toISOString().split('T')[0],
-  category: '',
-  description: '',
-  type: 'expense',
-  tags: [],
-  payment_method: '',
-  merchant: '',
-  account: '',
-  source: '',
-  user_id: undefined,
-};
+interface ExpenseTag {
+  value: string;
+  label: string;
+}
 
 interface EnhancedAddExpenseFormProps {
-  initialData?: any;
-  onSubmit?: (formData: any) => Promise<void>;
-  onCancel?: () => void;
+  categories: ExpenseCategory[];
+  locations: ExpenseLocation[];
+  tags: ExpenseTag[];
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
 }
 
-export const EnhancedAddExpenseForm: React.FC<EnhancedAddExpenseFormProps> = ({ 
-  initialData, 
-  onSubmit, 
-  onCancel 
-}) => {
-  const { toast } = useToast();
-  const { user } = useAuth();
+export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, onCancel }: EnhancedAddExpenseFormProps) {
+  const [amount, setAmount] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("");
+  const [location, setLocation] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [date, setDate] = useState<Date | undefined>(new Date());
 
-  const [formState, setFormState] = useState<EnhancedFormState>(() => {
-    if (initialData) {
-      return {
-        ...initialFormState,
-        ...initialData,
-        tags: initialData.tags || [],
-      };
-    }
-    return initialFormState;
-  });
-  const [errors, setErrors] = useState<Partial<Record<keyof ValidatedExpenseFormData, string>>>({});
-  const [formMessage, setFormMessage] = useState<string | null>(null);
-
-  const resetForm = useCallback(() => {
-    setFormState(initialFormState);
-    setErrors({});
-    setFormMessage(null);
-  }, []);
-
-  const handleInputChange = (
-    field: keyof EnhancedFormState,
-    value: any
-  ) => {
-    setFormState(prevState => ({
-      ...prevState,
-      [field]: value,
-    }));
-    if (errors[field as keyof ValidatedExpenseFormData]) {
-      setErrors(prevErrors => ({
-        ...prevErrors,
-        [field as keyof ValidatedExpenseFormData]: undefined,
-      }));
-    }
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAmount(e.target.value);
   };
 
-  const handleBlur = (field: keyof ValidatedExpenseFormData) => {
-    const fieldSchema = expenseValidationSchema.shape[field];
-    if (fieldSchema) {
-      const result = fieldSchema.safeParse(formState[field]);
-      if (!result.success) {
-        setErrors(prevErrors => ({
-          ...prevErrors,
-          [field]: result.error.errors[0].message,
-        }));
-      } else {
-        setErrors(prevErrors => ({
-          ...prevErrors,
-          [field]: undefined,
-        }));
-      }
-    }
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDescription(e.target.value);
   };
 
-  const validateForm = (): boolean => {
-    const dataToValidate = {
-        ...formState,
-        amount: Number(formState.amount) || 0,
-    };
-    const result = expenseValidationSchema.safeParse(dataToValidate);
-    if (!result.success) {
-      const newErrors: Partial<Record<keyof ValidatedExpenseFormData, string>> = {};
-      for (const issue of result.error.issues) {
-        newErrors[issue.path[0] as keyof ValidatedExpenseFormData] = issue.message;
-      }
-      setErrors(newErrors);
-      setFormMessage('Please correct the errors in the form.');
-      return false;
-    }
-    setErrors({});
-    setFormMessage(null);
-    return true;
+  const handleCategoryChange = (value: string) => {
+    setCategory(value);
   };
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!validateForm()) {
+  const handleLocationChange = (value: string) => {
+    setLocation(value);
+  };
+
+  const handleTagToggle = (tagValue: string) => {
+    setSelectedTags((prevTags) =>
+      prevTags.includes(tagValue)
+        ? prevTags.filter((tag) => tag !== tagValue)
+        : [...prevTags, tagValue]
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!amount || !description || !category || !location || !date) {
+      toast.error("Please fill in all fields.");
       return;
     }
 
-    try {
-      if (onSubmit) {
-        // Use custom onSubmit if provided
-        await onSubmit(formState);
-      } else {
-        // Default behavior
-        const newId = self.crypto.randomUUID();
-        const expenseToSave: DexieExpenseRecord = {
-          id: newId,
-          amount: Number(formState.amount) || 0,
-          date: formState.date || new Date().toISOString().split('T')[0],
-          category: formState.category || '',
-          description: formState.description || '',
-          payment_method: formState.payment_method || '',
-          tags: (formState.tags || []).map(t => t.toLowerCase()).join(','),
-          account: formState.account || '',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          type: 'expense', // Added required type field
-          source: formState.source || 'manual',
-        };
+    const expenseData = {
+      amount: parseFloat(amount),
+      description,
+      category,
+      location,
+      tags: selectedTags,
+      date: date.toISOString(),
+    };
 
-        await ExpenseService.addExpense(expenseToSave);
-      }
-
-      toast({
-        title: "Expense Added",
-        description: `Expense "${formState.description || 'Unnamed'}" for ${formatCurrency(formState.amount)} added.`,
-      });
-      setFormMessage('Expense added successfully!');
-      resetForm();
-
-    } catch (error) {
-      console.error("Failed to add expense via ExpenseService:", error);
-      let errorMessage = "Failed to save expense. Please try again.";
-      if (error instanceof Error && error.message) {
-          errorMessage = error.message;
-      }
-      toast({ title: "Error Saving Expense", description: errorMessage, variant: "destructive" });
-      setFormMessage(`Failed to save expense: ${errorMessage}`);
-    }
+    onSubmit(expenseData);
+    toast.success("Expense added successfully!");
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 p-6 border rounded-lg shadow-lg bg-white dark:bg-slate-900">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-          {initialData ? 'Edit Expense' : 'Add New Expense'}
-        </h2>
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
+    <Card className="w-full">
+      <CardHeader>
+        <CardTitle>Add New Expense</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="amount">Amount</Label>
+          <Input
+            type="number"
+            id="amount"
+            placeholder="Enter amount"
+            value={amount}
+            onChange={handleAmountChange}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            placeholder="Enter description"
+            value={description}
+            onChange={handleDescriptionChange}
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="category">Category</Label>
+          <Select onValueChange={handleCategoryChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="location">Location</Label>
+          <Select onValueChange={handleLocationChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select location" />
+            </SelectTrigger>
+            <SelectContent>
+              {locations.map((loc) => (
+                <SelectItem key={loc.value} value={loc.value}>
+                  {loc.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label>Tags</Label>
+          <div className="flex flex-wrap gap-1">
+            {tags.map((tag) => (
+              <Badge
+                key={tag.value}
+                variant={selectedTags.includes(tag.value) ? "secondary" : "outline"}
+                onClick={() => handleTagToggle(tag.value)}
+                className="cursor-pointer"
+              >
+                {tag.label}
+              </Badge>
+            ))}
+          </div>
+        </div>
+        <div className="grid gap-2">
+          <Label>Date</Label>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant={"outline"}
+                className={cn(
+                  "w-[240px] justify-start text-left font-normal",
+                  !date && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {date ? format(date, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="center">
+              <Calendar
+                mode="single"
+                selected={date}
+                onSelect={setDate}
+                disabled={(date) =>
+                  date > new Date() || date < new Date("1900-01-01")
+                }
+                initialFocus
+              />
+            </PopoverContent>
+          </Popover>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-        )}
-      </div>
-
-      {!user && (
-        <div className="p-3 mb-4 text-sm text-yellow-800 bg-yellow-100 rounded-lg dark:bg-yellow-900 dark:text-yellow-300" role="alert">
-          <AlertTriangle className="inline w-4 h-4 mr-2" />
-          You are not logged in. Expenses will not be saved until you log in.
+          <Button onClick={handleSubmit}>Add Expense</Button>
         </div>
-      )}
-
-      <div>
-        <Label htmlFor="amount" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount *</Label>
-        <Input
-          id="amount" name="amount" type="number" step="0.01"
-          value={formState.amount === 0 && !errors.amount ? '' : formState.amount}
-          onChange={(e) => handleInputChange('amount', e.target.value === '' ? 0 : parseFloat(e.target.value))}
-          onBlur={() => handleBlur('amount')}
-          aria-invalid={!!errors.amount}
-          aria-required="true"
-          aria-describedby={errors.amount ? "amount-error" : undefined}
-          className={`mt-1 block w-full ${errors.amount ? 'border-red-500' : ''}`} required
-          placeholder="0.00"
-        />
-        {errors.amount && <p id="amount-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.amount}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="date" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date *</Label>
-        <Input
-          id="date" name="date" type="date"
-          value={formState.date || ''}
-          onChange={(e) => handleInputChange('date', e.target.value)}
-          onBlur={() => handleBlur('date')}
-          aria-invalid={!!errors.date}
-          aria-required="true"
-          aria-describedby={errors.date ? "date-error" : undefined}
-          className={`mt-1 block w-full ${errors.date ? 'border-red-500' : ''}`} required
-        />
-        {errors.date && <p id="date-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.date}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="category" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</Label>
-        <Input
-          id="category" name="category" type="text"
-          value={formState.category || ''}
-          onChange={(e) => handleInputChange('category', e.target.value)}
-          onBlur={() => handleBlur('category')}
-          aria-invalid={!!errors.category}
-          aria-required="true"
-          aria-describedby={errors.category ? "category-error" : undefined}
-          className={`mt-1 block w-full ${errors.category ? 'border-red-500' : ''}`} required
-          placeholder="e.g., Food, Transport"
-        />
-        {errors.category && <p id="category-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.category}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</Label>
-        <Input
-          id="description" name="description" type="text"
-          value={formState.description || ''}
-          onChange={(e) => handleInputChange('description', e.target.value)}
-          onBlur={() => handleBlur('description')}
-          aria-invalid={!!errors.description}
-          aria-required="true"
-          aria-describedby={errors.description ? "description-error" : undefined}
-          className={`mt-1 block w-full ${errors.description ? 'border-red-500' : ''}`} required
-          placeholder="e.g., Lunch with colleagues"
-        />
-        {errors.description && <p id="description-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.description}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="payment_method" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Method</Label>
-        <Input
-          id="payment_method" name="payment_method" type="text"
-          value={formState.payment_method || ''}
-          onChange={(e) => handleInputChange('payment_method', e.target.value)}
-          onBlur={() => handleBlur('payment_method')}
-          className="mt-1 block w-full"
-          placeholder="e.g., Credit Card, Cash, UPI"
-        />
-         {errors.payment_method && <p id="payment_method-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.payment_method}</p>}
-      </div>
-
-       <div>
-        <Label htmlFor="merchant" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Merchant</Label>
-        <Input
-          id="merchant" name="merchant" type="text"
-          value={formState.merchant || ''}
-          onChange={(e) => handleInputChange('merchant', e.target.value)}
-          onBlur={() => handleBlur('merchant')}
-          className="mt-1 block w-full"
-          placeholder="e.g., Amazon, Starbucks, Local Cafe"
-        />
-         {errors.merchant && <p id="merchant-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.merchant}</p>}
-      </div>
-
-      <div>
-        <Label htmlFor="account" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Account (Optional)</Label>
-        <Input
-          id="account" name="account" type="text"
-          value={formState.account || ''}
-          onChange={(e) => handleInputChange('account', e.target.value)}
-          onBlur={() => handleBlur('account')}
-          className="mt-1 block w-full"
-          placeholder="e.g., ICICI Savings, HDFC Credit Card"
-        />
-        {errors.account && <p id="account-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.account}</p>}
-      </div>
-
-      <AdvancedExpenseOptions
-        tags={formState.tags || []}
-        onTagsChange={(newTags) => handleInputChange('tags', newTags)}
-      />
-       {errors.tags && <p id="tags-error" className="mt-1 text-xs text-red-600 flex items-center"><AlertTriangle aria-hidden="true" className="w-3 h-3 mr-1"/>{errors.tags}</p>}
-
-      {formMessage && (
-        <p
-          className={`mt-3 text-sm ${formMessage.toLowerCase().includes('failed') || Object.keys(errors).length > 0 ? 'text-red-600' : 'text-green-600'}`}
-          role={formMessage.toLowerCase().includes('failed') || Object.keys(errors).length > 0 ? 'alert' : 'status'}
-          aria-live="polite"
-        >
-          {formMessage}
-        </p>
-      )}
-
-      <div className="flex space-x-4 pt-3">
-        <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded-lg shadow-md">
-          {initialData ? 'Update Expense' : 'Add Expense'}
-        </Button>
-        <Button type="button" variant="outline" onClick={resetForm} className="flex-1">
-          Reset Form
-        </Button>
-      </div>
-    </form>
+      </CardContent>
+    </Card>
   );
-};
+}

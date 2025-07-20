@@ -10,14 +10,30 @@ interface WelcomeScreenProps {
 
 export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
   console.log('WelcomeScreen: Component mounting');
+  console.log('WelcomeScreen: React version check:', typeof React, React);
   
-  const navigate = useNavigate();
-  console.log('WelcomeScreen: useNavigate hook called successfully');
+  // Add debugging for Router context
+  let navigate;
+  try {
+    navigate = useNavigate();
+    console.log('WelcomeScreen: useNavigate hook called successfully', typeof navigate);
+  } catch (error) {
+    console.error('WelcomeScreen: useNavigate hook failed:', error);
+    console.error('WelcomeScreen: This suggests Router context is not available');
+  }
 
   const handleCreateAccount = () => {
     console.log('WelcomeScreen: handleCreateAccount triggered');
-    navigate("/auth");
-    onComplete();
+    try {
+      if (navigate) {
+        navigate("/auth");
+        onComplete();
+      } else {
+        console.error('WelcomeScreen: navigate function not available');
+      }
+    } catch (error) {
+      console.error('WelcomeScreen: Error during navigation:', error);
+    }
   };
 
   return (

@@ -1,190 +1,405 @@
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Trash2, Plus, Edit, Car, Truck, Bike, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { VehicleService } from "@/services/VehicleService";
+import { useAuth } from "@/services/auth-service";
 
-import React, { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db, Vehicle } from '@/db';
-import { VehicleList } from './VehicleList';
-import { AddVehicleForm } from './AddVehicleForm';
-import { Button } from '@/components/ui/button';
-import { VehicleService } from '@/services/VehicleService';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { PlusCircle, Car } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { EnhancedLoadingWrapper } from '@/components/ui/enhanced-loading-wrapper';
-import { CriticalErrorBoundary } from '@/components/ui/critical-error-boundary';
-import type { VehicleData } from '@/types/jsonPreload';
-import { useAuth } from '@/contexts/auth-context';
+interface Vehicle {
+  id: string;
+  type: string;
+  make: string;
+  model: string;
+  year: number;
+  purchaseDate: Date | null;
+  purchasePrice: number;
+  notes: string;
+}
+
+const initialVehicleState: Vehicle = {
+  id: "",
+  type: "Car",
+  make: "",
+  model: "",
+  year: new Date().getFullYear(),
+  purchaseDate: null,
+  purchasePrice: 0,
+  notes: "",
+};
 
 export function VehicleManager() {
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
-  const { toast } = useToast();
-  const { user } = useAuth();
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle>(initialVehicleState);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [newVehicle, setNewVehicle] = useState<Vehicle>(initialVehicleState);
+  const [activeTab, setActiveTab] = useState("list");
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const auth = useAuth();
 
-  const vehicles = useLiveQuery(() => {
-    if (!user?.uid) return [];
-    return VehicleService.getVehicles(user.uid).then(data => data.sort((a, b) => a.name.localeCompare(b.name)));
-  }, [user?.uid], []);
+  useEffect(() => {
+    fetchVehicles();
+  }, []);
 
-  const isLoading = vehicles === undefined;
-
-  const handleAddVehicle = async (vehicleFormData: Omit<VehicleData, 'id'>) => {
-    if (!user?.uid) {
-      toast({ title: "Error", description: "User not authenticated", variant: "destructive" });
-      return;
-    }
-
+  const fetchVehicles = async () => {
     try {
-      const vehicleRecord: Omit<Vehicle, 'id'> = {
-        user_id: user.uid,
-        name: vehicleFormData.vehicle_name, // Map from vehicle_name to name
-        registrationNumber: vehicleFormData.registrationNumber!,
-        make: vehicleFormData.make,
-        model: vehicleFormData.model,
-        year: vehicleFormData.year,
-        color: vehicleFormData.color,
-        type: vehicleFormData.type,
-        owner: vehicleFormData.owner,
-        status: vehicleFormData.status,
-        purchaseDate: vehicleFormData.purchaseDate,
-        purchasePrice: vehicleFormData.purchasePrice,
-        fuelType: vehicleFormData.fuelType,
-        engineNumber: vehicleFormData.engineNumber,
-        chassisNumber: vehicleFormData.chassisNumber,
-        currentOdometer: vehicleFormData.currentOdometer,
-        fuelEfficiency: vehicleFormData.fuelEfficiency,
-        insuranceProvider: vehicleFormData.insurance_provider,
-        insurancePolicyNumber: vehicleFormData.insurancePolicyNumber,
-        insuranceExpiryDate: vehicleFormData.insurance_next_renewal,
-        insurance_premium: vehicleFormData.insurance_premium,
-        insurance_frequency: vehicleFormData.insurance_frequency,
-        tracking_type: vehicleFormData.tracking_type,
-        tracking_last_service_odometer: vehicleFormData.tracking_last_service_odometer,
-        next_pollution_check: vehicleFormData.next_pollution_check,
-        location: vehicleFormData.location,
-        repair_estimate: vehicleFormData.repair_estimate,
-        notes: vehicleFormData.notes,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-
-      if (editingVehicle && editingVehicle.id) {
-        await VehicleService.updateVehicle(editingVehicle.id, vehicleRecord);
-        toast({ title: "Vehicle Updated", description: `${vehicleRecord.name} has been successfully updated.` });
-      } else {
-        await VehicleService.addVehicle(vehicleRecord);
-        toast({ title: "Vehicle Added", description: `${vehicleRecord.name} has been successfully added.` });
+      if (!auth.user) {
+        console.warn("User not authenticated.");
+        return;
       }
-
-      setShowAddForm(false);
-      setEditingVehicle(null);
+      const fetchedVehicles = await VehicleService.getAll(auth.user.uid);
+      setVehicles(fetchedVehicles);
     } catch (error) {
-      console.error("Failed to add/update vehicle:", error);
-      toast({
-        title: `Error ${editingVehicle ? 'Updating' : 'Adding'} Vehicle`,
-        description: (error as Error).message || `Could not ${editingVehicle ? 'update' : 'add'} vehicle. Please try again.`,
-        variant: "destructive",
-      });
+      console.error("Error fetching vehicles:", error);
+      toast.error("Failed to load vehicles.");
     }
   };
 
-  const handleDeleteVehicle = async (vehicleId: string) => {
-    const vehicleToDelete = vehicles?.find(v => v.id === vehicleId);
-    const vehicleName = vehicleToDelete?.name || "this vehicle";
-    if (window.confirm(`Are you sure you want to delete ${vehicleName}? This action cannot be undone.`)) {
-      try {
-        await VehicleService.deleteVehicle(vehicleId);
-        toast({ title: "Vehicle Deleted", description: `${vehicleName} has been successfully deleted.` });
-      } catch (error) {
-        console.error("Failed to delete vehicle:", error);
-        toast({
-          title: "Error Deleting Vehicle",
-          description: (error as Error).message || "Could not delete vehicle. Please try again.",
-          variant: "destructive",
-        });
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewVehicle(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (value: string, name: string) => {
+    setNewVehicle(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    setNewVehicle(prev => ({ ...prev, purchaseDate: date || null }));
+  };
+
+  const openAddModal = () => {
+    setNewVehicle(initialVehicleState);
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+  };
+
+  const openEditModal = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsEditModalOpen(true);
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedVehicle(initialVehicleState);
+  };
+
+  const openDeleteModal = (vehicle: Vehicle) => {
+    setSelectedVehicle(vehicle);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedVehicle(initialVehicleState);
+  };
+
+  const addVehicle = async () => {
+    try {
+      if (!auth.user) {
+        console.warn("User not authenticated.");
+        return;
       }
+      await VehicleService.create({ ...newVehicle, purchaseDate: newVehicle.purchaseDate ? newVehicle.purchaseDate : null, userId: auth.user.uid });
+      fetchVehicles();
+      closeAddModal();
+      toast.success("Vehicle added successfully!");
+    } catch (error) {
+      console.error("Error adding vehicle:", error);
+      toast.error("Failed to add vehicle.");
     }
   };
 
-  const handleEditVehicle = (vehicle: Vehicle) => {
-    setEditingVehicle(vehicle);
-    setShowAddForm(true);
+  const updateVehicle = async () => {
+    try {
+      if (!auth.user) {
+        console.warn("User not authenticated.");
+        return;
+      }
+      await VehicleService.update(selectedVehicle.id, { ...selectedVehicle, purchaseDate: selectedVehicle.purchaseDate ? selectedVehicle.purchaseDate : null, userId: auth.user.uid });
+      fetchVehicles();
+      closeEditModal();
+      toast.success("Vehicle updated successfully!");
+    } catch (error) {
+      console.error("Error updating vehicle:", error);
+      toast.error("Failed to update vehicle.");
+    }
   };
 
-  const handleAddNewVehicle = () => {
-    setEditingVehicle(null);
-    setShowAddForm(true);
+  const deleteVehicle = async () => {
+    try {
+      await VehicleService.delete(selectedVehicle.id);
+      fetchVehicles();
+      closeDeleteModal();
+      toast.success("Vehicle deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting vehicle:", error);
+      toast.error("Failed to delete vehicle.");
+    }
   };
-
-
-  if (showAddForm) {
-    return (
-      <CriticalErrorBoundary>
-        <AddVehicleForm
-          onSubmit={handleAddVehicle}
-          onCancel={() => {
-            setShowAddForm(false);
-            setEditingVehicle(null);
-          }}
-          existingVehicle={editingVehicle ? {
-            vehicle_name: editingVehicle.name, // Map from name to vehicle_name
-            registrationNumber: editingVehicle.registrationNumber,
-            make: editingVehicle.make,
-            model: editingVehicle.model,
-            year: editingVehicle.year,
-            color: editingVehicle.color,
-            type: editingVehicle.type,
-            owner: editingVehicle.owner,
-            status: editingVehicle.status,
-            purchaseDate: editingVehicle.purchaseDate,
-            purchasePrice: editingVehicle.purchasePrice,
-            fuelType: editingVehicle.fuelType,
-            engineNumber: editingVehicle.engineNumber,
-            chassisNumber: editingVehicle.chassisNumber,
-            currentOdometer: editingVehicle.currentOdometer,
-            fuelEfficiency: editingVehicle.fuelEfficiency,
-            insurance_provider: editingVehicle.insuranceProvider,
-            insurancePolicyNumber: editingVehicle.insurancePolicyNumber,
-            insurance_next_renewal: editingVehicle.insuranceExpiryDate,
-            insurance_premium: editingVehicle.insurance_premium,
-            insurance_frequency: editingVehicle.insurance_frequency,
-            tracking_type: editingVehicle.tracking_type,
-            tracking_last_service_odometer: editingVehicle.tracking_last_service_odometer,
-            next_pollution_check: editingVehicle.next_pollution_check,
-            location: editingVehicle.location,
-            repair_estimate: editingVehicle.repair_estimate,
-            notes: editingVehicle.notes,
-          } : null}
-        />
-      </CriticalErrorBoundary>
-    );
-  }
 
   return (
-    <CriticalErrorBoundary>
-      <EnhancedLoadingWrapper
-        loading={isLoading}
-        loadingText="Loading vehicles..."
-      >
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Car className="w-6 h-6 text-primary" aria-hidden="true" />
-              <CardTitle>Manage Vehicles</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle>Vehicle Manager</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="list" className="w-full">
+          <TabsList>
+            <TabsTrigger value="list" onClick={() => setActiveTab("list")}>List</TabsTrigger>
+            <TabsTrigger value="add" onClick={() => setActiveTab("add")}>Add Vehicle</TabsTrigger>
+          </TabsList>
+          <TabsContent value="list">
+            <div className="grid gap-4">
+              {vehicles.map(vehicle => (
+                <Card key={vehicle.id} className="border">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{vehicle.make} {vehicle.model}</CardTitle>
+                    <div className="flex space-x-2">
+                      <Button variant="ghost" size="icon" onClick={() => openEditModal(vehicle)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" onClick={() => openDeleteModal(vehicle)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground">Type: {vehicle.type}</p>
+                    <p className="text-sm text-muted-foreground">Year: {vehicle.year}</p>
+                  </CardContent>
+                </Card>
+              ))}
+              {vehicles.length === 0 && <p>No vehicles added yet.</p>}
             </div>
-            <Button onClick={handleAddNewVehicle} size="sm">
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Add Vehicle
-            </Button>
-          </CardHeader>
-          <CardContent>
-            <VehicleList
-              vehicles={vehicles || []}
-              onDelete={handleDeleteVehicle}
-              onEdit={handleEditVehicle}
-            />
-          </CardContent>
-        </Card>
-      </EnhancedLoadingWrapper>
-    </CriticalErrorBoundary>
+          </TabsContent>
+          <TabsContent value="add">
+            <div className="grid gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="type">Type</Label>
+                <Select onValueChange={(value) => handleSelectChange(value, "type")}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Car">Car</SelectItem>
+                    <SelectItem value="Truck">Truck</SelectItem>
+                    <SelectItem value="Bike">Bike</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="make">Make</Label>
+                <Input id="make" name="make" value={newVehicle.make} onChange={handleInputChange} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="model">Model</Label>
+                <Input id="model" name="model" value={newVehicle.model} onChange={handleInputChange} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="year">Year</Label>
+                <Input
+                  type="number"
+                  id="year"
+                  name="year"
+                  value={newVehicle.year}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="purchaseDate">Purchase Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[240px] justify-start text-left font-normal",
+                        !newVehicle.purchaseDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {newVehicle.purchaseDate ? (
+                        format(newVehicle.purchaseDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                    <Calendar
+                      mode="single"
+                      selected={newVehicle.purchaseDate}
+                      onSelect={handleDateChange}
+                      disabled={false}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="purchasePrice">Purchase Price</Label>
+                <Input
+                  type="number"
+                  id="purchasePrice"
+                  name="purchasePrice"
+                  value={newVehicle.purchasePrice}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Input id="notes" name="notes" value={newVehicle.notes} onChange={handleInputChange} />
+              </div>
+              <Button onClick={addVehicle}>Add Vehicle</Button>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* Edit Modal */}
+        {isEditModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-auto bg-zinc-500/50 dark:bg-zinc-800/50 flex items-center justify-center">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle>Edit Vehicle</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="type">Type</Label>
+                  <Select value={selectedVehicle.type} onValueChange={(value) => setSelectedVehicle(prev => ({ ...prev, type: value }))}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Car">Car</SelectItem>
+                      <SelectItem value="Truck">Truck</SelectItem>
+                      <SelectItem value="Bike">Bike</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="make">Make</Label>
+                  <Input
+                    id="edit-make"
+                    name="make"
+                    value={selectedVehicle.make}
+                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, make: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="model">Model</Label>
+                  <Input
+                    id="edit-model"
+                    name="model"
+                    value={selectedVehicle.model}
+                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, model: e.target.value }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="year">Year</Label>
+                  <Input
+                    type="number"
+                    id="edit-year"
+                    name="year"
+                    value={selectedVehicle.year}
+                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, year: parseInt(e.target.value) }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="purchaseDate">Purchase Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-[240px] justify-start text-left font-normal",
+                          !selectedVehicle.purchaseDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedVehicle.purchaseDate ? (
+                          format(selectedVehicle.purchaseDate, "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                      <Calendar
+                        mode="single"
+                        selected={selectedVehicle.purchaseDate}
+                        onSelect={(date) => setSelectedVehicle(prev => ({ ...prev, purchaseDate: date || null }))}
+                        disabled={false}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="purchasePrice">Purchase Price</Label>
+                  <Input
+                    type="number"
+                    id="edit-purchasePrice"
+                    name="purchasePrice"
+                    value={selectedVehicle.purchasePrice}
+                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, purchasePrice: parseFloat(e.target.value) }))}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Input
+                    id="edit-notes"
+                    name="notes"
+                    value={selectedVehicle.notes}
+                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, notes: e.target.value }))}
+                  />
+                </div>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="secondary" onClick={closeEditModal}>
+                    Cancel
+                  </Button>
+                  <Button onClick={updateVehicle}>Update Vehicle</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Delete Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 z-50 overflow-auto bg-zinc-500/50 dark:bg-zinc-800/50 flex items-center justify-center">
+            <Card className="max-w-md w-full">
+              <CardHeader>
+                <CardTitle>Delete Vehicle</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <p>Are you sure you want to delete {selectedVehicle.make} {selectedVehicle.model}?</p>
+                <div className="flex justify-end space-x-2">
+                  <Button variant="secondary" onClick={closeDeleteModal}>
+                    Cancel
+                  </Button>
+                  <Button variant="destructive" onClick={deleteVehicle}>
+                    Delete
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -12,6 +12,7 @@ import { db } from "@/db";
 
 const Index = () => {
   console.log('Index: Component mounting');
+  console.log('Index: React context check:', React);
   
   const isUnlocked = useIsUnlocked();
   const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
@@ -33,7 +34,7 @@ const Index = () => {
           setHasPin(!!pinLastSet);
         }
       } catch (error) {
-        console.error("Error checking initial state:", error);
+        console.error("Index: Error checking initial state:", error);
         setHasExistingUser(false);
         setHasPin(false);
       } finally {
@@ -66,6 +67,7 @@ const Index = () => {
 
   if (!hasExistingUser) {
     console.log('Index: Rendering WelcomeScreen');
+    console.log('Index: About to render WelcomeScreen - Router context should be available');
     return <WelcomeScreen onComplete={handleOnboardingComplete} />;
   }
 

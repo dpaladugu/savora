@@ -1,31 +1,19 @@
-
-import { motion } from "framer-motion";
-import React, { useState, useEffect, useCallback } from "react";
-import { Plus, Coins, Search, Trash2, Edit, Loader2, AlertTriangle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatCurrency } from "@/lib/format-utils";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { db, DexieGoldInvestmentRecord } from "@/db";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Trash2, Plus, Edit, TrendingUp, TrendingDown, CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { GoldInvestmentService } from "@/services/GoldInvestmentService";
-import { useLiveQuery } from "dexie-react-hooks";
-import { format, parseISO, isValid as isValidDate } from 'date-fns';
-import { useAuth } from '@/contexts/auth-context';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { useAuth } from "@/services/auth-service";
 
 const GOLD_PURITY_OPTIONS = ['999', '995', '916', '750', 'other'] as const;
 type GoldPurity = typeof GOLD_PURITY_OPTIONS[number];
