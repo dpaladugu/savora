@@ -3,7 +3,6 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "@/contexts/theme-context";
-import { AuthProvider } from "@/contexts/auth-context";
 import { ErrorBoundary } from "@/components/error/error-boundary";
 import { Toaster } from "@/components/ui/sonner";
 import Index from "@/pages/Index";
@@ -31,21 +30,19 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            <Router>
-              <div className="min-h-screen bg-background text-foreground">
-                <DbErrorListener />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </div>
-            </Router>
-          </ThemeProvider>
-        </AuthProvider>
+        <ThemeProvider>
+          <Router>
+            <div className="min-h-screen bg-background text-foreground">
+              <DbErrorListener />
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster />
+            </div>
+          </Router>
+        </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
