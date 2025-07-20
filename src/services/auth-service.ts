@@ -1,5 +1,5 @@
 
-// Completely static auth context - no React dependencies
+// Static auth service - no React dependencies
 export interface AuthUser {
   uid: string;
   email: string | null;
@@ -15,7 +15,7 @@ interface AuthContextType {
 }
 
 // Static mock context value
-const mockContextValue: AuthContextType = {
+const mockAuthService: AuthContextType = {
   user: null,
   loading: false,
   signIn: async () => { throw new Error('Not implemented'); },
@@ -23,12 +23,12 @@ const mockContextValue: AuthContextType = {
   signOut: async () => { throw new Error('Not implemented'); }
 };
 
-// Simple provider component - no React types
-export function AuthProvider({ children }: { children: any }) {
-  return children;
-}
-
 // Hook that returns static mock value
 export function useAuth() {
-  return mockContextValue;
+  return mockAuthService;
+}
+
+// Simple provider function - returns children as-is
+export function AuthProvider({ children }: { children: any }) {
+  return children;
 }
