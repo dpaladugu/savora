@@ -51,7 +51,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchTags = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedTags = await TagService.getTags();
+        const fetchedTags = await TagService.getTags(user.uid); // Pass user_id
         setTags(fetchedTags);
       } catch (error: any) {
         toast.error(`Failed to fetch tags: ${error.message}`);
@@ -71,7 +71,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchVehicles = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedVehicles = await VehicleService.getVehicles();
+        const fetchedVehicles = await VehicleService.getVehicles(user.uid); // Pass user_id
         setVehicles(fetchedVehicles);
       } catch (error: any) {
         toast.error(`Failed to fetch vehicles: ${error.message}`);
@@ -95,6 +95,9 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
           setDate(expense.date ? new Date(expense.date) : undefined);
           setCategory(expense.category || "");
           setPaymentMethod(expense.payment_method || "");
+          // Map the fields properly
+          setSelectedTag(expense.tags || "");
+          setSelectedAccount(expense.account || "");
         }
       } catch (error: any) {
         toast.error(`Failed to fetch expense: ${error.message}`);
@@ -128,7 +131,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     try {
       const newTag = await TagService.addTag({
         name: newTagName,
-        description: newTagDescription,
+        // Remove description field as it doesn't exist in DexieTagRecord
         user_id: user.uid,
         created_at: new Date(),
         updated_at: new Date()

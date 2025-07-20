@@ -14,7 +14,7 @@ import { useAuth } from "@/services/auth-service";
 interface CreditCardData {
   id?: string;
   name: string;
-  issuer?: string;
+  issuer: string; // Make required
   currentBalance?: number;
   billCycleDay?: number;
   dueDate?: string;
@@ -43,7 +43,12 @@ export function CreditCardManager() {
     const fetchCreditCards = async () => {
       try {
         const cards = await CreditCardService.getCreditCards(user.uid);
-        setCreditCards(cards);
+        // Map the cards to match our interface
+        const mappedCards = cards.map(card => ({
+          ...card,
+          issuer: card.issuer || "Unknown", // Ensure issuer is always provided
+        }));
+        setCreditCards(mappedCards);
       } catch (error: any) {
         toast.error(`Failed to fetch credit cards: ${error.message}`);
       }
@@ -87,11 +92,14 @@ export function CreditCardManager() {
       return;
     }
 
-    const cardData: CreditCardData = {
+    const cardData = {
       name,
-      issuer,
+      issuer: issuer || "Unknown", // Ensure issuer is always provided
       limit,
       currentBalance,
+      billCycleDay: 1, // Add required field with default
+      dueDate: new Date().toISOString(), // Add required field
+      autoDebit: false, // Add required field with default
       user_id: user.uid,
     };
 
@@ -105,7 +113,11 @@ export function CreditCardManager() {
       }
 
       const updatedCards = await CreditCardService.getCreditCards(user.uid);
-      setCreditCards(updatedCards);
+      const mappedCards = updatedCards.map(card => ({
+        ...card,
+        issuer: card.issuer || "Unknown",
+      }));
+      setCreditCards(mappedCards);
       handleCancel();
     } catch (error: any) {
       toast.error(`Failed to save credit card: ${error.message}`);
@@ -120,7 +132,11 @@ export function CreditCardManager() {
     try {
       await CreditCardService.deleteCreditCard(id);
       const updatedCards = await CreditCardService.getCreditCards(user.uid);
-      setCreditCards(updatedCards);
+      const mappedCards = updatedCards.map(card => ({
+        ...card,
+        issuer: card.issuer || "Unknown",
+      }));
+      setCreditCards(mappedCards);
       toast.success("Credit card deleted successfully!");
     } catch (error: any) {
       toast.error(`Failed to delete credit card: ${error.message}`);
@@ -202,6 +218,7 @@ export function CreditCardManager() {
                       id="issuer"
                       value={issuer}
                       onChange={(e) => setIssuer(e.target.value)}
+                      required
                     />
                   </div>
                   <div>

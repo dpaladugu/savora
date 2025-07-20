@@ -65,6 +65,8 @@ export function AccountManager() {
         name: newAccountName.trim(),
         type: newAccountType,
         balance: 0,
+        provider: "Manual", // Add required field
+        isActive: true, // Add required field
         created_at: new Date(),
         updated_at: new Date()
       });
