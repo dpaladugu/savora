@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Trash2, Plus, Edit, Repeat, CalendarIcon, DollarSign } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -53,7 +55,18 @@ export function RecurringTransactionsPage() {
     const fetchRecurringTransactions = async () => {
       try {
         const transactions = await RecurringTransactionService.getRecurringTransactions(user.uid);
-        setRecurringTransactions(transactions);
+        // Map the data to match our interface
+        const mappedTransactions = transactions.map(t => ({
+          id: t.id || '',
+          description: t.description || '',
+          amount: t.amount || 0,
+          accountId: t.account_id || '',
+          categoryId: t.category_id || '',
+          startDate: new Date(t.start_date || new Date()),
+          endDate: t.end_date ? new Date(t.end_date) : undefined,
+          frequency: t.frequency || 'monthly'
+        }));
+        setRecurringTransactions(mappedTransactions);
       } catch (error) {
         console.error("Failed to fetch recurring transactions:", error);
         toast.error("Failed to fetch recurring transactions.");
@@ -72,7 +85,21 @@ export function RecurringTransactionsPage() {
         return;
       }
 
-      const newTransaction = {
+      const newTransactionData = {
+        description,
+        amount: Number(amount),
+        account_id: accountId,
+        category_id: categoryId,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
+        frequency,
+        user_id: user.uid,
+      };
+
+      await RecurringTransactionService.addRecurringTransaction(newTransactionData);
+      
+      const newTransaction: RecurringTransaction = {
+        id: "temp_" + Date.now(), // Temporary ID
         description,
         amount: Number(amount),
         accountId,
@@ -81,15 +108,8 @@ export function RecurringTransactionsPage() {
         endDate,
         frequency,
       };
-
-      await RecurringTransactionService.addRecurringTransaction(user.uid, newTransaction);
-      setRecurringTransactions([
-        ...recurringTransactions,
-        {
-          id: "temp_" + Date.now(), // Temporary ID
-          ...newTransaction,
-        },
-      ]);
+      
+      setRecurringTransactions([...recurringTransactions, newTransaction]);
       closeModal();
       toast.success("Recurring transaction added successfully!");
     } catch (error) {
@@ -107,7 +127,20 @@ export function RecurringTransactionsPage() {
         return;
       }
 
-      const updatedTransaction = {
+      const updatedTransactionData = {
+        description,
+        amount: Number(amount),
+        account_id: accountId,
+        category_id: categoryId,
+        start_date: startDate.toISOString().split('T')[0],
+        end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
+        frequency,
+        user_id: user.uid,
+      };
+
+      await RecurringTransactionService.updateRecurringTransaction(selectedTransaction.id, updatedTransactionData);
+      
+      const updatedTransaction: RecurringTransaction = {
         id: selectedTransaction.id,
         description,
         amount: Number(amount),
@@ -117,8 +150,7 @@ export function RecurringTransactionsPage() {
         endDate,
         frequency,
       };
-
-      await RecurringTransactionService.updateRecurringTransaction(user.uid, selectedTransaction.id, updatedTransaction);
+      
       setRecurringTransactions(
         recurringTransactions.map((transaction) =>
           transaction.id === selectedTransaction.id ? updatedTransaction : transaction
@@ -136,7 +168,7 @@ export function RecurringTransactionsPage() {
     if (!user) return;
 
     try {
-      await RecurringTransactionService.deleteRecurringTransaction(user.uid, id);
+      await RecurringTransactionService.deleteRecurringTransaction(id);
       setRecurringTransactions(recurringTransactions.filter((transaction) => transaction.id !== id));
       toast.success("Recurring transaction deleted successfully!");
     } catch (error) {
@@ -258,7 +290,7 @@ export function RecurringTransactionsPage() {
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
-                    setAmount(value);
+                    setAmount(value === "" ? "" : Number(value));
                   }
                 }}
                 className="col-span-3"
@@ -309,7 +341,7 @@ export function RecurringTransactionsPage() {
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="right">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -337,7 +369,7 @@ export function RecurringTransactionsPage() {
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="right">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}
@@ -405,7 +437,7 @@ export function RecurringTransactionsPage() {
                 onChange={(e) => {
                   const value = e.target.value;
                   if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
-                    setAmount(value);
+                    setAmount(value === "" ? "" : Number(value));
                   }
                 }}
                 className="col-span-3"
@@ -456,7 +488,7 @@ export function RecurringTransactionsPage() {
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="right">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={startDate}
@@ -484,7 +516,7 @@ export function RecurringTransactionsPage() {
                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="right">
+                <PopoverContent className="w-auto p-0" align="start">
                   <Calendar
                     mode="single"
                     selected={endDate}

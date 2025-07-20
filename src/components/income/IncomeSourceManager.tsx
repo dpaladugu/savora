@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +11,17 @@ import { useAuth } from "@/services/auth-service";
 import { IncomeSourceService } from '@/services/IncomeSourceService';
 import { useToast } from "@/hooks/use-toast";
 
-// Define the interface to match what we're using
+// Define the interface to match the actual service response
+interface IncomeSourceData {
+  id?: string;
+  name: string;
+  source_type?: string;
+  expected_amount?: number;
+  frequency?: string;
+  user_id?: string;
+}
+
+// Use local interface that matches what we display
 interface IncomeSource {
   id?: string;
   name: string;
@@ -20,7 +31,6 @@ interface IncomeSource {
   user_id?: string;
 }
 
-// Use IncomeSource consistently throughout
 export function IncomeSourceManager() {
   const [incomeSources, setIncomeSources] = useState<IncomeSource[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -37,12 +47,12 @@ export function IncomeSourceManager() {
       if (!user?.uid) return;
       try {
         const sources = await IncomeSourceService.getIncomeSources(user.uid);
-        // Map the data to match our interface
-        const mappedSources = sources.map(source => ({
+        // Map the data from service response to our local interface
+        const mappedSources = sources.map((source: IncomeSourceData) => ({
           id: source.id,
           name: source.name,
-          type: source.type || 'salary',
-          amount: source.amount || 0,
+          type: source.source_type || 'salary',
+          amount: source.expected_amount || 0,
           frequency: source.frequency || 'monthly',
           user_id: source.user_id
         }));
@@ -79,20 +89,21 @@ export function IncomeSourceManager() {
     }
 
     try {
+      // Map our local interface to service expected format
       await IncomeSourceService.addIncomeSource({
         name: name.trim(),
-        type,
-        amount: Number(amount),
+        source_type: type,
+        expected_amount: Number(amount),
         frequency,
         user_id: user.uid,
       });
 
       const sources = await IncomeSourceService.getIncomeSources(user.uid);
-      const mappedSources = sources.map(source => ({
+      const mappedSources = sources.map((source: IncomeSourceData) => ({
         id: source.id,
         name: source.name,
-        type: source.type || 'salary',
-        amount: source.amount || 0,
+        type: source.source_type || 'salary',
+        amount: source.expected_amount || 0,
         frequency: source.frequency || 'monthly',
         user_id: source.user_id
       }));
@@ -117,11 +128,11 @@ export function IncomeSourceManager() {
     try {
       await IncomeSourceService.deleteIncomeSource(id);
       const sources = await IncomeSourceService.getIncomeSources(user.uid);
-      const mappedSources = sources.map(source => ({
+      const mappedSources = sources.map((source: IncomeSourceData) => ({
         id: source.id,
         name: source.name,
-        type: source.type || 'salary',
-        amount: source.amount || 0,
+        type: source.source_type || 'salary',
+        amount: source.expected_amount || 0,
         frequency: source.frequency || 'monthly',
         user_id: source.user_id
       }));
@@ -154,18 +165,18 @@ export function IncomeSourceManager() {
     try {
       await IncomeSourceService.updateIncomeSource(editingSource.id, {
         name: name.trim(),
-        type,
-        amount: Number(amount),
+        source_type: type,
+        expected_amount: Number(amount),
         frequency,
         user_id: user.uid,
       });
 
       const sources = await IncomeSourceService.getIncomeSources(user.uid);
-      const mappedSources = sources.map(source => ({
+      const mappedSources = sources.map((source: IncomeSourceData) => ({
         id: source.id,
         name: source.name,
-        type: source.type || 'salary',
-        amount: source.amount || 0,
+        type: source.source_type || 'salary',
+        amount: source.expected_amount || 0,
         frequency: source.frequency || 'monthly',
         user_id: source.user_id
       }));

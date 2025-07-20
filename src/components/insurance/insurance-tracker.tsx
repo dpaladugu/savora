@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,8 @@ import {
   Calendar as CalendarLucide,
   TrendingUp,
   AlertCircle,
-  Info
+  Info,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -63,7 +65,19 @@ export function InsuranceTracker() {
       setLoading(true);
       try {
         const data = await InsuranceService.getPolicies(user.uid);
-        setPolicies(data);
+        // Map the data to match our interface
+        const mappedPolicies = data.map(policy => ({
+          id: policy.id || '',
+          type: policy.type || '',
+          provider: policy.provider || policy.company_name || '',
+          policyNumber: policy.policy_number || '',
+          coverageAmount: policy.coverage_amount || 0,
+          premium: policy.premium || 0,
+          startDate: new Date(policy.start_date || new Date()),
+          endDate: new Date(policy.end_date || new Date()),
+          notes: policy.notes || ''
+        }));
+        setPolicies(mappedPolicies);
       } catch (error) {
         toast.error("Failed to load insurance policies.");
         console.error("InsuranceTracker: Error fetching policies", error);
@@ -97,7 +111,7 @@ export function InsuranceTracker() {
   const handleDeletePolicy = async (id: string) => {
     if (!user) return;
     try {
-      await InsuranceService.deletePolicy(user.uid, id);
+      await InsuranceService.deletePolicy(id);
       setPolicies(policies.filter(p => p.id !== id));
       toast.success("Policy deleted.");
     } catch (error) {
@@ -109,15 +123,39 @@ export function InsuranceTracker() {
   const handleSavePolicy = async () => {
     if (!user || !selectedPolicy) return;
     try {
+      const policyData = {
+        type: selectedPolicy.type,
+        provider: selectedPolicy.provider,
+        company_name: selectedPolicy.provider,
+        policy_number: selectedPolicy.policyNumber,
+        coverage_amount: selectedPolicy.coverageAmount,
+        premium: selectedPolicy.premium,
+        start_date: selectedPolicy.startDate.toISOString().split('T')[0],
+        end_date: selectedPolicy.endDate.toISOString().split('T')[0],
+        notes: selectedPolicy.notes || '',
+        user_id: user.uid
+      };
+
       if (selectedPolicy.id) {
         // Update existing
-        await InsuranceService.updatePolicy(user.uid, selectedPolicy);
+        await InsuranceService.updatePolicy(selectedPolicy.id, policyData);
         setPolicies(policies.map(p => p.id === selectedPolicy.id ? selectedPolicy : p));
         toast.success("Policy updated.");
       } else {
         // Create new
-        const newPolicy = await InsuranceService.createPolicy(user.uid, selectedPolicy);
-        setPolicies([...policies, newPolicy]);
+        const newPolicy = await InsuranceService.addPolicy(policyData);
+        const mappedPolicy = {
+          id: newPolicy.id || '',
+          type: newPolicy.type || '',
+          provider: newPolicy.provider || newPolicy.company_name || '',
+          policyNumber: newPolicy.policy_number || '',
+          coverageAmount: newPolicy.coverage_amount || 0,
+          premium: newPolicy.premium || 0,
+          startDate: new Date(newPolicy.start_date || new Date()),
+          endDate: new Date(newPolicy.end_date || new Date()),
+          notes: newPolicy.notes || ''
+        };
+        setPolicies([...policies, mappedPolicy]);
         toast.success("Policy added.");
       }
       setIsEditing(false);
@@ -149,7 +187,8 @@ export function InsuranceTracker() {
             <p>Loading policies...</p>
           ) : (
             <>
-              <Button onClick={handleAddPolicy} className="mb-4" leftIcon={<Plus />}>
+              <Button onClick={handleAddPolicy} className="mb-4">
+                <Plus className="w-4 h-4 mr-2" />
                 Add Policy
               </Button>
               {policies.length === 0 ? (
@@ -166,10 +205,12 @@ export function InsuranceTracker() {
                         </div>
                       </div>
                       <div className="flex space-x-2 mt-2 md:mt-0">
-                        <Button variant="outline" size="sm" onClick={() => handleEditPolicy(policy)} leftIcon={<Edit />}>
+                        <Button variant="outline" size="sm" onClick={() => handleEditPolicy(policy)}>
+                          <Edit className="w-4 h-4 mr-2" />
                           Edit
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDeletePolicy(policy.id)} leftIcon={<Trash2 />}>
+                        <Button variant="destructive" size="sm" onClick={() => handleDeletePolicy(policy.id)}>
+                          <Trash2 className="w-4 h-4 mr-2" />
                           Delete
                         </Button>
                       </div>
@@ -265,10 +306,12 @@ export function InsuranceTracker() {
               </div>
             </div>
             <div className="mt-4 flex space-x-2">
-              <Button onClick={handleSavePolicy} leftIcon={<CheckCircle />}>
+              <Button onClick={handleSavePolicy}>
+                <CheckCircle className="w-4 h-4 mr-2" />
                 Save
               </Button>
-              <Button variant="outline" onClick={handleCancelEdit} leftIcon={<X />}>
+              <Button variant="outline" onClick={handleCancelEdit}>
+                <X className="w-4 h-4 mr-2" />
                 Cancel
               </Button>
             </div>
