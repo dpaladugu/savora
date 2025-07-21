@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,7 +71,7 @@ export function TagManager() {
 
   const loadTags = async () => {
     try {
-      const loadedTags = await TagService.getAllTags();
+      const loadedTags = await TagService.getTags();
       setTags(loadedTags);
     } catch (error: any) {
       toast.error(`Failed to load tags: ${error.message}`);
@@ -84,7 +85,16 @@ export function TagManager() {
     }
 
     try {
-      const newTag = await TagService.createTag({ name, description, color, icon });
+      const newTagId = await TagService.addTag({ name, color, icon });
+      const newTag: Tag = {
+        id: newTagId,
+        name,
+        description,
+        color,
+        icon,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
       setTags([...tags, newTag]);
       setOpen(false);
       clearForm();
@@ -106,8 +116,8 @@ export function TagManager() {
     }
 
     try {
-      const updatedTag = await TagService.updateTag(editTag.id, { name, description, color, icon });
-      setTags(tags.map(tag => tag.id === editTag.id ? updatedTag : tag));
+      await TagService.updateTag(editTag.id, { name, color, icon });
+      setTags(tags.map(tag => tag.id === editTag.id ? { ...tag, name, color, icon } : tag));
       setOpen(false);
       clearForm();
       setEditTag(null);

@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { RecurringTransactionService } from "@/services/RecurringTransactionService";
 import { useAuth } from "@/services/auth-service";
+import type { RecurringTransactionRecord } from "@/db";
 
 interface RecurringTransaction {
   id: string;
@@ -25,7 +26,7 @@ interface RecurringTransaction {
   categoryId: string;
   startDate: Date;
   endDate?: Date;
-  frequency: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
 }
 
 const frequencyOptions = [
@@ -46,7 +47,7 @@ export function RecurringTransactionsPage() {
   const [categoryId, setCategoryId] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [frequency, setFrequency] = useState("");
+  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
   const { user } = useAuth();
 
   useEffect(() => {
@@ -56,12 +57,12 @@ export function RecurringTransactionsPage() {
       try {
         const transactions = await RecurringTransactionService.getRecurringTransactions(user.uid);
         // Map the data to match our interface
-        const mappedTransactions = transactions.map(t => ({
+        const mappedTransactions = transactions.map((t: RecurringTransactionRecord) => ({
           id: t.id || '',
           description: t.description || '',
           amount: t.amount || 0,
-          accountId: t.account_id || '',
-          categoryId: t.category_id || '',
+          accountId: t.account || '',
+          categoryId: t.category || '',
           startDate: new Date(t.start_date || new Date()),
           endDate: t.end_date ? new Date(t.end_date) : undefined,
           frequency: t.frequency || 'monthly'
@@ -88,18 +89,20 @@ export function RecurringTransactionsPage() {
       const newTransactionData = {
         description,
         amount: Number(amount),
-        account_id: accountId,
-        category_id: categoryId,
+        account: accountId,
+        category: categoryId,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
+        type: 'recurring',
+        interval: 1,
         user_id: user.uid,
       };
 
       await RecurringTransactionService.addRecurringTransaction(newTransactionData);
       
       const newTransaction: RecurringTransaction = {
-        id: "temp_" + Date.now(), // Temporary ID
+        id: "temp_" + Date.now(),
         description,
         amount: Number(amount),
         accountId,
@@ -130,11 +133,13 @@ export function RecurringTransactionsPage() {
       const updatedTransactionData = {
         description,
         amount: Number(amount),
-        account_id: accountId,
-        category_id: categoryId,
+        account: accountId,
+        category: categoryId,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
+        type: 'recurring',
+        interval: 1,
         user_id: user.uid,
       };
 
@@ -185,7 +190,7 @@ export function RecurringTransactionsPage() {
     setCategoryId("");
     setStartDate(undefined);
     setEndDate(undefined);
-    setFrequency("");
+    setFrequency('monthly');
   };
 
   const openEditModal = (transaction: RecurringTransaction) => {
@@ -210,7 +215,7 @@ export function RecurringTransactionsPage() {
     setCategoryId("");
     setStartDate(undefined);
     setEndDate(undefined);
-    setFrequency("");
+    setFrequency('monthly');
   };
 
   return (
@@ -262,7 +267,7 @@ export function RecurringTransactionsPage() {
         </div>
       </CardContent>
 
-      {/* Add Recurring Transaction Modal */}
+      {/* Add Modal */}
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
@@ -384,7 +389,7 @@ export function RecurringTransactionsPage() {
               <Label htmlFor="frequency" className="text-right">
                 Frequency
               </Label>
-              <Select onValueChange={setFrequency}>
+              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
@@ -398,7 +403,7 @@ export function RecurringTransactionsPage() {
               </Select>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex justify-end space-x-2">
             <Button type="button" variant="secondary" onClick={closeModal}>
               Cancel
             </Button>
@@ -409,7 +414,7 @@ export function RecurringTransactionsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Recurring Transaction Modal */}
+      {/* Edit Modal */}
       <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>

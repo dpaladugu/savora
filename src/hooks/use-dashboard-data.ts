@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ExpenseService } from '@/services/ExpenseService';
 import { IncomeService } from '@/services/IncomeService';
@@ -61,19 +62,19 @@ export const useDashboardData = () => {
           InvestmentService.getInvestments(),
           CreditCardService.getCreditCards(),
           AccountService.getAccounts(),
-          InsuranceService.getInsurances(),
+          InsuranceService.getPolicies(user.uid),
           VehicleService.getVehicles(),
           GoldInvestmentService.getGoldInvestments(),
         ]);
 
         const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
         const totalIncome = income.reduce((sum, income) => sum + income.amount, 0);
-        const totalInvestments = investments.reduce((sum, investment) => sum + investment.value, 0);
+        const totalInvestments = investments.reduce((sum, investment) => sum + investment.amount, 0);
         const totalCreditCardBalance = creditCards.reduce((sum, card) => sum + card.balance, 0);
         const totalAccountBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
         const totalInsuranceCoverage = insurances.reduce((sum, insurance) => sum + insurance.coverageAmount, 0);
-        const totalVehicleValue = vehicles.reduce((sum, vehicle) => sum + vehicle.value, 0);
-        const totalGoldInvestmentValue = goldInvestments.reduce((sum, investment) => sum + investment.grams * investment.pricePerGram, 0);
+        const totalVehicleValue = vehicles.reduce((sum, vehicle) => sum + vehicle.currentValue, 0);
+        const totalGoldInvestmentValue = goldInvestments.reduce((sum, investment) => sum + investment.totalValue, 0);
 
         setDashboardData({
           totalExpenses,
