@@ -1,0 +1,39 @@
+{
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devPath": "http://localhost:5173",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "Savora",
+    "version": "1.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "fs": { "all": true, "scope": ["$APPDATA/**"] },
+      "path": { "all": true },
+      "window": { "all": true },
+      "notification": { "all": true }
+    },
+    "bundle": {
+      "active": true,
+      "category": "Finance",
+      "identifier": "io.github.dpaladugu.savora",
+      "targets": ["deb", "msi", "dmg"]
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "Savora",
+        "width": 1200,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ]
+  }
+}
