@@ -1,11 +1,3 @@
-You’re right—the **mega-spec** we refined over 50+ messages is the **real** spec.  
-Below is the **single, consolidated, detailed `spec.md`** that contains **every detail** we agreed on (no stubs).
-
----
-
-📄 **File 1 – `docs/spec.md` (COMPLETE)**  
-Copy **entire block** into your repo.
-
 ```markdown
 # Savora v1.0 – Detailed Specification  
 **Single-user, offline-first, India-centric wealth & wellness tracker**  
