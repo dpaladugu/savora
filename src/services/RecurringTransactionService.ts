@@ -23,10 +23,22 @@ export class RecurringTransactionService {
       
       // Convert AppRecurringTransaction to DbRecurringTransaction format
       const recordToAdd: DbRecurringTransaction = {
-        ...transactionData,
         id: newId,
-        frequency: transactionData.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly',
+        user_id: transactionData.user_id,
+        amount: transactionData.amount,  
+        description: transactionData.description,
+        category: transactionData.category,
+        frequency: transactionData.frequency,
+        interval: transactionData.interval,
+        start_date: transactionData.start_date,
+        end_date: transactionData.end_date,
+        day_of_week: transactionData.day_of_week,
+        day_of_month: transactionData.day_of_month,
         next_occurrence_date: transactionData.next_date,
+        is_active: transactionData.is_active,
+        type: transactionData.type,
+        payment_method: transactionData.payment_method,
+        account: transactionData.account,
         created_at: new Date(),
         updated_at: new Date(),
       };
@@ -58,11 +70,24 @@ export class RecurringTransactionService {
     try {
       // Convert AppRecurringTransaction updates to DbRecurringTransaction format
       const dbUpdates: Partial<DbRecurringTransaction> = {
-        ...updates,
         updated_at: new Date(),
-        next_occurrence_date: updates.next_date,
-        frequency: updates.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
       };
+      
+      // Handle each field individually to avoid type conflicts
+      if (updates.amount !== undefined) dbUpdates.amount = updates.amount;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
+      if (updates.frequency !== undefined) dbUpdates.frequency = updates.frequency;
+      if (updates.interval !== undefined) dbUpdates.interval = updates.interval;
+      if (updates.start_date !== undefined) dbUpdates.start_date = updates.start_date;
+      if (updates.end_date !== undefined) dbUpdates.end_date = updates.end_date;
+      if (updates.day_of_week !== undefined) dbUpdates.day_of_week = updates.day_of_week;
+      if (updates.day_of_month !== undefined) dbUpdates.day_of_month = updates.day_of_month;      
+      if (updates.next_date !== undefined) dbUpdates.next_occurrence_date = updates.next_date;
+      if (updates.is_active !== undefined) dbUpdates.is_active = updates.is_active;
+      if (updates.type !== undefined) dbUpdates.type = updates.type;
+      if (updates.payment_method !== undefined) dbUpdates.payment_method = updates.payment_method;
+      if (updates.account !== undefined) dbUpdates.account = updates.account;
       
       const updatedCount = await db.recurringTransactions.update(id, dbUpdates);
       return updatedCount;
@@ -115,8 +140,25 @@ export class RecurringTransactionService {
       
       // Convert DbRecurringTransaction to AppRecurringTransaction format
       return transactions.map(transaction => ({
-        ...transaction,
+        id: transaction.id,
+        user_id: transaction.user_id,
+        amount: transaction.amount,
+        description: transaction.description,
+        category: transaction.category,
+        frequency: transaction.frequency,
+        interval: transaction.interval,
+        start_date: transaction.start_date,
+        end_date: transaction.end_date,
+        day_of_week: transaction.day_of_week,
+        day_of_month: transaction.day_of_month,
+        next_occurrence_date: transaction.next_occurrence_date,
         next_date: transaction.next_occurrence_date || transaction.start_date,
+        is_active: transaction.is_active,
+        type: transaction.type,
+        payment_method: transaction.payment_method,
+        account: transaction.account,
+        created_at: transaction.created_at,
+        updated_at: transaction.updated_at,
       }));
     } catch (error) {
       console.error(`Error in RecurringTransactionService.getRecurringTransactions for user ${userId}:`, error);

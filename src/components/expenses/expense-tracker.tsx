@@ -37,8 +37,8 @@ export interface AppIncome {
   source_recurring_transaction_id?: string;
 }
 
-// Extended Expense type with consistent tags property
-interface ExtendedExpense extends AppExpense {
+// Use a different name to avoid conflicts with the imported ExtendedExpense
+interface LocalExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
@@ -73,7 +73,7 @@ export function ExpenseTracker() {
   const { toast } = useToast();
   const [showAddForm, setShowAddForm] = useState(false);
   const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading } = useSingleLoading();
-  const [editingExpense, setEditingExpense] = useState<ExtendedExpense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<LocalExtendedExpense | null>(null);
   const [filters, setFilters] = useState<ExpenseFilterCriteria>(initialFiltersState);
 
   EnhancedNotificationService.setToastFunction(toast);
@@ -106,8 +106,8 @@ export function ExpenseTracker() {
     // Only allow editing expenses, not incomes
     if ('payment_method' in item) {
       const expense = item as ExtendedAppExpense;
-      // Convert to ExtendedExpense format
-      const expenseWithStringTags: ExtendedExpense = {
+      // Convert to LocalExtendedExpense format
+      const expenseWithStringTags: LocalExtendedExpense = {
         ...expense,
         tags: expense.tags || expense.tags_flat || '', // Convert to string
         type: expense.type || 'expense'
