@@ -83,7 +83,22 @@ export function InvestmentsTracker() {
     
     try {
       const data = await InvestmentService.getAll(user.uid);
-      setInvestments(data);
+      const transformedData: Investment[] = data.map(investment => ({
+        id: investment.id || '',
+        name: investment.name || '',
+        type: investment.type as Investment['type'] || 'other',
+        symbol: investment.symbol,
+        quantity: investment.quantity || 0,
+        purchase_price: investment.purchase_price || 0,
+        current_price: investment.current_price || 0,
+        purchase_date: new Date(investment.purchase_date || new Date()),
+        platform: investment.platform || '',
+        notes: investment.notes,
+        user_id: investment.user_id || user.uid,
+        created_at: new Date(investment.created_at || new Date()),
+        updated_at: new Date(investment.updated_at || new Date())
+      }));
+      setInvestments(transformedData);
     } catch (error) {
       console.error('Error loading investments:', error);
       toast.error('Failed to load investments');
@@ -97,11 +112,18 @@ export function InvestmentsTracker() {
     setIsLoading(true);
     try {
       const investmentData = {
-        ...formData,
+        name: formData.name,
+        type: formData.type,
+        symbol: formData.symbol,
         quantity: parseFloat(formData.quantity),
         purchase_price: parseFloat(formData.purchase_price),
         current_price: parseFloat(formData.current_price),
-        user_id: user.uid
+        purchase_date: formData.purchase_date,
+        platform: formData.platform,
+        notes: formData.notes,
+        user_id: user.uid,
+        fund_name: formData.name,
+        investment_type: formData.type
       };
 
       if (editingId) {

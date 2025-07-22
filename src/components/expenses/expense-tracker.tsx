@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,18 +37,19 @@ export interface AppIncome {
   source_recurring_transaction_id?: string;
 }
 
-// Extended Expense type with additional properties
+// Extended Expense type with additional properties - fix tags type to be consistent
 interface ExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
-  type: string; // Make type required to match Expense interface
+  type: string;
+  tags?: string; // Keep as string to match AppExpense.tags
 }
 
 // Extended types for union handling
 interface ExtendedAppExpense extends AppExpense {
   tags_flat?: string;
-  type: string; // Make type required to match Expense interface
+  type: string;
 }
 
 interface ExtendedAppIncome extends AppIncome {
@@ -106,7 +106,12 @@ export function ExpenseTracker() {
     // Only allow editing expenses, not incomes
     if ('payment_method' in item) {
       const expense = item as ExtendedExpense;
-      setEditingExpense(expense);
+      // Ensure tags is a string when setting editing expense
+      const expenseWithStringTags = {
+        ...expense,
+        tags: expense.tags || ''
+      };
+      setEditingExpense(expenseWithStringTags);
       setShowAddForm(true);
     }
   };

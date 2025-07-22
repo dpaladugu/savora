@@ -64,7 +64,7 @@ export function IncomeSourceManager() {
           end_date: undefined,
           category: income.category,
           notes: income.description || '',
-          user_id: income.user_id || ''
+          user_id: user?.uid || ''
         }));
         setIncomeSources(mappedIncomeSources);
       } catch (error) {
@@ -93,6 +93,7 @@ export function IncomeSourceManager() {
         category,
         description: notes,
         user_id: user.uid,
+        type: 'income' as const,
       };
 
       await IncomeService.addIncome(newIncomeData);
@@ -135,6 +136,7 @@ export function IncomeSourceManager() {
         category,
         description: notes,
         user_id: user.uid,
+        type: 'income' as const,
       };
 
       await IncomeService.updateIncome(selectedIncomeSource.id, updatedIncomeData);

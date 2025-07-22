@@ -59,7 +59,18 @@ export function VehicleManager() {
         return;
       }
       const fetchedVehicles = await VehicleService.getAll(auth.user.uid);
-      setVehicles(fetchedVehicles);
+      // Transform the data to match our Vehicle interface
+      const transformedVehicles: Vehicle[] = fetchedVehicles.map(vehicle => ({
+        id: vehicle.id || '',
+        type: vehicle.type || 'Car',
+        make: vehicle.make || '',
+        model: vehicle.model || '',
+        year: vehicle.year || new Date().getFullYear(),
+        purchaseDate: vehicle.purchaseDate ? new Date(vehicle.purchaseDate) : null,
+        purchasePrice: vehicle.purchasePrice || 0,
+        notes: vehicle.notes || ''
+      }));
+      setVehicles(transformedVehicles);
     } catch (error) {
       console.error("Error fetching vehicles:", error);
       toast.error("Failed to load vehicles.");
