@@ -37,20 +37,17 @@ export interface AppIncome {
   source_recurring_transaction_id?: string;
 }
 
-// Local expense interface that doesn't extend from Expense to avoid conflicts
+// Local expense interface with exact fields needed
 interface LocalExtendedExpense {
   id?: string;
   user_id?: string;
   date: string;
   amount: number;
   category: string;
-  description?: string;
+  description: string;
   payment_method?: string;
   type: string;
-  tags: string[]; // Array format for internal use
-  note?: string;
-  merchant?: string;
-  source?: string;
+  tags: string[];
   account?: string;
   created_at?: string;
   updated_at?: string;
@@ -123,10 +120,10 @@ export function ExpenseTracker() {
         date: expense.date,
         amount: expense.amount,
         category: expense.category,
-        description: expense.description,
+        description: expense.description || '',
         payment_method: expense.payment_method,
         type: expense.type || 'expense',
-        tags: expense.tags ? expense.tags.split(',').map(tag => tag.trim()) : [], // Convert string to string[]
+        tags: expense.tags ? expense.tags.split(',').map(tag => tag.trim()) : [],
         account: expense.account,
         created_at: expense.created_at,
         updated_at: expense.updated_at

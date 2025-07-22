@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,13 +19,14 @@ export type RecurringTransactionFormData = Partial<Omit<RecurringTransactionReco
   id?: string;
   amount: string;
   interval: string;
+  account?: string;
 };
 
 interface RecurringTransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: RecurringTransactionRecord | null;
-  onSubmit?: (data: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
+  onSubmit?: (data: Omit<RecurringTransactionRecord, 'created_at' | 'updated_at'>) => Promise<void>;
 }
 
 const calculateNextOccurrenceDate = (
@@ -92,6 +94,7 @@ const defaultInitialFormData: RecurringTransactionFormData = {
   day_of_week: undefined,
   day_of_month: undefined,
   is_active: true,
+  account: '',
 };
 
 export function RecurringTransactionForm({ isOpen, onClose, initialData, onSubmit }: RecurringTransactionFormProps) {
@@ -117,6 +120,7 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData, onSubmi
           interval: initialData.interval.toString(),
           start_date: initialData.start_date ? format(parseISO(initialData.start_date), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd'),
           end_date: initialData.end_date ? format(parseISO(initialData.end_date), 'yyyy-MM-dd') : undefined,
+          account: initialData.account || '',
         });
       } else {
         setFormData(defaultInitialFormData);
@@ -187,7 +191,8 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData, onSubmi
     const amountNum = parseFloat(formData.amount as string);
     const intervalNum = parseInt(formData.interval as string, 10);
 
-    const recordData: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'> = {
+    const recordData: Omit<RecurringTransactionRecord, 'created_at' | 'updated_at'> = {
+      id: formData.id || '',
       user_id: formData.user_id || '',
       description: formData.description!,
       amount: amountNum,
@@ -419,6 +424,17 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData, onSubmi
               </PopoverContent>
             </Popover>
             <FieldError field="end_date" />
+          </div>
+
+          <div>
+            <Label htmlFor="account" className="font-medium">Account (Optional)</Label>
+            <Input
+              id="account"
+              name="account"
+              value={formData.account || ''}
+              onChange={handleChange}
+              placeholder="Account name or identifier"
+            />
           </div>
 
           <div className="flex items-center space-x-2 pt-2">

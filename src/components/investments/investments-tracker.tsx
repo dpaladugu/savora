@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,6 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InvestmentService } from "@/services/InvestmentService";
 import { useAuth } from "@/services/auth-service";
-import type { InvestmentData } from "@/types/jsonPreload";
 
 interface Investment {
   id: string;
@@ -86,12 +86,12 @@ export function InvestmentsTracker() {
       const data = await InvestmentService.getAll(user.uid);
       const transformedData: Investment[] = data.map(investment => ({
         id: investment.id || '',
-        name: investment.fund_name || investment.fund_name || 'Unnamed Investment',
+        name: investment.fund_name || 'Unnamed Investment',
         type: (investment.investment_type as Investment['type']) || 'other',
         symbol: investment.fund_name || '',
-        quantity: investment.amount || 0,
-        purchase_price: investment.amount || 0,
-        current_price: investment.current_value || investment.amount || 0,
+        quantity: investment.current_value || 0,
+        purchase_price: investment.current_value || 0,
+        current_price: investment.current_value || 0,
         purchase_date: new Date(investment.purchaseDate || new Date()),
         platform: investment.source || '',
         notes: investment.fund_name || '',
@@ -115,7 +115,6 @@ export function InvestmentsTracker() {
       const investmentData = {
         fund_name: formData.name,
         investment_type: formData.type,
-        amount: parseFloat(formData.purchase_price) * parseFloat(formData.quantity) || 0,
         current_value: parseFloat(formData.current_price) * parseFloat(formData.quantity) || 0,
         purchaseDate: formData.purchase_date.toISOString().split('T')[0],
         user_id: user.uid,
