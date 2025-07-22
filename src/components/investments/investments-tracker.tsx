@@ -92,7 +92,7 @@ export function InvestmentsTracker() {
         purchase_price: investment.current_value || 0,
         current_price: investment.current_value || 0,
         purchase_date: new Date(investment.purchaseDate || new Date()),
-        platform: investment.source || '',
+        platform: investment.platform || investment.fund_name || '',
         notes: investment.fund_name || '',
         user_id: investment.user_id || user.uid,
         created_at: new Date(investment.created_at || new Date()),
