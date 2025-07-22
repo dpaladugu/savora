@@ -1,3 +1,4 @@
+
 import Dexie, { type EntityTable } from 'dexie';
 
 // ---------- helper interfaces ----------
@@ -69,7 +70,7 @@ export interface ACDEntry {
   date: Date; amount: number; rentDeduction: number; billMonth: string;
 }
 export interface CapitalGain {
-  assetId: string; purchaseDate: Date; purchasePrice: number;
+  id: string; assetId: string; purchaseDate: Date; purchasePrice: number;
   purchaseIndex: number; saleDate?: Date; salePrice?: number;
   saleIndex?: number; xirr?: number;
 }
@@ -134,7 +135,7 @@ export class SavoraDB extends Dexie {
       rentalProperties: 'id, address, owner',
       tenants: 'id, propertyId, tenantName',
       acdEntries: 'id, propertyId, tenantId',
-      capitalGains: 'assetId, purchaseDate',
+      capitalGains: 'id, assetId, purchaseDate',
       subscriptions: 'id, vendor, nextDebit',
       repairLogs: 'id, propertyId, date',
       healthProfiles: 'id, name',

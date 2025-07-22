@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ExpenseService } from '@/services/ExpenseService';
 import { IncomeService } from '@/services/IncomeService';
@@ -39,8 +38,8 @@ export const useEmergencyFund = () => {
     
     try {
       const expenses = await ExpenseService.getExpenses();
-      const income = await IncomeService.getIncomeSources();
-      const accounts = await AccountService.getAccounts();
+      const income = await IncomeService.getIncomes();
+      const accounts = await AccountService.getAccounts(user.uid);
 
       const totalExpenses = expenses.reduce((acc, expense) => acc + expense.amount, 0);
       const totalIncome = income.reduce((acc, income) => acc + income.amount, 0);

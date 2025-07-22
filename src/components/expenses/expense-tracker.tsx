@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -234,7 +235,7 @@ export function ExpenseTracker() {
       <CriticalErrorBoundary>
         <div className="space-y-4 p-4 md:p-0">
           <EnhancedAddExpenseForm
-            initialExpense={editingExpense}
+            expense={editingExpense}
             onExpenseAdded={() => { setShowAddForm(false); setEditingExpense(null); }}
             onExpenseUpdated={() => { setShowAddForm(false); setEditingExpense(null); }}
           />

@@ -58,13 +58,13 @@ export const useDashboardData = () => {
           goldInvestments,
         ] = await Promise.all([
           ExpenseService.getExpenses(),
-          IncomeService.getIncomeSources(),
-          InvestmentService.getInvestments(),
-          CreditCardService.getCreditCards(),
-          AccountService.getAccounts(),
+          IncomeService.getIncomes(),
+          InvestmentService.getInvestments(user.uid),
+          CreditCardService.getCreditCards(user.uid),
+          AccountService.getAccounts(user.uid),
           InsuranceService.getPolicies(user.uid),
-          VehicleService.getVehicles(),
-          GoldInvestmentService.getGoldInvestments(),
+          VehicleService.getVehicles(user.uid),
+          GoldInvestmentService.getGoldInvestments(user.uid),
         ]);
 
         const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);

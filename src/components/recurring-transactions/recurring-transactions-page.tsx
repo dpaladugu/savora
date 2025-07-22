@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -56,12 +55,11 @@ export function RecurringTransactionsPage() {
     const fetchRecurringTransactions = async () => {
       try {
         const transactions = await RecurringTransactionService.getRecurringTransactions(user.uid);
-        // Map the data to match our interface
         const mappedTransactions = transactions.map((t: RecurringTransactionRecord) => ({
           id: t.id || '',
           description: t.description || '',
           amount: t.amount || 0,
-          accountId: t.account || '',
+          accountId: t.account_id || '',
           categoryId: t.category || '',
           startDate: new Date(t.start_date || new Date()),
           endDate: t.end_date ? new Date(t.end_date) : undefined,
@@ -89,12 +87,12 @@ export function RecurringTransactionsPage() {
       const newTransactionData = {
         description,
         amount: Number(amount),
-        account: accountId,
+        account_id: accountId,
         category: categoryId,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
-        type: 'recurring',
+        type: 'expense' as const,
         interval: 1,
         user_id: user.uid,
       };
@@ -133,12 +131,12 @@ export function RecurringTransactionsPage() {
       const updatedTransactionData = {
         description,
         amount: Number(amount),
-        account: accountId,
+        account_id: accountId,
         category: categoryId,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
-        type: 'recurring',
+        type: 'expense' as const,
         interval: 1,
         user_id: user.uid,
       };
@@ -389,7 +387,7 @@ export function RecurringTransactionsPage() {
               <Label htmlFor="frequency" className="text-right">
                 Frequency
               </Label>
-              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
+              <Select onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => setFrequency(value)}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
@@ -536,7 +534,7 @@ export function RecurringTransactionsPage() {
               <Label htmlFor="frequency" className="text-right">
                 Frequency
               </Label>
-              <Select onValueChange={setFrequency}>
+              <Select onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => setFrequency(value)}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
