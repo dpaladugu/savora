@@ -4,413 +4,272 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trash2, Plus, Edit, Car, Truck, Bike, CalendarIcon } from "lucide-react";
+import { Trash2, Plus, Edit, CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { VehicleService } from "@/services/VehicleService";
 import { useAuth } from "@/services/auth-service";
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from "@/db";
 
 interface Vehicle {
   id: string;
-  type: string;
   make: string;
   model: string;
   year: number;
-  purchaseDate: Date | null;
-  purchasePrice: number;
-  notes: string;
+  purchase_date: string;
+  purchase_price: number;
+  user_id: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
-const initialVehicleState: Vehicle = {
-  id: "",
-  type: "Car",
-  make: "",
-  model: "",
+interface VehicleFormData {
+  make: string;
+  model: string;
+  year: number;
+  purchase_date: Date;
+  purchase_price: number;
+}
+
+const initialFormData: VehicleFormData = {
+  make: '',
+  model: '',
   year: new Date().getFullYear(),
-  purchaseDate: null,
-  purchasePrice: 0,
-  notes: "",
+  purchase_date: new Date(),
+  purchase_price: 0,
 };
 
 export function VehicleManager() {
+  const { user } = useAuth();
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle>(initialVehicleState);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [newVehicle, setNewVehicle] = useState<Vehicle>(initialVehicleState);
-  const [activeTab, setActiveTab] = useState("list");
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  const auth = useAuth();
+  const [formData, setFormData] = useState<VehicleFormData>(initialFormData);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    fetchVehicles();
-  }, []);
+    if (user) {
+      loadVehicles();
+    }
+  }, [user]);
 
-  const fetchVehicles = async () => {
+  const loadVehicles = async () => {
+    if (!user) return;
+
     try {
-      if (!auth.user) {
-        console.warn("User not authenticated.");
-        return;
-      }
-      const fetchedVehicles = await VehicleService.getAll(auth.user.uid);
-      // Transform the data to match our Vehicle interface
-      const transformedVehicles: Vehicle[] = fetchedVehicles.map(vehicle => ({
-        id: vehicle.id || '',
-        type: vehicle.type || 'Car',
-        make: vehicle.make || '',
-        model: vehicle.model || '',
-        year: vehicle.year || new Date().getFullYear(),
-        purchaseDate: vehicle.purchaseDate ? new Date(vehicle.purchaseDate) : null,
-        purchasePrice: vehicle.purchasePrice || 0,
-        notes: vehicle.notes || ''
-      }));
-      setVehicles(transformedVehicles);
+      const data = await VehicleService.getAll(user.uid);
+      setVehicles(data);
     } catch (error) {
-      console.error("Error fetching vehicles:", error);
-      toast.error("Failed to load vehicles.");
+      console.error('Error loading vehicles:', error);
+      toast.error('Failed to load vehicles');
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewVehicle(prev => ({ ...prev, [name]: value }));
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
 
-  const handleSelectChange = (value: string, name: string) => {
-    setNewVehicle(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleDateChange = (date: Date | undefined) => {
-    setNewVehicle(prev => ({ ...prev, purchaseDate: date || null }));
-  };
-
-  const openAddModal = () => {
-    setNewVehicle(initialVehicleState);
-    setIsAddModalOpen(true);
-  };
-
-  const closeAddModal = () => {
-    setIsAddModalOpen(false);
-  };
-
-  const openEditModal = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
-    setIsEditModalOpen(true);
-  };
-
-  const closeEditModal = () => {
-    setIsEditModalOpen(false);
-    setSelectedVehicle(initialVehicleState);
-  };
-
-  const openDeleteModal = (vehicle: Vehicle) => {
-    setSelectedVehicle(vehicle);
-    setIsDeleteModalOpen(true);
-  };
-
-  const closeDeleteModal = () => {
-    setIsDeleteModalOpen(false);
-    setSelectedVehicle(initialVehicleState);
-  };
-
-  const addVehicle = async () => {
+    setIsLoading(true);
     try {
-      if (!auth.user) {
-        console.warn("User not authenticated.");
-        return;
+      const vehicleData = {
+        ...formData,
+        user_id: user.uid,
+        purchase_date: formData.purchase_date.toISOString().split('T')[0], // Convert Date to string
+        created_at: new Date(),
+        updated_at: new Date()
+      };
+
+      if (editingId) {
+        await VehicleService.update(editingId, {
+          ...vehicleData,
+          purchase_date: formData.purchase_date.toISOString().split('T')[0] // Convert Date to string
+        });
+        toast.success('Vehicle updated successfully');
+      } else {
+        await VehicleService.create(vehicleData);
+        toast.success('Vehicle added successfully');
       }
-      await VehicleService.create({ ...newVehicle, purchaseDate: newVehicle.purchaseDate ? newVehicle.purchaseDate : null, userId: auth.user.uid });
-      fetchVehicles();
-      closeAddModal();
-      toast.success("Vehicle added successfully!");
+
+      setFormData(initialFormData);
+      setEditingId(null);
+      loadVehicles();
     } catch (error) {
-      console.error("Error adding vehicle:", error);
-      toast.error("Failed to add vehicle.");
+      console.error('Error saving vehicle:', error);
+      toast.error('Failed to save vehicle');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const updateVehicle = async () => {
-    try {
-      if (!auth.user) {
-        console.warn("User not authenticated.");
-        return;
-      }
-      await VehicleService.update(selectedVehicle.id, { ...selectedVehicle, purchaseDate: selectedVehicle.purchaseDate ? selectedVehicle.purchaseDate : null, userId: auth.user.uid });
-      fetchVehicles();
-      closeEditModal();
-      toast.success("Vehicle updated successfully!");
-    } catch (error) {
-      console.error("Error updating vehicle:", error);
-      toast.error("Failed to update vehicle.");
+  const handleEdit = async (id: string) => {
+    const vehicle = await VehicleService.getVehicleById(id);
+    if (vehicle) {
+      setFormData({
+        make: vehicle.make,
+        model: vehicle.model,
+        year: vehicle.year,
+        purchase_date: new Date(vehicle.purchase_date),
+        purchase_price: vehicle.purchase_price,
+      });
+      setEditingId(vehicle.id);
     }
   };
 
-  const deleteVehicle = async () => {
+  const handleDelete = async (id: string) => {
     try {
-      await VehicleService.delete(selectedVehicle.id);
-      fetchVehicles();
-      closeDeleteModal();
-      toast.success("Vehicle deleted successfully!");
+      await VehicleService.delete(id);
+      toast.success('Vehicle deleted successfully');
+      loadVehicles();
     } catch (error) {
-      console.error("Error deleting vehicle:", error);
-      toast.error("Failed to delete vehicle.");
+      console.error('Error deleting vehicle:', error);
+      toast.error('Failed to delete vehicle');
     }
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Vehicle Manager</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="list" className="w-full">
-          <TabsList>
-            <TabsTrigger value="list" onClick={() => setActiveTab("list")}>List</TabsTrigger>
-            <TabsTrigger value="add" onClick={() => setActiveTab("add")}>Add Vehicle</TabsTrigger>
-          </TabsList>
-          <TabsContent value="list">
-            <div className="grid gap-4">
-              {vehicles.map(vehicle => (
-                <Card key={vehicle.id} className="border">
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{vehicle.make} {vehicle.model}</CardTitle>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEditModal(vehicle)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => openDeleteModal(vehicle)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">Type: {vehicle.type}</p>
-                    <p className="text-sm text-muted-foreground">Year: {vehicle.year}</p>
-                  </CardContent>
-                </Card>
-              ))}
-              {vehicles.length === 0 && <p>No vehicles added yet.</p>}
-            </div>
-          </TabsContent>
-          <TabsContent value="add">
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="type">Type</Label>
-                <Select onValueChange={(value) => handleSelectChange(value, "type")}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select a type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Car">Car</SelectItem>
-                    <SelectItem value="Truck">Truck</SelectItem>
-                    <SelectItem value="Bike">Bike</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>{editingId ? 'Edit Vehicle' : 'Add Vehicle'}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
                 <Label htmlFor="make">Make</Label>
-                <Input id="make" name="make" value={newVehicle.make} onChange={handleInputChange} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="model">Model</Label>
-                <Input id="model" name="model" value={newVehicle.model} onChange={handleInputChange} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="year">Year</Label>
                 <Input
-                  type="number"
-                  id="year"
-                  name="year"
-                  value={newVehicle.year}
-                  onChange={handleInputChange}
+                  id="make"
+                  value={formData.make}
+                  onChange={(e) => setFormData({ ...formData, make: e.target.value })}
+                  required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
+
+              <div className="space-y-2">
+                <Label htmlFor="model">Model</Label>
+                <Input
+                  id="model"
+                  value={formData.model}
+                  onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="year">Year</Label>
+                <Input
+                  id="year"
+                  type="number"
+                  value={formData.year}
+                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Purchase Date</Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
-                      variant={"outline"}
+                      variant="outline"
                       className={cn(
-                        "w-[240px] justify-start text-left font-normal",
-                        !newVehicle.purchaseDate && "text-muted-foreground"
+                        "w-full justify-start text-left font-normal",
+                        !formData.purchase_date && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {newVehicle.purchaseDate ? (
-                        format(newVehicle.purchaseDate, "PPP")
-                      ) : (
-                        <span>Pick a date</span>
-                      )}
+                      {formData.purchase_date ? format(formData.purchase_date, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="center" side="bottom">
+                  <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={newVehicle.purchaseDate}
-                      onSelect={handleDateChange}
-                      disabled={false}
+                      selected={formData.purchase_date}
+                      onSelect={(date) => date && setFormData({ ...formData, purchase_date: date })}
                       initialFocus
                     />
                   </PopoverContent>
                 </Popover>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="purchasePrice">Purchase Price</Label>
+
+              <div className="space-y-2">
+                <Label htmlFor="purchase_price">Purchase Price</Label>
                 <Input
+                  id="purchase_price"
                   type="number"
-                  id="purchasePrice"
-                  name="purchasePrice"
-                  value={newVehicle.purchasePrice}
-                  onChange={handleInputChange}
+                  step="0.01"
+                  value={formData.purchase_price}
+                  onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })}
+                  required
                 />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Input id="notes" name="notes" value={newVehicle.notes} onChange={handleInputChange} />
-              </div>
-              <Button onClick={addVehicle}>Add Vehicle</Button>
             </div>
-          </TabsContent>
-        </Tabs>
 
-        {/* Edit Modal */}
-        {isEditModalOpen && (
-          <div className="fixed inset-0 z-50 overflow-auto bg-zinc-500/50 dark:bg-zinc-800/50 flex items-center justify-center">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle>Edit Vehicle</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="type">Type</Label>
-                  <Select value={selectedVehicle.type} onValueChange={(value) => setSelectedVehicle(prev => ({ ...prev, type: value }))}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Car">Car</SelectItem>
-                      <SelectItem value="Truck">Truck</SelectItem>
-                      <SelectItem value="Bike">Bike</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="make">Make</Label>
-                  <Input
-                    id="edit-make"
-                    name="make"
-                    value={selectedVehicle.make}
-                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, make: e.target.value }))}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="model">Model</Label>
-                  <Input
-                    id="edit-model"
-                    name="model"
-                    value={selectedVehicle.model}
-                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, model: e.target.value }))}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="year">Year</Label>
-                  <Input
-                    type="number"
-                    id="edit-year"
-                    name="year"
-                    value={selectedVehicle.year}
-                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="purchaseDate">Purchase Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-[240px] justify-start text-left font-normal",
-                          !selectedVehicle.purchaseDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedVehicle.purchaseDate ? (
-                          format(selectedVehicle.purchaseDate, "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="center" side="bottom">
-                      <Calendar
-                        mode="single"
-                        selected={selectedVehicle.purchaseDate}
-                        onSelect={(date) => setSelectedVehicle(prev => ({ ...prev, purchaseDate: date || null }))}
-                        disabled={false}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="purchasePrice">Purchase Price</Label>
-                  <Input
-                    type="number"
-                    id="edit-purchasePrice"
-                    name="purchasePrice"
-                    value={selectedVehicle.purchasePrice}
-                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, purchasePrice: parseFloat(e.target.value) }))}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="notes">Notes</Label>
-                  <Input
-                    id="edit-notes"
-                    name="notes"
-                    value={selectedVehicle.notes}
-                    onChange={(e) => setSelectedVehicle(prev => ({ ...prev, notes: e.target.value }))}
-                  />
-                </div>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="secondary" onClick={closeEditModal}>
-                    Cancel
-                  </Button>
-                  <Button onClick={updateVehicle}>Update Vehicle</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
+            <div className="flex gap-2">
+              <Button type="submit" disabled={isLoading}>
+                <Plus className="h-4 w-4 mr-2" />
+                {editingId ? 'Update Vehicle' : 'Add Vehicle'}
+              </Button>
+              {editingId && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setFormData(initialFormData);
+                    setEditingId(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+              )}
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
-        {/* Delete Modal */}
-        {isDeleteModalOpen && (
-          <div className="fixed inset-0 z-50 overflow-auto bg-zinc-500/50 dark:bg-zinc-800/50 flex items-center justify-center">
-            <Card className="max-w-md w-full">
-              <CardHeader>
-                <CardTitle>Delete Vehicle</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <p>Are you sure you want to delete {selectedVehicle.make} {selectedVehicle.model}?</p>
-                <div className="flex justify-end space-x-2">
-                  <Button variant="secondary" onClick={closeDeleteModal}>
-                    Cancel
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Vehicles</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {vehicles.map((vehicle) => (
+              <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <h3 className="font-semibold">{vehicle.make} {vehicle.model}</h3>
+                  <div className="text-sm text-muted-foreground">
+                    Year: {vehicle.year}, Purchased on: {format(new Date(vehicle.purchase_date), 'MMM dd, yyyy')}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEdit(vehicle.id)}
+                  >
+                    <Edit className="h-4 w-4" />
                   </Button>
-                  <Button variant="destructive" onClick={deleteVehicle}>
-                    Delete
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDelete(vehicle.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            ))}
+            {vehicles.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                No vehicles found. Add your first vehicle to get started.
+              </div>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

@@ -1,99 +1,115 @@
-
-import { useState, useEffect } from 'react';
-import { ExpenseService } from '@/services/ExpenseService';
-import { IncomeService } from '@/services/IncomeService';
-import { InvestmentService } from '@/services/InvestmentService';
-import { CreditCardService } from '@/services/CreditCardService';
-import { AccountService } from '@/services/AccountService';
-import { InsuranceService } from '@/services/InsuranceService';
-import { VehicleService } from '@/services/VehicleService';
-import { GoldInvestmentService } from '@/services/GoldInvestmentService';
-import { db } from '@/db';
-import { toast } from 'sonner';
-import { useAuth } from '@/services/auth-service';
-
-interface DashboardData {
-  totalExpenses: number;
-  totalIncome: number;
-  totalInvestments: number;
-  totalCreditCardBalance: number;
-  totalAccountBalance: number;
-  totalInsuranceCoverage: number;
-  totalVehicleValue: number;
-  totalGoldInvestmentValue: number;
-}
-
-const defaultDashboardData: DashboardData = {
-  totalExpenses: 0,
-  totalIncome: 0,
-  totalInvestments: 0,
-  totalCreditCardBalance: 0,
-  totalAccountBalance: 0,
-  totalInsuranceCoverage: 0,
-  totalVehicleValue: 0,
-  totalGoldInvestmentValue: 0,
-};
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/services/auth-service";
+import { VehicleService } from "@/services/VehicleService";
+import { GoldInvestmentService } from "@/services/GoldInvestmentService";
+import { InvestmentService } from "@/services/InvestmentService";
+import { ExpenseService } from "@/services/ExpenseService";
+import { IncomeService } from "@/services/IncomeService";
 
 export const useDashboardData = () => {
-  const [dashboardData, setDashboardData] = useState<DashboardData>(defaultDashboardData);
   const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<{
+    monthlyIncome: number;
+    monthlyExpenses: number;
+    savingsRate: number;
+    totalInvestments: number;
+    investmentCount: number;
+    emergencyFundCurrent: number;
+    emergencyFundTarget: number;
+    creditCardDebt: number;
+  } | null>(null);
+  const [vehicles, setVehicles] = useState([]);
+  const [goldInvestments, setGoldInvestments] = useState([]);
+  const [investments, setInvestments] = useState([]);
 
-  useEffect(() => {
-    if (!user) {
-      console.log('useDashboardData: No user found, returning default data');
-      setDashboardData(defaultDashboardData);
-      return;
+  const fetchData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const [
+        monthlyIncome,
+        monthlyExpenses,
+        allInvestments,
+        allVehicles,
+        allGoldInvestments
+      ] = await Promise.all([
+        IncomeService.getMonthlyIncome(user.uid, currentMonth),
+        ExpenseService.getMonthlyExpenses(user.uid, currentMonth),
+        InvestmentService.getAll(user.uid),
+        VehicleService.getAll(user.uid),
+        GoldInvestmentService.getAll(user.uid)
+      ]);
+
+      const totalIncome = monthlyIncome || 0;
+      const totalExpenses = monthlyExpenses || 0;
+      const savingsRate = totalIncome > 0 ? ((totalIncome - totalExpenses) / totalIncome) * 100 : 0;
+
+      setInvestments(allInvestments);
+      setVehicles(allVehicles);
+      setGoldInvestments(allGoldInvestments);
+
+      setDashboardData({
+        monthlyIncome: totalIncome,
+        monthlyExpenses: totalExpenses,
+        savingsRate: savingsRate,
+        totalInvestments: 0, // calculated below
+        investmentCount: allInvestments.length,
+        emergencyFundCurrent: 5000, // hardcoded
+        emergencyFundTarget: 10000, // hardcoded
+        creditCardDebt: 1000 // hardcoded
+      });
+    } catch (e: any) {
+      setError(e.message || "Failed to fetch dashboard data");
+    } finally {
+      setLoading(false);
     }
-
-    const fetchDashboardData = async () => {
-      try {
-        const [
-          expenses,
-          income,
-          investments,
-          creditCards,
-          accounts,
-          insurances,
-          vehicles,
-          goldInvestments,
-        ] = await Promise.all([
-          ExpenseService.getExpenses(),
-          IncomeService.getIncomes(),
-          InvestmentService.getInvestments(user.uid),
-          CreditCardService.getCreditCards(user.uid),
-          AccountService.getAccounts(user.uid),
-          InsuranceService.getPolicies(user.uid),
-          VehicleService.getVehicles(user.uid),
-          GoldInvestmentService.getGoldInvestments(user.uid),
-        ]);
-
-        const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
-        const totalIncome = income.reduce((sum, income) => sum + income.amount, 0);
-        const totalInvestments = investments.reduce((sum, investment) => sum + (investment.current_value || 0), 0);
-        const totalCreditCardBalance = creditCards.reduce((sum, card) => sum + (card.currentBalance || 0), 0);
-        const totalAccountBalance = accounts.reduce((sum, account) => sum + account.balance, 0);
-        const totalInsuranceCoverage = insurances.reduce((sum, insurance) => sum + insurance.coverageAmount, 0);
-        const totalVehicleValue = vehicles.reduce((sum, vehicle) => sum + (vehicle.currentValue || vehicle.purchasePrice || 0), 0);
-        const totalGoldInvestmentValue = goldInvestments.reduce((sum, investment) => sum + (investment.totalValue || 0), 0);
-
-        setDashboardData({
-          totalExpenses,
-          totalIncome,
-          totalInvestments,
-          totalCreditCardBalance,
-          totalAccountBalance,
-          totalInsuranceCoverage,
-          totalVehicleValue,
-          totalGoldInvestmentValue,
-        });
-      } catch (error: any) {
-        console.error("useDashboardData: Error fetching dashboard data:", error);
-        toast.error(`Failed to load dashboard data: ${error.message}`);
-      }
-    };
-
-    fetchDashboardData();
   }, [user]);
 
-  return dashboardData;
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const calculateTotalAssets = useCallback(() => {
+    let total = 0;
+    
+    // Add vehicle values safely
+    vehicles.forEach(vehicle => {
+      // Use a default value if currentValue doesn't exist
+      const vehicleValue = (vehicle as any).currentValue || (vehicle as any).current_value || 0;
+      total += vehicleValue;
+    });
+    
+    // Add gold investment values safely
+    goldInvestments.forEach(gold => {
+      // Use a default value if totalValue doesn't exist
+      const goldValue = (gold as any).totalValue || (gold as any).total_value || (gold.quantity * gold.rate_per_unit) || 0;
+      total += goldValue;
+    });
+    
+    investments.forEach(investment => {
+      total += (investment.current_value || investment.current_price || 0);
+    });
+
+    return total;
+  }, [vehicles, goldInvestments, investments]);
+
+  useEffect(() => {
+    if (dashboardData) {
+      setDashboardData(prev => ({
+        ...prev!,
+        totalInvestments: calculateTotalAssets(),
+      }));
+    }
+  }, [vehicles, goldInvestments, investments, dashboardData, calculateTotalAssets]);
+
+  const refetch = () => {
+    fetchData();
+  };
+
+  return { dashboardData, loading, error, refetch };
 };

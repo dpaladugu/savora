@@ -37,13 +37,13 @@ export interface AppIncome {
   source_recurring_transaction_id?: string;
 }
 
-// Extended Expense type with additional properties - fix tags type to be consistent
+// Extended Expense type with consistent tags property
 interface ExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
   type: string;
-  tags?: string; // Keep as string to match AppExpense.tags
+  tags?: string; // Consistent string type
 }
 
 // Extended types for union handling
@@ -107,7 +107,7 @@ export function ExpenseTracker() {
     if ('payment_method' in item) {
       const expense = item as ExtendedExpense;
       // Ensure tags is a string when setting editing expense
-      const expenseWithStringTags = {
+      const expenseWithStringTags: ExtendedExpense = {
         ...expense,
         tags: expense.tags || ''
       };

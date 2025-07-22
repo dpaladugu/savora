@@ -1,563 +1,248 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Trash2, Plus, Edit, Repeat, CalendarIcon, DollarSign } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+import { Pencil, Trash2, Plus, Play, Pause } from "lucide-react";
+import { RecurringTransactionForm } from "./recurring-transaction-form";
 import { RecurringTransactionService } from "@/services/RecurringTransactionService";
 import { useAuth } from "@/services/auth-service";
-import type { RecurringTransactionRecord } from "@/db";
+import { useToast } from "@/hooks/use-toast";
+import type { RecurringTransactionRecord } from "@/types/recurring-transaction"; // Use proper type
 
-interface RecurringTransaction {
-  id: string;
-  description: string;
-  amount: number;
-  account: string;
-  category: string;
-  startDate: Date;
-  endDate?: Date;
-  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+interface RecurringTransactionsPageProps {
+  onTabChange?: (tab: string) => void;
 }
 
-const frequencyOptions = [
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "monthly", label: "Monthly" },
-  { value: "yearly", label: "Yearly" },
-];
-
-export function RecurringTransactionsPage() {
-  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<RecurringTransaction | null>(null);
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState<number | "">("");
-  const [account, setAccount] = useState("");
-  const [category, setCategory] = useState("");
-  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
-  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
-  const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
+export function RecurringTransactionsPage({ onTabChange }: RecurringTransactionsPageProps) {
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransactionRecord[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<RecurringTransactionRecord | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
-    if (!user) return;
-
-    const fetchRecurringTransactions = async () => {
-      try {
-        const transactions = await RecurringTransactionService.getRecurringTransactions(user.uid);
-        const mappedTransactions = transactions.map((t: RecurringTransactionRecord) => ({
-          id: t.id || '',
-          description: t.description || '',
-          amount: t.amount || 0,
-          account: t.account || '',
-          category: t.category || '',
-          startDate: new Date(t.start_date || new Date()),
-          endDate: t.end_date ? new Date(t.end_date) : undefined,
-          frequency: t.frequency || 'monthly'
-        }));
-        setRecurringTransactions(mappedTransactions);
-      } catch (error) {
-        console.error("Failed to fetch recurring transactions:", error);
-        toast.error("Failed to fetch recurring transactions.");
-      }
-    };
-
-    fetchRecurringTransactions();
+    if (user) {
+      loadRecurringTransactions();
+    }
   }, [user]);
 
-  const handleAddTransaction = async () => {
-    if (!user) return;
-
+  const loadRecurringTransactions = async () => {
+    setIsLoading(true);
     try {
-      if (!description || !amount || !account || !category || !startDate || !frequency) {
-        toast.error("Please fill in all required fields.");
-        return;
+      const transactions = await RecurringTransactionService.getAll(user!.uid);
+      setRecurringTransactions(transactions);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load recurring transactions.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCreate = () => {
+    setEditingTransaction(null);
+    setShowForm(true);
+  };
+
+  const handleEdit = (transaction: RecurringTransactionRecord) => {
+    setEditingTransaction(transaction);
+    setShowForm(true);
+  };
+
+  const handleUpdate = async (transactionId: string, updates: Partial<RecurringTransactionRecord>) => {
+    setIsLoading(true);
+    try {
+      await RecurringTransactionService.update(transactionId, updates);
+      toast({
+        title: "Success",
+        description: "Recurring transaction updated successfully.",
+      });
+      loadRecurringTransactions();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update recurring transaction.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setShowForm(false);
+      setEditingTransaction(null);
+    }
+  };
+
+  const handleDelete = async (transactionId: string) => {
+    setIsLoading(true);
+    try {
+      await RecurringTransactionService.delete(transactionId);
+      toast({
+        title: "Success",
+        description: "Recurring transaction deleted successfully.",
+      });
+      loadRecurringTransactions();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete recurring transaction.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleToggleActive = async (transaction: RecurringTransactionRecord) => {
+    setIsLoading(true);
+    try {
+      await RecurringTransactionService.update(transaction.id, {
+        is_active: !transaction.is_active,
+      });
+      toast({
+        title: "Success",
+        description: `Recurring transaction ${transaction.is_active ? "paused" : "resumed"} successfully.`,
+      });
+      loadRecurringTransactions();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to toggle recurring transaction status.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (data: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>) => {
+    setIsLoading(true);
+    try {
+      if (editingTransaction) {
+        // Update existing transaction
+        await RecurringTransactionService.update(editingTransaction.id, data);
+        toast({
+          title: "Success",
+          description: "Recurring transaction updated successfully.",
+        });
+      } else {
+        // Create new transaction
+        await RecurringTransactionService.create({ ...data, user_id: user!.uid });
+        toast({
+          title: "Success",
+          description: "Recurring transaction created successfully.",
+        });
       }
-
-      const newTransactionData = {
-        description,
-        amount: Number(amount),
-        account,
-        category,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
-        frequency,
-        type: 'expense' as const,
-        interval: 1,
-        user_id: user.uid,
-      };
-
-      await RecurringTransactionService.addRecurringTransaction(newTransactionData);
-      
-      const newTransaction: RecurringTransaction = {
-        id: "temp_" + Date.now(),
-        description,
-        amount: Number(amount),
-        account,
-        category,
-        startDate,
-        endDate,
-        frequency,
-      };
-      
-      setRecurringTransactions([...recurringTransactions, newTransaction]);
-      closeModal();
-      toast.success("Recurring transaction added successfully!");
+      loadRecurringTransactions();
     } catch (error) {
-      console.error("Failed to add recurring transaction:", error);
-      toast.error("Failed to add recurring transaction.");
+      toast({
+        title: "Error",
+        description: "Failed to save recurring transaction.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setShowForm(false);
+      setEditingTransaction(null);
     }
   };
 
-  const handleEditTransaction = async () => {
-    if (!user || !selectedTransaction) return;
-
-    try {
-      if (!description || !amount || !account || !category || !startDate || !frequency) {
-        toast.error("Please fill in all required fields.");
-        return;
-      }
-
-      const updatedTransactionData = {
-        description,
-        amount: Number(amount),
-        account,
-        category,
-        start_date: startDate.toISOString().split('T')[0],
-        end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
-        frequency,
-        type: 'expense' as const,
-        interval: 1,
-        user_id: user.uid,
-      };
-
-      await RecurringTransactionService.updateRecurringTransaction(selectedTransaction.id, updatedTransactionData);
-      
-      const updatedTransaction: RecurringTransaction = {
-        id: selectedTransaction.id,
-        description,
-        amount: Number(amount),
-        account,
-        category,
-        startDate,
-        endDate,
-        frequency,
-      };
-      
-      setRecurringTransactions(
-        recurringTransactions.map((transaction) =>
-          transaction.id === selectedTransaction.id ? updatedTransaction : transaction
-        )
-      );
-      closeModal();
-      toast.success("Recurring transaction updated successfully!");
-    } catch (error) {
-      console.error("Failed to edit recurring transaction:", error);
-      toast.error("Failed to edit recurring transaction.");
-    }
-  };
-
-  const handleDeleteTransaction = async (id: string) => {
-    if (!user) return;
-
-    try {
-      await RecurringTransactionService.deleteRecurringTransaction(id);
-      setRecurringTransactions(recurringTransactions.filter((transaction) => transaction.id !== id));
-      toast.success("Recurring transaction deleted successfully!");
-    } catch (error) {
-      console.error("Failed to delete recurring transaction:", error);
-      toast.error("Failed to delete recurring transaction.");
-    }
-  };
-
-  const openAddModal = () => {
-    setIsAddModalOpen(true);
-    setDescription("");
-    setAmount("");
-    setAccount("");
-    setCategory("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setFrequency('monthly');
-  };
-
-  const openEditModal = (transaction: RecurringTransaction) => {
-    setIsEditModalOpen(true);
-    setSelectedTransaction(transaction);
-    setDescription(transaction.description);
-    setAmount(transaction.amount);
-    setAccount(transaction.account);
-    setCategory(transaction.category);
-    setStartDate(transaction.startDate);
-    setEndDate(transaction.endDate);
-    setFrequency(transaction.frequency);
-  };
-
-  const closeModal = () => {
-    setIsAddModalOpen(false);
-    setIsEditModalOpen(false);
-    setSelectedTransaction(null);
-    setDescription("");
-    setAmount("");
-    setAccount("");
-    setCategory("");
-    setStartDate(undefined);
-    setEndDate(undefined);
-    setFrequency('monthly');
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingTransaction(null);
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Recurring Transactions</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Button onClick={openAddModal}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Recurring Transaction
-        </Button>
-        <div className="mt-4">
-          {recurringTransactions.length > 0 ? (
-            <div className="grid gap-4">
-              {recurringTransactions.map((transaction) => (
-                <Card key={transaction.id} className="bg-muted">
-                  <CardContent className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-semibold">{transaction.description}</h3>
-                      <p className="text-sm text-gray-500">Amount: ${transaction.amount}</p>
-                      <Badge variant="secondary">{transaction.frequency}</Badge>
-                    </div>
-                    <div className="space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => openEditModal(transaction)}
-                      >
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteTransaction(transaction.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+    <div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Recurring Transactions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            <Button onClick={handleCreate}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Recurring Transaction
+            </Button>
+          </div>
+
+          {showForm ? (
+            <RecurringTransactionForm
+              onSubmit={handleSubmit}
+              onCancel={handleCancel}
+              initialData={editingTransaction}
+              isLoading={isLoading}
+            />
           ) : (
-            <p>No recurring transactions added yet.</p>
+            <div>
+              {isLoading ? (
+                <p>Loading recurring transactions...</p>
+              ) : (
+                <div className="grid gap-4">
+                  {recurringTransactions.map((transaction) => (
+                    <Card key={transaction.id}>
+                      <CardContent className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-semibold">{transaction.description}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            Amount: ${transaction.amount}, Category: {transaction.category}, Frequency: {transaction.frequency}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Next Due: {transaction.next_date}
+                          </p>
+                          {transaction.account && (
+                            <p className="text-sm text-muted-foreground">
+                              Account: {transaction.account}
+                            </p>
+                          )}
+                          <Badge variant={transaction.is_active ? "default" : "secondary"}>
+                            {transaction.is_active ? "Active" : "Paused"}
+                          </Badge>
+                        </div>
+                        <div className="space-x-2">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleToggleActive(transaction)}
+                            disabled={isLoading}
+                          >
+                            {transaction.is_active ? (
+                              <Pause className="h-4 w-4" />
+                            ) : (
+                              <Play className="h-4 w-4" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => handleEdit(transaction)}
+                            disabled={isLoading}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={() => handleDelete(transaction.id)}
+                            disabled={isLoading}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                  {recurringTransactions.length === 0 && (
+                    <p>No recurring transactions found.</p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
-        </div>
-      </CardContent>
-
-      {/* Add Modal */}
-      <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Add Recurring Transaction</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                value={amount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
-                    setAmount(value === "" ? "" : Number(value));
-                  }
-                }}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="account" className="text-right">
-                Account
-              </Label>
-              <Select onValueChange={setAccount}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="account1">Account 1</SelectItem>
-                  <SelectItem value="account2">Account 2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">
-                Category
-              </Label>
-              <Select onValueChange={setCategory}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="category1">Category 1</SelectItem>
-                  <SelectItem value="category2">Category 2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="startDate" className="text-right">
-                Start Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 pl-3 text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    disabled={(date) => date > new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="endDate" className="text-right">
-                End Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 pl-3 text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    disabled={(date) => date < (startDate || new Date())}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="frequency" className="text-right">
-                Frequency
-              </Label>
-              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {frequencyOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex justify-end space-x-2">
-            <Button type="button" variant="secondary" onClick={closeModal}>
-              Cancel
-            </Button>
-            <Button type="submit" onClick={handleAddTransaction}>
-              Add Transaction
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Modal */}
-      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Recurring Transaction</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">
-                Description
-              </Label>
-              <Input
-                id="description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="amount" className="text-right">
-                Amount
-              </Label>
-              <Input
-                id="amount"
-                value={amount}
-                onChange={(e) => {
-                  const value = e.target.value;
-                  if (value === "" || /^\d+(\.\d{0,2})?$/.test(value)) {
-                    setAmount(value === "" ? "" : Number(value));
-                  }
-                }}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="account" className="text-right">
-                Account
-              </Label>
-              <Select onValueChange={setAccount}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select account" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="account1">Account 1</SelectItem>
-                  <SelectItem value="account2">Account 2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">
-                Category
-              </Label>
-              <Select onValueChange={setCategory}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="category1">Category 1</SelectItem>
-                  <SelectItem value="category2">Category 2</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="startDate" className="text-right">
-                Start Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 pl-3 text-left font-normal",
-                      !startDate && "text-muted-foreground"
-                    )}
-                  >
-                    {startDate ? format(startDate, "PPP") : <span>Pick a date</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={startDate}
-                    onSelect={setStartDate}
-                    disabled={(date) => date > new Date()}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="endDate" className="text-right">
-                End Date
-              </Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant={"outline"}
-                    className={cn(
-                      "col-span-3 pl-3 text-left font-normal",
-                      !endDate && "text-muted-foreground"
-                    )}
-                  >
-                    {endDate ? format(endDate, "PPP") : <span>Pick a date</span>}
-                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={endDate}
-                    onSelect={setEndDate}
-                    disabled={(date) => date < (startDate || new Date())}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="frequency" className="text-right">
-                Frequency
-              </Label>
-              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select frequency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {frequencyOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="flex justify-end">
-            <Button type="button" variant="secondary" onClick={closeModal}>
-              Cancel
-            </Button>
-            <Button type="submit" onClick={handleEditTransaction}>
-              Update Transaction
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

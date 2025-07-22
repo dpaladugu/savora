@@ -85,12 +85,12 @@ export function InvestmentsTracker() {
       const data = await InvestmentService.getAll(user.uid);
       const transformedData: Investment[] = data.map(investment => ({
         id: investment.id || '',
-        name: investment.name || '',
-        type: investment.type as Investment['type'] || 'other',
+        name: investment.fund_name || investment.name || '',
+        type: (investment.investment_type || investment.type) as Investment['type'] || 'other',
         symbol: investment.symbol,
-        quantity: investment.quantity || 0,
-        purchase_price: investment.purchase_price || 0,
-        current_price: investment.current_price || 0,
+        quantity: investment.units || investment.quantity || 0,
+        purchase_price: investment.price || investment.purchase_price || 0,
+        current_price: investment.current_value || investment.current_price || 0,
         purchase_date: new Date(investment.purchase_date || new Date()),
         platform: investment.platform || '',
         notes: investment.notes,
