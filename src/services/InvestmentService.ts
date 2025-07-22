@@ -1,3 +1,4 @@
+
 /**
  * src/services/InvestmentService.ts
  *
@@ -33,6 +34,15 @@ export class InvestmentService {
   }
 
   /**
+   * Creates a new investment record to the database.
+   * @param investmentData The investment data to add.
+   * @returns The id of the newly added investment.
+   */
+  static async create(investmentData: Omit<AppInvestment, 'id'>): Promise<string> {
+    return this.addInvestment(investmentData);
+  }
+
+  /**
    * Bulk adds an array of investment records to the database.
    * @param investmentsData An array of investment data to add.
    * @returns A promise that resolves when the operation is complete.
@@ -64,6 +74,16 @@ export class InvestmentService {
   }
 
   /**
+   * Updates an existing investment record.
+   * @param id The id of the investment to update.
+   * @param updates A partial object of the investment data to update.
+   * @returns The number of updated records.
+   */
+  static async update(id: string, updates: Partial<AppInvestment>): Promise<number> {
+    return this.updateInvestment(id, updates);
+  }
+
+  /**
    * Deletes an investment record from the database.
    * @param id The id of the investment to delete.
    */
@@ -74,6 +94,14 @@ export class InvestmentService {
       console.error(`Error in InvestmentService.deleteInvestment for id ${id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Deletes an investment record from the database.
+   * @param id The id of the investment to delete.
+   */
+  static async delete(id: string): Promise<void> {
+    return this.deleteInvestment(id);
   }
 
   /**
@@ -90,5 +118,14 @@ export class InvestmentService {
       console.error(`Error in InvestmentService.getInvestments for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Retrieves all investments for a given user.
+   * @param userId The ID of the user whose investments to fetch.
+   * @returns A promise that resolves to an array of investments.
+   */
+  static async getAll(userId: string): Promise<AppInvestment[]> {
+    return this.getInvestments(userId);
   }
 }

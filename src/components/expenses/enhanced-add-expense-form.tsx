@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,21 +30,55 @@ interface ExpenseTag {
   label: string;
 }
 
-interface EnhancedAddExpenseFormProps {
-  categories: ExpenseCategory[];
-  locations: ExpenseLocation[];
-  tags: ExpenseTag[];
-  onSubmit: (data: any) => void;
-  onCancel: () => void;
+interface ExtendedExpense {
+  id?: string;
+  amount: number;
+  description: string;
+  category: string;
+  location?: string;
+  tags?: string[];
+  date: string;
 }
 
-export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, onCancel }: EnhancedAddExpenseFormProps) {
+interface EnhancedAddExpenseFormProps {
+  categories?: ExpenseCategory[];
+  locations?: ExpenseLocation[];
+  tags?: ExpenseTag[];
+  expense?: ExtendedExpense;
+  onSubmit?: (data: any) => void;
+  onCancel?: () => void;
+  onExpenseAdded?: () => void;
+  onExpenseUpdated?: () => void;
+}
+
+export function EnhancedAddExpenseForm({ 
+  categories = [], 
+  locations = [], 
+  tags = [], 
+  expense,
+  onSubmit, 
+  onCancel,
+  onExpenseAdded,
+  onExpenseUpdated
+}: EnhancedAddExpenseFormProps) {
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
   const [location, setLocation] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [date, setDate] = useState<Date | undefined>(new Date());
+
+  // Initialize form with expense data if editing
+  useEffect(() => {
+    if (expense) {
+      setAmount(expense.amount.toString());
+      setDescription(expense.description);
+      setCategory(expense.category);
+      setLocation(expense.location || "");
+      setSelectedTags(expense.tags || []);
+      setDate(expense.date ? new Date(expense.date) : new Date());
+    }
+  }, [expense]);
 
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAmount(e.target.value);
@@ -70,8 +105,8 @@ export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, 
   };
 
   const handleSubmit = () => {
-    if (!amount || !description || !category || !location || !date) {
-      toast.error("Please fill in all fields.");
+    if (!amount || !description || !category || !date) {
+      toast.error("Please fill in all required fields.");
       return;
     }
 
@@ -84,14 +119,23 @@ export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, 
       date: date.toISOString(),
     };
 
-    onSubmit(expenseData);
-    toast.success("Expense added successfully!");
+    if (onSubmit) {
+      onSubmit(expenseData);
+    }
+
+    if (expense && onExpenseUpdated) {
+      onExpenseUpdated();
+    } else if (onExpenseAdded) {
+      onExpenseAdded();
+    }
+
+    toast.success(expense ? "Expense updated successfully!" : "Expense added successfully!");
   };
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Add New Expense</CardTitle>
+        <CardTitle>{expense ? "Edit Expense" : "Add New Expense"}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4">
         <div className="grid gap-2">
@@ -115,7 +159,7 @@ export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, 
         </div>
         <div className="grid gap-2">
           <Label htmlFor="category">Category</Label>
-          <Select onValueChange={handleCategoryChange}>
+          <Select onValueChange={handleCategoryChange} value={category}>
             <SelectTrigger>
               <SelectValue placeholder="Select category" />
             </SelectTrigger>
@@ -130,7 +174,7 @@ export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, 
         </div>
         <div className="grid gap-2">
           <Label htmlFor="location">Location</Label>
-          <Select onValueChange={handleLocationChange}>
+          <Select onValueChange={handleLocationChange} value={location}>
             <SelectTrigger>
               <SelectValue placeholder="Select location" />
             </SelectTrigger>
@@ -190,7 +234,9 @@ export function EnhancedAddExpenseForm({ categories, locations, tags, onSubmit, 
           <Button variant="ghost" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit}>Add Expense</Button>
+          <Button onClick={handleSubmit}>
+            {expense ? "Update Expense" : "Add Expense"}
+          </Button>
         </div>
       </CardContent>
     </Card>

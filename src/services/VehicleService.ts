@@ -38,6 +38,15 @@ export class VehicleService {
   }
 
   /**
+   * Creates a new vehicle record to the database.
+   * @param vehicleData The vehicle data to add.
+   * @returns The id of the newly added vehicle.
+   */
+  static async create(vehicleData: Omit<AppVehicle, 'id'>): Promise<string> {
+    return this.addVehicle(vehicleData);
+  }
+
+  /**
    * Updates an existing vehicle record in the database.
    * @param id The id of the vehicle to update.
    * @param updates A partial object of the vehicle data to update.
@@ -55,6 +64,16 @@ export class VehicleService {
   }
 
   /**
+   * Updates an existing vehicle record in the database.
+   * @param id The id of the vehicle to update.
+   * @param updates A partial object of the vehicle data to update.
+   * @returns The number of updated records (should be 1).
+   */
+  static async update(id: string, updates: Partial<AppVehicle>): Promise<number> {
+    return this.updateVehicle(id, updates);
+  }
+
+  /**
    * Deletes a vehicle record from the database.
    * @param id The id of the vehicle to delete.
    */
@@ -65,6 +84,14 @@ export class VehicleService {
       console.error(`Error in VehicleService.deleteVehicle for id ${id}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Deletes a vehicle record from the database.
+   * @param id The id of the vehicle to delete.
+   */
+  static async delete(id: string): Promise<void> {
+    return this.deleteVehicle(id);
   }
 
   /**
@@ -86,6 +113,15 @@ export class VehicleService {
       console.error(`Error in VehicleService.getVehicles for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Retrieves all vehicles for a given user.
+   * @param userId The ID of the user whose vehicles to fetch.
+   * @returns A promise that resolves to an array of vehicles.
+   */
+  static async getAll(userId: string): Promise<AppVehicle[]> {
+    return this.getVehicles(userId);
   }
 
   /**

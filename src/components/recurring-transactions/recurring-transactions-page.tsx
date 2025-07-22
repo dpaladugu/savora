@@ -21,8 +21,8 @@ interface RecurringTransaction {
   id: string;
   description: string;
   amount: number;
-  accountId: string;
-  categoryId: string;
+  account: string;
+  category: string;
   startDate: Date;
   endDate?: Date;
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
@@ -42,8 +42,8 @@ export function RecurringTransactionsPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<RecurringTransaction | null>(null);
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState<number | "">("");
-  const [accountId, setAccountId] = useState("");
-  const [categoryId, setCategoryId] = useState("");
+  const [account, setAccount] = useState("");
+  const [category, setCategory] = useState("");
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [frequency, setFrequency] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('monthly');
@@ -59,8 +59,8 @@ export function RecurringTransactionsPage() {
           id: t.id || '',
           description: t.description || '',
           amount: t.amount || 0,
-          accountId: t.account_id || '',
-          categoryId: t.category || '',
+          account: t.account || '',
+          category: t.category || '',
           startDate: new Date(t.start_date || new Date()),
           endDate: t.end_date ? new Date(t.end_date) : undefined,
           frequency: t.frequency || 'monthly'
@@ -79,7 +79,7 @@ export function RecurringTransactionsPage() {
     if (!user) return;
 
     try {
-      if (!description || !amount || !accountId || !categoryId || !startDate || !frequency) {
+      if (!description || !amount || !account || !category || !startDate || !frequency) {
         toast.error("Please fill in all required fields.");
         return;
       }
@@ -87,8 +87,8 @@ export function RecurringTransactionsPage() {
       const newTransactionData = {
         description,
         amount: Number(amount),
-        account_id: accountId,
-        category: categoryId,
+        account,
+        category,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
@@ -103,8 +103,8 @@ export function RecurringTransactionsPage() {
         id: "temp_" + Date.now(),
         description,
         amount: Number(amount),
-        accountId,
-        categoryId,
+        account,
+        category,
         startDate,
         endDate,
         frequency,
@@ -123,7 +123,7 @@ export function RecurringTransactionsPage() {
     if (!user || !selectedTransaction) return;
 
     try {
-      if (!description || !amount || !accountId || !categoryId || !startDate || !frequency) {
+      if (!description || !amount || !account || !category || !startDate || !frequency) {
         toast.error("Please fill in all required fields.");
         return;
       }
@@ -131,8 +131,8 @@ export function RecurringTransactionsPage() {
       const updatedTransactionData = {
         description,
         amount: Number(amount),
-        account_id: accountId,
-        category: categoryId,
+        account,
+        category,
         start_date: startDate.toISOString().split('T')[0],
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         frequency,
@@ -147,8 +147,8 @@ export function RecurringTransactionsPage() {
         id: selectedTransaction.id,
         description,
         amount: Number(amount),
-        accountId,
-        categoryId,
+        account,
+        category,
         startDate,
         endDate,
         frequency,
@@ -184,8 +184,8 @@ export function RecurringTransactionsPage() {
     setIsAddModalOpen(true);
     setDescription("");
     setAmount("");
-    setAccountId("");
-    setCategoryId("");
+    setAccount("");
+    setCategory("");
     setStartDate(undefined);
     setEndDate(undefined);
     setFrequency('monthly');
@@ -196,8 +196,8 @@ export function RecurringTransactionsPage() {
     setSelectedTransaction(transaction);
     setDescription(transaction.description);
     setAmount(transaction.amount);
-    setAccountId(transaction.accountId);
-    setCategoryId(transaction.categoryId);
+    setAccount(transaction.account);
+    setCategory(transaction.category);
     setStartDate(transaction.startDate);
     setEndDate(transaction.endDate);
     setFrequency(transaction.frequency);
@@ -209,8 +209,8 @@ export function RecurringTransactionsPage() {
     setSelectedTransaction(null);
     setDescription("");
     setAmount("");
-    setAccountId("");
-    setCategoryId("");
+    setAccount("");
+    setCategory("");
     setStartDate(undefined);
     setEndDate(undefined);
     setFrequency('monthly');
@@ -300,10 +300,10 @@ export function RecurringTransactionsPage() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="accountId" className="text-right">
+              <Label htmlFor="account" className="text-right">
                 Account
               </Label>
-              <Select onValueChange={setAccountId}>
+              <Select onValueChange={setAccount}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select account" />
                 </SelectTrigger>
@@ -314,10 +314,10 @@ export function RecurringTransactionsPage() {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="categoryId" className="text-right">
+              <Label htmlFor="category" className="text-right">
                 Category
               </Label>
-              <Select onValueChange={setCategoryId}>
+              <Select onValueChange={setCategory}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -387,7 +387,7 @@ export function RecurringTransactionsPage() {
               <Label htmlFor="frequency" className="text-right">
                 Frequency
               </Label>
-              <Select onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => setFrequency(value)}>
+              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>
@@ -447,10 +447,10 @@ export function RecurringTransactionsPage() {
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="accountId" className="text-right">
+              <Label htmlFor="account" className="text-right">
                 Account
               </Label>
-              <Select onValueChange={setAccountId}>
+              <Select onValueChange={setAccount}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select account" />
                 </SelectTrigger>
@@ -461,10 +461,10 @@ export function RecurringTransactionsPage() {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="categoryId" className="text-right">
+              <Label htmlFor="category" className="text-right">
                 Category
               </Label>
-              <Select onValueChange={setCategoryId}>
+              <Select onValueChange={setCategory}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -534,7 +534,7 @@ export function RecurringTransactionsPage() {
               <Label htmlFor="frequency" className="text-right">
                 Frequency
               </Label>
-              <Select onValueChange={(value: 'daily' | 'weekly' | 'monthly' | 'yearly') => setFrequency(value)}>
+              <Select onValueChange={(value) => setFrequency(value as 'daily' | 'weekly' | 'monthly' | 'yearly')}>
                 <SelectTrigger className="col-span-3">
                   <SelectValue placeholder="Select frequency" />
                 </SelectTrigger>

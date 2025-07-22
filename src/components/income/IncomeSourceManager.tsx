@@ -53,8 +53,20 @@ export function IncomeSourceManager() {
 
     const fetchIncomeSources = async () => {
       try {
-        const incomeSources = await IncomeService.getIncomes(user.uid);
-        setIncomeSources(incomeSources);
+        const incomes = await IncomeService.getIncomes();
+        // Map Income records to IncomeSourceData format
+        const mappedIncomeSources = incomes.map(income => ({
+          id: income.id || '',
+          name: income.source_name || income.description || '',
+          amount: income.amount,
+          frequency: (income.frequency || 'one-time') as 'monthly' | 'yearly' | 'one-time',
+          start_date: income.date,
+          end_date: undefined,
+          category: income.category,
+          notes: income.description || '',
+          user_id: income.user_id || ''
+        }));
+        setIncomeSources(mappedIncomeSources);
       } catch (error) {
         console.error("Failed to fetch income sources:", error);
         toast.error("Failed to fetch income sources.");
@@ -73,7 +85,20 @@ export function IncomeSourceManager() {
         return;
       }
 
-      const newIncomeSourceData = {
+      const newIncomeData = {
+        source_name: name,
+        amount: Number(amount),
+        frequency,
+        date: startDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+        category,
+        description: notes,
+        user_id: user.uid,
+      };
+
+      await IncomeService.addIncome(newIncomeData);
+      
+      const newIncomeSource: IncomeSourceData = {
+        id: "temp_" + Date.now(),
         name,
         amount: Number(amount),
         frequency,
@@ -83,9 +108,8 @@ export function IncomeSourceManager() {
         notes,
         user_id: user.uid,
       };
-
-      await IncomeService.addIncomeSource(newIncomeSourceData);
-      setIncomeSources([...incomeSources, { id: "temp_" + Date.now(), ...newIncomeSourceData }]);
+      
+      setIncomeSources([...incomeSources, newIncomeSource]);
       closeModal();
       toast.success("Income source added successfully!");
     } catch (error) {
@@ -103,21 +127,23 @@ export function IncomeSourceManager() {
         return;
       }
 
-      const updatedIncomeSourceData = {
-        name,
+      const updatedIncomeData = {
+        source_name: name,
         amount: Number(amount),
         frequency,
-        start_date: startDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
-        end_date: endDate?.toISOString().split('T')[0],
+        date: startDate?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
         category,
-        notes,
+        description: notes,
         user_id: user.uid,
       };
 
-      await IncomeService.updateIncomeSource(selectedIncomeSource.id, updatedIncomeSourceData);
+      await IncomeService.updateIncome(selectedIncomeSource.id, updatedIncomeData);
+      
       setIncomeSources(
         incomeSources.map((incomeSource) =>
-          incomeSource.id === selectedIncomeSource.id ? { ...incomeSource, ...updatedIncomeSourceData } : incomeSource
+          incomeSource.id === selectedIncomeSource.id 
+            ? { ...incomeSource, name, amount: Number(amount), frequency, start_date: startDate?.toISOString().split('T')[0] || '', category, notes }
+            : incomeSource
         )
       );
       closeModal();
@@ -130,7 +156,7 @@ export function IncomeSourceManager() {
 
   const handleDeleteIncomeSource = async (id: string) => {
     try {
-      await IncomeService.deleteIncomeSource(id);
+      await IncomeService.deleteIncome(id);
       setIncomeSources(incomeSources.filter((incomeSource) => incomeSource.id !== id));
       toast.success("Income source deleted successfully!");
     } catch (error) {
