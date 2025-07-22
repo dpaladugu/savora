@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -40,12 +38,22 @@ export interface AppIncome {
 }
 
 // Local expense interface that doesn't extend from Expense to avoid conflicts
-interface LocalExtendedExpense extends AppExpense {
+interface LocalExtendedExpense {
+  id?: string;
+  user_id?: string;
+  date: string;
+  amount: number;
+  category: string;
+  description?: string;
+  payment_method?: string;
+  type: string;
+  tags: string[]; // Array format for internal use
   note?: string;
   merchant?: string;
   source?: string;
-  type: string;
-  tags: string[]; // Array format for internal use
+  account?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 // Extended types for union handling
@@ -110,9 +118,18 @@ export function ExpenseTracker() {
       const expense = item as ExtendedAppExpense;
       // Convert to LocalExtendedExpense format
       const expenseWithArrayTags: LocalExtendedExpense = {
-        ...expense,
+        id: expense.id,
+        user_id: expense.user_id,
+        date: expense.date,
+        amount: expense.amount,
+        category: expense.category,
+        description: expense.description,
+        payment_method: expense.payment_method,
+        type: expense.type || 'expense',
         tags: expense.tags ? expense.tags.split(',').map(tag => tag.trim()) : [], // Convert string to string[]
-        type: expense.type || 'expense'
+        account: expense.account,
+        created_at: expense.created_at,
+        updated_at: expense.updated_at
       };
       setEditingExpense(expenseWithArrayTags);
       setShowAddForm(true);

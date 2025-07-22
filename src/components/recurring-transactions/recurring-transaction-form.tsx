@@ -24,6 +24,7 @@ interface RecurringTransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: RecurringTransactionRecord | null;
+  onSubmit?: (data: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
 }
 
 const calculateNextOccurrenceDate = (
@@ -93,7 +94,7 @@ const defaultInitialFormData: RecurringTransactionFormData = {
   is_active: true,
 };
 
-export function RecurringTransactionForm({ isOpen, onClose, initialData }: RecurringTransactionFormProps) {
+export function RecurringTransactionForm({ isOpen, onClose, initialData, onSubmit }: RecurringTransactionFormProps) {
   const [formData, setFormData] = useState<RecurringTransactionFormData>(defaultInitialFormData);
   const [errors, setErrors] = useState<Partial<Record<keyof RecurringTransactionFormData, string>>>({});
   const [isLoading, setIsLoading] = useState(false);
@@ -211,12 +212,16 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
     };
 
     try {
-      if (formData.id) {
-        await RecurringTransactionService.updateRecurringTransaction(formData.id, { ...recordData, updated_at: new Date() });
-        toast({ title: "Success", description: "Recurring transaction updated." });
+      if (onSubmit) {
+        await onSubmit(recordData);
       } else {
-        await RecurringTransactionService.addRecurringTransaction(recordData);
-        toast({ title: "Success", description: "Recurring transaction added." });
+        if (formData.id) {
+          await RecurringTransactionService.updateRecurringTransaction(formData.id, { ...recordData, updated_at: new Date() });
+          toast({ title: "Success", description: "Recurring transaction updated." });
+        } else {
+          await RecurringTransactionService.addRecurringTransaction(recordData);
+          toast({ title: "Success", description: "Recurring transaction added." });
+        }
       }
       onClose();
     } catch (error) {
