@@ -21,10 +21,14 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 // Auth provider component
 export function AuthProvider({ children }: { children: ReactNode }) {
+  console.log('AuthProvider: Component initializing');
+  console.log('AuthProvider: React check:', typeof React, React);
+  
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('AuthProvider: useEffect running');
     // Check for stored user on mount
     const storedUser = getStoredUser();
     setUser(storedUser);
@@ -54,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signOut
   };
 
+  console.log('AuthProvider: Rendering with value:', value);
   return React.createElement(AuthContext.Provider, { value }, children);
 }
 
