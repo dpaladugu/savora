@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InvestmentService } from "@/services/InvestmentService";
 import { useAuth } from "@/services/auth-service";
+import type { InvestmentData } from "@/types/jsonPreload";
 
 interface Investment {
   id: string;
@@ -85,13 +86,13 @@ export function InvestmentsTracker() {
       const data = await InvestmentService.getAll(user.uid);
       const transformedData: Investment[] = data.map(investment => ({
         id: investment.id || '',
-        name: investment.fund_name || investment.amount?.toString() || '',
-        type: investment.investment_type as Investment['type'] || 'other',
+        name: investment.fund_name || investment.name || 'Unnamed Investment',
+        type: (investment.investment_type as Investment['type']) || 'other',
         symbol: investment.fund_name || '',
         quantity: investment.units || 0,
         purchase_price: investment.price || 0,
         current_price: investment.current_value || investment.price || 0,
-        purchase_date: new Date(investment.purchase_date || new Date()),
+        purchase_date: new Date(investment.purchaseDate || investment.purchase_date || new Date()),
         platform: investment.type || '',
         notes: investment.fund_name || '',
         user_id: investment.user_id || user.uid,
@@ -118,6 +119,7 @@ export function InvestmentsTracker() {
         price: parseFloat(formData.purchase_price) || 0,
         current_value: parseFloat(formData.current_price) || 0,
         purchase_date: formData.purchase_date,
+        purchaseDate: formData.purchase_date,
         user_id: user.uid,
         amount: parseFloat(formData.purchase_price) * parseFloat(formData.quantity) || 0,
         name: formData.name,

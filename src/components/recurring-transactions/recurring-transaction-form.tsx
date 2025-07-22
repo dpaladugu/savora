@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { CalendarIcon, AlertCircle } from 'lucide-react';
 import { format, parseISO, addDays, addWeeks, addMonths, addYears, isValid, set } from 'date-fns';
-import { db, RecurringTransactionRecord } from '@/db';
+import { db } from '@/db';
+import type { RecurringTransactionRecord } from '@/types/recurring-transaction';
 import { RecurringTransactionService } from '@/services/RecurringTransactionService';
 import { useToast } from "@/hooks/use-toast";
 
@@ -186,7 +186,8 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
     const amountNum = parseFloat(formData.amount as string);
     const intervalNum = parseInt(formData.interval as string, 10);
 
-    const recordData: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at' | 'next_occurrence_date'> & {next_occurrence_date?: string} = {
+    const recordData: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'> = {
+      user_id: formData.user_id || '',
       description: formData.description!,
       amount: amountNum,
       type: formData.type!,
@@ -199,23 +200,22 @@ export function RecurringTransactionForm({ isOpen, onClose, initialData }: Recur
       day_of_week: formData.day_of_week,
       day_of_month: formData.day_of_month,
       is_active: formData.is_active !== undefined ? formData.is_active : true,
+      next_date: calculateNextOccurrenceDate(
+        formData.start_date!,
+        formData.frequency!,
+        intervalNum,
+        formData.day_of_week,
+        formData.day_of_month
+      ),
+      account: formData.account,
     };
-
-    recordData.next_occurrence_date = calculateNextOccurrenceDate(
-        recordData.start_date,
-        recordData.frequency,
-        recordData.interval,
-        recordData.day_of_week,
-        recordData.day_of_month
-    );
 
     try {
       if (formData.id) {
-        const updates = { ...recordData, updated_at: new Date() };
-        await RecurringTransactionService.updateRecurringTransaction(formData.id, updates);
+        await RecurringTransactionService.updateRecurringTransaction(formData.id, { ...recordData, updated_at: new Date() });
         toast({ title: "Success", description: "Recurring transaction updated." });
       } else {
-        await RecurringTransactionService.addRecurringTransaction(recordData as Omit<RecurringTransactionRecord, 'id'>);
+        await RecurringTransactionService.addRecurringTransaction(recordData);
         toast({ title: "Success", description: "Recurring transaction added." });
       }
       onClose();

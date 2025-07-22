@@ -43,7 +43,7 @@ interface ExtendedExpense extends AppExpense {
   merchant?: string;
   source?: string;
   type: string;
-  tags?: string; // Keep as string to match AppExpense
+  tags: string; // Keep as string to match AppExpense
 }
 
 // Extended types for union handling
@@ -105,11 +105,12 @@ export function ExpenseTracker() {
   const handleOpenEditForm = (item: Transaction) => {
     // Only allow editing expenses, not incomes
     if ('payment_method' in item) {
-      const expense = item as ExtendedExpense;
-      // Ensure tags is a string when setting editing expense
+      const expense = item as ExtendedAppExpense;
+      // Convert to ExtendedExpense format
       const expenseWithStringTags: ExtendedExpense = {
         ...expense,
-        tags: expense.tags || ''
+        tags: expense.tags || expense.tags_flat || '', // Convert to string
+        type: expense.type || 'expense'
       };
       setEditingExpense(expenseWithStringTags);
       setShowAddForm(true);

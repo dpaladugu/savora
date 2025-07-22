@@ -7,6 +7,7 @@
  */
 
 import { db } from "@/db";
+import type { RecurringTransactionRecord as DbRecurringTransaction } from "@/db";
 import type { RecurringTransactionRecord as AppRecurringTransaction } from "@/types/recurring-transaction";
 
 export class RecurringTransactionService {
@@ -19,12 +20,17 @@ export class RecurringTransactionService {
   static async addRecurringTransaction(transactionData: Omit<AppRecurringTransaction, 'id'>): Promise<string> {
     try {
       const newId = self.crypto.randomUUID();
-      const recordToAdd: AppRecurringTransaction = {
+      
+      // Convert AppRecurringTransaction to DbRecurringTransaction format
+      const recordToAdd: DbRecurringTransaction = {
         ...transactionData,
         id: newId,
+        frequency: transactionData.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly',
+        next_occurrence_date: transactionData.next_date,
         created_at: new Date(),
         updated_at: new Date(),
       };
+      
       await db.recurringTransactions.add(recordToAdd);
       return newId;
     } catch (error) {
@@ -50,8 +56,15 @@ export class RecurringTransactionService {
    */
   static async updateRecurringTransaction(id: string, updates: Partial<AppRecurringTransaction>): Promise<number> {
     try {
-      const updateData = { ...updates, updated_at: new Date() };
-      const updatedCount = await db.recurringTransactions.update(id, updateData);
+      // Convert AppRecurringTransaction updates to DbRecurringTransaction format
+      const dbUpdates: Partial<DbRecurringTransaction> = {
+        ...updates,
+        updated_at: new Date(),
+        next_occurrence_date: updates.next_date,
+        frequency: updates.frequency as 'daily' | 'weekly' | 'monthly' | 'yearly' | undefined,
+      };
+      
+      const updatedCount = await db.recurringTransactions.update(id, dbUpdates);
       return updatedCount;
     } catch (error) {
       console.error(`Error in RecurringTransactionService.updateRecurringTransaction for id ${id}:`, error);
@@ -98,8 +111,13 @@ export class RecurringTransactionService {
   static async getRecurringTransactions(userId: string): Promise<AppRecurringTransaction[]> {
     try {
       if (!userId) return [];
-      const transactions = await db.recurringTransactions.where('user_id').equals(userId).sortBy('next_date');
-      return transactions;
+      const transactions = await db.recurringTransactions.where('user_id').equals(userId).sortBy('next_occurrence_date');
+      
+      // Convert DbRecurringTransaction to AppRecurringTransaction format
+      return transactions.map(transaction => ({
+        ...transaction,
+        next_date: transaction.next_occurrence_date || transaction.start_date,
+      }));
     } catch (error) {
       console.error(`Error in RecurringTransactionService.getRecurringTransactions for user ${userId}:`, error);
       throw error;
