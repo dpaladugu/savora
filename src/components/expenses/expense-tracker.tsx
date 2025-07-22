@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ interface LocalExtendedExpense extends AppExpense {
   merchant?: string;
   source?: string;
   type: string;
-  tags: string; // Keep as string to match AppExpense
+  tags: string[]; // Changed to string[] to match ExtendedExpense
 }
 
 // Extended types for union handling
@@ -107,12 +108,12 @@ export function ExpenseTracker() {
     if ('payment_method' in item) {
       const expense = item as ExtendedAppExpense;
       // Convert to LocalExtendedExpense format
-      const expenseWithStringTags: LocalExtendedExpense = {
+      const expenseWithArrayTags: LocalExtendedExpense = {
         ...expense,
-        tags: expense.tags || expense.tags_flat || '', // Convert to string
+        tags: expense.tags ? expense.tags.split(',').map(tag => tag.trim()) : [], // Convert string to string[]
         type: expense.type || 'expense'
       };
-      setEditingExpense(expenseWithStringTags);
+      setEditingExpense(expenseWithArrayTags);
       setShowAddForm(true);
     }
   };
