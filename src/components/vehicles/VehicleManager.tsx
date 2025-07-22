@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,14 +15,15 @@ import { VehicleService } from "@/services/VehicleService";
 import { useAuth } from "@/services/auth-service";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from "@/db";
+import type { DexieVehicleRecord } from "@/db";
 
 interface Vehicle {
   id: string;
   make: string;
   model: string;
   year: number;
-  purchase_date: string;
-  purchase_price: number;
+  purchaseDate: string;
+  purchasePrice: number;
   user_id: string;
   created_at: Date;
   updated_at: Date;
@@ -31,16 +33,16 @@ interface VehicleFormData {
   make: string;
   model: string;
   year: number;
-  purchase_date: Date;
-  purchase_price: number;
+  purchaseDate: Date;
+  purchasePrice: number;
 }
 
 const initialFormData: VehicleFormData = {
   make: '',
   model: '',
   year: new Date().getFullYear(),
-  purchase_date: new Date(),
-  purchase_price: 0,
+  purchaseDate: new Date(),
+  purchasePrice: 0,
 };
 
 export function VehicleManager() {
@@ -61,7 +63,18 @@ export function VehicleManager() {
 
     try {
       const data = await VehicleService.getAll(user.uid);
-      setVehicles(data);
+      const transformedData: Vehicle[] = data.map(vehicle => ({
+        id: vehicle.id || '',
+        make: vehicle.make || '',
+        model: vehicle.model || '',
+        year: vehicle.year || new Date().getFullYear(),
+        purchaseDate: vehicle.purchaseDate || new Date().toISOString().split('T')[0],
+        purchasePrice: vehicle.purchasePrice || 0,
+        user_id: vehicle.user_id || user.uid,
+        created_at: new Date(vehicle.created_at || new Date()),
+        updated_at: new Date(vehicle.updated_at || new Date())
+      }));
+      setVehicles(transformedData);
     } catch (error) {
       console.error('Error loading vehicles:', error);
       toast.error('Failed to load vehicles');
@@ -77,15 +90,17 @@ export function VehicleManager() {
       const vehicleData = {
         ...formData,
         user_id: user.uid,
-        purchase_date: formData.purchase_date.toISOString().split('T')[0], // Convert Date to string
+        purchaseDate: formData.purchaseDate.toISOString().split('T')[0],
         created_at: new Date(),
-        updated_at: new Date()
+        updated_at: new Date(),
+        name: `${formData.make} ${formData.model}`,
+        registrationNumber: ''
       };
 
       if (editingId) {
         await VehicleService.update(editingId, {
           ...vehicleData,
-          purchase_date: formData.purchase_date.toISOString().split('T')[0] // Convert Date to string
+          purchaseDate: formData.purchaseDate.toISOString().split('T')[0]
         });
         toast.success('Vehicle updated successfully');
       } else {
@@ -108,11 +123,11 @@ export function VehicleManager() {
     const vehicle = await VehicleService.getVehicleById(id);
     if (vehicle) {
       setFormData({
-        make: vehicle.make,
-        model: vehicle.model,
-        year: vehicle.year,
-        purchase_date: new Date(vehicle.purchase_date),
-        purchase_price: vehicle.purchase_price,
+        make: vehicle.make || '',
+        model: vehicle.model || '',
+        year: vehicle.year || new Date().getFullYear(),
+        purchaseDate: new Date(vehicle.purchaseDate || new Date()),
+        purchasePrice: vehicle.purchasePrice || 0,
       });
       setEditingId(vehicle.id);
     }
@@ -177,18 +192,18 @@ export function VehicleManager() {
                       variant="outline"
                       className={cn(
                         "w-full justify-start text-left font-normal",
-                        !formData.purchase_date && "text-muted-foreground"
+                        !formData.purchaseDate && "text-muted-foreground"
                       )}
                     >
                       <CalendarIcon className="mr-2 h-4 w-4" />
-                      {formData.purchase_date ? format(formData.purchase_date, "PPP") : "Pick a date"}
+                      {formData.purchaseDate ? format(formData.purchaseDate, "PPP") : "Pick a date"}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
                     <Calendar
                       mode="single"
-                      selected={formData.purchase_date}
-                      onSelect={(date) => date && setFormData({ ...formData, purchase_date: date })}
+                      selected={formData.purchaseDate}
+                      onSelect={(date) => date && setFormData({ ...formData, purchaseDate: date })}
                       initialFocus
                     />
                   </PopoverContent>
@@ -196,13 +211,13 @@ export function VehicleManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="purchase_price">Purchase Price</Label>
+                <Label htmlFor="purchasePrice">Purchase Price</Label>
                 <Input
-                  id="purchase_price"
+                  id="purchasePrice"
                   type="number"
                   step="0.01"
-                  value={formData.purchase_price}
-                  onChange={(e) => setFormData({ ...formData, purchase_price: parseFloat(e.target.value) })}
+                  value={formData.purchasePrice}
+                  onChange={(e) => setFormData({ ...formData, purchasePrice: parseFloat(e.target.value) })}
                   required
                 />
               </div>
@@ -241,7 +256,7 @@ export function VehicleManager() {
                 <div>
                   <h3 className="font-semibold">{vehicle.make} {vehicle.model}</h3>
                   <div className="text-sm text-muted-foreground">
-                    Year: {vehicle.year}, Purchased on: {format(new Date(vehicle.purchase_date), 'MMM dd, yyyy')}
+                    Year: {vehicle.year}, Purchased on: {format(new Date(vehicle.purchaseDate), 'MMM dd, yyyy')}
                   </div>
                 </div>
                 <div className="flex gap-2">

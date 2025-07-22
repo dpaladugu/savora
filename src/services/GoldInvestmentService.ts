@@ -1,3 +1,4 @@
+
 /**
  * src/services/GoldInvestmentService.ts
  *
@@ -76,5 +77,14 @@ export class GoldInvestmentService {
       console.error(`Error in GoldInvestmentService.getGoldInvestments for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Retrieves all gold investments for a given user.
+   * @param userId The ID of the user whose records to fetch.
+   * @returns A promise that resolves to an array of gold investments.
+   */
+  static async getAll(userId: string): Promise<AppGoldInvestment[]> {
+    return this.getGoldInvestments(userId);
   }
 }

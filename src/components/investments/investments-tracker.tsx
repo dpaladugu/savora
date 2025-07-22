@@ -85,15 +85,15 @@ export function InvestmentsTracker() {
       const data = await InvestmentService.getAll(user.uid);
       const transformedData: Investment[] = data.map(investment => ({
         id: investment.id || '',
-        name: investment.fund_name || investment.name || '',
-        type: (investment.investment_type || investment.type) as Investment['type'] || 'other',
-        symbol: investment.symbol,
-        quantity: investment.units || investment.quantity || 0,
-        purchase_price: investment.price || investment.purchase_price || 0,
-        current_price: investment.current_value || investment.current_price || 0,
+        name: investment.fund_name || investment.amount?.toString() || '',
+        type: investment.investment_type as Investment['type'] || 'other',
+        symbol: investment.fund_name || '',
+        quantity: investment.units || 0,
+        purchase_price: investment.price || 0,
+        current_price: investment.current_value || investment.price || 0,
         purchase_date: new Date(investment.purchase_date || new Date()),
-        platform: investment.platform || '',
-        notes: investment.notes,
+        platform: investment.type || '',
+        notes: investment.fund_name || '',
         user_id: investment.user_id || user.uid,
         created_at: new Date(investment.created_at || new Date()),
         updated_at: new Date(investment.updated_at || new Date())
@@ -112,18 +112,17 @@ export function InvestmentsTracker() {
     setIsLoading(true);
     try {
       const investmentData = {
-        name: formData.name,
-        type: formData.type,
-        symbol: formData.symbol,
-        quantity: parseFloat(formData.quantity),
-        purchase_price: parseFloat(formData.purchase_price),
-        current_price: parseFloat(formData.current_price),
-        purchase_date: formData.purchase_date,
-        platform: formData.platform,
-        notes: formData.notes,
-        user_id: user.uid,
         fund_name: formData.name,
-        investment_type: formData.type
+        investment_type: formData.type,
+        units: parseFloat(formData.quantity) || 0,
+        price: parseFloat(formData.purchase_price) || 0,
+        current_value: parseFloat(formData.current_price) || 0,
+        purchase_date: formData.purchase_date,
+        user_id: user.uid,
+        amount: parseFloat(formData.purchase_price) * parseFloat(formData.quantity) || 0,
+        name: formData.name,
+        type: formData.platform,
+        risk_level: 'medium'
       };
 
       if (editingId) {

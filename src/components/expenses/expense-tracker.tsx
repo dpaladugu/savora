@@ -43,7 +43,7 @@ interface ExtendedExpense extends AppExpense {
   merchant?: string;
   source?: string;
   type: string;
-  tags?: string; // Consistent string type
+  tags?: string; // Keep as string to match AppExpense
 }
 
 // Extended types for union handling

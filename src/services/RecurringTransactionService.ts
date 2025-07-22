@@ -1,3 +1,4 @@
+
 /**
  * src/services/RecurringTransactionService.ts
  *
@@ -6,7 +7,7 @@
  */
 
 import { db } from "@/db";
-import type { RecurringTransactionRecord as AppRecurringTransaction } from "@/db";
+import type { RecurringTransactionRecord as AppRecurringTransaction } from "@/types/recurring-transaction";
 
 export class RecurringTransactionService {
 
@@ -33,6 +34,15 @@ export class RecurringTransactionService {
   }
 
   /**
+   * Creates a new recurring transaction record to the database.
+   * @param transactionData The transaction data to add.
+   * @returns The id of the newly added record.
+   */
+  static async create(transactionData: Omit<AppRecurringTransaction, 'id'>): Promise<string> {
+    return this.addRecurringTransaction(transactionData);
+  }
+
+  /**
    * Updates an existing recurring transaction record.
    * @param id The id of the record to update.
    * @param updates A partial object of the record data to update.
@@ -50,6 +60,16 @@ export class RecurringTransactionService {
   }
 
   /**
+   * Updates an existing recurring transaction record.
+   * @param id The id of the record to update.
+   * @param updates A partial object of the record data to update.
+   * @returns The number of updated records.
+   */
+  static async update(id: string, updates: Partial<AppRecurringTransaction>): Promise<number> {
+    return this.updateRecurringTransaction(id, updates);
+  }
+
+  /**
    * Deletes a recurring transaction record from the database.
    * @param id The id of the record to delete.
    */
@@ -63,6 +83,14 @@ export class RecurringTransactionService {
   }
 
   /**
+   * Deletes a recurring transaction record from the database.
+   * @param id The id of the record to delete.
+   */
+  static async delete(id: string): Promise<void> {
+    return this.deleteRecurringTransaction(id);
+  }
+
+  /**
    * Retrieves all recurring transactions for a given user.
    * @param userId The ID of the user whose records to fetch.
    * @returns A promise that resolves to an array of recurring transactions.
@@ -70,11 +98,20 @@ export class RecurringTransactionService {
   static async getRecurringTransactions(userId: string): Promise<AppRecurringTransaction[]> {
     try {
       if (!userId) return [];
-      const transactions = await db.recurringTransactions.where('user_id').equals(userId).sortBy('next_occurrence_date');
+      const transactions = await db.recurringTransactions.where('user_id').equals(userId).sortBy('next_date');
       return transactions;
     } catch (error) {
       console.error(`Error in RecurringTransactionService.getRecurringTransactions for user ${userId}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Retrieves all recurring transactions for a given user.
+   * @param userId The ID of the user whose records to fetch.
+   * @returns A promise that resolves to an array of recurring transactions.
+   */
+  static async getAll(userId: string): Promise<AppRecurringTransaction[]> {
+    return this.getRecurringTransactions(userId);
   }
 }
