@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { RecurringTransactionForm } from "./recurring-transaction-form";
 import { RecurringTransactionService } from "@/services/RecurringTransactionService";
 import { useAuth } from "@/services/auth-service";
 import { useToast } from "@/hooks/use-toast";
-import type { RecurringTransactionRecord } from "@/types/recurring-transaction"; // Use proper type
+import type { RecurringTransactionRecord } from "@/types/recurring-transaction";
 
 interface RecurringTransactionsPageProps {
   onTabChange?: (tab: string) => void;
@@ -170,10 +171,10 @@ export function RecurringTransactionsPage({ onTabChange }: RecurringTransactions
 
           {showForm ? (
             <RecurringTransactionForm
+              isOpen={showForm}
+              onClose={handleCancel}
               onSubmit={handleSubmit}
-              onCancel={handleCancel}
               initialData={editingTransaction}
-              isLoading={isLoading}
             />
           ) : (
             <div>

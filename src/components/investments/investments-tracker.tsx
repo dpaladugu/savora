@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -302,7 +301,7 @@ export function InvestmentsTracker() {
                             <span className="font-medium">Current Price:</span> ${investment.current_price.toFixed(2)}
                           </div>
                           <div>
-                            <span className="font-medium">Platform:</span> {investment.platform}
+                            <span className="font-medium">Platform:</span> {investment.platform || ''}
                           </div>
                         </div>
                         <div className="mt-2 grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
