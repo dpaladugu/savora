@@ -1,56 +1,7 @@
 
-import React from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/contexts/theme-context";
-import { AuthProvider } from "@/services/auth-service";
-import { ErrorBoundary } from "@/components/error/error-boundary";
-import { Toaster } from "@/components/ui/sonner";
-import Index from "@/pages/Index";
-import NotFound from "@/pages/NotFound";
-import { Auth } from "@/components/auth/Auth";
-import { DbErrorListener } from "@/components/error/DbErrorListener";
-import { Logger } from "@/services/logger";
-import "./App.css";
+import React from 'react';
+import './index.css';
 
-// Create a client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 2,
-      refetchOnWindowFocus: false,
-      staleTime: 5 * 60 * 1000, // 5 minutes
-    },
-  },
-});
-
-function App() {
-  console.log('App: Component initializing');
-  console.log('App: React version check:', React.version || 'React version not available');
-  console.log('App: Router components check:', typeof Router, typeof Routes, typeof Route);
-  Logger.info('App initialized');
-
-  return (
-    <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ThemeProvider>
-            <Router>
-              <div className="min-h-screen bg-background text-foreground">
-                <DbErrorListener />
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-                <Toaster />
-              </div>
-            </Router>
-          </ThemeProvider>
-        </AuthProvider>
-      </QueryClientProvider>
-    </ErrorBoundary>
-  );
+export default function App() {
+  return <div className="p-4 text-2xl">Savora v1.0</div>;
 }
-
-export default App;
