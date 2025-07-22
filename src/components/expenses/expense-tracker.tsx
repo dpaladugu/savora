@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,13 +39,13 @@ export interface AppIncome {
   source_recurring_transaction_id?: string;
 }
 
-// Use a different name to avoid conflicts with the imported ExtendedExpense
+// Local expense interface that doesn't extend from Expense to avoid conflicts
 interface LocalExtendedExpense extends AppExpense {
   note?: string;
   merchant?: string;
   source?: string;
   type: string;
-  tags: string[]; // Changed to string[] to match ExtendedExpense
+  tags: string[]; // Array format for internal use
 }
 
 // Extended types for union handling
