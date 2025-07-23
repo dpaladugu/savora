@@ -2,9 +2,8 @@
 import React from 'react';
 import { BrowserRouter as Router } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { SeedButton } from '@/components/ui/SeedButton';
-import { AppRoutes } from '@/routes';
 import { SeedToggle } from '@/components/SeedToggle';
+import { AppRoutes } from '@/routes';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -20,8 +19,8 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SeedToggle />
       <Router>
+        <SeedToggle />
         <AppRoutes />
       </Router>
     </QueryClientProvider>
