@@ -15,7 +15,11 @@ export function AppRoutes() {
   const { handleTabChange, handleMoreNavigation } = useNavigationRouter();
 
   return (
-    <Suspense fallback={<LoadingWrapper loading={true} />}>
+    <Suspense fallback={
+      <LoadingWrapper loading={true}>
+        <div>Loading...</div>
+      </LoadingWrapper>
+    }>
       <Routes>
         <Route path="/" element={<Dashboard onTabChange={handleTabChange} onMoreNavigation={handleMoreNavigation} />} />
         <Route path="/dashboard" element={<Dashboard onTabChange={handleTabChange} onMoreNavigation={handleMoreNavigation} />} />
