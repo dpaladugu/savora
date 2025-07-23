@@ -2,6 +2,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { LoadingWrapper } from '@/components/ui/loading-wrapper';
+import { useNavigationRouter } from '@/components/layout/navigation-router';
 
 // Lazy load components
 const Dashboard = React.lazy(() => import('@/components/dashboard/dashboard').then(m => ({ default: m.Dashboard })));
@@ -11,11 +12,13 @@ const HealthTracker = React.lazy(() => import('@/components/HealthTracker').then
 const ExportPage = React.lazy(() => import('@/components/ExportPage').then(m => ({ default: m.ExportPage })));
 
 export function AppRoutes() {
+  const { handleTabChange, handleMoreNavigation } = useNavigationRouter();
+
   return (
-    <Suspense fallback={<LoadingWrapper isLoading={true} />}>
+    <Suspense fallback={<LoadingWrapper loading={true} />}>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard onTabChange={handleTabChange} onMoreNavigation={handleMoreNavigation} />} />
+        <Route path="/dashboard" element={<Dashboard onTabChange={handleTabChange} onMoreNavigation={handleMoreNavigation} />} />
         <Route path="/rentals" element={<RentalManager />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/health" element={<HealthTracker />} />

@@ -37,7 +37,6 @@ export class RecurringTransactionService {
         is_active: transactionData.is_active,
         type: transactionData.type,
         payment_method: transactionData.payment_method,
-        account: transactionData.account || '',
         created_at: new Date(),
         updated_at: new Date(),
       };
@@ -86,7 +85,6 @@ export class RecurringTransactionService {
       if (updates.is_active !== undefined) dbUpdates.is_active = updates.is_active;
       if (updates.type !== undefined) dbUpdates.type = updates.type;
       if (updates.payment_method !== undefined) dbUpdates.payment_method = updates.payment_method;
-      if (updates.account !== undefined) dbUpdates.account = updates.account || '';
       
       const updatedCount = await db.recurringTransactions.update(id, dbUpdates);
       return updatedCount;
@@ -155,7 +153,7 @@ export class RecurringTransactionService {
         is_active: transaction.is_active,
         type: transaction.type,
         payment_method: transaction.payment_method,
-        account: transaction.account || '',
+        account: '',
         created_at: transaction.created_at,
         updated_at: transaction.updated_at,
       }));
