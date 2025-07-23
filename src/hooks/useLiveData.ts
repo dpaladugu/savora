@@ -11,3 +11,5 @@ export const useLoans = () => useLiveQuery(() => db.loans.toArray());
 export const usePolicies = () => useLiveQuery(() => db.policies.toArray());
 export const useHealthProfiles = () => useLiveQuery(() => db.healthProfiles.toArray());
 export const useWallets = () => useLiveQuery(() => db.wallets.toArray());
+export const useTenants = () => useLiveQuery(() => db.tenants.toArray());
+export const useMedicines = () => useLiveQuery(() => db.medicines.toArray());
