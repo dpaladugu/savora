@@ -1,4 +1,3 @@
-
 /**
  * src/services/RecurringTransactionService.ts
  *
@@ -39,7 +38,6 @@ export class RecurringTransactionService {
         type: transactionData.type,
         payment_method: transactionData.payment_method,
         account: transactionData.account || '',
-        account?: string;
         created_at: new Date(),
         updated_at: new Date(),
       };
