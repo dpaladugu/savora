@@ -20,8 +20,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Router>
-        <SeedToggle />
-        <AppRoutes />
+        <div>
+          <SeedToggle />
+          <AppRoutes />
+        </div>
       </Router>
     </QueryClientProvider>
   );
