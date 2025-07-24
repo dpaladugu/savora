@@ -11,25 +11,27 @@ import { useLiveQuery } from 'dexie-react-hooks';
 
 export function InvestmentsTracker() {
   // Use the correct table name from the database
-  const investments = useLiveQuery(() => db.txns.where('type').equals('investment').toArray()) || [];
+  const investments = useLiveQuery(() => db.investments.toArray()) || [];
   const [sortBy, setSortBy] = useState<'name' | 'value' | 'returns'>('name');
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Calculate total portfolio value
-  const totalValue = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0);
-  const totalInvested = investments.reduce((sum, inv) => sum + (inv.amount || 0), 0); // Simplified for now
-  const totalReturns = 0; // Simplified calculation
-  const returnsPercentage = 0; // Simplified calculation
+  const totalValue = investments.reduce((sum, inv) => sum + (inv.current_value || 0), 0);
+  const totalInvested = investments.reduce((sum, inv) => sum + (inv.invested_value || 0), 0);
+  const totalReturns = totalValue - totalInvested;
+  const returnsPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
 
   // Sort investments
   const sortedInvestments = [...investments].sort((a, b) => {
     switch (sortBy) {
       case 'value':
-        return (b.amount || 0) - (a.amount || 0);
+        return (b.current_value || 0) - (a.current_value || 0);
       case 'returns':
-        return 0; // Simplified for now
+        const aReturns = (a.current_value || 0) - (a.invested_value || 0);
+        const bReturns = (b.current_value || 0) - (b.invested_value || 0);
+        return bReturns - aReturns;
       default:
-        return (a.description || '').localeCompare(b.description || '');
+        return (a.fund_name || '').localeCompare(b.fund_name || '');
     }
   });
 
@@ -116,27 +118,27 @@ export function InvestmentsTracker() {
       {/* Investment List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {sortedInvestments.map((investment) => {
-          const returns = 0; // Simplified calculation
-          const returnsPercentage = 0; // Simplified calculation
+          const returns = (investment.current_value || 0) - (investment.invested_value || 0);
+          const returnsPercentage = (investment.invested_value || 0) > 0 ? (returns / (investment.invested_value || 0)) * 100 : 0;
           
           return (
             <Card key={investment.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{investment.description}</CardTitle>
+                  <CardTitle className="text-lg">{investment.fund_name}</CardTitle>
                   <Badge variant="secondary">
-                    {investment.category || 'Investment'}
+                    {investment.investment_type || 'Investment'}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Amount</span>
-                  <span className="font-medium">{formatCurrency(investment.amount || 0)}</span>
+                  <span className="text-sm text-muted-foreground">Current Value</span>
+                  <span className="font-medium">{formatCurrency(investment.current_value || 0)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Date</span>
-                  <span className="font-medium">{investment.date}</span>
+                  <span className="text-sm text-muted-foreground">Invested</span>
+                  <span className="font-medium">{formatCurrency(investment.invested_value || 0)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-sm text-muted-foreground">Returns</span>
