@@ -29,7 +29,7 @@ export class RecommendationService {
     const recommendations: Recommendation[] = [];
 
     try {
-      // Get all necessary data
+      // Get all necessary data using the new schema
       const [transactions, investments, insurance, goals, loans] = await Promise.all([
         db.txns.toArray(),
         db.investments.toArray(),
@@ -93,6 +93,19 @@ export class RecommendationService {
     const goldInvestments = investments.filter(inv => 
       inv.type.includes('Gold') || inv.type === 'SGB'
     );
+
+    if (totalInvested === 0) {
+      recommendations.push({
+        id: `start-investing-${Date.now()}`,
+        type: 'investment',
+        priority: 'high',
+        title: 'Start Your Investment Journey',
+        description: 'You haven\'t started investing yet. Begin with a diversified portfolio.',
+        action: 'Start a monthly SIP of ₹5,000',
+        amount: 5000
+      });
+      return recommendations;
+    }
 
     const equityAllocation = equityInvestments.reduce((sum, inv) => sum + inv.investedValue, 0) / totalInvested;
     const debtAllocation = debtInvestments.reduce((sum, inv) => sum + inv.investedValue, 0) / totalInvested;

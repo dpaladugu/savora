@@ -7,7 +7,6 @@
 
 import { db } from '@/lib/db';
 import type { Txn } from '@/lib/db';
-import { parseISO } from 'date-fns';
 
 export class TransactionService {
 
@@ -40,7 +39,12 @@ export class TransactionService {
       const recordToAdd: Txn = {
         ...transactionData,
         id: newId,
-        currency: 'INR' // Hard-coded as per requirements
+        currency: 'INR', // Hard-coded as per requirements
+        paymentMix: transactionData.paymentMix || [],
+        splitWith: transactionData.splitWith || [],
+        tags: transactionData.tags || [],
+        isPartialRent: transactionData.isPartialRent || false,
+        isSplit: transactionData.isSplit || false
       };
       await db.txns.add(recordToAdd);
       return newId;
@@ -106,6 +110,21 @@ export class TransactionService {
       return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
     } catch (error) {
       console.error(`Error in TransactionService.getTransactionsByDateRange:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets transactions by goal ID.
+   * @param goalId The goal ID to filter by.
+   * @returns A promise that resolves to an array of transactions.
+   */
+  static async getTransactionsByGoal(goalId: string): Promise<Txn[]> {
+    try {
+      const transactions = await db.txns.where('goalId').equals(goalId).toArray();
+      return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+      console.error(`Error in TransactionService.getTransactionsByGoal for goal ${goalId}:`, error);
       throw error;
     }
   }

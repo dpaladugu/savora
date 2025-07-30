@@ -1,16 +1,14 @@
+
 import { useState, useEffect } from 'react';
-import { ExpenseService } from '@/services/ExpenseService';
-import { IncomeService } from '@/services/IncomeService';
-import { InvestmentService } from '@/services/InvestmentService';
-import { AccountService } from '@/services/AccountService';
-import { useAuth } from '@/services/auth-service';
+import { db } from '@/lib/db';
+import type { EmergencyFund, Txn } from '@/lib/db';
 
 interface EmergencyFundData {
   totalExpenses: number;
   totalIncome: number;
   totalSavings: number;
   monthsCovered: number;
-  accountsData: any[];
+  emergencyFunds: EmergencyFund[];
   data?: any;
   calculation?: any;
   loading?: boolean;
@@ -25,35 +23,45 @@ export const useEmergencyFund = () => {
     totalIncome: 0,
     totalSavings: 0,
     monthsCovered: 0,
-    accountsData: [],
+    emergencyFunds: [],
     loading: false,
     missingData: [],
   });
-  const { user } = useAuth();
 
   const fetchData = async () => {
-    if (!user) return;
-
     setEmergencyFundData(prev => ({ ...prev, loading: true }));
     
     try {
-      const expenses = await ExpenseService.getExpenses();
-      const income = await IncomeService.getIncomes();
-      const accounts = await AccountService.getAccounts(user.uid);
+      const [transactions, emergencyFunds] = await Promise.all([
+        db.txns.toArray(),
+        db.emergencyFunds.toArray()
+      ]);
 
-      const totalExpenses = expenses.reduce((acc, expense) => acc + expense.amount, 0);
-      const totalIncome = income.reduce((acc, income) => acc + income.amount, 0);
-      const totalSavings = accounts.reduce((acc, account) => acc + account.balance, 0);
+      // Calculate totals from transactions
+      const totalIncome = transactions
+        .filter(t => t.amount > 0)
+        .reduce((sum, t) => sum + t.amount, 0);
 
-      const monthsCovered = totalExpenses > 0 ? totalSavings / totalExpenses : 0;
+      const totalExpenses = transactions
+        .filter(t => t.amount < 0)
+        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
+
+      // Calculate monthly averages
+      const monthlyExpenses = totalExpenses / 12; // Assuming 12 months of data
+      const monthlyIncome = totalIncome / 12;
+
+      // Get total emergency fund savings
+      const totalSavings = emergencyFunds.reduce((sum, fund) => sum + fund.currentAmount, 0);
+
+      const monthsCovered = monthlyExpenses > 0 ? totalSavings / monthlyExpenses : 0;
 
       setEmergencyFundData({
-        totalExpenses,
-        totalIncome,
+        totalExpenses: monthlyExpenses,
+        totalIncome: monthlyIncome,
         totalSavings,
         monthsCovered,
-        accountsData: accounts,
-        data: { totalExpenses, totalIncome, totalSavings, monthsCovered },
+        emergencyFunds,
+        data: { totalExpenses: monthlyExpenses, totalIncome: monthlyIncome, totalSavings, monthsCovered },
         calculation: { monthsCovered },
         loading: false,
         missingData: [],
@@ -68,7 +76,7 @@ export const useEmergencyFund = () => {
 
   useEffect(() => {
     fetchData();
-  }, [user]);
+  }, []);
 
   return emergencyFundData;
 };

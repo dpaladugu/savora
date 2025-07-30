@@ -10,7 +10,8 @@ import { useNavigationRouter } from "@/components/layout/navigation-router";
 import { useAppStore, useIsUnlocked } from "@/store/appStore";
 import { PinLock } from "@/components/auth/PinLock";
 import { Auth } from "@/components/auth/Auth";
-import { db } from "@/db";
+import { db } from "@/lib/db";
+import { seedInitialData } from "@/lib/seed-data";
 
 const MainApp = () => {
   const isUnlocked = useIsUnlocked();
@@ -40,7 +41,6 @@ const MainApp = () => {
 
 const Index = () => {
   console.log('Index: Component mounting');
-  console.log('Index: React context check:', React);
   
   const isUnlocked = useIsUnlocked();
   const navigate = useNavigate();
@@ -52,7 +52,10 @@ const Index = () => {
     console.log('Index: useEffect for initial state checking');
     async function checkInitialState() {
       try {
-        const existingUser = await db.appSettings.get('userPersonalProfile_v1');
+        // Initialize the database and seed data if needed
+        await seedInitialData();
+
+        const existingUser = await db.getPersonalProfile();
         console.log('Index: Existing user check result:', !!existingUser);
         setHasExistingUser(!!existingUser);
 
@@ -81,11 +84,23 @@ const Index = () => {
     navigate('/dashboard');
   };
 
-  const handleOnboardingComplete = () => {
+  const handleOnboardingComplete = async () => {
     console.log('Index: handleOnboardingComplete called');
-    setHasExistingUser(true);
-    setHasPin(true);
-    navigate('/dashboard');
+    try {
+      // Create a basic user profile
+      const profile = {
+        name: 'Demo User',
+        email: 'demo@savora.app',
+        createdAt: new Date().toISOString()
+      };
+      await db.savePersonalProfile(profile);
+      
+      setHasExistingUser(true);
+      setHasPin(false); // No PIN set yet
+      console.log('Index: Profile created, proceeding to main app');
+    } catch (error) {
+      console.error('Index: Error creating profile:', error);
+    }
   };
 
   console.log('Index: Render state - initialized:', isAppInitialized, 'hasUser:', hasExistingUser, 'hasPin:', hasPin, 'isUnlocked:', isUnlocked);

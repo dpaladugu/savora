@@ -1,33 +1,8 @@
 
-import Dexie, { type EntityTable } from 'dexie';
+import Dexie, { Table } from 'dexie';
 
-// ---------- helper interfaces ----------
-interface LineItem {
-  name: string; qty: number; rate: number; gstRate?: number;
-}
-interface PaymentSplit {
-  mode: 'CreditCard' | 'Wallet' | 'RewardPoints' | 'Cash' | 'UPI';
-  amount: number;
-  creditCardId?: string;
-  walletId?: string;
-}
-interface AmortizationRow {
-  date: Date; emi: number; principal: number; interest: number; outstanding: number;
-}
-interface HealthParameter {
-  name: string; value: number; unit: string; flag?: 'Normal' | 'Borderline' | 'High';
-}
-interface SplitItem {
-  person: string; amount: number; settled: boolean;
-}
-interface ServiceLog {
-  date: Date; odo: number; centre: string; items: LineItem[]; total: number;
-}
-interface Contact {
-  name: string; phone: string; relation: string;
-}
+// --- Core Interfaces from Requirements Spec ---
 
-// ---------- Global Settings ----------
 export interface GlobalSettings {
   id: string;
   taxRegime: 'Old' | 'New';
@@ -37,164 +12,166 @@ export interface GlobalSettings {
   emergencyContacts: Contact[];
 }
 
-// ---------- Universal Transaction ----------
-export interface Txn {
-  id: string; 
-  date: Date; 
-  amount: number; 
-  currency: string; 
-  category: string;
-  note?: string; 
-  tags?: string[]; 
-  goalId?: string; 
-  receiptUri?: string;
-  creditCardId?: string; 
-  tenantId?: string; 
-  propertyId?: string;
-  rentMonth?: string;
-  isPartialRent?: boolean;
-  paymentMix?: PaymentSplit[]; 
-  cashbackAmount?: number;
-  isSplit?: boolean;
-  splitWith?: SplitItem[];
-  items?: LineItem[];
+export interface Contact {
+  name: string;
+  phone: string;
+  relation: string;
 }
 
-// ---------- core tables ----------
+export interface PaymentSplit {
+  method: string;
+  amount: number;
+}
+
+export interface SplitItem {
+  person: string;
+  amount: number;
+  settled: boolean;
+}
+
+export interface Txn {
+  id: string;
+  date: Date;
+  amount: number;
+  currency: string; // hard-coded "INR"
+  category: string;
+  note: string;
+  tags: string[];
+  goalId?: string;
+  receiptUri?: string;
+  cardId?: string;
+  vehicleId?: string;
+  tenantId?: string;
+  propertyId?: string;
+  rentMonth?: string;
+  isPartialRent: boolean;
+  paymentMix: PaymentSplit[];
+  cashbackAmount?: number;
+  isSplit: boolean;
+  splitWith: SplitItem[];
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  type: 'Micro' | 'Small' | 'Short' | 'Medium' | 'Long';
+  targetAmount: number;
+  targetDate: Date;
+  currentAmount: number;
+  notes: string;
+}
+
 export interface CreditCard {
-  id: string; 
-  issuer: string; 
+  id: string;
+  issuer: string;
   bankName: string;
-  last4: string; 
-  network: string;
+  last4: string;
+  network: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex';
   cardVariant: string;
   productVariant: string;
-  annualFee: number; 
+  annualFee: number;
   annualFeeGst: number;
   creditLimit: number;
   creditLimitShared: boolean;
   fuelSurchargeWaiver: boolean;
   rewardPointsBalance: number;
-  cycleStart: number; 
-  stmtDay: number; 
+  cycleStart: number;
+  stmtDay: number;
   dueDay: number;
 }
 
-export interface Loan {
-  id: string; 
-  type: 'Personal' | 'Personal-Brother' | 'Education-Brother';
-  borrower: 'Me' | 'Brother';
-  principal: number; 
-  roi: number;
-  tenureMonths: number;
-  emi: number;
-  outstanding: number;
-  startDate: Date;
-  amortisationSchedule?: AmortizationRow[];
-  isActive: boolean;
-  prepaymentPenalty?: number;
-  moratoriumMonths?: number;
-  loanInsurance?: string;
-  guarantorName?: string;
+export interface FuelFill {
+  date: Date;
+  litres: number;
+  odometer: number;
+  isFullTank: boolean;
+  cost: number;
 }
 
-export interface Goal {
-  id: string; 
-  name: string; 
-  type: 'Micro' | 'Small' | 'Short' | 'Medium' | 'Long';
-  targetAmount: number; 
-  targetDate: Date; 
-  currentAmount: number;
-  notes?: string;
+export interface ServiceEntry {
+  date: Date;
+  odometer: number;
+  description: string;
+  cost: number;
+  nextServiceDate?: Date;
+  items: ServiceItem[];
 }
 
-export interface Insurance {
-  id: string; 
-  type: 'Term' | 'Health' | 'Motor' | 'Critical-Illness' | 'Personal-Accident' | 'Other';
-  provider: string; 
-  policyNo: string;
-  sumInsured: number; 
-  premium: number;
-  dueDay: number;
-  startDate: Date; 
-  endDate: Date;
-  nomineeName?: string; 
-  nomineeDOB?: Date;
-  nomineeRelation?: string;
-  familyMember: string;
-  personalTermCover?: number;
-  personalHealthCover?: number;
-  employerTermCover?: number;
-  employerHealthCover?: number;
-  notes?: string;
+export interface ServiceItem {
+  category: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  amount: number;
 }
 
 export interface Vehicle {
-  id: string; 
-  owner: string; 
-  regNo: string; 
-  make: string; 
+  id: string;
+  owner: string;
+  regNo: string;
+  make: string;
   model: string;
-  type: 'Bike' | 'Car' | 'Scooter'; 
-  purchaseDate: Date; 
+  type: 'Car' | 'Motorcycle' | 'Scooter' | 'Truck' | 'Other';
+  purchaseDate: Date;
   insuranceExpiry: Date;
-  pucExpiry?: Date; 
-  odometer?: number; 
-  fuelEfficiency?: number;
-  serviceLogs: ServiceLog[];
+  pucExpiry: Date;
+  odometer: number;
+  fuelEfficiency: number;
+  fuelLogs: FuelFill[];
+  serviceLogs: ServiceEntry[];
 }
 
 export interface RentalProperty {
-  id: string; 
-  address: string; 
+  id: string;
+  address: string;
   owner: 'Me' | 'Mother' | 'Grandmother';
-  type: string;
-  squareYards: number; 
+  type: 'Apartment' | 'House' | 'Commercial' | 'Land';
+  squareYards: number;
   latitude?: number;
   longitude?: number;
   monthlyRent: number;
-  dueDay: number; 
-  escalationPercent?: number; 
-  escalationDate?: Date;
-  lateFeeRate?: number;
-  noticePeriodDays?: number;
-  depositRefundPending?: boolean;
-  propertyTaxAnnual?: number;
-  propertyTaxDueDay?: number;
-  waterTaxAnnual?: number;
-  waterTaxDueDay?: number;
+  dueDay: number;
+  escalationPercent: number;
+  escalationDate: Date;
+  lateFeeRate: number;
+  noticePeriodDays: number;
+  depositRefundPending: boolean;
+  propertyTaxAnnual: number;
+  propertyTaxDueDay: number;
+  waterTaxAnnual: number;
+  waterTaxDueDay: number;
 }
 
 export interface Tenant {
-  id: string; 
-  propertyId: string; 
-  tenantName: string; 
+  id: string;
+  propertyId: string;
+  tenantName: string;
   roomNo?: string;
-  monthlyRent: number; 
-  depositPaid: number; 
+  monthlyRent: number;
+  depositPaid: number;
   joinDate: Date;
-  endDate?: Date; 
-  depositRefundPending?: boolean;
-  tenantContact?: string;
+  endDate?: Date;
+  depositRefundPending: boolean;
+  tenantContact: string;
 }
 
 export interface Gold {
   id: string;
-  form: 'Coin' | 'Bar' | 'Jewelry' | 'Biscuit';
+  form: 'Coin' | 'Jewellery' | 'Bar' | 'Ornament';
   description: string;
-  grossWeight: number; // grams
-  netWeight: number; // grams
-  stoneWeight?: number; // grams
-  purity: '24K' | '22K' | '18K' | '14K';
+  grossWeight: number;
+  netWeight: number;
+  stoneWeight: number;
+  purity: '22K' | '24K' | '18K' | '14K';
   purchasePrice: number;
   makingCharge: number;
   gstPaid: number;
-  hallmarkCharge?: number;
+  hallmarkCharge: number;
   karatPrice: number;
   purchaseDate: Date;
   merchant: string;
   storageLocation: string;
-  storageCost?: number; // per year
+  storageCost: number;
   familyMember: string;
   insurancePolicyId?: string;
   receiptUri?: string;
@@ -211,58 +188,107 @@ export interface Investment {
   type: 'MF-Growth' | 'MF-Dividend' | 'SIP' | 'PPF' | 'EPF' | 'NPS-T1' | 'NPS-T2' | 'Gold-Coin' | 'Gold-ETF' | 'SGB' | 'FD' | 'RD' | 'Stocks' | 'Others';
   name: string;
   folioNo?: string;
-  currentNav?: number;
-  units?: number;
+  currentNav: number;
+  units: number;
   investedValue: number;
-  currentValue?: number;
+  currentValue: number;
   startDate: Date;
   maturityDate?: Date;
   sipAmount?: number;
   sipDay?: number;
-  frequency?: 'Monthly' | 'Quarterly' | 'Yearly';
+  frequency: 'Monthly' | 'Quarterly' | 'Annually' | 'One-time';
   goalId?: string;
   lockInYears?: number;
-  taxBenefit?: boolean;
+  taxBenefit: boolean;
   familyMember: string;
-  notes?: string;
+  notes: string;
   interestRate?: number;
   interestCreditDate?: Date;
 }
 
+export interface Insurance {
+  id: string;
+  type: 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident';
+  provider: string;
+  policyNo: string;
+  sumInsured: number;
+  premium: number;
+  dueDay: number;
+  startDate: Date;
+  endDate: Date;
+  nomineeName: string;
+  nomineeDOB: string;
+  nomineeRelation: string;
+  familyMember: string;
+  personalTermCover?: number;
+  personalHealthCover?: number;
+  employerTermCover?: number;
+  employerHealthCover?: number;
+  notes: string;
+}
+
+export interface AmortRow {
+  month: number;
+  emi: number;
+  principalPart: number;
+  interestPart: number;
+  balance: number;
+}
+
+export interface Loan {
+  id: string;
+  type: 'Personal' | 'Personal-Brother' | 'Education-Brother';
+  borrower: 'Me' | 'Brother';
+  principal: number;
+  roi: number;
+  tenureMonths: number;
+  emi: number;
+  outstanding: number;
+  startDate: Date;
+  amortisationSchedule: AmortRow[];
+  isActive: boolean;
+  prepaymentPenalty?: number;
+  moratoriumMonths?: number;
+  loanInsurance?: string;
+  guarantorName?: string;
+}
+
 export interface BrotherRepayment {
   id: string;
-  loanId: string; // FK to Loan
+  loanId: string;
   amount: number;
   date: Date;
   mode: 'Cash' | 'UPI' | 'Bank-Transfer' | 'Cheque';
-  note?: string;
+  note: string;
 }
 
 export interface Subscription {
   id: string;
   name: string;
   amount: number;
-  cycle: 'Monthly' | 'Yearly' | 'Quarterly';
+  cycle: 'Monthly' | 'Quarterly' | 'Annually';
   startDate: Date;
   nextDue: Date;
   reminderDays: number;
   isActive: boolean;
 }
 
+export interface Prescription {
+  date: Date;
+  doctor: string;
+  medicines: string[];
+  amount: number;
+}
+
 export interface Health {
   id: string;
   refillAlertDays: number;
-  allergySeverity?: 'Low' | 'Medium' | 'High';
+  allergySeverity?: 'Mild' | 'Moderate' | 'Severe';
   emergencyContact?: string;
   nextCheckupDate?: Date;
   doctorNotes?: string;
   medicalHistory?: string;
-  prescriptions?: {
-    date: Date;
-    doctor: string;
-    medicines: string[];
-    amount: number;
-  }[];
+  prescriptions: Prescription[];
 }
 
 export interface FamilyBankAccount {
@@ -281,7 +307,7 @@ export interface FamilyTransfer {
   amount: number;
   date: Date;
   purpose: string;
-  mode: 'NEFT' | 'IMPS' | 'UPI' | 'Cash';
+  mode: 'UPI' | 'NEFT' | 'Cash' | 'Cheque';
 }
 
 export interface EmergencyFund {
@@ -290,7 +316,7 @@ export interface EmergencyFund {
   targetAmount: number;
   currentAmount: number;
   lastReviewDate: Date;
-  status: 'Below-Target' | 'On-Target' | 'Above-Target';
+  status: 'Under-Target' | 'On-Target' | 'Over-Target';
 }
 
 export interface AuditLog {
@@ -304,60 +330,103 @@ export interface AuditLog {
   deviceId: string;
 }
 
-export interface Wallet {
-  id: string; 
-  name: string; 
-  balance: number; 
-  expiry?: Date; 
-  sourceCard?: string;
-}
-
-// ---------- Dexie instance ----------
+// --- Dexie Database Class ---
 export class SavoraDB extends Dexie {
-  globalSettings!: EntityTable<GlobalSettings, 'id'>;
-  txns!: EntityTable<Txn, 'id'>;
-  creditCards!: EntityTable<CreditCard, 'id'>;
-  loans!: EntityTable<Loan, 'id'>;
-  goals!: EntityTable<Goal, 'id'>;
-  insurance!: EntityTable<Insurance, 'id'>;
-  vehicles!: EntityTable<Vehicle, 'id'>;
-  rentalProperties!: EntityTable<RentalProperty, 'id'>;
-  tenants!: EntityTable<Tenant, 'id'>;
-  gold!: EntityTable<Gold, 'id'>;
-  investments!: EntityTable<Investment, 'id'>;
-  brotherRepayments!: EntityTable<BrotherRepayment, 'id'>;
-  subscriptions!: EntityTable<Subscription, 'id'>;
-  health!: EntityTable<Health, 'id'>;
-  familyBankAccounts!: EntityTable<FamilyBankAccount, 'id'>;
-  familyTransfers!: EntityTable<FamilyTransfer, 'id'>;
-  emergencyFunds!: EntityTable<EmergencyFund, 'id'>;
-  auditLogs!: EntityTable<AuditLog, 'id'>;
-  wallets!: EntityTable<Wallet, 'id'>;
+  public globalSettings!: Table<GlobalSettings, string>;
+  public txns!: Table<Txn, string>;
+  public goals!: Table<Goal, string>;
+  public creditCards!: Table<CreditCard, string>;
+  public vehicles!: Table<Vehicle, string>;
+  public rentalProperties!: Table<RentalProperty, string>;
+  public tenants!: Table<Tenant, string>;
+  public gold!: Table<Gold, string>;
+  public investments!: Table<Investment, string>;
+  public insurance!: Table<Insurance, string>;
+  public loans!: Table<Loan, string>;
+  public brotherRepayments!: Table<BrotherRepayment, string>;
+  public subscriptions!: Table<Subscription, string>;
+  public health!: Table<Health, string>;
+  public familyBankAccounts!: Table<FamilyBankAccount, string>;
+  public familyTransfers!: Table<FamilyTransfer, string>;
+  public emergencyFunds!: Table<EmergencyFund, string>;
+  public auditLogs!: Table<AuditLog, string>;
+
+  // Legacy compatibility tables
+  public appSettings!: Table<any, string>;
 
   constructor() {
-    super('savora');
+    super('SavoraFinanceDB');
+
+    // Version 1: Requirements spec compliant schema
     this.version(1).stores({
-      globalSettings: 'id',
-      txns: 'id, date, category, tenantId, propertyId',
-      creditCards: 'id, issuer, last4',
-      loans: 'id, type, borrower',
-      goals: 'id, type, targetDate',
-      insurance: 'id, type, provider',
-      vehicles: 'id, regNo, type',
-      rentalProperties: 'id, address, owner',
-      tenants: 'id, propertyId, tenantName',
-      gold: 'id, form, purchaseDate',
-      investments: 'id, type, startDate',
-      brotherRepayments: 'id, loanId, date',
-      subscriptions: 'id, nextDue, isActive',
-      health: 'id, refillAlertDays',
-      familyBankAccounts: 'id, owner',
-      familyTransfers: 'id, date',
-      emergencyFunds: 'id, status',
-      auditLogs: 'id, entity, timestamp',
-      wallets: 'id, name'
+      globalSettings: '&id',
+      txns: '&id, date, category, amount, goalId, cardId, vehicleId, propertyId, tenantId',
+      goals: '&id, type, targetDate, name',
+      creditCards: '&id, issuer, bankName, last4',
+      vehicles: '&id, regNo, owner, type, insuranceExpiry, pucExpiry',
+      rentalProperties: '&id, owner, type, address',
+      tenants: '&id, propertyId, tenantName, joinDate, endDate',
+      gold: '&id, form, purity, purchaseDate, merchant',
+      investments: '&id, type, name, startDate, maturityDate, goalId',
+      insurance: '&id, type, provider, policyNo, endDate',
+      loans: '&id, type, borrower, isActive',
+      brotherRepayments: '&id, loanId, date',
+      subscriptions: '&id, name, nextDue, isActive',
+      health: '&id',
+      familyBankAccounts: '&id, owner, bankName',
+      familyTransfers: '&id, fromAccountId, toPerson, date',
+      emergencyFunds: '&id, status',
+      auditLogs: '&id, entity, entityId, timestamp',
+      // Legacy compatibility
+      appSettings: '&key'
     });
+
+    // Initialize table properties
+    this.globalSettings = this.table('globalSettings');
+    this.txns = this.table('txns');
+    this.goals = this.table('goals');
+    this.creditCards = this.table('creditCards');
+    this.vehicles = this.table('vehicles');
+    this.rentalProperties = this.table('rentalProperties');
+    this.tenants = this.table('tenants');
+    this.gold = this.table('gold');
+    this.investments = this.table('investments');
+    this.insurance = this.table('insurance');
+    this.loans = this.table('loans');
+    this.brotherRepayments = this.table('brotherRepayments');
+    this.subscriptions = this.table('subscriptions');
+    this.health = this.table('health');
+    this.familyBankAccounts = this.table('familyBankAccounts');
+    this.familyTransfers = this.table('familyTransfers');
+    this.emergencyFunds = this.table('emergencyFunds');
+    this.auditLogs = this.table('auditLogs');
+    this.appSettings = this.table('appSettings');
+  }
+
+  // Legacy compatibility methods
+  async savePersonalProfile(profile: any): Promise<void> {
+    await this.appSettings.put({ key: 'userPersonalProfile_v1', value: profile });
+  }
+
+  async getPersonalProfile(): Promise<any | null> {
+    const setting = await this.appSettings.get('userPersonalProfile_v1');
+    return setting ? setting.value : null;
   }
 }
 
 export const db = new SavoraDB();
+
+// Error handling for database initialization
+db.open().catch(async (err) => {
+  if (err.name === "UpgradeError") {
+    if (import.meta.env.DEV) {
+      console.warn("Dev only DB wipe due to schema mismatch");
+      await db.delete();
+      await db.open();
+    } else {
+      console.error("Database upgrade error:", err);
+    }
+  } else {
+    console.error("Failed to open Dexie database:", err);
+  }
+});
