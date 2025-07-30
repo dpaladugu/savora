@@ -7,14 +7,21 @@ import { LoadingScreen } from "@/components/layout/loading-screen";
 import { MainContentRouter } from "@/components/layout/main-content-router";
 import { GlobalErrorBoundary } from "@/components/ui/global-error-boundary";
 import { useNavigationRouter } from "@/components/layout/navigation-router";
-import { useAppStore, useIsUnlocked } from "@/store/appStore";
+import { useAppStore } from "@/store/appStore";
 import { PinLock } from "@/components/auth/PinLock";
 import { Auth } from "@/components/auth/Auth";
 import { db } from "@/lib/db";
 import { seedInitialData } from "@/lib/seed-data";
 
 const MainApp = () => {
-  const isUnlocked = useIsUnlocked();
+  // Move hooks to the top level and add error handling
+  let isUnlocked = false;
+  try {
+    isUnlocked = useAppStore((state) => state.isUnlocked);
+  } catch (error) {
+    console.error('Error accessing app store:', error);
+  }
+
   const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
   
   return (
@@ -42,7 +49,14 @@ const MainApp = () => {
 const Index = () => {
   console.log('Index: Component mounting');
   
-  const isUnlocked = useIsUnlocked();
+  // Use direct store access with error handling instead of selector hook
+  let isUnlocked = false;
+  try {
+    isUnlocked = useAppStore((state) => state.isUnlocked);
+  } catch (error) {
+    console.error('Index: Error accessing store:', error);
+  }
+
   const navigate = useNavigate();
   const [isAppInitialized, setAppInitialized] = React.useState(false);
   const [hasExistingUser, setHasExistingUser] = React.useState<boolean | undefined>(undefined);

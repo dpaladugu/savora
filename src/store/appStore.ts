@@ -40,8 +40,6 @@ export const useAppStore = create<AppState & AppActions>()(
     (set, get) => ({ // Added get for reading current state if needed inside actions
       ...initialState,
       setDecryptedAiConfig: (config) => {
-        // console.log("appStore: setDecryptedAiConfig called with:", config);
-        // console.log("appStore: Previous state - provider:", get().currentAiProvider, "model:", get().currentAiModel);
         set({
           isUnlocked: true,
           decryptedAiApiKey: config.apiKey,
@@ -49,11 +47,8 @@ export const useAppStore = create<AppState & AppActions>()(
           aiServiceBaseUrl: config.baseUrl,
           currentAiModel: config.model || null, // Set model, default to null
         });
-        // console.log("appStore: New state - provider:", get().currentAiProvider, "model:", get().currentAiModel);
       },
       lockApp: () => {
-        // console.log("appStore: lockApp called");
-        // console.log("appStore: Previous state - isUnlocked:", get().isUnlocked);
         set({
           isUnlocked: false,
           decryptedAiApiKey: null,
@@ -61,7 +56,6 @@ export const useAppStore = create<AppState & AppActions>()(
           aiServiceBaseUrl: null,
           currentAiModel: null, // Reset model on lock
         });
-        // console.log("appStore: New state - isUnlocked:", get().isUnlocked);
       },
       setGlobalLoading: (isLoading) => set({ isLoadingGlobal: isLoading }),
     }),
@@ -78,29 +72,72 @@ export const useAppStore = create<AppState & AppActions>()(
   )
 );
 
-// --- Selectors ---
-export const useIsUnlocked = () => useAppStore((state) => state.isUnlocked);
-export const useDecryptedAiConfigState = () => useAppStore((state) => ({ // Selector for the whole config object
-  apiKey: state.decryptedAiApiKey,
-  provider: state.currentAiProvider,
-  baseUrl: state.aiServiceBaseUrl,
-  model: state.currentAiModel,
-}));
+// --- Selectors with error handling ---
+export const useIsUnlocked = () => {
+  try {
+    return useAppStore((state) => state.isUnlocked);
+  } catch (error) {
+    console.error('useIsUnlocked hook error:', error);
+    return false; // Safe fallback
+  }
+};
+
+export const useDecryptedAiConfigState = () => {
+  try {
+    return useAppStore((state) => ({ // Selector for the whole config object
+      apiKey: state.decryptedAiApiKey,
+      provider: state.currentAiProvider,
+      baseUrl: state.aiServiceBaseUrl,
+      model: state.currentAiModel,
+    }));
+  } catch (error) {
+    console.error('useDecryptedAiConfigState hook error:', error);
+    return { apiKey: null, provider: null, baseUrl: null, model: null };
+  }
+};
+
 // Individual selectors can still be useful
-export const useDecryptedApiKey = () => useAppStore((state) => state.decryptedAiApiKey);
-export const useCurrentAiProvider = () => useAppStore((state) => state.currentAiProvider);
-export const useAiServiceBaseUrl = () => useAppStore((state) => state.aiServiceBaseUrl);
-export const useCurrentAiModel = () => useAppStore((state) => state.currentAiModel); // New selector
-export const useIsLoadingGlobal = () => useAppStore((state) => state.isLoadingGlobal);
+export const useDecryptedApiKey = () => {
+  try {
+    return useAppStore((state) => state.decryptedAiApiKey);
+  } catch (error) {
+    console.error('useDecryptedApiKey hook error:', error);
+    return null;
+  }
+};
 
-// --- Actions can be accessed directly or via hooks ---
-// const { setDecryptedAiConfig, lockApp } = useAppStore.getState();
-// const setDecryptedAiConfig = useAppStore((state) => state.setDecryptedAiConfig);
+export const useCurrentAiProvider = () => {
+  try {
+    return useAppStore((state) => state.currentAiProvider);
+  } catch (error) {
+    console.error('useCurrentAiProvider hook error:', error);
+    return null;
+  }
+};
 
-// Notes:
-// - The old `unlockApp(apiKey: string)` is replaced by `setDecryptedAiConfig`.
-// - `lockApp` now also clears `currentAiProvider` and `aiServiceBaseUrl`.
-// - The `persist` middleware is configured to be very conservative;
-//   only `currentAiProvider` is suggested as potentially persistable.
-//   `decryptedApiKey` and `aiServiceBaseUrl` (if it contains sensitive parts) should NOT be persisted.
-//   `isUnlocked` is also not persisted by default, meaning PIN is required on each app load/refresh.
+export const useAiServiceBaseUrl = () => {
+  try {
+    return useAppStore((state) => state.aiServiceBaseUrl);
+  } catch (error) {
+    console.error('useAiServiceBaseUrl hook error:', error);
+    return null;
+  }
+};
+
+export const useCurrentAiModel = () => {
+  try {
+    return useAppStore((state) => state.currentAiModel);
+  } catch (error) {
+    console.error('useCurrentAiModel hook error:', error);
+    return null;
+  }
+};
+
+export const useIsLoadingGlobal = () => {
+  try {
+    return useAppStore((state) => state.isLoadingGlobal);
+  } catch (error) {
+    console.error('useIsLoadingGlobal hook error:', error);
+    return false;
+  }
+};
