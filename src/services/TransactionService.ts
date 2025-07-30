@@ -1,40 +1,28 @@
+
 /**
  * src/services/TransactionService.ts
  *
- * A unified service for handling operations that involve multiple types of transactions,
- * like fetching a combined list of expenses and incomes.
+ * A unified service for handling operations that involve the Universal Transaction model.
  */
 
-import { ExpenseService } from './ExpenseService';
-import { IncomeService } from './IncomeService';
-import type { Expense as AppExpense } from '@/services/supabase-data-service';
-import type { AppIncome } from '@/components/income/income-tracker';
+import { db } from '@/lib/db';
+import type { Txn } from '@/lib/db';
 import { parseISO } from 'date-fns';
-
-// A unified transaction type for display purposes
-export type Transaction = AppExpense | AppIncome;
 
 export class TransactionService {
 
   /**
-   * Retrieves both expenses and incomes for a given user and returns them as a single,
-   * sorted array.
-   * @param userId The ID of the user whose transactions to fetch.
-   * @returns A promise that resolves to a combined array of transactions, sorted by date descending.
+   * Retrieves all transactions sorted by date descending.
+   * @returns A promise that resolves to an array of transactions.
    */
-  static async getTransactions(): Promise<Transaction[]> {
+  static async getTransactions(): Promise<Txn[]> {
     try {
-      const expensesPromise = ExpenseService.getExpenses();
-      const incomesPromise = IncomeService.getIncomes();
-
-      const [expenses, incomes] = await Promise.all([expensesPromise, incomesPromise]);
-
-      const combined: Transaction[] = [...expenses, ...incomes];
+      const transactions = await db.txns.toArray();
 
       // Sort by date, most recent first
-      combined.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+      transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
 
-      return combined;
+      return transactions;
     } catch (error) {
       console.error(`Error in TransactionService.getTransactions:`, error);
       throw error;
@@ -42,21 +30,82 @@ export class TransactionService {
   }
 
   /**
-   * Deletes a transaction, delegating to the appropriate service based on type.
-   * @param id The id of the transaction to delete.
-   * @param type The type of transaction ('expense' or 'income').
+   * Adds a new transaction.
+   * @param transactionData The transaction data to add.
+   * @returns The id of the newly added record.
    */
-  static async deleteTransaction(id: string, type: 'expense' | 'income'): Promise<void> {
+  static async addTransaction(transactionData: Omit<Txn, 'id'>): Promise<string> {
     try {
-      if (type === 'expense') {
-        await ExpenseService.deleteExpense(id);
-      } else if (type === 'income') {
-        await IncomeService.deleteIncome(id);
-      } else {
-        throw new Error(`Unknown transaction type: ${type}`);
-      }
+      const newId = self.crypto.randomUUID();
+      const recordToAdd: Txn = {
+        ...transactionData,
+        id: newId,
+        currency: 'INR' // Hard-coded as per requirements
+      };
+      await db.txns.add(recordToAdd);
+      return newId;
+    } catch (error) {
+      console.error("Error in TransactionService.addTransaction:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Updates an existing transaction.
+   * @param id The id of the transaction to update.
+   * @param updates A partial object of the transaction data to update.
+   * @returns The number of updated records.
+   */
+  static async updateTransaction(id: string, updates: Partial<Txn>): Promise<number> {
+    try {
+      const updatedCount = await db.txns.update(id, updates);
+      return updatedCount;
+    } catch (error) {
+      console.error(`Error in TransactionService.updateTransaction for id ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Deletes a transaction.
+   * @param id The id of the transaction to delete.
+   */
+  static async deleteTransaction(id: string): Promise<void> {
+    try {
+      await db.txns.delete(id);
     } catch (error) {
       console.error(`Error in TransactionService.deleteTransaction for id ${id}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets transactions by category.
+   * @param category The category to filter by.
+   * @returns A promise that resolves to an array of transactions.
+   */
+  static async getTransactionsByCategory(category: string): Promise<Txn[]> {
+    try {
+      const transactions = await db.txns.where('category').equals(category).toArray();
+      return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+      console.error(`Error in TransactionService.getTransactionsByCategory for category ${category}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Gets transactions by date range.
+   * @param startDate The start date.
+   * @param endDate The end date.
+   * @returns A promise that resolves to an array of transactions.
+   */
+  static async getTransactionsByDateRange(startDate: Date, endDate: Date): Promise<Txn[]> {
+    try {
+      const transactions = await db.txns.where('date').between(startDate, endDate, true, true).toArray();
+      return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    } catch (error) {
+      console.error(`Error in TransactionService.getTransactionsByDateRange:`, error);
       throw error;
     }
   }

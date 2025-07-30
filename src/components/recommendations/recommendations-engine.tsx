@@ -3,18 +3,40 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { AlertTriangle, Info, RefreshCw, Sparkles } from "lucide-react";
+import { AlertTriangle, Info, RefreshCw, Sparkles, TrendingUp, Shield, CreditCard, PiggyBank, Receipt } from "lucide-react";
 import aiChatServiceInstance, { AiAdviceResponse } from "@/services/AiChatService";
+import { RecommendationService, type Recommendation } from "@/services/RecommendationService";
 import { useAppStore } from "@/store/appStore";
 import { useToast } from "@/hooks/use-toast";
+
+const getRecommendationIcon = (type: string) => {
+  switch (type) {
+    case 'investment': return TrendingUp;
+    case 'insurance': return Shield;
+    case 'loan': return CreditCard;
+    case 'expense': return Receipt;
+    case 'tax': return PiggyBank;
+    default: return Info;
+  }
+};
+
+const getPriorityColor = (priority: string) => {
+  switch (priority) {
+    case 'high': return 'border-red-500 bg-red-50';
+    case 'medium': return 'border-yellow-500 bg-yellow-50';
+    case 'low': return 'border-blue-500 bg-blue-50';
+    default: return 'border-gray-500 bg-gray-50';
+  }
+};
 
 export function RecommendationsEngine() {
   const { toast } = useToast();
   const [query, setQuery] = useState<string>("");
   const [aiResponse, setAiResponse] = useState<AiAdviceResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
   const [isAiConfigured, setIsAiConfigured] = useState<boolean>(false);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState<boolean>(false);
 
   // Check AI configuration status from store
   useEffect(() => {
@@ -36,6 +58,28 @@ export function RecommendationsEngine() {
     return unsubscribe;
   }, []);
 
+  // Load expert recommendations on component mount
+  useEffect(() => {
+    loadRecommendations();
+  }, []);
+
+  const loadRecommendations = async () => {
+    setLoadingRecommendations(true);
+    try {
+      const expertRecommendations = await RecommendationService.generateRecommendations();
+      setRecommendations(expertRecommendations);
+    } catch (error) {
+      console.error('Error loading recommendations:', error);
+      toast({
+        title: "Error Loading Recommendations",
+        description: "Failed to load expert recommendations. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingRecommendations(false);
+    }
+  };
+
   const handleQuerySubmit = async () => {
     if (!query.trim()) {
       toast({ title: "Empty Query", description: "Please enter your financial question.", variant: "default" });
@@ -43,7 +87,6 @@ export function RecommendationsEngine() {
     }
 
     if (!aiChatServiceInstance.isConfigured()) {
-      setError("AI Service is not configured. Please set up your API key and provider in PIN/Settings.");
       toast({
         title: "AI Service Not Configured",
         description: "Please ensure your AI provider and API key are set up correctly.",
@@ -53,7 +96,6 @@ export function RecommendationsEngine() {
     }
 
     setIsLoading(true);
-    setError(null);
     setAiResponse(null);
 
     try {
@@ -62,7 +104,6 @@ export function RecommendationsEngine() {
       setAiResponse(response);
     } catch (err: any) {
       console.error("Error fetching AI advice:", err);
-      setError(err.message || "An unexpected error occurred while fetching advice.");
       toast({
         title: "Error Fetching Advice",
         description: err.message || "An unexpected error occurred.",
@@ -75,6 +116,84 @@ export function RecommendationsEngine() {
 
   return (
     <div className="space-y-6">
+      {/* Expert Recommendations Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Expert Recommendations
+            </span>
+            <Button 
+              onClick={loadRecommendations} 
+              disabled={loadingRecommendations}
+              variant="outline"
+              size="sm"
+            >
+              {loadingRecommendations ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+            </Button>
+          </CardTitle>
+          <CardDescription>
+            CFA-level financial recommendations based on your current portfolio and spending patterns.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loadingRecommendations ? (
+            <div className="space-y-3">
+              {[...Array(3)].map((_, i) => (
+                <div key={i} className="h-20 bg-muted rounded-md animate-pulse" />
+              ))}
+            </div>
+          ) : recommendations.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">
+              No recommendations available. Add some financial data to get personalized advice.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              {recommendations.map((rec) => {
+                const Icon = getRecommendationIcon(rec.type);
+                return (
+                  <Card key={rec.id} className={`${getPriorityColor(rec.priority)} border-l-4`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <Icon className="w-5 h-5 mt-1 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-sm">{rec.title}</h4>
+                          <p className="text-sm text-muted-foreground mt-1">{rec.description}</p>
+                          {rec.action && (
+                            <p className="text-sm font-medium mt-2 text-blue-700">
+                              Action: {rec.action}
+                              {rec.amount && ` (₹${rec.amount.toLocaleString()})`}
+                            </p>
+                          )}
+                          {rec.dueDate && (
+                            <p className="text-xs text-orange-600 mt-1">
+                              Due: {rec.dueDate.toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          rec.priority === 'high' ? 'bg-red-100 text-red-700' :
+                          rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-blue-100 text-blue-700'
+                        }`}>
+                          {rec.priority}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* AI Financial Advisor Section */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -110,16 +229,6 @@ export function RecommendationsEngine() {
             )}
           </Button>
 
-          {error && (
-            <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-md text-destructive text-sm">
-              <div className="flex items-center gap-2 font-semibold">
-                <AlertTriangle className="w-5 h-5" />
-                Error
-              </div>
-              <p className="mt-1">{error}</p>
-            </div>
-          )}
-
           {aiResponse?.advice && !isLoading && (
             <Card className="bg-background/50 p-4 border">
               <h4 className="font-semibold text-lg mb-2">AI Generated Advice:</h4>
@@ -138,9 +247,9 @@ export function RecommendationsEngine() {
               )}
             </Card>
           )}
-           <p className="text-xs text-muted-foreground italic mt-4">
-              Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance.
-            </p>
+          <p className="text-xs text-muted-foreground italic mt-4">
+            Disclaimer: AI-generated advice is for informational purposes only and should not be considered professional financial advice. Always consult with a qualified financial advisor for personalized guidance.
+          </p>
         </CardContent>
       </Card>
     </div>
