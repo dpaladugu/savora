@@ -147,7 +147,7 @@ export function ExpenseTracker() {
   const handleDeleteTransaction = async (itemId: string, type: 'expense' | 'income') => {
     startMutationLoading(`Deleting ${type}...`);
     try {
-      await TransactionService.deleteTransaction(itemId, type);
+      await TransactionService.deleteTransaction(itemId);
       toast({ title: "Success", description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted.` });
     } catch (error) {
       toast({ title: `Failed to delete ${type}`, description: (error as Error).message || "Please try again.", variant: "destructive"});
