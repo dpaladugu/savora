@@ -19,7 +19,7 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
     roomNo: '',
     monthlyRent: '',
     depositPaid: '',
-    startDate: new Date().toISOString().split('T')[0],
+    joinDate: new Date().toISOString().split('T')[0],
     endDate: ''
   });
 
@@ -36,9 +36,8 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
         roomNo: formData.roomNo || undefined,
         monthlyRent: parseFloat(formData.monthlyRent),
         depositPaid: parseFloat(formData.depositPaid),
-        startDate: new Date(formData.startDate),
-        endDate: formData.endDate ? new Date(formData.endDate) : undefined,
-        depositTxns: []
+        joinDate: new Date(formData.joinDate),
+        endDate: formData.endDate ? new Date(formData.endDate) : undefined
       });
 
       toast.success('Tenant added successfully!');
@@ -47,7 +46,7 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
         roomNo: '',
         monthlyRent: '',
         depositPaid: '',
-        startDate: new Date().toISOString().split('T')[0],
+        joinDate: new Date().toISOString().split('T')[0],
         endDate: ''
       });
       onClose();
@@ -110,12 +109,12 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="startDate">Start Date</Label>
+            <Label htmlFor="joinDate">Join Date</Label>
             <Input
-              id="startDate"
+              id="joinDate"
               type="date"
-              value={formData.startDate}
-              onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+              value={formData.joinDate}
+              onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
               required
             />
           </div>

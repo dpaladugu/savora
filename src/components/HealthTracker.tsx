@@ -2,12 +2,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useHealthProfiles } from '@/hooks/useLiveData';
+import { useHealth } from '@/hooks/useLiveData';
 import { Plus, Edit, Trash2, Pill } from 'lucide-react';
 import { AddMedicineModal } from './AddMedicineModal';
 
 export function HealthTracker() {
-  const profiles = useHealthProfiles();
+  const healthProfiles = useHealth();
   const [showMedicineModal, setShowMedicineModal] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState<string | null>(null);
 
@@ -23,11 +23,11 @@ export function HealthTracker() {
       </div>
 
       <div className="grid gap-4">
-        {profiles?.map((profile) => (
+        {healthProfiles?.map((profile) => (
           <Card key={profile.id} className="border-border/50">
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
-                <span>{profile.name}</span>
+                <span>Health Profile {profile.id}</span>
                 <div className="flex gap-2">
                   <Button
                     size="sm"
@@ -43,22 +43,37 @@ export function HealthTracker() {
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Date of Birth</p>
-                  <p className="font-medium">{profile.dob.toLocaleDateString()}</p>
+                  <p className="text-sm text-muted-foreground">Refill Alert Days</p>
+                  <p className="font-medium">{profile.refillAlertDays}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Blood Group</p>
-                  <p className="font-medium">{profile.bloodGroup || 'Not specified'}</p>
+                  <p className="text-sm text-muted-foreground">Allergy Severity</p>
+                  <p className="font-medium">{profile.allergySeverity || 'Not specified'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Allergies</p>
-                  <p className="font-medium">{profile.allergies?.join(', ') || 'None'}</p>
+                  <p className="text-sm text-muted-foreground">Emergency Contact</p>
+                  <p className="font-medium">{profile.emergencyContact || 'None'}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Chronic Conditions</p>
-                  <p className="font-medium">{profile.chronicConditions?.join(', ') || 'None'}</p>
+                  <p className="text-sm text-muted-foreground">Next Checkup</p>
+                  <p className="font-medium">{profile.nextCheckupDate?.toLocaleDateString() || 'Not scheduled'}</p>
                 </div>
               </div>
+              {profile.prescriptions && profile.prescriptions.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-muted-foreground mb-2">Recent Prescriptions</p>
+                  <div className="space-y-2">
+                    {profile.prescriptions.slice(0, 3).map((prescription, index) => (
+                      <div key={index} className="p-2 bg-muted/50 rounded">
+                        <p className="text-sm font-medium">{prescription.medicines.join(', ')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {prescription.doctor} - {prescription.date.toLocaleDateString()}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

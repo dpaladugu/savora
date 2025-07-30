@@ -30,16 +30,15 @@ export function AddMedicineModal({ isOpen, onClose, profileId }: AddMedicineModa
     if (!profileId) return;
 
     try {
-      await db.medicines.add({
+      await db.health.add({
         id: crypto.randomUUID(),
-        profileId,
-        name: formData.name,
-        dosage: formData.dosage,
-        startDate: new Date(formData.startDate),
-        endDate: formData.endDate ? new Date(formData.endDate) : undefined,
-        refillQty: parseInt(formData.refillQty),
         refillAlertDays: parseInt(formData.refillAlertDays),
-        prescribedBy: formData.prescribedBy || undefined
+        prescriptions: [{
+          date: new Date(formData.startDate),
+          doctor: formData.prescribedBy || 'Unknown',
+          medicines: [formData.name],
+          amount: 0
+        }]
       });
 
       toast.success('Medicine added successfully!');

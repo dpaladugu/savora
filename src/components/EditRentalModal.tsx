@@ -16,10 +16,9 @@ interface EditRentalModalProps {
 export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalProps) {
   const [formData, setFormData] = useState({
     address: '',
-    owner: '',
+    owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
     type: '',
     squareYards: '',
-    maxTenants: '',
     monthlyRent: '',
     dueDay: '',
     escalationPercent: ''
@@ -42,7 +41,6 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
           owner: rental.owner,
           type: rental.type,
           squareYards: rental.squareYards.toString(),
-          maxTenants: rental.maxTenants.toString(),
           monthlyRent: rental.monthlyRent.toString(),
           dueDay: rental.dueDay.toString(),
           escalationPercent: rental.escalationPercent?.toString() || ''
@@ -65,7 +63,6 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
         owner: formData.owner,
         type: formData.type,
         squareYards: parseInt(formData.squareYards),
-        maxTenants: parseInt(formData.maxTenants),
         monthlyRent: parseFloat(formData.monthlyRent),
         dueDay: parseInt(formData.dueDay),
         escalationPercent: formData.escalationPercent ? parseFloat(formData.escalationPercent) : undefined
@@ -99,13 +96,17 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
           
           <div className="space-y-2">
             <Label htmlFor="owner">Owner</Label>
-            <Input
+            <select
               id="owner"
               value={formData.owner}
-              onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-              placeholder="Property owner"
+              onChange={(e) => setFormData({ ...formData, owner: e.target.value as 'Me' | 'Mother' | 'Grandmother' })}
+              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               required
-            />
+            >
+              <option value="Me">Me</option>
+              <option value="Mother">Mother</option>
+              <option value="Grandmother">Grandmother</option>
+            </select>
           </div>
           
           <div className="space-y-2">

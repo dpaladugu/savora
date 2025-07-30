@@ -97,10 +97,6 @@ export function RentalManager() {
                   <p className="font-medium">{formatCurrency(rental.monthlyRent)}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Max Tenants</p>
-                  <p className="font-medium">{rental.maxTenants}</p>
-                </div>
-                <div>
                   <p className="text-sm text-muted-foreground">Due Day</p>
                   <p className="font-medium">{rental.dueDay}</p>
                 </div>

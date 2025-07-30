@@ -15,7 +15,7 @@ interface AddRentalModalProps {
 export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
   const [formData, setFormData] = useState({
     address: '',
-    owner: '',
+    owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
     squareYards: '',
     monthlyRent: '',
     deposit: ''
@@ -31,7 +31,6 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
         owner: formData.owner,
         type: 'Residential',
         squareYards: parseInt(formData.squareYards),
-        maxTenants: 1,
         monthlyRent: parseFloat(formData.monthlyRent),
         dueDay: 1,
         escalationPercent: 10
@@ -40,7 +39,7 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
       toast.success('Rental property added successfully!');
       setFormData({
         address: '',
-        owner: '',
+        owner: 'Me',
         squareYards: '',
         monthlyRent: '',
         deposit: ''
@@ -72,13 +71,17 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
           
           <div className="space-y-2">
             <Label htmlFor="owner">Owner</Label>
-            <Input
+            <select
               id="owner"
               value={formData.owner}
-              onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
-              placeholder="Property owner"
+              onChange={(e) => setFormData({ ...formData, owner: e.target.value as 'Me' | 'Mother' | 'Grandmother' })}
+              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               required
-            />
+            >
+              <option value="Me">Me</option>
+              <option value="Mother">Mother</option>
+              <option value="Grandmother">Grandmother</option>
+            </select>
           </div>
           
           <div className="space-y-2">
