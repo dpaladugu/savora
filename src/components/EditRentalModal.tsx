@@ -17,7 +17,7 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
   const [formData, setFormData] = useState({
     address: '',
     owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-    type: '',
+    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Land',
     squareYards: '',
     monthlyRent: '',
     dueDay: '',
@@ -65,7 +65,7 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
         squareYards: parseInt(formData.squareYards),
         monthlyRent: parseFloat(formData.monthlyRent),
         dueDay: parseInt(formData.dueDay),
-        escalationPercent: formData.escalationPercent ? parseFloat(formData.escalationPercent) : undefined
+        escalationPercent: formData.escalationPercent ? parseFloat(formData.escalationPercent) : 0
       });
 
       toast.success('Rental property updated successfully!');
@@ -111,13 +111,18 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
           
           <div className="space-y-2">
             <Label htmlFor="type">Type</Label>
-            <Input
+            <select
               id="type"
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              placeholder="Property type"
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Land' })}
+              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               required
-            />
+            >
+              <option value="Apartment">Apartment</option>
+              <option value="House">House</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Land">Land</option>
+            </select>
           </div>
           
           <div className="space-y-2">

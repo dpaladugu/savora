@@ -21,7 +21,7 @@ export function AddTxnModal({ isOpen, onClose }: AddTxnModalProps) {
     category: '',
     date: new Date().toISOString().split('T')[0],
     tags: '',
-    creditCardId: ''
+    cardId: ''
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,7 +36,11 @@ export function AddTxnModal({ isOpen, onClose }: AddTxnModalProps) {
         category: formData.category,
         note: '',
         tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
-        creditCardId: formData.creditCardId || undefined
+        cardId: formData.cardId || undefined,
+        paymentMix: [{ method: 'UPI', amount: parseFloat(formData.amount) }],
+        splitWith: [],
+        isPartialRent: false,
+        isSplit: false
       });
 
       toast.success('Transaction added successfully!');
@@ -45,7 +49,7 @@ export function AddTxnModal({ isOpen, onClose }: AddTxnModalProps) {
         category: '',
         date: new Date().toISOString().split('T')[0],
         tags: '',
-        creditCardId: ''
+        cardId: ''
       });
       onClose();
     } catch (error) {
@@ -116,7 +120,7 @@ export function AddTxnModal({ isOpen, onClose }: AddTxnModalProps) {
           
           <div className="space-y-2">
             <Label htmlFor="creditCard">Credit Card</Label>
-            <Select value={formData.creditCardId} onValueChange={(value) => setFormData({ ...formData, creditCardId: value })}>
+            <Select value={formData.cardId} onValueChange={(value) => setFormData({ ...formData, cardId: value })}>
               <SelectTrigger>
                 <SelectValue placeholder="Select credit card (optional)" />
               </SelectTrigger>

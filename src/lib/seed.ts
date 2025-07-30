@@ -16,11 +16,71 @@ export const seed = async () => {
 
   // Add sample transactions
   await db.txns.bulkAdd([
-    { id: 'tx1', date: new Date('2024-07-01'), amount: 50000, currency: 'INR', category: 'Salary', note: 'July salary' },
-    { id: 'tx2', date: new Date('2024-07-05'), amount: -1200, currency: 'INR', category: 'Rent', note: 'Home rent' },
-    { id: 'tx3', date: new Date('2024-07-10'), amount: -500, currency: 'INR', category: 'Groceries', note: 'Monthly groceries' },
-    { id: 'tx4', date: new Date('2024-07-15'), amount: -17964, currency: 'INR', category: 'EMI', note: 'Plot loan EMI' },
-    { id: 'tx5', date: new Date('2024-07-20'), amount: 8000, currency: 'INR', category: 'Rental-Income', note: 'Tenant rent' },
+    { 
+      id: 'tx1', 
+      date: new Date('2024-07-01'), 
+      amount: 50000, 
+      currency: 'INR', 
+      category: 'Salary', 
+      note: 'July salary',
+      tags: ['salary', 'income'],
+      paymentMix: [{ method: 'Bank Transfer', amount: 50000 }],
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false
+    },
+    { 
+      id: 'tx2', 
+      date: new Date('2024-07-05'), 
+      amount: -1200, 
+      currency: 'INR', 
+      category: 'Rent', 
+      note: 'Home rent',
+      tags: ['rent', 'housing'],
+      paymentMix: [{ method: 'UPI', amount: 1200 }],
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false
+    },
+    { 
+      id: 'tx3', 
+      date: new Date('2024-07-10'), 
+      amount: -500, 
+      currency: 'INR', 
+      category: 'Groceries', 
+      note: 'Monthly groceries',
+      tags: ['groceries', 'food'],
+      paymentMix: [{ method: 'Cash', amount: 500 }],
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false
+    },
+    { 
+      id: 'tx4', 
+      date: new Date('2024-07-15'), 
+      amount: -17964, 
+      currency: 'INR', 
+      category: 'EMI', 
+      note: 'Plot loan EMI',
+      tags: ['emi', 'loan'],
+      paymentMix: [{ method: 'Auto Debit', amount: 17964 }],
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false
+    },
+    { 
+      id: 'tx5', 
+      date: new Date('2024-07-20'), 
+      amount: 8000, 
+      currency: 'INR', 
+      category: 'Rental-Income', 
+      note: 'Tenant rent',
+      tags: ['rental', 'income'],
+      paymentMix: [{ method: 'UPI', amount: 8000 }],
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false
+    },
   ]);
 
   await db.rentalProperties.add({
@@ -31,7 +91,15 @@ export const seed = async () => {
     squareYards: 600, 
     monthlyRent: 8000, 
     dueDay: 20, 
-    escalationPercent: 10
+    escalationPercent: 10,
+    escalationDate: new Date('2025-01-01'),
+    lateFeeRate: 5,
+    noticePeriodDays: 30,
+    depositRefundPending: false,
+    propertyTaxAnnual: 12000,
+    propertyTaxDueDay: 31,
+    waterTaxAnnual: 2400,
+    waterTaxDueDay: 31
   });
 
   await db.goals.add({
@@ -40,7 +108,8 @@ export const seed = async () => {
     type: 'Short', 
     targetAmount: 120000, 
     targetDate: new Date('2025-12-31'), 
-    currentAmount: 0
+    currentAmount: 0,
+    notes: 'Building emergency fund for financial security'
   });
 
   localStorage.setItem('seedLoaded', 'true');

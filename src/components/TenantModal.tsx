@@ -19,6 +19,7 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
     roomNo: '',
     monthlyRent: '',
     depositPaid: '',
+    tenantContact: '',
     joinDate: new Date().toISOString().split('T')[0],
     endDate: ''
   });
@@ -37,7 +38,9 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
         monthlyRent: parseFloat(formData.monthlyRent),
         depositPaid: parseFloat(formData.depositPaid),
         joinDate: new Date(formData.joinDate),
-        endDate: formData.endDate ? new Date(formData.endDate) : undefined
+        endDate: formData.endDate ? new Date(formData.endDate) : undefined,
+        depositRefundPending: false,
+        tenantContact: formData.tenantContact
       });
 
       toast.success('Tenant added successfully!');
@@ -46,6 +49,7 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
         roomNo: '',
         monthlyRent: '',
         depositPaid: '',
+        tenantContact: '',
         joinDate: new Date().toISOString().split('T')[0],
         endDate: ''
       });
@@ -70,6 +74,17 @@ export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
               value={formData.tenantName}
               onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
               placeholder="Enter tenant name"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="tenantContact">Tenant Contact</Label>
+            <Input
+              id="tenantContact"
+              value={formData.tenantContact}
+              onChange={(e) => setFormData({ ...formData, tenantContact: e.target.value })}
+              placeholder="Enter tenant contact number"
               required
             />
           </div>

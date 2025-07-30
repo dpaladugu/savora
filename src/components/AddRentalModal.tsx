@@ -16,6 +16,7 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
   const [formData, setFormData] = useState({
     address: '',
     owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
+    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Land',
     squareYards: '',
     monthlyRent: '',
     deposit: ''
@@ -29,17 +30,26 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
         id: crypto.randomUUID(),
         address: formData.address,
         owner: formData.owner,
-        type: 'Residential',
+        type: formData.type,
         squareYards: parseInt(formData.squareYards),
         monthlyRent: parseFloat(formData.monthlyRent),
         dueDay: 1,
-        escalationPercent: 10
+        escalationPercent: 10,
+        escalationDate: new Date(),
+        lateFeeRate: 5,
+        noticePeriodDays: 30,
+        depositRefundPending: false,
+        propertyTaxAnnual: 0,
+        propertyTaxDueDay: 1,
+        waterTaxAnnual: 0,
+        waterTaxDueDay: 1
       });
 
       toast.success('Rental property added successfully!');
       setFormData({
         address: '',
         owner: 'Me',
+        type: 'Apartment',
         squareYards: '',
         monthlyRent: '',
         deposit: ''
@@ -81,6 +91,22 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
               <option value="Me">Me</option>
               <option value="Mother">Mother</option>
               <option value="Grandmother">Grandmother</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="type">Property Type</Label>
+            <select
+              id="type"
+              value={formData.type}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Land' })}
+              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
+              required
+            >
+              <option value="Apartment">Apartment</option>
+              <option value="House">House</option>
+              <option value="Commercial">Commercial</option>
+              <option value="Land">Land</option>
             </select>
           </div>
           
