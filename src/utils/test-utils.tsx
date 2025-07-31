@@ -1,5 +1,7 @@
+
 import React from 'react';
-import { render, screen, RenderOptions } from '@testing-library/react';
+import { render, RenderOptions } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -31,7 +33,6 @@ export const createMockGoal = (overrides: Partial<Goal> = {}): Goal => ({
   targetAmount: 100000,
   currentAmount: 25000,
   targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
-  status: 'active',
   ...overrides
 });
 
@@ -42,6 +43,7 @@ export const createMockInvestment = (overrides: Partial<Investment> = {}): Inves
   investedValue: 50000,
   currentValue: 55000,
   currentNav: 25.50,
+  units: 2156.86,
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
   ...overrides
 });
