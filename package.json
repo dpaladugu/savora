@@ -43,6 +43,7 @@
     "@shadcn/ui": "^0.0.4",
     "@supabase/supabase-js": "^2.50.0",
     "@tanstack/react-query": "^5.83.0",
+    "@testing-library/dom": "^10.4.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.0.0",
