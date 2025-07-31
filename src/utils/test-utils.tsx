@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { screen } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -16,7 +16,6 @@ export const createMockTxn = (overrides: Partial<Txn> = {}): Txn => ({
   date: new Date(),
   amount: -1000,
   category: 'Test Category',
-  subcategory: 'Test Subcategory',
   currency: 'INR',
   note: 'Test transaction',
   paymentMix: [],
@@ -30,7 +29,7 @@ export const createMockTxn = (overrides: Partial<Txn> = {}): Txn => ({
 export const createMockGoal = (overrides: Partial<Goal> = {}): Goal => ({
   id: 'mock-goal-' + Math.random().toString(36).substr(2, 9),
   name: 'Test Goal',
-  type: 'savings',
+  type: 'Medium',
   targetAmount: 100000,
   currentAmount: 25000,
   targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
@@ -42,7 +41,7 @@ export const createMockGoal = (overrides: Partial<Goal> = {}): Goal => ({
 export const createMockInvestment = (overrides: Partial<Investment> = {}): Investment => ({
   id: 'mock-investment-' + Math.random().toString(36).substr(2, 9),
   name: 'Test Investment',
-  type: 'mutual_fund',
+  type: 'MF-Growth',
   investedValue: 50000,
   currentValue: 55000,
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
