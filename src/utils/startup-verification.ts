@@ -1,6 +1,6 @@
 
 import { Logger } from '@/services/logger';
-import { db } from '@/lib/db';
+import { db } from '@/db'; // Changed from '@/lib/db' to '@/db'
 
 export interface StartupCheck {
   name: string;
