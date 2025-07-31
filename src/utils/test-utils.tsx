@@ -1,136 +1,103 @@
-
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { screen } from '@testing-library/react';
+import { screen } from '@testing-library/dom';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from '@/contexts/theme-context';
+import { db } from '@/lib/db';
+import { generateRandomTransaction } from './mock-data';
+import { Transaction } from '@/types';
 
-// Create mock database
-export const createMockDb = () => ({
-  txns: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    where: vi.fn(() => ({ 
-      equals: vi.fn(() => ({ toArray: vi.fn(() => Promise.resolve([])) })),
-      between: vi.fn(() => ({ toArray: vi.fn(() => Promise.resolve([])) }))
-    })),
-    get: vi.fn(),
-  },
-  goals: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-  investments: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-  emergencyFunds: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-  globalSettings: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-  rentalProperties: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-  tenants: {
-    toArray: vi.fn(() => Promise.resolve([])),
-    add: vi.fn(),
-    update: vi.fn(),
-    delete: vi.fn(),
-    get: vi.fn(),
-  },
-});
-
-// Mock data creation functions
-export const createMockTxn = (overrides = {}) => ({
-  id: 'test-txn-id',
-  date: new Date('2024-01-01'),
-  amount: -1000,
-  category: 'Groceries',
-  subcategory: '',
-  paymentMethod: 'Cash',
-  note: 'Test transaction',
-  currency: 'INR',
-  paymentMix: [],
-  splitWith: [],
-  tags: [],
-  isPartialRent: false,
-  isSplit: false,
-  ...overrides,
-});
-
-export const createMockGoal = (overrides = {}) => ({
-  id: 'test-goal-id',
-  name: 'Test Goal',
-  type: 'savings',
-  targetAmount: 100000,
-  currentAmount: 50000,
-  targetDate: new Date('2025-12-31'),
-  ...overrides,
-});
-
-export const createMockInvestment = (overrides = {}) => ({
-  id: 'test-investment-id',
-  name: 'Test Investment',
-  type: 'mutual_fund',
-  investedValue: 50000,
-  currentValue: 55000,
-  startDate: new Date('2024-01-01'),
-  maturityDate: new Date('2025-12-31'),
-  goalId: undefined,
-  ...overrides,
-});
-
-// Create a custom render function that includes providers
-const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
+// Mock the indexedDB for testing
+export const createMockDb = async () => {
+  vi.spyOn(db, 'open').mockImplementation(async () => {
+    // Optionally seed the database here if needed
+    return true;
   });
 
-  return (
-    <BrowserRouter>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider>
-          {children}
-        </ThemeProvider>
-      </QueryClientProvider>
-    </BrowserRouter>
-  );
+  vi.spyOn(db, 'addTransaction').mockImplementation(async (transaction: Transaction) => {
+    // Mock implementation for adding a transaction
+    return transaction.id; // Return a mock ID
+  });
+
+  vi.spyOn(db, 'getTransactions').mockImplementation(async () => {
+    // Mock implementation for getting transactions
+    const transactions = Array.from({ length: 5 }, () => generateRandomTransaction());
+    return transactions;
+  });
+
+  vi.spyOn(db, 'deleteTransaction').mockImplementation(async (id: string) => {
+    // Mock implementation for deleting a transaction
+    return true;
+  });
+
+  vi.spyOn(db, 'updateTransaction').mockImplementation(async (id: string, updates: Partial<Transaction>) => {
+    // Mock implementation for updating a transaction
+    return { id, ...updates } as Transaction;
+  });
+
+  vi.spyOn(db, 'getAllCategories').mockImplementation(async () => {
+    return ['Food', 'Travel', 'Shopping'];
+  });
+
+  vi.spyOn(db, 'addCategory').mockImplementation(async (category: string) => {
+    return category;
+  });
+
+  vi.spyOn(db, 'deleteCategory').mockImplementation(async (category: string) => {
+    return true;
+  });
+
+  vi.spyOn(db, 'updateCategory').mockImplementation(async (oldCategory: string, newCategory: string) => {
+    return newCategory;
+  });
+
+  return db;
 };
 
-const customRender = (
-  ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) => render(ui, { wrapper: AllTheProviders, ...options });
+interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
+  route?: string;
+  initialEntries?: string[];
+}
 
-// Re-export everything
-export * from '@testing-library/react';
-export { screen };
-export { customRender as render };
+export const renderWithRouter = (
+  ui: React.ReactElement,
+  options?: ExtendedRenderOptions
+) => {
+  const { route = '/', initialEntries = [route], ...renderOptions } = options || {};
+
+  window.history.pushState({}, 'Test page', route);
+
+  const Wrapper = ({ children }: { children: React.ReactNode }) => {
+    return (
+      <BrowserRouter initialEntries={initialEntries} >
+        {children}
+      </BrowserRouter>
+    );
+  };
+
+  return render(ui, { wrapper: Wrapper, ...renderOptions });
+};
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+interface WithQueryClientOptions extends Omit<RenderOptions, 'wrapper'> {
+  route?: string;
+}
+
+export function renderWithClient(ui: React.ReactElement, options?: WithQueryClientOptions) {
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
+    ),
+    ...options,
+  })
+}
