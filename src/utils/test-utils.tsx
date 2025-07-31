@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import { render, RenderOptions, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { Toaster } from '@/components/ui/toaster';
+import { vi } from 'vitest';
 
 // Mock Dexie database for testing
 export const createMockDb = () => ({
@@ -21,6 +22,7 @@ export const createMockDb = () => ({
     add: vi.fn().mockResolvedValue('test-id'),
     update: vi.fn().mockResolvedValue(1),
     delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
   },
   investments: {
     toArray: vi.fn().mockResolvedValue([]),
@@ -37,6 +39,20 @@ export const createMockDb = () => ({
     toArray: vi.fn().mockResolvedValue([]),
     get: vi.fn().mockResolvedValue(null),
     put: vi.fn().mockResolvedValue('test-id'),
+  },
+  rentalProperties: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('test-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+  },
+  tenants: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('test-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
   },
 });
 
@@ -65,9 +81,9 @@ const customRender = (
   options?: Omit<RenderOptions, 'wrapper'>
 ) => render(ui, { wrapper: AllTheProviders, ...options });
 
-// Re-export everything
+// Re-export everything including screen
 export * from '@testing-library/react';
-export { customRender as render };
+export { customRender as render, screen };
 
 // Common test data factories
 export const createMockTxn = (overrides = {}) => ({
