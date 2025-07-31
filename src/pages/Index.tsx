@@ -12,6 +12,7 @@ import { PinLock } from "@/components/auth/PinLock";
 import { Auth } from "@/components/auth/Auth";
 import { db } from "@/lib/db";
 import { seedInitialData } from "@/lib/seed-data";
+import { performStartupVerification, logStartupResults } from "@/utils/startup-verification";
 
 const MainApp = () => {
   // Move hooks to the top level and add error handling
@@ -66,6 +67,16 @@ const Index = () => {
     console.log('Index: useEffect for initial state checking');
     async function checkInitialState() {
       try {
+        // Run startup verification
+        const startupChecks = await performStartupVerification();
+        logStartupResults(startupChecks);
+        
+        // Check for critical errors
+        const criticalErrors = startupChecks.filter(c => c.status === 'error');
+        if (criticalErrors.length > 0) {
+          console.warn('Critical startup errors detected:', criticalErrors);
+        }
+
         // Initialize the database and seed data if needed
         await seedInitialData();
 

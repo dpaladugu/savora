@@ -38,10 +38,10 @@ export function useNavigationRouter() {
     } catch (error) {
       Logger.error('Error in tab change:', error);
       // Fallback to dashboard on error
-      setNavigationState(prev => ({
+      setNavigationState({
         activeTab: 'dashboard',
         activeMoreModule: null
-      }));
+      });
     }
   }, [navigationState.activeTab]);
 
