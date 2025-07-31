@@ -18,7 +18,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { AdvancedExpenseFilters, ExpenseFilterCriteria } from "./advanced-expense-filters";
 import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
 import { motion } from "framer-motion";
-import { parseISO, isValid } from "date-fns";
+import { parseISO, isValid, format } from "date-fns";
 
 // Income type that matches the database structure
 export interface AppIncome {
@@ -74,6 +74,35 @@ const initialFiltersState: ExpenseFilterCriteria = {
   minAmount: "",
   maxAmount: "",
   type: "All",
+};
+
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: any): Date | null => {
+  if (!dateValue) return null;
+  
+  // If it's already a Date object
+  if (dateValue instanceof Date) {
+    return isValid(dateValue) ? dateValue : null;
+  }
+  
+  // If it's a string, try to parse it
+  if (typeof dateValue === 'string') {
+    try {
+      const parsed = parseISO(dateValue);
+      return isValid(parsed) ? parsed : null;
+    } catch (error) {
+      console.warn('Failed to parse date string:', dateValue, error);
+      return null;
+    }
+  }
+  
+  // If it's a number (timestamp), convert to Date
+  if (typeof dateValue === 'number') {
+    const parsed = new Date(dateValue);
+    return isValid(parsed) ? parsed : null;
+  }
+  
+  return null;
 };
 
 export function ExpenseTracker() {
@@ -198,7 +227,8 @@ export function ExpenseTracker() {
       const paymentMethod = 'payment_method' in t ? t.payment_method : 'N/A';
       const matchesPaymentMethod = filters.paymentMethod === "All" || paymentMethod === filters.paymentMethod;
 
-      const date = t.date ? parseISO(t.date) : null;
+      // Use safe date parsing
+      const date = safeParseDate(t.date);
       const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
       const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
 
@@ -208,7 +238,14 @@ export function ExpenseTracker() {
       return matchesSearch && matchesCategory && matchesPaymentMethod && matchesDateFrom && matchesDateTo && matchesMinAmount && matchesMaxAmount;
     });
 
-    return filtered.sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
+    return filtered.sort((a, b) => {
+      const dateA = safeParseDate(a.date);
+      const dateB = safeParseDate(b.date);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateB.getTime() - dateA.getTime();
+    });
 
   }, [expenses, incomes, filters]);
 
@@ -216,7 +253,7 @@ export function ExpenseTracker() {
 
   const relevantIncomes = useMemo(() => incomes.filter(income => {
     const searchTermLower = filters.searchTerm.toLowerCase();
-    const date = income.date ? parseISO(income.date) : null;
+    const date = safeParseDate(income.date);
     const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
     const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
     const matchesSearch = !filters.searchTerm || (income.source_name || "").toLowerCase().includes(searchTermLower) || (income.category || "").toLowerCase().includes(searchTermLower);

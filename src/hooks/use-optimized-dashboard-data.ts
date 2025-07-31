@@ -1,4 +1,3 @@
-
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData, Goal } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
@@ -7,7 +6,7 @@ import { db, AppSettingTable } from "@/db";
 import type { Expense as AppExpense } from '@/services/supabase-data-service';
 // Use Income from income-tracker for incomes table as defined in SavoraDB
 import type { Income as AppIncome } from '@/components/income/income-tracker';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isValid } from 'date-fns';
 
 // Use types from jsonPreload instead of db module
 import type { InvestmentData } from '@/types/jsonPreload';
@@ -57,6 +56,32 @@ const fallbackDashboardData: DashboardData = {
   categoryBreakdown: []
 };
 
+// Helper function to safely parse dates
+const safeParseDate = (dateValue: any): Date | null => {
+  if (!dateValue) return null;
+  
+  if (dateValue instanceof Date) {
+    return isValid(dateValue) ? dateValue : null;
+  }
+  
+  if (typeof dateValue === 'string') {
+    try {
+      const parsed = parseISO(dateValue);
+      return isValid(parsed) ? parsed : null;
+    } catch (error) {
+      console.warn('Failed to parse date string:', dateValue, error);
+      return null;
+    }
+  }
+  
+  if (typeof dateValue === 'number') {
+    const parsed = new Date(dateValue);
+    return isValid(parsed) ? parsed : null;
+  }
+  
+  return null;
+};
+
 async function fetchDashboardData(): Promise<DashboardData> {
   Logger.info('Fetching dashboard data from Dexie');
 
@@ -92,10 +117,13 @@ async function fetchDashboardData(): Promise<DashboardData> {
     due_date: card.dueDate
   })) as CreditCardData[];
 
-  // Calculate Expense Metrics
+  // Calculate Expense Metrics with safe date parsing
   const currentMonthStr = format(new Date(), 'yyyy-MM');
   const monthlyExpenses = allExpenses
-    .filter(e => e.date?.startsWith(currentMonthStr)) // No type filter, assuming db.expenses only stores expenses
+    .filter(e => {
+      const expenseDate = safeParseDate(e.date);
+      return expenseDate && format(expenseDate, 'yyyy-MM') === currentMonthStr;
+    })
     .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   const totalExpenses = allExpenses
@@ -103,9 +131,12 @@ async function fetchDashboardData(): Promise<DashboardData> {
 
   const expenseCount = allExpenses.length;
 
-  // Calculate Income Metrics
+  // Calculate Income Metrics with safe date parsing
   const monthlyIncome = allIncomes
-    .filter(i => i.date?.startsWith(currentMonthStr))
+    .filter(i => {
+      const incomeDate = safeParseDate(i.date);
+      return incomeDate && format(incomeDate, 'yyyy-MM') === currentMonthStr;
+    })
     .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
   // Calculate Investment Metrics
@@ -144,16 +175,22 @@ async function fetchDashboardData(): Promise<DashboardData> {
   // Assuming CreditCardData has 'currentBalance'
   const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number(card.currentBalance) || 0), 0);
 
-  // Prepare Recent Transactions (mix of expenses and incomes)
-  // Sort all transactions by date to get the most recent ones
+  // Prepare Recent Transactions with safe date sorting
   const allTransactions = [
-    ...allExpenses.map(e => ({ ...e, type: 'expense' as const, date: e.date || ''})), // Ensure date is string
-    ...allIncomes.map(i => ({ ...i, type: 'income' as const, date: i.date || ''}))    // Ensure date is string
+    ...allExpenses.map(e => ({ ...e, type: 'expense' as const, date: e.date || ''})),
+    ...allIncomes.map(i => ({ ...i, type: 'income' as const, date: i.date || ''}))
   ];
 
   const recentTransactions = allTransactions
-    .filter(t => t.date) // Ensure date exists for sorting
-    .sort((a, b) => parseISO(b.date).getTime() - parseISO(a.date).getTime())
+    .filter(t => t.date && safeParseDate(t.date))
+    .sort((a, b) => {
+      const dateA = safeParseDate(a.date);
+      const dateB = safeParseDate(b.date);
+      if (!dateA && !dateB) return 0;
+      if (!dateA) return 1;
+      if (!dateB) return -1;
+      return dateB.getTime() - dateA.getTime();
+    })
     .slice(0, 5)
     .map(t => ({
       id: String(t.id || self.crypto.randomUUID()),
