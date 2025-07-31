@@ -1,6 +1,5 @@
 import React from 'react';
-import { render, RenderOptions } from '@testing-library/react';
-import { screen } from '@testing-library/dom';
+import { render, RenderOptions, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -47,6 +46,7 @@ export const createMockInvestment = (overrides: Partial<Investment> = {}): Inves
   startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
   frequency: 'Monthly',
   taxBenefit: false,
+  familyMember: 'Self',
   ...overrides
 });
 
