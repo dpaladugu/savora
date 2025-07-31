@@ -1,62 +1,61 @@
 
 import React from 'react';
-import { render, RenderOptions, screen } from '@testing-library/react';
+import { render, screen, RenderOptions } from '@testing-library/react';
+import { vi } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '@/contexts/theme-context';
-import { Toaster } from '@/components/ui/toaster';
-import { vi } from 'vitest';
 
-// Mock Dexie database for testing
+// Create mock database
 export const createMockDb = () => ({
   txns: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
-    where: vi.fn().mockReturnThis(),
-    equals: vi.fn().mockReturnThis(),
-    between: vi.fn().mockReturnThis(),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    where: vi.fn(() => ({ equals: vi.fn(), between: vi.fn() })),
   },
   goals: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(null),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   investments: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   emergencyFunds: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   globalSettings: {
-    toArray: vi.fn().mockResolvedValue([]),
-    get: vi.fn().mockResolvedValue(null),
-    put: vi.fn().mockResolvedValue('test-id'),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
   rentalProperties: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(null),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn(),
   },
   tenants: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('test-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(null),
+    toArray: vi.fn(() => Promise.resolve([])),
+    add: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    get: vi.fn(),
   },
 });
 
-// Custom render function with providers
+// Create a custom render function that includes providers
 const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -67,66 +66,22 @@ const AllTheProviders = ({ children }: { children: React.ReactNode }) => {
   });
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        {children}
-        <Toaster />
-      </ThemeProvider>
-    </QueryClientProvider>
+    <BrowserRouter>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          {children}
+        </ThemeProvider>
+      </QueryClientProvider>
+    </BrowserRouter>
   );
 };
 
 const customRender = (
   ui: React.ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>
+  options?: Omit<RenderOptions, 'wrapper'>,
 ) => render(ui, { wrapper: AllTheProviders, ...options });
 
-// Re-export everything including screen
+// Re-export everything
 export * from '@testing-library/react';
-export { customRender as render, screen };
-
-// Common test data factories
-export const createMockTxn = (overrides = {}) => ({
-  id: 'test-txn-1',
-  date: new Date('2024-01-01'),
-  amount: -1000,
-  currency: 'INR',
-  category: 'Groceries',
-  note: 'Test transaction',
-  tags: ['test'],
-  paymentMix: [{ method: 'UPI', amount: 1000 }],
-  splitWith: [],
-  isPartialRent: false,
-  isSplit: false,
-  ...overrides,
-});
-
-export const createMockGoal = (overrides = {}) => ({
-  id: 'test-goal-1',
-  name: 'Emergency Fund',
-  type: 'Short' as const,
-  targetAmount: 100000,
-  targetDate: new Date('2025-01-01'),
-  currentAmount: 50000,
-  notes: 'Test goal',
-  ...overrides,
-});
-
-export const createMockInvestment = (overrides = {}) => ({
-  id: 'test-investment-1',
-  type: 'MF-Growth' as const,
-  name: 'Test Mutual Fund',
-  folioNo: 'TEST123',
-  currentNav: 100,
-  units: 100,
-  investedValue: 10000,
-  currentValue: 11000,
-  startDate: new Date('2024-01-01'),
-  frequency: 'Monthly' as const,
-  goalId: 'test-goal-1',
-  lockInYears: 0,
-  taxBenefit: false,
-  familyMember: 'Self',
-  notes: 'Test investment',
-  ...overrides,
-});
+export { screen };
+export { customRender as render };

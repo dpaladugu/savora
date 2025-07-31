@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import type { EmergencyFund, Txn } from '@/lib/db';
@@ -19,6 +18,11 @@ interface EmergencyFundData {
   currentCorpus: number;
   rentalIncome: number;
   emergencyMonths: number;
+  // Additional fields for AI advice
+  numIncomeSources?: number;
+  jobStability?: 'high' | 'medium' | 'low';
+  otherLiquidSavings?: number;
+  efRiskTolerance?: 'conservative' | 'moderate' | 'aggressive';
 }
 
 interface UseEmergencyFundReturn {
@@ -45,6 +49,10 @@ export const useEmergencyFund = (): UseEmergencyFundReturn => {
     currentCorpus: 0,
     rentalIncome: 0,
     emergencyMonths: 6,
+    numIncomeSources: 1,
+    jobStability: 'medium',
+    otherLiquidSavings: 0,
+    efRiskTolerance: 'moderate',
   });
 
   const [loading, setLoading] = useState(false);
