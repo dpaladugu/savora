@@ -1,59 +1,106 @@
+
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
-import { screen } from '@testing-library/dom';
+import { screen } from '@testing-library/react';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { db } from '@/lib/db';
-import { generateRandomTransaction } from './mock-data';
-import { Transaction } from '@/types';
+import type { Txn, Goal, Investment } from '@/lib/db';
 
-// Mock the indexedDB for testing
-export const createMockDb = async () => {
-  vi.spyOn(db, 'open').mockImplementation(async () => {
-    // Optionally seed the database here if needed
-    return true;
-  });
+// Export screen and render for use in tests
+export { screen, render };
 
-  vi.spyOn(db, 'addTransaction').mockImplementation(async (transaction: Transaction) => {
-    // Mock implementation for adding a transaction
-    return transaction.id; // Return a mock ID
-  });
+// Mock data creation functions
+export const createMockTxn = (overrides: Partial<Txn> = {}): Txn => ({
+  id: 'mock-txn-' + Math.random().toString(36).substr(2, 9),
+  date: new Date(),
+  amount: -1000,
+  category: 'Test Category',
+  subcategory: 'Test Subcategory',
+  currency: 'INR',
+  note: 'Test transaction',
+  paymentMix: [],
+  splitWith: [],
+  tags: [],
+  isPartialRent: false,
+  isSplit: false,
+  ...overrides
+});
 
-  vi.spyOn(db, 'getTransactions').mockImplementation(async () => {
-    // Mock implementation for getting transactions
-    const transactions = Array.from({ length: 5 }, () => generateRandomTransaction());
-    return transactions;
-  });
+export const createMockGoal = (overrides: Partial<Goal> = {}): Goal => ({
+  id: 'mock-goal-' + Math.random().toString(36).substr(2, 9),
+  name: 'Test Goal',
+  type: 'savings',
+  targetAmount: 100000,
+  currentAmount: 25000,
+  targetDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+  priority: 'medium',
+  status: 'active',
+  ...overrides
+});
 
-  vi.spyOn(db, 'deleteTransaction').mockImplementation(async (id: string) => {
-    // Mock implementation for deleting a transaction
-    return true;
-  });
+export const createMockInvestment = (overrides: Partial<Investment> = {}): Investment => ({
+  id: 'mock-investment-' + Math.random().toString(36).substr(2, 9),
+  name: 'Test Investment',
+  type: 'mutual_fund',
+  investedValue: 50000,
+  currentValue: 55000,
+  startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+  ...overrides
+});
 
-  vi.spyOn(db, 'updateTransaction').mockImplementation(async (id: string, updates: Partial<Transaction>) => {
-    // Mock implementation for updating a transaction
-    return { id, ...updates } as Transaction;
-  });
-
-  vi.spyOn(db, 'getAllCategories').mockImplementation(async () => {
-    return ['Food', 'Travel', 'Shopping'];
-  });
-
-  vi.spyOn(db, 'addCategory').mockImplementation(async (category: string) => {
-    return category;
-  });
-
-  vi.spyOn(db, 'deleteCategory').mockImplementation(async (category: string) => {
-    return true;
-  });
-
-  vi.spyOn(db, 'updateCategory').mockImplementation(async (oldCategory: string, newCategory: string) => {
-    return newCategory;
-  });
-
-  return db;
-};
+// Create mock database that matches the actual database structure
+export const createMockDb = () => ({
+  txns: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+    between: vi.fn().mockReturnThis(),
+  },
+  goals: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+  },
+  investments: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+  },
+  rentalProperties: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+  },
+  tenants: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+  },
+  emergencyFunds: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+  }
+});
 
 interface ExtendedRenderOptions extends Omit<RenderOptions, 'wrapper'> {
   route?: string;
@@ -70,7 +117,7 @@ export const renderWithRouter = (
 
   const Wrapper = ({ children }: { children: React.ReactNode }) => {
     return (
-      <BrowserRouter initialEntries={initialEntries} >
+      <BrowserRouter>
         {children}
       </BrowserRouter>
     );
@@ -99,5 +146,5 @@ export function renderWithClient(ui: React.ReactElement, options?: WithQueryClie
       </QueryClientProvider>
     ),
     ...options,
-  })
+  });
 }
