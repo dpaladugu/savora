@@ -4,15 +4,24 @@ import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { ExpenseTracker } from '../expense-tracker';
-import * as TransactionService from '@/services/TransactionService';
+import { TransactionService } from '@/services/TransactionService';
 
-// Mock the services
-vi.mock('@/services/TransactionService');
+// Mock the services - mock the class methods
+vi.mock('@/services/TransactionService', () => ({
+  TransactionService: {
+    getTransactions: vi.fn(),
+    addTransaction: vi.fn(),
+    updateTransaction: vi.fn(),
+    deleteTransaction: vi.fn(),
+  }
+}));
+
 vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: vi.fn(),
   }),
 }));
+
 vi.mock('@/hooks/use-comprehensive-loading', () => ({
   useSingleLoading: () => ({
     isLoading: false,
@@ -20,6 +29,7 @@ vi.mock('@/hooks/use-comprehensive-loading', () => ({
     stopLoading: vi.fn(),
   }),
 }));
+
 vi.mock('dexie-react-hooks', () => ({
   useLiveQuery: () => [],
 }));
