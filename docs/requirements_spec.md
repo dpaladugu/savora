@@ -1,6 +1,5 @@
-```markdown
 # Savora Personal Finance App  
-**Requirement Specification v1.0 – LOCKED & FINAL**  
+**Requirement Specification v1.1 – FINAL & LIFE-OPTIMIZED**  
 **Effective Date:** 26 July 2025  
 **Scope:** Single-user, offline-first (IndexedDB), India-centric, zero cloud dependency.
 
@@ -11,17 +10,50 @@
 - **Offline-first** – all data in IndexedDB via Dexie.  
 - **India defaults** – INR only, Indian tax rules, Indian instruments.  
 - **Expert-grade recommendations** – CFA-aligned rules running **locally**.
+- **Life-ready** – automates not just money, but **health, estate, and family events**.
+- **Privacy-first** – zero PII in prompts, masked UI, self-destruct on brute-force.
 
 ---
 
 ## 2. Global Settings (Singleton)
-| Field | Type | Default |
-|---|---|---|
-| taxRegime | enum | 'New' |
-| autoLockMinutes | number | 5 |
-| birthdayBudget | number | 0 |
-| birthdayAlertDays | number | 7 |
-| emergencyContacts | Contact[] | [] |
+| Field | Type | Default | Notes |
+|---|---|---|---|
+| taxRegime | enum('Old' \| 'New') | 'New' | locked to New regime |
+| autoLockMinutes | number | 5 | 1–10 min slider |
+| birthdayBudget | number | 0 | gift-giving cap |
+| birthdayAlertDays | number | 7 | days-before reminder |
+| emergencyContacts | Contact[] | [] | emergency-only |
+| incomeTaxReturnJson | string? | null | encrypted ITR blob |
+| telegramBotToken | string? | null | personal bot token |
+| dependents | Dependent[] | [] | household roster |
+| salaryCreditDay | number | 15 | auto-cash-flow |
+| annualBonus | number? | null | for bonus-sweep rule |
+| medicalInflationRate | number | 10.0 | India private-pay |
+| educationInflation | number | 7.0 | child-education PV |
+| vehicleInflation | number | 5.0 | repair / upgrade PV |
+| maintenanceInflation | number | 6.0 | property upkeep PV |
+| privacyMask | boolean | true | mask amounts by default |
+| revealSecret | string? | null | Argon2id-protected unmask |
+| failedPinAttempts | number | 0 | wipe after 10 |
+| maxFailedAttempts | number | 10 | hard limit |
+| darkMode | boolean | false | device-wide toggle |
+| timeZone | string | "Asia/Kolkata" | stored once on first run |
+| isTest | boolean | false | disable real nudges in dev mode |
+| theme | enum('light' \| 'dark' \| 'auto') | 'auto' | respects system preference |
+| deviceThemes | Record<string, 'light'\|'dark'\|'auto'>? | {} | per-device theme binding |
+
+ts
+interface Dependent {
+  id: string;
+  relation: 'Spouse' | 'Child' | 'Mother' | 'Grandmother' | 'Brother';
+  name: string;
+  dob: Date;
+  gender: 'M' | 'F';
+  chronic: boolean;
+  schoolFeesAnnual?: number;
+  isNominee: boolean;
+}
+
 
 ---
 
@@ -36,7 +68,7 @@
 | note | string | ≤ 500 chars |
 | tags | string[] | max 5 |
 | goalId | string? | FK → Goal |
-| receiptUri | string? | cloud link only (no local blob) |
+| receiptUri | string? | cloud link only |
 | cardId | string? | FK → CreditCard |
 | vehicleId | string? | FK → Vehicle |
 | tenantId | string? | FK → Tenant |
@@ -47,19 +79,35 @@
 | cashbackAmount | number? | ≥ 0 |
 | isSplit | boolean | false |
 | splitWith | SplitItem[] | [{person, amount, settled}] |
+| gstPaid | number? | 0 | for GST credit utilisation |
+
+ts
+interface PaymentSplit {
+  mode: 'Cash' | 'Card' | 'UPI' | 'Bank';
+  amount: number;
+  refId?: string;
+}
+
+interface SplitItem {
+  person: string;
+  amount: number;
+  settled: boolean;
+}
+
 
 ---
 
 ## 4. Goal
-| Field | Type |
-|---|---|
-| id | string |
-| name | string |
-| type | enum | 'Micro' \| 'Small' \| 'Short' \| 'Medium' \| 'Long' |
-| targetAmount | number |
-| targetDate | Date |
+| Field | Type | Notes |
+|---|---|---|
+| id | string | uuid |
+| name | string | display name |
+| slug | string | auto: `kid-ug-18`, `nps-t1-80ccdb` |
+| type | enum('Micro' \| 'Small' \| 'Short' \| 'Medium' \| 'Long') | |
+| targetAmount | number | |
+| targetDate | Date | |
 | currentAmount | number | auto-sum via Txn.goalId |
-| notes | string |
+| notes | string | ≤ 500 chars |
 
 ---
 
@@ -82,6 +130,8 @@
 | cycleStart | 1-31 |
 | stmtDay | 1-31 |
 | dueDay | 1-31 |
+| fxTxnFee | number | 0 |
+| emiConversion | boolean | false |
 
 ---
 
@@ -100,8 +150,12 @@
 | fuelEfficiency | number | computed |
 | fuelLogs | FuelFill[] |
 | serviceLogs | ServiceEntry[] |
+| claims | Claim[] |
+| treadDepthMM | number | 0 |
+| depreciationRate | number? |
+| ncbPercent | number? | auto-calc from claims |
 
-```ts
+ts
 interface FuelFill {
   date: Date;
   litres: number;
@@ -126,7 +180,13 @@ interface ServiceItem {
   unitPrice: number;
   amount: number;
 }
-```
+
+interface Claim {
+  date: Date;
+  amount: number;
+  description: string;
+}
+
 
 ---
 
@@ -135,7 +195,7 @@ interface ServiceItem {
 |---|---|
 | id | string |
 | address | string |
-| owner | enum | 'Me' \| 'Mother' \| 'Grandmother' |
+| owner | enum('Me' \| 'Mother' \| 'Grandmother') |
 | type | enum |
 | squareYards | number |
 | latitude, longitude | number? |
@@ -150,6 +210,7 @@ interface ServiceItem {
 | propertyTaxDueDay | 1-31 |
 | waterTaxAnnual | number |
 | waterTaxDueDay | 1-31 |
+| maintenanceReserve | number/year |
 
 ---
 
@@ -189,7 +250,7 @@ interface ServiceItem {
 | saleDate, salePrice, profit | auto-calc |
 | goldLoanId | string? |
 | loanInterestRate | number? |
-| currentMcxPrice | number? | manual entry |
+| currentMcxPrice | number? |
 
 ---
 
@@ -197,10 +258,10 @@ interface ServiceItem {
 | Field | Type |
 |---|---|
 | id | string |
-| type | enum | 'MF-Growth' \| 'MF-Dividend' \| 'SIP' \| 'PPF' \| 'EPF' \| 'NPS-T1' \| 'NPS-T2' \| 'Gold-Coin' \| 'Gold-ETF' \| 'SGB' \| 'FD' \| 'RD' \| 'Stocks' \| 'Others' |
+| type | enum('MF-Growth' \| 'MF-Dividend' \| 'SIP' \| 'PPF' \| 'EPF' \| 'NPS-T1' \| 'NPS-T2' \| 'Gold-Coin' \| 'Gold-ETF' \| 'SGB' \| 'FD' \| 'RD' \| 'Stocks' \| 'Others' \| 'Gift-Card-Float') |
 | name | string |
 | folioNo | string? |
-| currentNav | number | manual |
+| currentNav | number |
 | units | number |
 | investedValue | number |
 | currentValue | number |
@@ -214,8 +275,10 @@ interface ServiceItem {
 | taxBenefit | boolean |
 | familyMember | string |
 | notes | string |
-| interestRate | number? | SGB half-yearly |
+| interestRate | number? |
 | interestCreditDate | Date? |
+| dividendReceived | number? |
+| indexCostInflation | number? | for capital gains |
 
 ---
 
@@ -235,6 +298,7 @@ interface ServiceItem {
 | personalTermCover, personalHealthCover | number? |
 | employerTermCover, employerHealthCover | number? |
 | notes | string |
+| personalLiabilityCover | number? |
 
 ---
 
@@ -242,7 +306,7 @@ interface ServiceItem {
 | Field | Type |
 |---|---|
 | id | string |
-| type | enum | 'Personal' \| 'Personal-Brother' \| 'Education-Brother' |
+| type | enum('Personal' \| 'Personal-Brother' \| 'Education-Brother') |
 | borrower | 'Me' \| 'Brother' |
 | principal | number |
 | roi | number |
@@ -257,7 +321,7 @@ interface ServiceItem {
 | loanInsurance | string? |
 | guarantorName | string? |
 
-```ts
+ts
 interface AmortRow {
   month: number;
   emi: number;
@@ -265,7 +329,7 @@ interface AmortRow {
   interestPart: number;
   balance: number;
 }
-```
+
 
 ---
 
@@ -306,15 +370,47 @@ interface AmortRow {
 | doctorNotes | string? |
 | medicalHistory | string? |
 | prescriptions | Prescription[] |
+| heightCm | number? |
+| weightKg | number? |
+| bmi | number? |
+| familyHistory | string[] |
+| lifeExpectancy | number? |
+| vaccinations | Vaccination[] |
 
-```ts
+ts
 interface Prescription {
   date: Date;
   doctor: string;
   medicines: string[];
   amount: number;
 }
-```
+
+interface Vaccination {
+  name: string;
+  dueDate: Date;
+  administeredDate?: Date;
+  reminderDays: number;
+  notes: string;
+}
+
+vitals: Vital[]
+
+interface Vital {
+  date: Date;
+  bpSystolic?: number;
+  bpDiastolic?: number;
+  heartRate?: number;
+  temperature?: number;
+  spO2?: number;
+  hba1c?: number;
+  tsh?: number;
+  t3?: number;
+  t4?: number;
+  vitaminD?: number;
+  vitaminB12?: number;
+  creatinine?: number;
+}
+
 
 ---
 
@@ -322,7 +418,7 @@ interface Prescription {
 | Field | Type |
 |---|---|
 | id | string |
-| owner | enum | 'Mother' \| 'Grandmother' |
+| owner | enum('Mother' \| 'Grandmother') |
 | bankName | string |
 | accountNo | string |
 | type | enum |
@@ -335,7 +431,7 @@ interface Prescription {
 |---|---|
 | id | string |
 | fromAccountId | string |
-| toPerson | enum |
+| toPerson | enum('Mother' \| 'Grandmother' \| 'Brother') |
 | amount | number |
 | date | Date |
 | purpose | string |
@@ -351,7 +447,9 @@ interface Prescription {
 | targetAmount | number |
 | currentAmount | number |
 | lastReviewDate | Date |
-| status | enum |
+| status | enum('OnTrack' \| 'Behind' \| 'Achieved') |
+| medicalSubBucket | number | ₹200,000 |
+| medicalSubBucketUsed | number | 0 |
 
 ---
 
@@ -372,13 +470,13 @@ interface Prescription {
 ## 20. Expert Recommendation Rules (CFA-level)
 
 ### 20.1 Investment & Asset Allocation
-- **Age-based glide path**  
-  ≤ 35 → 70 % Equity, 20 % Debt, 10 % Gold  
-  36-50 → 60 / 30 / 10  
-  > 50 → 40 / 50 / 10  
-- **Rebalance alert** if any bucket drifts > 5 %.  
-- **SIP bump** on salary↑ > 15 % YoY.  
-- **ELSS** skipped (user uses Kuvera).
+- Age-based glide path  
+  ≤ 35 → 70% Equity, 20% Debt, 10% Gold  
+  36–50 → 60% / 30% / 10%  
+  > 50 → 40% / 50% / 10%  
+- Rebalance alert if any bucket drifts > 5%.  
+- SIP bump on salary ↑ > 15% YoY or on birthday (inflation-linked).  
+- ELSS skipped (user uses Kuvera).
 
 ### 20.2 Insurance
 - Gap-cover: term < 10× income, health < 5× income.  
@@ -387,18 +485,22 @@ interface Prescription {
 - Nominee & will prompts at age ≥ 30.
 
 ### 20.3 Loan
-- EMI/income > 40 % → “Debt stress”.  
-- Pre-payment ROI saved > ₹10 k → “Foreclose”.  
+- EMI/income > 40% → “Debt stress”.  
+- Pre-payment ROI saved > ₹10k → “Foreclose”.  
 - Brother loan tracking with repayment ledger.
 
 ### 20.4 Expense & Subscription
-- Subscription cost↑ > 10 % → “Review”.  
+- Subscription cost ↑ > 10% → “Review”.  
 - Cash-flow forecast next 30 days vs income.  
 - Split-bill unsettled > 7 days → reminder.
 
 ### 20.5 Tax (New Regime)
-- 80CCD(1B) ₹50 k alert if NPS-T1 < limit.  
-- SGB short-term gain warning if sold < 8 yrs.
+- 80CCD(1B) ₹50k alert if NPS-T1 < limit.  
+- SGB short-term gain warning if sold < 8 yrs.  
+- Advance tax reminders: 7 days before 15-Jun/Sep/Dec/Mar if liability > ₹10k.
+
+### 20.6 Child (girl) education goal
+- Skip SSY; fund via incremental equity SIP (N50+NN50+PPFAS) using PV(₹30L, 7% inflation, 17 yr) target, glide-path equity 100%→50%→0%.
 
 ---
 
@@ -407,7 +509,10 @@ interface Prescription {
 - Auto-lock 1–10 min slider.  
 - Encrypted export (AES-256 + passphrase).  
 - Cloud-link receipts (`receiptUri`).  
-- Lazy-load heavy arrays.
+- Lazy-load heavy arrays.  
+- Self-destruct on brute-force (wipe DB after 10 failed PIN attempts).  
+- Dark-mode toggle (respects `theme` and `deviceThemes`).  
+- Privacy mask with session-based reveal (`revealSecret` hashed with Argon2id).
 
 ---
 
@@ -415,9 +520,133 @@ interface Prescription {
 | Item | Max |
 |---|---|
 | Receipt file cloud link | ≤ 25 MB external |
-| DB rows per table | 10 000 (auto FIFO prune) |
+| DB rows per table | 10,000 (auto FIFO prune) |
 | Fuel / service log per vehicle | 500 (lazy load) |
 
 ---
 
-**Status: LOCKED & READY FOR IMPLEMENTATION**
+## 23. Personal-Telegram Capture (Single-User Only)
+- Private Telegram bot identified by `GlobalSettings.telegramBotToken`.  
+- Accepts text: `/add <amount> <category> [#tag …]` or voice → STT.  
+- Writes into **PendingTxn** table (same schema as Txn minus `id`).  
+- Sync-on-Wi-Fi only, no cloud persistence > 24 h.  
+- Bot token is single-user; no rate-limit required.
+
+---
+
+## 24. Goals-Nudge Engine (Personal, CFA-grade)
+
+### 24.1 Auto-Goal Creation Rules
+| Trigger | Derived Goal | Target & Date | Logic |
+|---|---|---|---|
+| Health-Insurance premium detected | "Health-Insurance 3-yr" | last premium × 1.05³, +1095d | Auto-create once |
+| Term-Insurance premium detected | "Term-Insurance Renewal" | last premium × 1.03, +365d | update if open |
+| Vehicle Insurance record | "Vehicle-Insurance <regNo>" | last premium × 1.03, expiry −30d | one per vehicle |
+| Vehicle Service cost > ₹5k last 12m | "Vehicle-Repairs Buffer <regNo>" | 3-yr median repair spend, 1yr from today | re-compute annually |
+| Child DOB in Dependents | "Kid-UG@18" | PV(₹25L, educationInflation, 18-age), child_dob + 18yr | single, locked |
+| Mother & Grandmother > 60y | "Senior-Citizen Medical-Corpus" | 3-yr median spend × 5, 1yr from today | re-compute yearly |
+| NPS-T1 annual cap | "NPS-T1 80CCD(1B)" | ₹50k, 31-Mar each FY | auto-sweep surplus |
+| PPF annual deposit | "PPF Annual" | ₹1.5L, 05-Apr each FY | auto-sweep surplus |
+| Property Tax annual | "Property-Tax-<address>" | propertyTaxAnnual × 1.05, dueDay −30d | auto-create once |
+| Water Tax annual | "Water-Tax-<address>" | waterTaxAnnual × 1.03, dueDay −30d | auto-create once |
+| Family mobile pack (7 numbers) | "Family-Mobile-Pack-All" | 7 × cheapest 84-day pack, due −7d | sweep from rent |
+| Friend credit-card repayments outstanding | "Friend-Repay-Buffer" | outstanding amount, due +7d | cash/NPS-T2 G-sec |
+| Child DOB = 0y | "Baby-Vaccine-Pack" | ₹15k, child_dob + 2y | auto-create |
+| Odometer ≥ 40,000 km | "Tyre-Replacement-<regNo>" | median tyre cost × 1.05 | trigger goal |
+| Child DOB = 5y | "School-Admission@5" | PV(₹2L, 8%, 5yr), child_dob + 5y | auto-fund |
+| Annual festival spend | "Festival-Corpus" | 3-yr median spend, 30-Sep | auto-save |
+
+### 24.2 Funding Priority Stack
+1. Emergency Fund (12 months)  
+2. Insurance & statutory dues (Health, Term, Property, Water, Vehicle)  
+3. Kid-UG & Retirement – equity-heavy buckets  
+4. Discretionary / Luxury – optional  
+
+### 24.3 Monthly Nudges
+- **Deficit sweep**: if Emergency < 100% and surplus > ₹5k → sweep to Emergency.  
+- **Top-up SIP**: if long-term goal < 80% on track → increase SIP by min(₹2k, 5% surplus).  
+- **Insurance 30-day early**: push 30d before; auto-create FD if idle cash ≥ 110% of goal.
+
+---
+
+## 25. LLM Prompt Engine & Privacy Guard
+
+### 25.1 LLMPrompt Table (Offline, Anonymous)
+| Field | Type |
+|---|---|
+| id | string |
+| promptType | enum('AssetReview' \| 'GoalReview' \| 'TaxReview' \| 'HealthReview' \| 'VehicleReview' \| 'RentalReview' \| 'EmergencyReview') |
+| promptText | string | auto-generated JSON (no PII) |
+| createdDate | Date |
+| usedDate | Date? |
+
+> Sample: `{ "type": "AssetReview", "equity":45, "debt":35, "cash":20, "age":33, "goal": "Kid-UG@18", "drift":6, "rec": "swap 2.1k N50→NPS-T2 G-sec" }`
+
+### 25.2 Privacy Guard
+- All monetary fields masked by default (`privacyMask = true`).  
+- Tap "👁️ Reveal" → enter `revealSecret` → session-only unmask (expires on background/5min idle).  
+- Secret hashed with Argon2id; never leaves device.
+
+---
+
+## 26. Backup & Restore
+- **QR export** – AES-256 + passphrase → single QR code with Reed-Solomon 10% error correction.  
+- **Import** – scan QR → decrypt → merge into IndexedDB.  
+- **Version guard**: warns if `specVersion` > current app version or `deviceId` differs.  
+- **Self-destruct**: DB wiped after 10 failed PIN attempts.
+
+---
+
+## 27. Estate & Digital Assets
+
+### 27.1 Will
+| Field | Type |
+|---|---|
+| id | string |
+| assetId | string | FK → any asset table |
+| beneficiary | string |
+| percentage | number | 0–100 |
+| createdDate | Date |
+| lastUpdated | Date |
+
+> Auto-nudge: if user age ≥ 30 and no Will rows → “Create / update will”.
+
+### 27.2 DigitalAsset
+| Field | Type |
+|---|---|
+| id | string |
+| type | enum('Crypto' \| 'Demat PDF' \| 'FD Receipt' \| 'App Passphrase' \| 'Telegram Token' \| 'Others') |
+| location | string |
+| nominee | string |
+| accessInstructions | string |
+| lastUpdated | Date |
+
+---
+
+## 28. SpendingLimit
+| Field | Type |
+|---|---|
+| id | string |
+| category | string | e.g., "Dining", "Shopping" |
+| monthlyCap | number |
+| currentSpend | number | auto-sum from Txn.category |
+| alertAt | number | default 80% |
+
+> Auto-nudge when `currentSpend ≥ alertAt`.
+
+---
+
+## 29. PWA & Cross-Device Experience
+- **Web App Manifest**: `name`, `short_name`, `icons` (192x192, 512x512), `theme_color`, `display: standalone`.  
+- **Service Worker**: Cache app shell, JS, CSS. All data is IndexedDB.  
+- **Install Prompt**: Show "Add to Home Screen" on Android/iOS.  
+- **Offline UX**: Show "You're offline. All data is local." if network fails.  
+- **Sync Warning**: Toast: "Data is device-specific. Backup via QR to restore on another device."
+
+---
+
+## 30. Status
+**v1.1-final-life-optimized – LOCKED & READY FOR IMPLEMENTATION**
+
+> This spec is **final, complete, and implementation-ready**.  
+> Upload to GitHub and begin development.
