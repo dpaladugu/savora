@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -21,7 +22,6 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
   const [category, setCategory] = useState('');
   const [date, setDate] = useState('');
   const [tags, setTags] = useState('');
-  const [account, setAccount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
@@ -50,14 +50,17 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
       setAmount(editingExpense.amount.toString());
       setDescription(editingExpense.description);
       setCategory(editingExpense.category);
-      setDate(editingExpense.date);
+      // Convert Date to string for input
+      const dateStr = typeof editingExpense.date === 'string' 
+        ? editingExpense.date 
+        : editingExpense.date.toISOString().split('T')[0];
+      setDate(dateStr);
       setPaymentMethod(editingExpense.paymentMethod || '');
       // Handle tags properly - convert array to string
       const tagsString = Array.isArray(editingExpense.tags) 
         ? editingExpense.tags.join(', ') 
         : (editingExpense.tags || '');
       setTags(tagsString);
-      setAccount(editingExpense.account || '');
     }
   }, [editingExpense]);
 
@@ -67,7 +70,6 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
     setCategory('');
     setDate('');
     setTags('');
-    setAccount('');
     setPaymentMethod('');
   };
 
@@ -81,7 +83,6 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
 
     try {
       const expenseData = {
-        user_id: 'current-user', // This should come from auth context
         description,
         amount: parseFloat(amount),
         date,
@@ -89,10 +90,6 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
         paymentMethod: paymentMethod || '',
         // Convert tags string to array
         tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        account: account || '',
-        source: 'manual',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
 
       if (editingExpense) {
@@ -183,15 +180,6 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="e.g., food, groceries"
-            />
-          </div>
-          <div>
-            <Label htmlFor="account">Account</Label>
-            <Input
-              type="text"
-              id="account"
-              value={account}
-              onChange={(e) => setAccount(e.target.value)}
             />
           </div>
           <Button type="submit">{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>

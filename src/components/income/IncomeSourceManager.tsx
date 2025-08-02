@@ -21,7 +21,6 @@ interface IncomeSourceData {
   end_date: string | null;
   category: string;
   notes: string;
-  user_id: string;
 }
 
 export function IncomeSourceManager() {
@@ -44,11 +43,10 @@ export function IncomeSourceManager() {
         name: income.description || 'Income Source', // Use description as name
         amount: income.amount,
         frequency: 'monthly' as const, // Default since frequency doesn't exist in Income
-        start_date: typeof income.date === 'string' ? income.date : income.date.toISOString(),
+        start_date: typeof income.date === 'string' ? income.date : income.date.toISOString().split('T')[0],
         end_date: null,
         category: income.category,
-        notes: income.description || '',
-        user_id: income.user_id || ''
+        notes: income.description || ''
       }));
       
       setIncomeSources(sourcesData);
@@ -63,14 +61,16 @@ export function IncomeSourceManager() {
   const handleAddIncomeSource = async (formData: FormData) => {
     try {
       const incomeData: Omit<Income, 'id'> = {
-        user_id: 'current-user', // This should come from auth context
         amount: parseFloat(formData.get('amount') as string),
         date: formData.get('start_date') as string,
         category: formData.get('category') as string,
         description: formData.get('name') as string,
       };
 
-      await db.incomes.add(incomeData);
+      await db.incomes.add({
+        id: self.crypto.randomUUID(),
+        ...incomeData
+      });
       await loadIncomeSources();
       setShowAddDialog(false);
       toast.success('Income source added successfully');

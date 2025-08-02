@@ -1,35 +1,35 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { CalendarIcon, Plus, Search, Filter, Edit, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { PlusCircle, Edit, Trash2, Search, Filter } from 'lucide-react';
+import { toast } from 'sonner';
 import { ExpenseService } from '@/services/ExpenseService';
 import { Expense } from '@/db';
-import { EnhancedAddExpenseForm } from './EnhancedAddExpenseForm';
-import { toast } from 'sonner';
-
-interface DateFilter {
-  from?: Date;
-  to?: Date;
-}
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
-  const [dateFilter, setDateFilter] = useState<DateFilter>({});
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+
+  // Form state
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [date, setDate] = useState('');
+  const [tags, setTags] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+
+  useEffect(() => {
+    loadExpenses();
+  }, []);
 
   const loadExpenses = async () => {
     try {
@@ -44,93 +44,110 @@ export function ExpenseTracker() {
     }
   };
 
-  useEffect(() => {
-    loadExpenses();
-  }, []);
+  const resetForm = () => {
+    setAmount('');
+    setDescription('');
+    setCategory('');
+    setDate('');
+    setTags('');
+    setPaymentMethod('');
+  };
 
-  const filteredExpenses = useMemo(() => {
-    return expenses.filter(expense => {
-      const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = !categoryFilter || expense.category === categoryFilter;
-      const matchesPayment = !paymentMethodFilter || expense.paymentMethod === paymentMethodFilter;
-      
-      let matchesDate = true;
-      if (dateFilter?.from && dateFilter?.to) {
-        const expenseDate = new Date(expense.date);
-        matchesDate = expenseDate >= dateFilter.from && expenseDate <= dateFilter.to;
-      }
-      
-      return matchesSearch && matchesCategory && matchesPayment && matchesDate;
-    });
-  }, [expenses, searchTerm, categoryFilter, paymentMethodFilter, dateFilter]);
+  const handleAddExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!amount || !description || !category || !date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
 
-  const categories = useMemo(() => {
-    return [...new Set(expenses.map(e => e.category))];
-  }, [expenses]);
-
-  const paymentMethods = useMemo(() => {
-    return [...new Set(expenses.map(e => e.paymentMethod).filter(Boolean))];
-  }, [expenses]);
-
-  const handleDeleteExpense = async (id: string) => {
     try {
-      await ExpenseService.deleteExpense(id);
+      const expenseData = {
+        description,
+        amount: parseFloat(amount),
+        category,
+        date,
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        paymentMethod: paymentMethod || ''
+      };
+
+      await ExpenseService.addExpense(expenseData);
+      toast.success('Expense added successfully');
       await loadExpenses();
-      toast.success('Expense deleted successfully');
+      setShowAddDialog(false);
+      resetForm();
     } catch (error) {
-      console.error('Error deleting expense:', error);
-      toast.error('Failed to delete expense');
+      console.error('Error adding expense:', error);
+      toast.error('Failed to add expense');
     }
   };
 
-  const handleEditExpense = (expense: Expense) => {
-    setEditingExpense(expense);
-    setShowEditDialog(true);
-  };
-
-  const handleUpdateExpense = async (updatedData: Partial<Expense>) => {
-    if (!editingExpense) return;
+  const handleEditExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
     
+    if (!editingExpense || !amount || !description || !category || !date) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
     try {
-      // Convert tags to array if it's a string
-      const processedData = {
-        ...updatedData,
-        tags: typeof updatedData.tags === 'string' 
-          ? updatedData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-          : updatedData.tags
+      const updates = {
+        description,
+        amount: parseFloat(amount),
+        category,
+        date,
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        paymentMethod: paymentMethod || ''
       };
-      
-      await ExpenseService.updateExpense(editingExpense.id, processedData);
+
+      await ExpenseService.updateExpense(editingExpense.id, updates);
+      toast.success('Expense updated successfully');
       await loadExpenses();
       setEditingExpense(null);
-      setShowEditDialog(false);
-      toast.success('Expense updated successfully');
+      resetForm();
     } catch (error) {
       console.error('Error updating expense:', error);
       toast.error('Failed to update expense');
     }
   };
 
-  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+  const handleDeleteExpense = async (id: string) => {
     try {
-      // Convert tags to array if it's a string
-      const processedData = {
-        ...expenseData,
-        tags: typeof expenseData.tags === 'string' 
-          ? expenseData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
-          : expenseData.tags || []
-      };
-      
-      await ExpenseService.addExpense(processedData);
+      await ExpenseService.deleteExpense(id);
+      toast.success('Expense deleted successfully');
       await loadExpenses();
-      setShowAddDialog(false);
-      toast.success('Expense added successfully');
     } catch (error) {
-      console.error('Error adding expense:', error);
-      toast.error('Failed to add expense');
+      console.error('Error deleting expense:', error);
+      toast.error('Failed to delete expense');
     }
   };
+
+  const startEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setAmount(expense.amount.toString());
+    setDescription(expense.description);
+    setCategory(expense.category);
+    setDate(typeof expense.date === 'string' ? expense.date : expense.date.toISOString().split('T')[0]);
+    // Handle tags - convert array to string
+    const tagsString = Array.isArray(expense.tags) 
+      ? expense.tags.join(', ') 
+      : (expense.tags || '');
+    setTags(tagsString);
+    setPaymentMethod(expense.paymentMethod || '');
+  };
+
+  const filteredExpenses = expenses.filter(expense => {
+    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         expense.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = !filterCategory || expense.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+
+  const categories = [...new Set(expenses.map(e => e.category))];
+
+  if (loading) {
+    return <div>Loading expenses...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -139,7 +156,7 @@ export function ExpenseTracker() {
         <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="h-4 w-4 mr-2" />
+              <PlusCircle className="h-4 w-4 mr-2" />
               Add Expense
             </Button>
           </DialogTrigger>
@@ -147,82 +164,91 @@ export function ExpenseTracker() {
             <DialogHeader>
               <DialogTitle>Add New Expense</DialogTitle>
             </DialogHeader>
-            <EnhancedAddExpenseForm
-              onExpenseAdded={() => {
-                loadExpenses();
-                setShowAddDialog(false);
-              }}
-            />
+            <form onSubmit={handleAddExpense} className="space-y-4">
+              <div>
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Input
+                  id="description"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="category">Category</Label>
+                <Input
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="paymentMethod">Payment Method</Label>
+                <Input
+                  id="paymentMethod"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Input
+                  id="tags"
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="e.g., food, groceries"
+                />
+              </div>
+              <Button type="submit">Add Expense</Button>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Input
-          type="search"
-          placeholder="Search expenses..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-1"
-        />
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger>
+      {/* Search and Filter */}
+      <div className="flex gap-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search expenses..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full"
+          />
+        </div>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-48">
             <SelectValue placeholder="Filter by category" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All Categories</SelectItem>
-            {categories.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
-          <SelectTrigger>
-            <SelectValue placeholder="Filter by payment method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All Payment Methods</SelectItem>
-            {paymentMethods.map((method) => (
-              <SelectItem key={method} value={method}>
-                {method}
-              </SelectItem>
+            <SelectItem value="">All categories</SelectItem>
+            {categories.map(cat => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-
-      {/* Date Filter */}
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" className="justify-start text-left font-normal">
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {dateFilter?.from ? (
-              dateFilter.to ? (
-                <>
-                  {format(dateFilter.from, "LLL dd, y")} -{" "}
-                  {format(dateFilter.to, "LLL dd, y")}
-                </>
-              ) : (
-                format(dateFilter.from, "LLL dd, y")
-              )
-            ) : (
-              "Pick a date range"
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            initialFocus
-            mode="range"
-            defaultMonth={dateFilter?.from}
-            selected={dateFilter as any}
-            onSelect={setDateFilter}
-            numberOfMonths={2}
-          />
-        </PopoverContent>
-      </Popover>
 
       {/* Expenses List */}
       <div className="grid gap-4">
@@ -230,19 +256,17 @@ export function ExpenseTracker() {
           <Card key={expense.id}>
             <CardContent className="p-4">
               <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-medium">{expense.description}</h3>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{expense.description}</h3>
                     <Badge variant="secondary">{expense.category}</Badge>
-                    {expense.paymentMethod && (
-                      <Badge variant="outline">{expense.paymentMethod}</Badge>
-                    )}
                   </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <p>Amount: ₹{expense.amount.toLocaleString()}</p>
-                    <p>Date: {format(new Date(expense.date), 'PPP')}</p>
-                    {expense.tags && expense.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
+                  <p className="text-2xl font-bold">₹{expense.amount.toLocaleString()}</p>
+                  <div className="text-sm text-muted-foreground">
+                    <p>Date: {typeof expense.date === 'string' ? expense.date : expense.date.toLocaleDateString()}</p>
+                    {expense.paymentMethod && <p>Payment: {expense.paymentMethod}</p>}
+                    {expense.tags && Array.isArray(expense.tags) && expense.tags.length > 0 && (
+                      <div className="flex gap-1 mt-2">
                         {expense.tags.map((tag, index) => (
                           <Badge key={index} variant="outline" className="text-xs">
                             {tag}
@@ -252,17 +276,16 @@ export function ExpenseTracker() {
                     )}
                   </div>
                 </div>
-                
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
+                <div className="flex gap-1">
+                  <Button 
+                    variant="outline" 
                     size="sm"
-                    onClick={() => handleEditExpense(expense)}
+                    onClick={() => startEdit(expense)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
-                  <Button
-                    variant="outline"
+                  <Button 
+                    variant="outline" 
                     size="sm"
                     onClick={() => handleDeleteExpense(expense.id)}
                   >
@@ -275,21 +298,92 @@ export function ExpenseTracker() {
         ))}
       </div>
 
-      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+      {/* Edit Dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={() => setEditingExpense(null)}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Expense</DialogTitle>
           </DialogHeader>
-          <EnhancedAddExpenseForm
-            editingExpense={editingExpense}
-            onEditComplete={() => {
-              loadExpenses();
-              setEditingExpense(null);
-              setShowEditDialog(false);
-            }}
-          />
+          <form onSubmit={handleEditExpense} className="space-y-4">
+            
+            <div>
+              <Label htmlFor="edit-amount">Amount</Label>
+              <Input
+                id="edit-amount"
+                type="number"
+                step="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Input
+                id="edit-description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-category">Category</Label>
+              <Input
+                id="edit-category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-date">Date</Label>
+              <Input
+                id="edit-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-paymentMethod">Payment Method</Label>
+              <Input
+                id="edit-paymentMethod"
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
+              <Input
+                id="edit-tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="e.g., food, groceries"
+              />
+            </div>
+            <Button type="submit">Update Expense</Button>
+          </form>
         </DialogContent>
       </Dialog>
+
+      {filteredExpenses.length === 0 && (
+        <Card className="p-8 text-center">
+          <CardContent>
+            <h3 className="text-lg font-semibold mb-2">No Expenses Found</h3>
+            <p className="text-muted-foreground mb-4">
+              {expenses.length === 0 
+                ? "Start tracking your expenses by adding your first expense."
+                : "No expenses match your current search or filter criteria."
+              }
+            </p>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
