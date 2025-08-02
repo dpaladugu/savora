@@ -19,19 +19,22 @@ import type {
   LoanData,
   InvestmentData,
   CreditCardData,
-  ProfileData // Assuming personal_profile maps to ProfileData for appSettings
+  ProfileData
 } from '@/types/jsonPreload';
 
-// Import Dexie record types
+// Import Dexie record types from db
 import type { 
-  DexieVehicleRecord, 
-  DexieLoanEMIRecord, 
-  DexieCreditCardRecord 
+  Vehicle, 
+  Loan, 
+  CreditCard,
+  Investment,
+  Expense,
+  Income
 } from '@/db';
 
 export interface ValidatedPreloadData {
   success: true;
-  data: JsonPreloadMVPData; // Use the inferred type from Zod schema if preferred
+  data: JsonPreloadMVPData;
 }
 export interface FailedValidationResult {
   success: false;
@@ -47,7 +50,7 @@ export function validateFinancialData(data: unknown): ValidationResult {
 
   if (result.success) {
     Logger.info('JSON data validation successful (MVP sections).');
-    return { success: true, data: result.data as JsonPreloadMVPData }; // Cast to ensure type
+    return { success: true, data: result.data as JsonPreloadMVPData };
   } else {
     Logger.error('JSON data validation failed (MVP sections):', result.error.errors);
     return {
@@ -60,130 +63,114 @@ export function validateFinancialData(data: unknown): ValidationResult {
 
 // --- Data Mapping Functions ---
 
-// Maps JsonExpenseTransaction to ExpenseData for Dexie
-function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): ExpenseData {
+// Maps JsonExpenseTransaction to Expense for Dexie
+function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): Expense {
   return {
     id: self.crypto.randomUUID(),
+    user_id: '', // Will be set during transaction
     date: jsonExpense.date,
     amount: jsonExpense.amount,
     description: jsonExpense.description,
     category: jsonExpense.category,
+    type: 'expense',
     payment_method: jsonExpense.payment_method,
     source: jsonExpense.source,
-    geotag: jsonExpense.geotag,
-    merchant_code: jsonExpense.merchant_code,
-    card_last4: jsonExpense.card_last4,
-    vehicle_id_json: jsonExpense.vehicle_id, // Store JSON vehicle_id, map to FK later if needed
-    part_details: jsonExpense.part_details,
-    odometer: jsonExpense.odometer,
-    liters: jsonExpense.liters,
-    rate_per_liter: jsonExpense.rate_per_liter,
-    json_id: jsonExpense.id, // Store original JSON id if present
-    subcategory: jsonExpense.subcategory,
-    verified: jsonExpense.verified,
-    // 'type' can be inferred or explicitly mapped if available in source JSON for expenses
-    // For now, assuming all in expense_transactions are 'expense' type.
-    // If income is also in this list, logic needs to handle jsonExpense.type or amount sign.
-    type: 'expense', // Defaulting, adjust if JSON provides type or based on amount
+    tags: jsonExpense.subcategory || '',
+    account: jsonExpense.merchant_code || '',
   };
 }
 
-// Maps JsonIncomeCashFlow to IncomeSourceData for Dexie
-function mapJsonIncomeToDbIncomeSource(jsonIncome: JsonIncomeCashFlow): IncomeSourceData {
+// Maps JsonIncomeCashFlow to Income for Dexie
+function mapJsonIncomeToDbIncome(jsonIncome: JsonIncomeCashFlow): Income {
   return {
-    id: self.crypto.randomUUID(), // Generate UUID
-    source: jsonIncome.source,
-    name: jsonIncome.source, // Map source to name
-    defaultAmount: jsonIncome.amount,
+    id: self.crypto.randomUUID(),
+    user_id: '', // Will be set during transaction
+    date: new Date().toISOString().split('T')[0], // Default to current date
+    amount: jsonIncome.amount,
+    category: 'salary', // Default category
+    description: jsonIncome.source,
+    source_name: jsonIncome.source,
     frequency: jsonIncome.frequency,
-    account: jsonIncome.account,
+    account_id: jsonIncome.account,
   };
 }
 
-// Maps JsonVehicleAsset to DexieVehicleRecord for Dexie
-function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): DexieVehicleRecord {
+// Maps JsonVehicleAsset to Vehicle for Dexie
+function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): Vehicle {
   return {
-    id: self.crypto.randomUUID(), // Generate UUID
-    name: jsonVehicle.vehicle, // JSON 'vehicle' field is the name
-    registrationNumber: '', // Default empty
+    id: self.crypto.randomUUID(),
+    owner: jsonVehicle.owner || '',
+    regNo: '', // Default empty
     make: '',
     model: '',
-    year: undefined,
-    color: '',
-    type: '',
-    owner: jsonVehicle.owner || '',
-    status: jsonVehicle.status || 'Active',
-    purchaseDate: undefined,
-    purchasePrice: undefined,
-    fuelType: '',
-    engineNumber: '',
-    chassisNumber: '',
-    currentOdometer: undefined,
-    fuelEfficiency: '',
-    insuranceProvider: jsonVehicle.insurance?.provider,
-    insurancePolicyNumber: '',
-    insuranceExpiryDate: jsonVehicle.insurance?.next_renewal,
-    insurance_premium: jsonVehicle.insurance?.premium,
-    insurance_frequency: jsonVehicle.insurance?.frequency,
-    tracking_type: jsonVehicle.tracking?.type,
-    tracking_last_service_odometer: jsonVehicle.tracking?.last_service_odometer,
-    next_pollution_check: jsonVehicle.tracking?.next_pollution_check,
-    location: jsonVehicle.location,
-    repair_estimate: jsonVehicle.repair_estimate,
-    notes: '',
-    created_at: new Date(),
-    updated_at: new Date(),
+    type: 'Car', // Default type
+    purchaseDate: new Date(),
+    insuranceExpiry: new Date(),
+    pucExpiry: new Date(),
+    odometer: 0,
+    fuelEfficiency: 0,
+    fuelLogs: [],
+    serviceLogs: [],
   };
 }
 
-// Maps JsonLoan to DexieLoanEMIRecord for Dexie
-function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): DexieLoanEMIRecord {
+// Maps JsonLoan to Loan for Dexie
+function mapJsonLoanToDbLoan(jsonLoan: JsonLoan): Loan {
   return {
-    id: self.crypto.randomUUID(), // Generate UUID
-    loanType: jsonLoan.purpose || 'Personal',
-    lender: jsonLoan.lender || '',
-    principalAmount: jsonLoan.amount,
-    emiAmount: jsonLoan.emi,
-    interestRate: jsonLoan.interest_rate,
-    tenureMonths: 12, // Default tenure
-    startDate: '',
-    endDate: '',
-    nextDueDate: '',
-    remainingAmount: jsonLoan.amount,
-    status: 'active',
-    account: jsonLoan.account,
-    note: jsonLoan.notes,
-    created_at: new Date(),
-    updated_at: new Date(),
+    id: self.crypto.randomUUID(),
+    type: 'Personal',
+    borrower: 'Me',
+    principal: jsonLoan.amount,
+    roi: jsonLoan.interest_rate || 10,
+    tenureMonths: 12,
+    emi: jsonLoan.emi,
+    outstanding: jsonLoan.amount,
+    startDate: new Date(),
+    amortisationSchedule: [],
+    isActive: true,
   };
 }
 
-// Maps JsonInvestmentMutualFund to InvestmentData for Dexie (Simplified MVP)
-function mapJsonInvestmentMFToDbInvestment(jsonMf: JsonInvestmentMutualFund): InvestmentData {
+// Maps JsonInvestmentMutualFund to Investment for Dexie
+function mapJsonInvestmentMFToDbInvestment(jsonMf: JsonInvestmentMutualFund): Investment {
   return {
-    id: self.crypto.randomUUID(), // Generate UUID
-    investment_type: 'Mutual Fund', // Explicitly set type for MVP
-    fund_name: jsonMf.fund, // JSON 'fund' is the name
-    current_value: jsonMf.current_value,
-    invested_value: jsonMf.invested, // JSON 'invested' maps here
-    category: jsonMf.category,
+    id: self.crypto.randomUUID(),
+    type: 'MF-Growth',
+    name: jsonMf.fund,
+    folioNo: '',
+    currentNav: 1,
+    units: jsonMf.current_value || 0,
+    investedValue: jsonMf.invested || 0,
+    currentValue: jsonMf.current_value || 0,
+    startDate: new Date(),
+    frequency: 'One-time',
+    taxBenefit: false,
+    familyMember: 'Me',
+    notes: jsonMf.category || '',
   };
 }
 
-// Maps JsonCreditCard to DexieCreditCardRecord for Dexie
-function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): DexieCreditCardRecord {
+// Maps JsonCreditCard to CreditCard for Dexie
+function mapJsonCreditCardToDbCreditCard(jsonCard: JsonCreditCard): CreditCard {
   return {
-    id: self.crypto.randomUUID(), // Generate UUID
-    name: jsonCard.card_name,
+    id: self.crypto.randomUUID(),
     issuer: jsonCard.bank_name,
-    limit: jsonCard.credit_limit,
-    currentBalance: 0, // Default value
-    billCycleDay: typeof jsonCard.due_date === 'number' ? jsonCard.due_date : parseInt(jsonCard.due_date) || 1,
-    dueDate: typeof jsonCard.due_date === 'number' ? jsonCard.due_date.toString() : jsonCard.due_date,
-    autoDebit: false, // Default value
-    last4Digits: jsonCard.last_digits,
-    created_at: new Date(),
-    updated_at: new Date(),
+    bankName: jsonCard.bank_name,
+    last4: jsonCard.last_digits,
+    network: 'Visa', // Default network
+    cardVariant: jsonCard.card_name,
+    productVariant: '',
+    annualFee: 0,
+    annualFeeGst: 0,
+    creditLimit: jsonCard.credit_limit || 0,
+    creditLimitShared: false,
+    fuelSurchargeWaiver: false,
+    rewardPointsBalance: 0,
+    cycleStart: 1,
+    stmtDay: typeof jsonCard.due_date === 'number' ? jsonCard.due_date : parseInt(jsonCard.due_date) || 1,
+    dueDay: typeof jsonCard.due_date === 'number' ? jsonCard.due_date : parseInt(jsonCard.due_date) || 1,
+    fxTxnFee: 0,
+    emiConversion: false,
   };
 }
 
@@ -197,12 +184,12 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
     return { success: false, message: errorMessage };
   }
 
-  const validatedData = validationResult.data; // Now this is typed JsonPreloadMVPData
+  const validatedData = validationResult.data;
 
   const importSummary = {
     personal_profile: { processed: 0, status: "not_processed" },
     expenses: { added: 0, failed: 0, found: 0 },
-    incomeSources: { added: 0, failed: 0, found: 0 },
+    incomes: { added: 0, failed: 0, found: 0 },
     vehicles: { added: 0, failed: 0, found: 0 },
     loans: { added: 0, failed: 0, found: 0 },
     investments: { added: 0, failed: 0, found: 0 },
@@ -214,7 +201,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
     const tablesToClearAndWrite: Dexie.Table[] = [
       db.appSettings, // For personal_profile
       db.expenses,
-      db.incomeSources,
+      db.incomes,
       db.vehicles,
       db.loans,
       db.investments,
@@ -225,7 +212,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       Logger.info('Clearing existing MVP data from relevant tables...');
       await db.appSettings.where('key').equals('userPersonalProfile_v1').delete();
       await db.expenses.clear();
-      await db.incomeSources.clear();
+      await db.incomes.clear();
       await db.vehicles.clear();
       await db.loans.clear();
       await db.investments.clear();
@@ -242,7 +229,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.expense_transactions?.transactions) {
         const rawItems = validatedData.expense_transactions.transactions;
         importSummary.expenses.found = rawItems.length;
-        const mappedItems: ExpenseData[] = [];
+        const mappedItems: Expense[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonExpenseToDbExpense(item));
@@ -261,28 +248,28 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       // Preload Income Sources
       if (validatedData.income_cash_flows) {
         const rawItems = validatedData.income_cash_flows;
-        importSummary.incomeSources.found = rawItems.length;
-        const mappedItems: IncomeSourceData[] = [];
+        importSummary.incomes.found = rawItems.length;
+        const mappedItems: Income[] = [];
         for (const item of rawItems) {
           try {
-            mappedItems.push(mapJsonIncomeToDbIncomeSource(item));
+            mappedItems.push(mapJsonIncomeToDbIncome(item));
           } catch (e) { 
             Logger.error('Error mapping income source:', item); 
-            importSummary.incomeSources.failed++; 
+            importSummary.incomes.failed++; 
           }
         }
         if (mappedItems.length > 0) { 
-          await db.incomeSources.bulkAdd(mappedItems); 
-          importSummary.incomeSources.added = mappedItems.length; 
+          await db.incomes.bulkAdd(mappedItems); 
+          importSummary.incomes.added = mappedItems.length; 
         }
-        Logger.info(`IncomeSources: Added ${importSummary.incomeSources.added}/${importSummary.incomeSources.found}. Failed: ${importSummary.incomeSources.failed}`);
+        Logger.info(`Incomes: Added ${importSummary.incomes.added}/${importSummary.incomes.found}. Failed: ${importSummary.incomes.failed}`);
       }
 
       // Preload Vehicles
       if (validatedData.assets?.vehicles) {
         const rawItems = validatedData.assets.vehicles;
         importSummary.vehicles.found = rawItems.length;
-        const mappedItems: DexieVehicleRecord[] = [];
+        const mappedItems: Vehicle[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonVehicleToDbVehicle(item));
@@ -302,7 +289,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.liabilities) {
         const rawItems = validatedData.liabilities;
         importSummary.loans.found = rawItems.length;
-        const mappedItems: DexieLoanEMIRecord[] = [];
+        const mappedItems: Loan[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonLoanToDbLoan(item));
@@ -322,7 +309,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.assets?.investments?.mutual_funds_breakdown) {
         const rawItems = validatedData.assets.investments.mutual_funds_breakdown;
         importSummary.investments.found = rawItems.length;
-        const mappedItems: InvestmentData[] = [];
+        const mappedItems: Investment[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonInvestmentMFToDbInvestment(item));
@@ -342,7 +329,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
       if (validatedData.credit_card_management?.cards) {
         const rawItems = validatedData.credit_card_management.cards;
         importSummary.creditCards.found = rawItems.length;
-        const mappedItems: DexieCreditCardRecord[] = [];
+        const mappedItems: CreditCard[] = [];
         for (const item of rawItems) {
           try {
             mappedItems.push(mapJsonCreditCardToDbCreditCard(item));
@@ -363,7 +350,6 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
     if (importSummary.personal_profile.status === "processed") successMessages.push("Profile: processed.");
     if (importSummary.expenses.found > 0) successMessages.push(`Expenses: ${importSummary.expenses.added}/${importSummary.expenses.found} added (${importSummary.expenses.failed} failed).`);
     if (importSummary.vehicles.found > 0) successMessages.push(`Vehicles: ${importSummary.vehicles.added}/${importSummary.vehicles.found} added (${importSummary.vehicles.failed} failed).`);
-    // Add for other entities
 
     const finalMessage = successMessages.length > 0 ? successMessages.join(' ') : "Data preload completed (no specific MVP data found or processed).";
     Logger.info(finalMessage);
@@ -372,7 +358,7 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
   } catch (error: any) {
     Logger.error('Critical error during data preload transaction:', error);
     const failMessage = `Data preload failed: ${error.message || 'Unknown error'}`;
-    Logger.error(failMessage); // Log the specific error message
+    Logger.error(failMessage);
     return { success: false, message: failMessage, summary: importSummary };
   }
 }
