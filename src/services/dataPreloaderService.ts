@@ -29,7 +29,22 @@ import type {
   Investment,
   Expense,
   Income
-} from '@/db';
+} from '@/lib/db';
+
+// Local interface for loans since loans table doesn't exist
+interface LocalLoan {
+  id: string;
+  type: 'Personal';
+  borrower: 'Me';
+  principal: number;
+  roi: number;
+  tenureMonths: number;
+  emi: number;
+  outstanding: number;
+  startDate: Date;
+  amortisationSchedule: any[];
+  isActive: boolean;
+}
 
 export interface ValidatedPreloadData {
   success: true;
@@ -70,7 +85,6 @@ function mapJsonExpenseToDbExpense(jsonExpense: JsonExpenseTransaction): Expense
     amount: jsonExpense.amount,
     description: jsonExpense.description,
     category: jsonExpense.category,
-    type: 'expense',
     payment_method: jsonExpense.payment_method,
     source: jsonExpense.source,
     tags: jsonExpense.subcategory ? [jsonExpense.subcategory] : [],
@@ -87,7 +101,6 @@ function mapJsonIncomeToDbIncome(jsonIncome: JsonIncomeCashFlow): Income {
     category: 'salary', // Default category
     description: jsonIncome.source,
     source: jsonIncome.source,
-    frequency: jsonIncome.frequency,
     account_id: jsonIncome.account,
   };
 }
@@ -111,21 +124,6 @@ function mapJsonVehicleToDbVehicle(jsonVehicle: JsonVehicleAsset): Vehicle {
     claims: [], // Add missing property
     treadDepthMM: 0, // Add missing property
   };
-}
-
-// Define a local Loan interface to match our needs
-interface LocalLoan {
-  id: string;
-  type: 'Personal';
-  borrower: 'Me';
-  principal: number;
-  roi: number;
-  tenureMonths: number;
-  emi: number;
-  outstanding: number;
-  startDate: Date;
-  amortisationSchedule: any[];
-  isActive: boolean;
 }
 
 // Maps JsonLoan to LocalLoan
@@ -255,11 +253,10 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
         Logger.info(`Expenses: Added ${importSummary.expenses.added}/${importSummary.expenses.found}. Failed: ${importSummary.expenses.failed}`);
       }
 
-      // Preload Income Sources - Skip since incomes table doesn't exist
+      // Skip Income Sources - table doesn't exist
       if (validatedData.income_cash_flows) {
         const rawItems = validatedData.income_cash_flows;
         importSummary.incomes.found = rawItems.length;
-        // Skip actual processing since incomes table is not available
         Logger.info(`Incomes: Skipped ${importSummary.incomes.found} items (incomes table not available)`);
       }
 
@@ -283,11 +280,10 @@ export async function preloadFinancialData(jsonData: unknown): Promise<{success:
         Logger.info(`Vehicles: Added ${importSummary.vehicles.added}/${importSummary.vehicles.found}. Failed: ${importSummary.vehicles.failed}`);
       }
 
-      // Preload Loans - Skip since loans table doesn't exist
+      // Skip Loans - table doesn't exist
       if (validatedData.liabilities) {
         const rawItems = validatedData.liabilities;
         importSummary.loans.found = rawItems.length;
-        // Skip actual processing since loans table is not available
         Logger.info(`Loans: Skipped ${importSummary.loans.found} items (loans table not available)`);
       }
 
