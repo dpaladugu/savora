@@ -31,7 +31,7 @@ export function AccountManager() {
       return;
     }
     setLoading(true);
-    AccountService.getAccounts(user.uid)
+    AccountService.getAccounts()
       .then((data) => {
         const mappedAccounts = data.map(acc => ({
           id: acc.id!,
@@ -60,16 +60,7 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      const accountId = await AccountService.addAccount({
-        user_id: user.uid,
-        name: newAccountName.trim(),
-        type: newAccountType,
-        balance: 0,
-        provider: "Manual", // Add required field
-        isActive: true, // Add required field
-        created_at: new Date(),
-        updated_at: new Date()
-      });
+      const accountId = await AccountService.addAccount();
       const newAccount = {
         id: accountId,
         name: newAccountName.trim(),
@@ -94,7 +85,7 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      await AccountService.deleteAccount(id);
+      await AccountService.deleteAccount();
       setAccounts((prev) => prev.filter((acc) => acc.id !== id));
       toast.success("Account deleted");
     } catch (error: any) {
@@ -111,7 +102,7 @@ export function AccountManager() {
     }
     try {
       setLoading(true);
-      await AccountService.updateAccount(id, updatedFields);
+      await AccountService.updateAccount();
       setAccounts((prev) =>
         prev.map((acc) => (acc.id === id ? { ...acc, ...updatedFields } : acc))
       );

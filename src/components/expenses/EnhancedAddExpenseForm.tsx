@@ -31,7 +31,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState<Date | undefined>(new Date());
-  const [selectedTag, setSelectedTag] = useState("");
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [selectedAccount, setSelectedAccount] = useState("");
   const [selectedVehicle, setSelectedVehicle] = useState("");
   const [category, setCategory] = useState("");
@@ -51,7 +51,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchTags = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedTags = await TagService.getTags(user.uid); // Pass user_id
+        const fetchedTags = await TagService.getTags();
         setTags(fetchedTags);
       } catch (error: any) {
         toast.error(`Failed to fetch tags: ${error.message}`);
@@ -61,7 +61,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchAccounts = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedAccounts = await AccountService.getAccounts(user.uid);
+        const fetchedAccounts = await AccountService.getAccounts();
         setAccounts(fetchedAccounts);
       } catch (error: any) {
         toast.error(`Failed to fetch accounts: ${error.message}`);
@@ -71,7 +71,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     const fetchVehicles = async () => {
       if (!user?.uid) return;
       try {
-        const fetchedVehicles = await VehicleService.getVehicles(user.uid); // Pass user_id
+        const fetchedVehicles = await VehicleService.getVehicles();
         setVehicles(fetchedVehicles);
       } catch (error: any) {
         toast.error(`Failed to fetch vehicles: ${error.message}`);
@@ -95,9 +95,8 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
           setDate(expense.date ? new Date(expense.date) : undefined);
           setCategory(expense.category || "");
           setPaymentMethod(expense.payment_method || "");
-          // Map the fields properly
-          setSelectedTag(expense.tags || "");
-          setSelectedAccount(expense.account || "");
+          // Handle tags as array
+          setSelectedTags(Array.isArray(expense.tags) ? expense.tags : (expense.tags ? [expense.tags] : []));
         }
       } catch (error: any) {
         toast.error(`Failed to fetch expense: ${error.message}`);
@@ -113,6 +112,7 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
       setDate(new Date());
       setCategory("");
       setPaymentMethod("");
+      setSelectedTags([]);
     }
   }, [expenseId, user?.uid]);
 
@@ -131,7 +131,6 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     try {
       const newTag = await TagService.addTag({
         name: newTagName,
-        // Remove description field as it doesn't exist in DexieTagRecord
         user_id: user.uid,
         created_at: new Date(),
         updated_at: new Date()
@@ -163,18 +162,11 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     try {
       const expenseData = {
         id: expenseId || crypto.randomUUID(),
-        user_id: user.uid,
         description,
         amount: parseFloat(amount),
         date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         category: category || "Other",
-        type: "expense",
-        payment_method: paymentMethod,
-        tags: selectedTag,
-        account: selectedAccount,
-        source: "manual",
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        tags: selectedTags
       };
 
       if (isNewExpense && !expenseId) {
@@ -219,6 +211,14 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleTagToggle = (tagId: string) => {
+    setSelectedTags(prev => 
+      prev.includes(tagId) 
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
   };
 
   const sortedTags = [...tags].sort((a, b) => a.name.localeCompare(b.name));
@@ -295,53 +295,23 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
           </Popover>
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="tag">Tag</Label>
-          <Select value={selectedTag} onValueChange={setSelectedTag}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Select a tag" />
-            </SelectTrigger>
-            <SelectContent>
-              {sortedTags.map((tag) => (
-                <SelectItem key={tag.id} value={tag.id}>
-                  {tag.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label>Tags</Label>
+          <div className="flex flex-wrap gap-2">
+            {sortedTags.map((tag) => (
+              <Badge
+                key={tag.id}
+                variant={selectedTags.includes(tag.id) ? "default" : "outline"}
+                className="cursor-pointer"
+                onClick={() => handleTagToggle(tag.id)}
+              >
+                {tag.name}
+              </Badge>
+            ))}
+          </div>
           <Button variant="outline" size="sm" onClick={() => setIsAddingTag(true)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Tag
           </Button>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="account">Account</Label>
-          <Select value={selectedAccount} onValueChange={setSelectedAccount}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Select an account" />
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="vehicle">Vehicle</Label>
-          <Select value={selectedVehicle} onValueChange={setSelectedVehicle}>
-            <SelectTrigger className="w-[240px]">
-              <SelectValue placeholder="Select a vehicle" />
-            </SelectTrigger>
-            <SelectContent>
-              {vehicles.map((vehicle) => (
-                <SelectItem key={vehicle.id} value={vehicle.id}>
-                  {vehicle.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </div>
         <Button onClick={handleSaveExpense} disabled={isSaving}>
           {isSaving ? "Saving..." : "Save Expense"}
@@ -366,15 +336,6 @@ export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpd
                   placeholder="Tag Name"
                   value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="tagDescription">Tag Description</Label>
-                <Textarea
-                  id="tagDescription"
-                  placeholder="Tag Description"
-                  value={newTagDescription}
-                  onChange={(e) => setNewTagDescription(e.target.value)}
                 />
               </div>
             </div>

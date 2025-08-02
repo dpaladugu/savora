@@ -1,373 +1,320 @@
-import { useState, useEffect, useMemo } from "react";
+
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Download, TrendingUp, TrendingDown, DollarSign } from "lucide-react";
-import { EnhancedAddExpenseForm } from "./enhanced-add-expense-form";
-import { TransactionList } from "./transaction-list";
-import type { Expense as AppExpense } from "@/services/supabase-data-service";
-import { db } from "@/db";
-import { SupabaseDataService } from "@/services/supabase-data-service";
-import { ExpenseService } from "@/services/ExpenseService";
-import { TransactionService } from "@/services/TransactionService";
-import { EnhancedNotificationService } from "@/services/enhanced-notification-service";
-import { useToast } from "@/hooks/use-toast";
-import { EnhancedLoadingWrapper } from "@/components/ui/enhanced-loading-wrapper";
-import { CriticalErrorBoundary } from "@/components/ui/critical-error-boundary";
-import { useSingleLoading } from "@/hooks/use-comprehensive-loading";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CalendarIcon, Plus, Filter, Download, Upload, Trash2, Edit, Search } from "lucide-react";
+import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { useLiveQuery } from 'dexie-react-hooks';
-import { AdvancedExpenseFilters, ExpenseFilterCriteria } from "./advanced-expense-filters";
-import { ComprehensiveDataValidator } from "@/services/comprehensive-data-validator";
-import { motion } from "framer-motion";
-import { parseISO, isValid, format } from "date-fns";
-
-// Income type that matches the database structure
-export interface AppIncome {
-  id?: string;
-  user_id?: string;
-  date: string;
-  amount: number;
-  category: string;
-  description?: string;
-  frequency?: string;
-  tags_flat?: string;
-  source_name?: string;
-  account_id?: string;
-  created_at?: string;
-  updated_at?: string;
-  source_recurring_transaction_id?: string;
-}
-
-// Local expense interface with exact fields needed
-interface LocalExtendedExpense {
-  id?: string;
-  user_id?: string;
-  date: string;
-  amount: number;
-  category: string;
-  description: string;
-  payment_method?: string;
-  type: string;
-  tags: string[];
-  account?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Extended types for union handling
-interface ExtendedAppExpense extends AppExpense {
-  tags_flat?: string;
-  type: string;
-}
-
-interface ExtendedAppIncome extends AppIncome {
-  type?: 'income';
-}
-
-type Transaction = ExtendedAppExpense | ExtendedAppIncome;
-
-const initialFiltersState: ExpenseFilterCriteria = {
-  searchTerm: "",
-  category: "All",
-  paymentMethod: "All",
-  dateFrom: null,
-  dateTo: null,
-  minAmount: "",
-  maxAmount: "",
-  type: "All",
-};
-
-// Helper function to safely parse dates
-const safeParseDate = (dateValue: any): Date | null => {
-  if (!dateValue) return null;
-  
-  // If it's already a Date object
-  if (dateValue instanceof Date) {
-    return isValid(dateValue) ? dateValue : null;
-  }
-  
-  // If it's a string, try to parse it
-  if (typeof dateValue === 'string') {
-    try {
-      const parsed = parseISO(dateValue);
-      return isValid(parsed) ? parsed : null;
-    } catch (error) {
-      console.warn('Failed to parse date string:', dateValue, error);
-      return null;
-    }
-  }
-  
-  // If it's a number (timestamp), convert to Date
-  if (typeof dateValue === 'number') {
-    const parsed = new Date(dateValue);
-    return isValid(parsed) ? parsed : null;
-  }
-  
-  return null;
-};
+import { db } from "@/db";
+import type { Expense } from "@/db";
+import { ExpenseService } from "@/services/ExpenseService";
+import { EnhancedAddExpenseForm } from "./EnhancedAddExpenseForm";
 
 export function ExpenseTracker() {
-  const { toast } = useToast();
-  const [showAddForm, setShowAddForm] = useState(false);
-  const { isLoading: isMutationLoading, startLoading: startMutationLoading, stopLoading: stopMutationLoading } = useSingleLoading();
-  const [editingExpense, setEditingExpense] = useState<LocalExtendedExpense | null>(null);
-  const [filters, setFilters] = useState<ExpenseFilterCriteria>(initialFiltersState);
+  const [selectedTab, setSelectedTab] = useState("list");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
+  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date())
+  });
+  const [editingExpenseId, setEditingExpenseId] = useState<string | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
 
-  EnhancedNotificationService.setToastFunction(toast);
+  // Get expenses from database
+  const expenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().toArray(), []);
 
-  const allTransactions = useLiveQuery(
-    () => TransactionService.getTransactions(),
-    [],
-    []
-  );
+  // Filter and search expenses
+  const filteredExpenses = useMemo(() => {
+    if (!expenses) return [];
 
-  const isDataLoading = allTransactions === undefined;
-  const expenses = useMemo(() => {
-    const expenseTransactions = allTransactions?.filter(t => 'payment_method' in t) as ExtendedAppExpense[] || [];
-    return expenseTransactions.map(expense => ({
-      ...expense,
-      tags_flat: expense.tags || expense.tags_flat || '',
-      type: expense.type || 'expense'
-    }));
-  }, [allTransactions]);
-  
-  const incomes = useMemo(() => {
-    const incomeTransactions = allTransactions?.filter(t => !('payment_method' in t)) as ExtendedAppIncome[] || [];
-    return incomeTransactions.map(income => ({
-      ...income,
-      type: 'income' as const
-    }));
-  }, [allTransactions]);
-
-  const handleOpenEditForm = (item: Transaction) => {
-    // Only allow editing expenses, not incomes
-    if ('payment_method' in item) {
-      const expense = item as ExtendedAppExpense;
-      // Convert to LocalExtendedExpense format
-      const expenseWithArrayTags: LocalExtendedExpense = {
-        id: expense.id,
-        user_id: expense.user_id,
-        date: expense.date,
-        amount: expense.amount,
-        category: expense.category,
-        description: expense.description || '',
-        payment_method: expense.payment_method,
-        type: expense.type || 'expense',
-        tags: expense.tags ? expense.tags.split(',').map(tag => tag.trim()) : [],
-        account: expense.account,
-        created_at: expense.created_at,
-        updated_at: expense.updated_at
-      };
-      setEditingExpense(expenseWithArrayTags);
-      setShowAddForm(true);
-    }
-  };
-
-  const handleUpdateExpense = async (expenseId: string, updates: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    startMutationLoading("Updating expense...");
-    try {
-      await ExpenseService.updateExpense(expenseId, updates);
-      setShowAddForm(false); setEditingExpense(null);
-      toast({ title: "Success", description: "Expense updated." });
-    } catch (error) {
-      toast({ title: "Failed to update expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
-    } finally { stopMutationLoading(); }
-  };
-
-  const handleDeleteTransaction = async (itemId: string, type: 'expense' | 'income') => {
-    startMutationLoading(`Deleting ${type}...`);
-    try {
-      await TransactionService.deleteTransaction(itemId);
-      toast({ title: "Success", description: `${type.charAt(0).toUpperCase() + type.slice(1)} deleted.` });
-    } catch (error) {
-      toast({ title: `Failed to delete ${type}`, description: (error as Error).message || "Please try again.", variant: "destructive"});
-    } finally { stopMutationLoading(); }
-  };
-
-  const handleAddExpense = async (expenseFormData: Omit<AppExpense, 'id' | 'created_at' | 'updated_at'>) => {
-    startMutationLoading("Adding expense...");
-    try {
-      await ExpenseService.addExpense(expenseFormData);
-      setShowAddForm(false);
-      toast({ title: "Success", description: "Expense added." });
-    } catch (error) {
-      toast({ title: "Failed to add expense", description: (error as Error).message || "Please try again.", variant: "destructive"});
-    } finally { stopMutationLoading(); }
-  };
-
-  const handleSubmitExpenseForm = async (formData: Omit<AppExpense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
-    if (editingExpense) {
-      await handleUpdateExpense(editingExpense.id as string, formData);
-    } else {
-      await handleAddExpense(formData);
-    }
-  };
-
-  const filteredData = useMemo(() => {
-    let transactions: Transaction[] = [];
-
-    if (filters.type === 'expense') {
-      transactions = expenses;
-    } else if (filters.type === 'income') {
-      transactions = incomes;
-    } else { // 'All'
-      transactions = [...expenses, ...incomes];
-    }
-
-    const filtered = transactions.filter(t => {
-      const searchTermLower = filters.searchTerm.toLowerCase();
-      const description = 'description' in t ? t.description : (t.source_name || '');
-      const tags_flat = 'tags_flat' in t ? t.tags_flat : '';
-      const matchesSearch = !filters.searchTerm ||
-                            (description || "").toLowerCase().includes(searchTermLower) ||
-                            (t.category || "").toLowerCase().includes(searchTermLower) ||
-                            (tags_flat || "").toLowerCase().includes(searchTermLower);
-
-      const matchesCategory = filters.category === "All" || t.category === filters.category;
-
-      const paymentMethod = 'payment_method' in t ? t.payment_method : 'N/A';
-      const matchesPaymentMethod = filters.paymentMethod === "All" || paymentMethod === filters.paymentMethod;
-
-      // Use safe date parsing
-      const date = safeParseDate(t.date);
-      const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
-      const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
-
-      const matchesMinAmount = !filters.minAmount || t.amount >= parseFloat(filters.minAmount);
-      const matchesMaxAmount = !filters.maxAmount || t.amount <= parseFloat(filters.maxAmount);
-
-      return matchesSearch && matchesCategory && matchesPaymentMethod && matchesDateFrom && matchesDateTo && matchesMinAmount && matchesMaxAmount;
-    });
-
-    return filtered.sort((a, b) => {
-      const dateA = safeParseDate(a.date);
-      const dateB = safeParseDate(b.date);
-      if (!dateA && !dateB) return 0;
-      if (!dateA) return 1;
-      if (!dateB) return -1;
-      return dateB.getTime() - dateA.getTime();
-    });
-
-  }, [expenses, incomes, filters]);
-
-  const totalShownExpenses = filteredData.reduce((sum, item) => item.type === 'expense' || filters.type === 'All' || filters.type === 'expense' ? sum + (item.amount || 0) : sum, 0);
-
-  const relevantIncomes = useMemo(() => incomes.filter(income => {
-    const searchTermLower = filters.searchTerm.toLowerCase();
-    const date = safeParseDate(income.date);
-    const matchesDateFrom = !filters.dateFrom || (date && date >= filters.dateFrom);
-    const matchesDateTo = !filters.dateTo || (date && date <= new Date(filters.dateTo.setHours(23,59,59,999)));
-    const matchesSearch = !filters.searchTerm || (income.source_name || "").toLowerCase().includes(searchTermLower) || (income.category || "").toLowerCase().includes(searchTermLower);
-    return matchesDateFrom && matchesDateTo && matchesSearch;
-  }), [incomes, filters.dateFrom, filters.dateTo, filters.searchTerm]);
-
-  const totalIncomeForSummary = relevantIncomes.reduce((sum, income) => sum + (income.amount || 0), 0);
-  const netBalanceForSummary = totalIncomeForSummary - totalShownExpenses;
-
-  const uniqueCategories = useMemo(() => ["All", ...new Set(expenses.map(e => e.category || "Uncategorized").filter(Boolean).sort())], [expenses]);
-  const uniquePaymentMethods = useMemo(() => ["All", ...new Set(expenses.map(e => e.payment_method || "N/A").filter(Boolean).sort())], [expenses]);
-
-  const exportData = () => {
-    try {
-      const csvContent = "data:text/csv;charset=utf-8," 
-        + "Date,Description,Category,Amount,Payment Method,Tags\n"
-        + filteredData.map(item => {
-            const paymentMethod = 'payment_method' in item ? item.payment_method : '';
-            const tagsFlat = 'tags_flat' in item ? item.tags_flat : '';
-            return `${item.date},${item.description || ''},${item.category || ''},${item.amount},${paymentMethod || ''},${tagsFlat || ''}`;
-          }).join("\n");
+    return expenses.filter((expense) => {
+      const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          expense.category.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `transactions_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      toast({title: "Export Successful", description: "Filtered transactions exported."});
-    } catch (error) {
-      toast({title: "Export Failed", description: "Could not export data.", variant: "destructive"});
+      const matchesCategory = !selectedCategory || expense.category === selectedCategory;
+      
+      const matchesPaymentMethod = !selectedPaymentMethod || 
+                                  (expense.payment_method && expense.payment_method === selectedPaymentMethod);
+
+      let matchesDateRange = true;
+      if (dateRange.from || dateRange.to) {
+        const expenseDate = typeof expense.date === 'string' ? parseISO(expense.date) : expense.date;
+        if (dateRange.from && dateRange.to) {
+          matchesDateRange = isWithinInterval(expenseDate, { start: dateRange.from, end: dateRange.to });
+        } else if (dateRange.from) {
+          matchesDateRange = expenseDate >= dateRange.from;
+        } else if (dateRange.to) {
+          matchesDateRange = expenseDate <= dateRange.to;
+        }
+      }
+
+      return matchesSearch && matchesCategory && matchesPaymentMethod && matchesDateRange;
+    });
+  }, [expenses, searchTerm, selectedCategory, selectedPaymentMethod, dateRange]);
+
+  // Get unique categories and payment methods
+  const categories = useMemo(() => {
+    if (!expenses) return [];
+    return [...new Set(expenses.map(e => e.category))].sort();
+  }, [expenses]);
+
+  const paymentMethods = useMemo(() => {
+    if (!expenses) return [];
+    return [...new Set(expenses.map(e => e.payment_method).filter(Boolean))].sort();
+  }, [expenses]);
+
+  // Calculate totals
+  const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const averageAmount = filteredExpenses.length > 0 ? totalAmount / filteredExpenses.length : 0;
+
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      setIsLoading(true);
+      await ExpenseService.deleteExpense(id);
+      toast.success("Expense deleted successfully!");
+    } catch (error: any) {
+      toast.error(`Failed to delete expense: ${error.message}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  if (showAddForm) {
-    return (
-      <CriticalErrorBoundary>
-        <div className="space-y-4 p-4 md:p-0">
-          <EnhancedAddExpenseForm
-            expense={editingExpense}
-            onExpenseAdded={() => { setShowAddForm(false); setEditingExpense(null); }}
-            onExpenseUpdated={() => { setShowAddForm(false); setEditingExpense(null); }}
-          />
-        </div>
-      </CriticalErrorBoundary>
-    );
-  }
+  const handleEditExpense = (id: string) => {
+    setEditingExpenseId(id);
+    setSelectedTab("add");
+  };
+
+  const handleExpenseAdded = () => {
+    setSelectedTab("list");
+    setEditingExpenseId(undefined);
+  };
+
+  const handleExpenseUpdated = () => {
+    setSelectedTab("list");
+    setEditingExpenseId(undefined);
+  };
+
+  const formatDate = (date: string | Date) => {
+    const d = typeof date === 'string' ? parseISO(date) : date;
+    return format(d, 'dd MMM yyyy');
+  };
+
+  const formatTags = (tags: string[] | undefined) => {
+    if (!tags || !Array.isArray(tags)) return [];
+    return tags;
+  };
 
   return (
-    <CriticalErrorBoundary>
-      <EnhancedLoadingWrapper loading={isDataLoading || isMutationLoading} loadingText="Loading transactions...">
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-              <Card className="bg-gradient-to-br from-red-500 to-pink-600 text-white">
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-red-100 text-sm">Total Expenses</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(totalShownExpenses)}</p></div>
-                    <TrendingDown aria-hidden="true" className="w-8 h-8 text-red-200" />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-              <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-green-100 text-sm">Total Income (filtered period)</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(totalIncomeForSummary)}</p></div>
-                    <TrendingUp aria-hidden="true" className="w-8 h-8 text-green-200" />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
-                <CardContent className="p-4 md:p-6">
-                  <div className="flex items-center justify-between">
-                    <div><p className="text-blue-100 text-sm">Net Balance (filtered period)</p><p className="text-2xl font-bold">{ComprehensiveDataValidator.formatCurrency(netBalanceForSummary)}</p></div>
-                    <DollarSign aria-hidden="true" className="w-8 h-8 text-blue-200" />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          </div>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Expense Tracker</h2>
+      </div>
 
-          <div className="flex justify-end gap-2">
-             <Button onClick={exportData} variant="outline" size="sm">
-                <Download aria-hidden="true" className="w-4 h-4 mr-2" /> Export Shown
-              </Button>
-              <Button onClick={() => { setEditingExpense(null); setShowAddForm(true);}}>
-                <Plus aria-hidden="true" className="w-4 h-4 mr-2" /> Add Transaction
-              </Button>
-          </div>
+      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="list">Expense List</TabsTrigger>
+          <TabsTrigger value="add">
+            {editingExpenseId ? "Edit Expense" : "Add Expense"}
+          </TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
 
-          <AdvancedExpenseFilters
-            onFiltersChange={setFilters}
-            totalResults={filteredData.length}
-            availableCategories={uniqueCategories.filter(c => c !== "All")}
-            availablePaymentMethods={uniquePaymentMethods.filter(pm => pm !== "All")}
-          />
-
+        <TabsContent value="list" className="space-y-4">
+          {/* Filters */}
           <Card>
-            <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
-            <CardContent>
-              <TransactionList
-                transactions={filteredData}
-                onDelete={handleDeleteTransaction}
-                onEdit={handleOpenEditForm}
-              />
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="w-5 h-5" />
+                Filters & Search
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                  <Label>Search</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search expenses..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label>Category</Label>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All categories</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Payment Method</Label>
+                  <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All methods" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All methods</SelectItem>
+                      {paymentMethods.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label>Date Range</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {dateRange.from ? format(dateRange.from, "dd MMM") : "From"} - {dateRange.to ? format(dateRange.to, "dd MMM") : "To"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="range"
+                        selected={dateRange}
+                        onSelect={(range) => setDateRange(range || {})}
+                        numberOfMonths={2}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </div>
-      </EnhancedLoadingWrapper>
-    </CriticalErrorBoundary>
+
+          {/* Summary */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Total Expenses</p>
+                  <p className="text-2xl font-bold">₹{totalAmount.toLocaleString()}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Transactions</p>
+                  <p className="text-2xl font-bold">{filteredExpenses.length}</p>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">Average Amount</p>
+                  <p className="text-2xl font-bold">₹{averageAmount.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Expense List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Expenses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredExpenses.length > 0 ? (
+                <div className="space-y-4">
+                  {filteredExpenses.map((expense) => (
+                    <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium">{expense.description}</p>
+                          <Badge variant="outline">{expense.category}</Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>{formatDate(expense.date)}</span>
+                          {expense.payment_method && <span>{expense.payment_method}</span>}
+                        </div>
+                        {formatTags(expense.tags).length > 0 && (
+                          <div className="flex gap-1 mt-2">
+                            {formatTags(expense.tags).map((tag, index) => (
+                              <Badge key={index} variant="secondary" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">₹{expense.amount.toLocaleString()}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditExpense(expense.id)}
+                          disabled={isLoading}
+                        >
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteExpense(expense.id)}
+                          disabled={isLoading}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No expenses found matching your criteria.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="add">
+          <EnhancedAddExpenseForm 
+            expenseId={editingExpenseId}
+            onExpenseAdded={handleExpenseAdded}
+            onExpenseUpdated={handleExpenseUpdated}
+          />
+        </TabsContent>
+
+        <TabsContent value="analytics">
+          <Card>
+            <CardContent className="p-8 text-center">
+              <p className="text-muted-foreground">Analytics coming soon...</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   );
 }
