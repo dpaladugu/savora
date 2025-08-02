@@ -5,12 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, DollarSign } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Trash2, Plus, Edit, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
-import { db } from '@/lib/db';
-import { Income } from '@/db';
+import { db } from '@/db';
 
 interface IncomeSourceData {
   id: string;
@@ -18,15 +15,24 @@ interface IncomeSourceData {
   amount: number;
   frequency: 'monthly' | 'yearly' | 'one-time';
   start_date: string;
-  end_date: string | null;
+  end_date?: string;
   category: string;
   notes: string;
+  user_id: string;
 }
 
 export function IncomeSourceManager() {
   const [incomeSources, setIncomeSources] = useState<IncomeSourceData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedSource, setSelectedSource] = useState<IncomeSourceData | null>(null);
+
+  // Form state
+  const [name, setName] = useState('');
+  const [amount, setAmount] = useState(0);
+  const [frequency, setFrequency] = useState<'monthly' | 'yearly' | 'one-time'>('monthly');
+  const [category, setCategory] = useState('');
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     loadIncomeSources();
@@ -34,169 +40,200 @@ export function IncomeSourceManager() {
 
   const loadIncomeSources = async () => {
     try {
-      setLoading(true);
-      const incomes = await db.incomes.toArray();
-      
-      // Transform Income records to IncomeSourceData format
-      const sourcesData: IncomeSourceData[] = incomes.map(income => ({
-        id: income.id,
-        name: income.description || 'Income Source', // Use description as name
-        amount: income.amount,
-        frequency: 'monthly' as const, // Default since frequency doesn't exist in Income
-        start_date: typeof income.date === 'string' ? income.date : income.date.toISOString().split('T')[0],
-        end_date: null,
-        category: income.category,
-        notes: income.description || ''
-      }));
-      
-      setIncomeSources(sourcesData);
+      // Since incomes table doesn't exist in the current schema, we'll return empty array
+      console.warn('Incomes table not available in current schema');
+      setIncomeSources([]);
     } catch (error) {
       console.error('Error loading income sources:', error);
       toast.error('Failed to load income sources');
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleAddIncomeSource = async (formData: FormData) => {
-    try {
-      const incomeData: Omit<Income, 'id'> = {
-        amount: parseFloat(formData.get('amount') as string),
-        date: formData.get('start_date') as string,
-        category: formData.get('category') as string,
-        description: formData.get('name') as string,
-      };
-
-      await db.incomes.add({
-        id: self.crypto.randomUUID(),
-        ...incomeData
-      });
-      await loadIncomeSources();
-      setShowAddDialog(false);
-      toast.success('Income source added successfully');
-    } catch (error) {
-      console.error('Error adding income source:', error);
-      toast.error('Failed to add income source');
-    }
+  const handleAddClick = () => {
+    setIsAdding(true);
+    resetForm();
   };
 
-  const handleDeleteIncomeSource = async (id: string) => {
-    try {
-      await db.incomes.delete(id);
-      await loadIncomeSources();
-      toast.success('Income source deleted successfully');
-    } catch (error) {
-      console.error('Error deleting income source:', error);
-      toast.error('Failed to delete income source');
-    }
+  const handleEditClick = (source: IncomeSourceData) => {
+    setIsEditing(true);
+    setSelectedSource(source);
+    setName(source.name);
+    setAmount(source.amount);
+    setFrequency(source.frequency);
+    setCategory(source.category);
+    setNotes(source.notes);
   };
 
-  if (loading) {
-    return <div>Loading income sources...</div>;
-  }
+  const handleCancel = () => {
+    setIsAdding(false);
+    setIsEditing(false);
+    setSelectedSource(null);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setName('');
+    setAmount(0);
+    setFrequency('monthly');
+    setCategory('');
+    setNotes('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    console.warn('Income source functionality not yet implemented - incomes table not available in current schema');
+    toast.error('Income source functionality is not yet available');
+    handleCancel();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this income source?')) {
+      return;
+    }
+
+    console.warn('Income source delete functionality not yet implemented - incomes table not available in current schema');
+    toast.error('Income source functionality is not yet available');
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Income Sources</h2>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Income Source
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Income Source</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              handleAddIncomeSource(new FormData(e.currentTarget));
-            }} className="space-y-4">
-              <div>
-                <Label htmlFor="name">Source Name</Label>
-                <Input id="name" name="name" required />
-              </div>
-              <div>
-                <Label htmlFor="amount">Amount</Label>
-                <Input id="amount" name="amount" type="number" step="0.01" required />
-              </div>
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Select name="category" required>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="salary">Salary</SelectItem>
-                    <SelectItem value="freelance">Freelance</SelectItem>
-                    <SelectItem value="business">Business</SelectItem>
-                    <SelectItem value="investment">Investment</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input id="start_date" name="start_date" type="date" required />
-              </div>
-              <Button type="submit">Add Income Source</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-2xl font-bold flex items-center">
+          <DollarSign className="mr-2 h-6 w-6" />
+          Income Sources
+        </CardTitle>
+        <Button onClick={handleAddClick}>
+          <Plus className="mr-2 h-4 w-4" /> Add Income Source
+        </Button>
+      </CardHeader>
+      <CardContent>
+        {incomeSources.length === 0 ? (
+          <div className="text-center py-8">
+            <DollarSign className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-gray-500">No income sources found</p>
+            <p className="text-sm text-gray-400 mt-2">Income source functionality is not yet available</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {incomeSources.map((source) => (
+              <Card key={source.id} className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-lg font-semibold">{source.name}</CardTitle>
+                  <div className="space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(source)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(source.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Amount</Label>
+                      <p className="text-sm">₹{source.amount.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Frequency</Label>
+                      <p className="text-sm capitalize">{source.frequency}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Category</Label>
+                      <p className="text-sm">{source.category}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Start Date</Label>
+                      <p className="text-sm">{source.start_date}</p>
+                    </div>
+                  </div>
+                  {source.notes && (
+                    <div className="mt-4">
+                      <Label className="text-sm font-medium">Notes</Label>
+                      <p className="text-sm">{source.notes}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {incomeSources.map((source) => (
-          <Card key={source.id}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-lg">
-                {source.name}
-                <div className="flex gap-1">
-                  <Button variant="outline" size="sm">
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteIncomeSource(source.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-green-600" />
-                <span className="font-semibold">₹{source.amount.toLocaleString()}</span>
-                <Badge variant="secondary">{source.frequency}</Badge>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                <p>Category: {source.category}</p>
-                <p>Start Date: {new Date(source.start_date).toLocaleDateString()}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        {(isAdding || isEditing) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+            <Card className="max-w-md w-full p-4">
+              <CardHeader>
+                <CardTitle>{isAdding ? 'Add Income Source' : 'Edit Income Source'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="name">Name</Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                    />
+                  </div>
 
-      {incomeSources.length === 0 && (
-        <Card className="p-8 text-center">
-          <CardContent>
-            <DollarSign className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No Income Sources</h3>
-            <p className="text-muted-foreground mb-4">
-              Add your first income source to start tracking your earnings.
-            </p>
-            <Button onClick={() => setShowAddDialog(true)}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Income Source
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-    </div>
+                  <div>
+                    <Label htmlFor="amount">Amount</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="frequency">Frequency</Label>
+                    <Select value={frequency} onValueChange={(value) => setFrequency(value as any)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="yearly">Yearly</SelectItem>
+                        <SelectItem value="one-time">One-time</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="category">Category</Label>
+                    <Input
+                      id="category"
+                      value={category}
+                      onChange={(e) => setCategory(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Input
+                      id="notes"
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="ghost" onClick={handleCancel}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">{isAdding ? 'Add' : 'Update'}</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

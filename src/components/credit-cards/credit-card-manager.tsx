@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import { useAuth } from "@/services/auth-service";
 interface CreditCardData {
   id?: string;
   name: string;
-  issuer: string; // Make required
+  issuer: string;
   currentBalance?: number;
   billCycleDay?: number;
   dueDate?: string;
@@ -42,11 +41,17 @@ export function CreditCardManager() {
 
     const fetchCreditCards = async () => {
       try {
-        const cards = await CreditCardService.getCreditCards(user.uid);
-        // Map the cards to match our interface
-        const mappedCards = cards.map(card => ({
-          ...card,
-          issuer: card.issuer || "Unknown", // Ensure issuer is always provided
+        const cards = await CreditCardService.getCreditCards();
+        // Map the cards from db schema to component interface
+        const mappedCards: CreditCardData[] = cards.map(card => ({
+          id: card.id,
+          name: card.name || `${card.issuer} ${card.bankName}`,
+          issuer: card.issuer || "Unknown",
+          limit: card.creditLimit || 0,
+          currentBalance: card.currentBalance || 0,
+          billCycleDay: card.cycleStart || 1,
+          dueDate: card.dueDate || new Date().toISOString(),
+          autoDebit: false,
         }));
         setCreditCards(mappedCards);
       } catch (error: any) {
@@ -92,15 +97,28 @@ export function CreditCardManager() {
       return;
     }
 
+    // Create a proper CreditCard object that matches the db schema
     const cardData = {
-      name,
-      issuer: issuer || "Unknown", // Ensure issuer is always provided
-      limit,
-      currentBalance,
-      billCycleDay: 1, // Add required field with default
-      dueDate: new Date().toISOString(), // Add required field
-      autoDebit: false, // Add required field with default
-      user_id: user.uid,
+      issuer: issuer || "Unknown",
+      bankName: issuer || "Unknown", // Use issuer as bank name for simplicity
+      last4: "0000", // Default value
+      network: 'Visa' as const,
+      cardVariant: "Standard",
+      productVariant: "Regular",
+      annualFee: 0,
+      annualFeeGst: 0,
+      creditLimit: limit,
+      creditLimitShared: false,
+      fuelSurchargeWaiver: false,
+      rewardPointsBalance: 0,
+      cycleStart: 1,
+      stmtDay: 1,
+      dueDay: 1,
+      fxTxnFee: 0,
+      emiConversion: false,
+      // Compatibility fields
+      name: name,
+      currentBalance: currentBalance,
     };
 
     try {
@@ -108,14 +126,20 @@ export function CreditCardManager() {
         await CreditCardService.addCreditCard(cardData);
         toast.success("Credit card added successfully!");
       } else if (isEditing && selectedCard) {
-        await CreditCardService.updateCreditCard(selectedCard.id!, { ...cardData, id: selectedCard.id! });
+        await CreditCardService.updateCreditCard(selectedCard.id!, cardData);
         toast.success("Credit card updated successfully!");
       }
 
-      const updatedCards = await CreditCardService.getCreditCards(user.uid);
-      const mappedCards = updatedCards.map(card => ({
-        ...card,
+      const updatedCards = await CreditCardService.getCreditCards();
+      const mappedCards: CreditCardData[] = updatedCards.map(card => ({
+        id: card.id,
+        name: card.name || `${card.issuer} ${card.bankName}`,
         issuer: card.issuer || "Unknown",
+        limit: card.creditLimit || 0,
+        currentBalance: card.currentBalance || 0,
+        billCycleDay: card.cycleStart || 1,
+        dueDate: card.dueDate || new Date().toISOString(),
+        autoDebit: false,
       }));
       setCreditCards(mappedCards);
       handleCancel();
@@ -131,10 +155,16 @@ export function CreditCardManager() {
 
     try {
       await CreditCardService.deleteCreditCard(id);
-      const updatedCards = await CreditCardService.getCreditCards(user.uid);
-      const mappedCards = updatedCards.map(card => ({
-        ...card,
+      const updatedCards = await CreditCardService.getCreditCards();
+      const mappedCards: CreditCardData[] = updatedCards.map(card => ({
+        id: card.id,
+        name: card.name || `${card.issuer} ${card.bankName}`,
         issuer: card.issuer || "Unknown",
+        limit: card.creditLimit || 0,
+        currentBalance: card.currentBalance || 0,
+        billCycleDay: card.cycleStart || 1,
+        dueDate: card.dueDate || new Date().toISOString(),
+        autoDebit: false,
       }));
       setCreditCards(mappedCards);
       toast.success("Credit card deleted successfully!");

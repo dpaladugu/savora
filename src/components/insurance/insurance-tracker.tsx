@@ -6,17 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Shield, Trash2, Plus, Edit } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Shield, Plus, Edit, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/db';
-import type { Insurance } from '@/db';
 
-interface InsuranceFormData {
+// Define Insurance interface locally since it's not available in db
+interface Insurance {
+  id: string;
   type: 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident';
   provider: string;
   policyNo: string;
@@ -29,217 +25,228 @@ interface InsuranceFormData {
   nomineeDOB: string;
   nomineeRelation: string;
   familyMember: string;
+  personalTermCover?: number;
+  personalHealthCover?: number;
+  employerTermCover?: number;
+  employerHealthCover?: number;
   notes: string;
 }
 
-const initialFormData: InsuranceFormData = {
-  type: 'Health',
-  provider: '',
-  policyNo: '',
-  sumInsured: 0,
-  premium: 0,
-  dueDay: 1,
-  startDate: new Date(),
-  endDate: new Date(new Date().getFullYear() + 1, new Date().getMonth(), new Date().getDate()),
-  nomineeName: '',
-  nomineeDOB: '',
-  nomineeRelation: '',
-  familyMember: 'Me',
-  notes: '',
-};
-
 export function InsuranceTracker() {
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<InsuranceFormData>(initialFormData);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [policies, setPolicies] = useState<Insurance[]>([]);
+  const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [selectedPolicy, setSelectedPolicy] = useState<Insurance | null>(null);
 
-  const policies = useLiveQuery(() => db.insurance.orderBy('provider').toArray(), []);
+  // Form state
+  const [type, setType] = useState<Insurance['type']>('Term');
+  const [provider, setProvider] = useState('');
+  const [policyNo, setPolicyNo] = useState('');
+  const [sumInsured, setSumInsured] = useState(0);
+  const [premium, setPremium] = useState(0);
+
+  useEffect(() => {
+    loadPolicies();
+  }, []);
+
+  const loadPolicies = async () => {
+    try {
+      // Since insurance table doesn't exist, we'll return empty array
+      // In a real implementation, this would fetch from db.insurance.toArray()
+      console.warn('Insurance table not available in current schema');
+      setPolicies([]);
+    } catch (error) {
+      console.error('Error loading insurance policies:', error);
+      toast.error('Failed to load insurance policies');
+    }
+  };
+
+  const handleAddClick = () => {
+    setIsAdding(true);
+    resetForm();
+  };
+
+  const handleEditClick = (policy: Insurance) => {
+    setIsEditing(true);
+    setSelectedPolicy(policy);
+    setType(policy.type);
+    setProvider(policy.provider);
+    setPolicyNo(policy.policyNo);
+    setSumInsured(policy.sumInsured);
+    setPremium(policy.premium);
+  };
+
+  const handleCancel = () => {
+    setIsAdding(false);
+    setIsEditing(false);
+    setSelectedPolicy(null);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setType('Term');
+    setProvider('');
+    setPolicyNo('');
+    setSumInsured(0);
+    setPremium(0);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      const policyData: Omit<Insurance, 'id'> = {
-        ...formData,
-      };
-
-      if (editingId) {
-        await db.insurance.update(editingId, policyData);
-        toast.success('Insurance policy updated successfully');
-      } else {
-        const newId = self.crypto.randomUUID();
-        await db.insurance.add({
-          ...policyData,
-          id: newId,
-        });
-        toast.success('Insurance policy added successfully');
-      }
-
-      setFormData(initialFormData);
-      setShowForm(false);
-      setEditingId(null);
-    } catch (error) {
-      console.error('Error saving insurance policy:', error);
-      toast.error('Failed to save insurance policy');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleEdit = (policy: Insurance) => {
-    setFormData({
-      type: policy.type,
-      provider: policy.provider,
-      policyNo: policy.policyNo,
-      sumInsured: policy.sumInsured,
-      premium: policy.premium,
-      dueDay: policy.dueDay,
-      startDate: policy.startDate,
-      endDate: policy.endDate,
-      nomineeName: policy.nomineeName,
-      nomineeDOB: policy.nomineeDOB,
-      nomineeRelation: policy.nomineeRelation,
-      familyMember: policy.familyMember,
-      notes: policy.notes || '',
-    });
-    setEditingId(policy.id);
-    setShowForm(true);
+    
+    console.warn('Insurance functionality not yet implemented - insurance table not available in current schema');
+    toast.error('Insurance functionality is not yet available');
+    handleCancel();
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await db.insurance.delete(id);
-      toast.success('Insurance policy deleted successfully');
-    } catch (error) {
-      console.error('Error deleting insurance policy:', error);
-      toast.error('Failed to delete insurance policy');
+    if (!window.confirm('Are you sure you want to delete this policy?')) {
+      return;
     }
+
+    console.warn('Insurance delete functionality not yet implemented - insurance table not available in current schema');
+    toast.error('Insurance functionality is not yet available');
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Insurance Policies</h2>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Policy
+    <Card className="w-full">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-2xl font-bold flex items-center">
+          <Shield className="mr-2 h-6 w-6" />
+          Insurance Policies
+        </CardTitle>
+        <Button onClick={handleAddClick}>
+          <Plus className="mr-2 h-4 w-4" /> Add Policy
         </Button>
-      </div>
-
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? 'Edit Policy' : 'Add New Policy'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Policy Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: InsuranceFormData['type']) => 
-                      setFormData({ ...formData, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Term">Term Life</SelectItem>
-                      <SelectItem value="Health">Health</SelectItem>
-                      <SelectItem value="Motor">Motor</SelectItem>
-                      <SelectItem value="Home">Home</SelectItem>
-                      <SelectItem value="Travel">Travel</SelectItem>
-                      <SelectItem value="Personal-Accident">Personal Accident</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="provider">Provider</Label>
-                  <Input
-                    id="provider"
-                    value={formData.provider}
-                    onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isLoading}>
-                  {editingId ? 'Update Policy' : 'Add Policy'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                    setFormData(initialFormData);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-4">
-        {policies?.map((policy) => (
-          <Card key={policy.id}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-blue-600" />
-                  <div>
-                    <h3 className="font-semibold">{policy.provider}</h3>
-                    <p className="text-sm text-muted-foreground">
-                      {policy.policyNo} • {policy.type}
-                    </p>
+      </CardHeader>
+      <CardContent>
+        {policies.length === 0 ? (
+          <div className="text-center py-8">
+            <Shield className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+            <p className="text-gray-500">No insurance policies found</p>
+            <p className="text-sm text-gray-400 mt-2">Insurance functionality is not yet available</p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {policies.map((policy) => (
+              <Card key={policy.id} className="shadow-sm">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-lg font-semibold">
+                    {policy.provider} - {policy.type}
+                  </CardTitle>
+                  <div className="space-x-2">
+                    <Button variant="ghost" size="sm" onClick={() => handleEditClick(policy)}>
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={() => handleDelete(policy.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">
-                    ₹{policy.sumInsured.toLocaleString()}
-                  </Badge>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(policy)}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleDelete(policy.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        
-        {!policies?.length && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Insurance Policies</h3>
-              <p className="text-muted-foreground">
-                Add your first insurance policy to get started.
-              </p>
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label className="text-sm font-medium">Policy Number</Label>
+                      <p className="text-sm">{policy.policyNo}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Sum Insured</Label>
+                      <p className="text-sm">₹{policy.sumInsured.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Premium</Label>
+                      <p className="text-sm">₹{policy.premium.toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <Label className="text-sm font-medium">Type</Label>
+                      <Badge variant="secondary">{policy.type}</Badge>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
-      </div>
-    </div>
+
+        {(isAdding || isEditing) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-500 bg-opacity-75">
+            <Card className="max-w-md w-full p-4 max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <CardTitle>{isAdding ? 'Add Insurance Policy' : 'Edit Insurance Policy'}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="type">Type</Label>
+                    <Select value={type} onValueChange={(value) => setType(value as Insurance['type'])}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Term">Term Life</SelectItem>
+                        <SelectItem value="Health">Health</SelectItem>
+                        <SelectItem value="Motor">Motor</SelectItem>
+                        <SelectItem value="Home">Home</SelectItem>
+                        <SelectItem value="Travel">Travel</SelectItem>
+                        <SelectItem value="Personal-Accident">Personal Accident</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="provider">Provider</Label>
+                    <Input
+                      id="provider"
+                      value={provider}
+                      onChange={(e) => setProvider(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="policyNo">Policy Number</Label>
+                    <Input
+                      id="policyNo"
+                      value={policyNo}
+                      onChange={(e) => setPolicyNo(e.target.value)}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="sumInsured">Sum Insured</Label>
+                    <Input
+                      id="sumInsured"
+                      type="number"
+                      value={sumInsured}
+                      onChange={(e) => setSumInsured(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="premium">Premium</Label>
+                    <Input
+                      id="premium"
+                      type="number"
+                      value={premium}
+                      onChange={(e) => setPremium(Number(e.target.value))}
+                      required
+                    />
+                  </div>
+
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button type="button" variant="ghost" onClick={handleCancel}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">{isAdding ? 'Add' : 'Update'}</Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, CreditCard as CreditCardIcon, TrendingUp, TrendingDown, Calendar } from 'lucide-react';
 import { CreditCard } from '@/db';
-import { db } from '@/lib/db';
+import { db } from '@/db';
 import { format } from 'date-fns';
 
 export function CreditCardFlowTracker() {
@@ -21,7 +21,13 @@ export function CreditCardFlowTracker() {
     try {
       setLoading(true);
       const cards = await db.creditCards.toArray();
-      setCreditCards(cards);
+      // Map cards from lib/db to db schema, adding missing properties
+      const mappedCards: CreditCard[] = cards.map(card => ({
+        ...card,
+        fxTxnFee: card.fxTxnFee || 0,
+        emiConversion: card.emiConversion || false
+      }));
+      setCreditCards(mappedCards);
     } catch (error) {
       console.error('Error loading credit card data:', error);
     } finally {

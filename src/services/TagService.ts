@@ -2,18 +2,14 @@
 /**
  * src/services/TagService.ts
  *
- * A service for handling tag-related operations using the current database schema.
- * Since the current schema doesn't have a dedicated tags table, this service provides
- * stub implementations and warnings.
+ * A service for handling tag operations. Currently provides stub implementations
+ * since the tags table is not available in the current schema.
  */
 
 import { db } from "@/db";
 
 export class TagService {
 
-  /**
-   * Placeholder for tag management. Currently logs a warning since tags table doesn't exist.
-   */
   static async addTag(): Promise<string> {
     console.warn('Tag service not yet implemented - tags table not available in current schema');
     throw new Error('Tag functionality not yet implemented');
@@ -33,29 +29,32 @@ export class TagService {
     return [];
   }
 
-  static async getTagByName(): Promise<any | undefined> {
+  static async getTagsByUsage(): Promise<any[]> {
     console.warn('Tag service not yet implemented - tags table not available in current schema');
-    return undefined;
+    return [];
   }
 
-  /**
-   * Counts the usage of a tag in the expenses table by checking the tags field.
-   * @param tagName The name of the tag (case-sensitive as it appears in tags).
-   * @returns A promise that resolves to the usage count.
-   */
-  static async getTagUsageCount(tagName: string): Promise<number> {
-    try {
-      // Check expenses for tag usage
-      const expensesWithTag = await db.expenses.filter(expense => {
-        if (Array.isArray(expense.tags)) {
-          return expense.tags.some(tag => tag.toLowerCase() === tagName.toLowerCase());
-        }
-        return false;
-      }).count();
-      return expensesWithTag;
-    } catch (error) {
-      console.error(`Error in TagService.getTagUsageCount for tag ${tagName}:`, error);
-      throw error;
-    }
+  static async searchTags(): Promise<any[]> {
+    console.warn('Tag service not yet implemented - tags table not available in current schema');
+    return [];
+  }
+
+  // Helper methods that might be used by other services
+  static normalizeTag(tag: string): string {
+    return tag.trim().toLowerCase();
+  }
+
+  static parseTags(tagString: string): string[] {
+    if (!tagString || typeof tagString !== 'string') return [];
+    
+    return tagString
+      .split(',')
+      .map(tag => tag.trim())
+      .filter(tag => tag.length > 0);
+  }
+
+  static formatTags(tags: string[]): string {
+    if (!Array.isArray(tags)) return '';
+    return tags.join(', ');
   }
 }

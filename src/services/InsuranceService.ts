@@ -2,11 +2,33 @@
 /**
  * src/services/InsuranceService.ts
  *
- * A dedicated service for handling all CRUD operations for insurance policies
- * in the Dexie database.
+ * A service for handling insurance operations. Currently provides stub implementations
+ * since the insurance table is not available in the current schema.
  */
 
-import { db, Insurance } from "@/db";
+import { db } from "@/db";
+
+// Define Insurance interface locally since it's not available in db
+interface Insurance {
+  id: string;
+  type: 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident';
+  provider: string;
+  policyNo: string;
+  sumInsured: number;
+  premium: number;
+  dueDay: number;
+  startDate: Date;
+  endDate: Date;
+  nomineeName: string;
+  nomineeDOB: string;
+  nomineeRelation: string;
+  familyMember: string;
+  personalTermCover?: number;
+  personalHealthCover?: number;
+  employerTermCover?: number;
+  employerHealthCover?: number;
+  notes: string;
+}
 
 export class InsuranceService {
 
@@ -16,18 +38,8 @@ export class InsuranceService {
    * @returns The id of the newly added policy.
    */
   static async addPolicy(policyData: Omit<Insurance, 'id'>): Promise<string> {
-    try {
-      const newId = self.crypto.randomUUID();
-      const recordToAdd: Insurance = {
-        ...policyData,
-        id: newId,
-      };
-      await db.insurance.add(recordToAdd);
-      return newId;
-    } catch (error) {
-      console.error("Error in InsuranceService.addPolicy:", error);
-      throw error;
-    }
+    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
+    throw new Error('Insurance functionality not yet implemented');
   }
 
   /**
@@ -37,13 +49,8 @@ export class InsuranceService {
    * @returns The number of updated records.
    */
   static async updatePolicy(id: string, updates: Partial<Insurance>): Promise<number> {
-    try {
-      const updatedCount = await db.insurance.update(id, updates);
-      return updatedCount;
-    } catch (error) {
-      console.error(`Error in InsuranceService.updatePolicy for id ${id}:`, error);
-      throw error;
-    }
+    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
+    return 0;
   }
 
   /**
@@ -51,12 +58,7 @@ export class InsuranceService {
    * @param id The id of the policy to delete.
    */
   static async deletePolicy(id: string): Promise<void> {
-    try {
-      await db.insurance.delete(id);
-    } catch (error) {
-      console.error(`Error in InsuranceService.deletePolicy for id ${id}:`, error);
-      throw error;
-    }
+    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
   }
 
   /**
@@ -64,12 +66,7 @@ export class InsuranceService {
    * @returns A promise that resolves to an array of insurance policies.
    */
   static async getPolicies(): Promise<Insurance[]> {
-    try {
-      const policies = await db.insurance.orderBy('provider').toArray();
-      return policies;
-    } catch (error) {
-      console.error(`Error in InsuranceService.getPolicies:`, error);
-      throw error;
-    }
+    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
+    return [];
   }
 }
