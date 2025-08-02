@@ -8,29 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Plus, TrendingUp, Edit2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/db";
+import { db, Income } from "@/db";
 import { useLiveQuery } from 'dexie-react-hooks';
 import { motion } from "framer-motion";
 import { formatCurrency, formatDate } from "@/lib/format-utils";
-import { parseISO, isValid as isDateValid } from "date-fns";
 
-export interface Income {
-  id?: string;
-  date: string;
-  amount: number;
-  category: string;
-  description?: string;
-  frequency: string;
-  tags?: string[];
-  tags_flat?: string;
-  source_name?: string;
-  account_id?: string;
-  type: 'income';
-  source_recurring_transaction_id?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
+// Use the database Income interface directly
 export type AppIncome = Income;
 
 interface IncomeFormData {
@@ -38,10 +21,6 @@ interface IncomeFormData {
   amount: number;
   category: string;
   description: string;
-  frequency: string;
-  tags: string[];
-  source_name: string;
-  account_id: string;
 }
 
 const initialFormData: IncomeFormData = {
@@ -49,10 +28,6 @@ const initialFormData: IncomeFormData = {
   amount: 0,
   category: 'Salary',
   description: '',
-  frequency: 'monthly',
-  tags: [],
-  source_name: '',
-  account_id: '',
 };
 
 export function IncomeTracker() {
@@ -60,29 +35,11 @@ export function IncomeTracker() {
   const [showForm, setShowForm] = useState(false);
   const [editingIncome, setEditingIncome] = useState<Income | null>(null);
   const [formData, setFormData] = useState<IncomeFormData>(initialFormData);
-  const [tagInput, setTagInput] = useState('');
 
   const incomes = useLiveQuery(() => db.incomes.orderBy('date').reverse().toArray(), []);
 
   const handleInputChange = (field: keyof IncomeFormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const handleAddTag = () => {
-    if (tagInput.trim() && !formData.tags.includes(tagInput.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        tags: [...prev.tags, tagInput.trim()]
-      }));
-      setTagInput('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove: string) => {
-    setFormData(prev => ({
-      ...prev,
-      tags: prev.tags.filter(tag => tag !== tagToRemove)
-    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -98,16 +55,11 @@ export function IncomeTracker() {
     }
 
     try {
-      const incomeData: Omit<Income, 'id' | 'created_at' | 'updated_at'> = {
-        date: formData.date,
+      const incomeData: Omit<Income, 'id'> = {
+        date: new Date(formData.date),
         amount: formData.amount,
         category: formData.category,
         description: formData.description,
-        frequency: formData.frequency,
-        tags_flat: formData.tags.join(','),
-        source_name: formData.source_name,
-        account_id: formData.account_id,
-        type: 'income',
       };
 
       if (editingIncome) {
@@ -120,8 +72,6 @@ export function IncomeTracker() {
         await db.incomes.add({
           ...incomeData,
           id: crypto.randomUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         });
         toast({
           title: "Income Added",
@@ -145,14 +95,10 @@ export function IncomeTracker() {
   const handleEdit = (income: Income) => {
     setEditingIncome(income);
     setFormData({
-      date: income.date,
+      date: income.date instanceof Date ? income.date.toISOString().split('T')[0] : income.date.toString().split('T')[0],
       amount: income.amount,
       category: income.category,
       description: income.description || '',
-      frequency: income.frequency,
-      tags: income.tags_flat ? income.tags_flat.split(',').filter(Boolean) : [],
-      source_name: income.source_name || '',
-      account_id: income.account_id || '',
     });
     setShowForm(true);
   };
@@ -262,23 +208,6 @@ export function IncomeTracker() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label htmlFor="frequency">Frequency</Label>
-                  <Select
-                    value={formData.frequency}
-                    onValueChange={(value) => handleInputChange('frequency', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="one-time">One-time</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="yearly">Yearly</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <div>
@@ -289,48 +218,6 @@ export function IncomeTracker() {
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   placeholder="Enter income description"
                 />
-              </div>
-
-              <div>
-                <Label htmlFor="source_name">Source</Label>
-                <Input
-                  id="source_name"
-                  value={formData.source_name}
-                  onChange={(e) => handleInputChange('source_name', e.target.value)}
-                  placeholder="Income source"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="account_id">Account</Label>
-                <Input
-                  id="account_id"
-                  value={formData.account_id}
-                  onChange={(e) => handleInputChange('account_id', e.target.value)}
-                  placeholder="Account ID"
-                />
-              </div>
-
-              <div>
-                <Label>Tags</Label>
-                <div className="flex gap-2 mb-2">
-                  <Input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    placeholder="Add a tag"
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
-                  />
-                  <Button type="button" onClick={handleAddTag} variant="outline">
-                    Add
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {formData.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="cursor-pointer" onClick={() => handleRemoveTag(tag)}>
-                      {tag} ×
-                    </Badge>
-                  ))}
-                </div>
               </div>
 
               <div className="flex gap-2">
@@ -372,19 +259,10 @@ export function IncomeTracker() {
                       <div>
                         <h3 className="font-semibold">{income.description || income.category}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(income.date)} • {income.frequency}
+                          {formatDate(income.date)}
                         </p>
                       </div>
                     </div>
-                    {income.tags_flat && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {income.tags_flat.split(',').filter(Boolean).map((tag) => (
-                          <Badge key={tag} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
