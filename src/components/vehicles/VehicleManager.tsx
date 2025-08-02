@@ -13,73 +13,42 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { VehicleService } from "@/services/VehicleService";
 import { useAuth } from "@/services/auth-service";
+import { db, Vehicle } from "@/db";
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from "@/db";
-import type { DexieVehicleRecord } from "@/db";
-
-interface Vehicle {
-  id: string;
-  make: string;
-  model: string;
-  year: number;
-  purchaseDate: string;
-  purchasePrice: number;
-  user_id: string;
-  created_at: Date;
-  updated_at: Date;
-}
 
 interface VehicleFormData {
   make: string;
   model: string;
-  year: number;
+  type: 'Car' | 'Motorcycle' | 'Scooter' | 'Truck' | 'Other';
   purchaseDate: Date;
-  purchasePrice: number;
+  owner: string;
+  regNo: string;
+  odometer: number;
+  fuelEfficiency: number;
+  insuranceExpiry: Date;
+  pucExpiry: Date;
 }
 
 const initialFormData: VehicleFormData = {
   make: '',
   model: '',
-  year: new Date().getFullYear(),
+  type: 'Car',
   purchaseDate: new Date(),
-  purchasePrice: 0,
+  owner: 'Me',
+  regNo: '',
+  odometer: 0,
+  fuelEfficiency: 15,
+  insuranceExpiry: new Date(),
+  pucExpiry: new Date(),
 };
 
 export function VehicleManager() {
   const { user } = useAuth();
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [formData, setFormData] = useState<VehicleFormData>(initialFormData);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      loadVehicles();
-    }
-  }, [user]);
-
-  const loadVehicles = async () => {
-    if (!user) return;
-
-    try {
-      const data = await VehicleService.getAll(user.uid);
-      const transformedData: Vehicle[] = data.map(vehicle => ({
-        id: vehicle.id || '',
-        make: vehicle.make || '',
-        model: vehicle.model || '',
-        year: vehicle.year || new Date().getFullYear(),
-        purchaseDate: vehicle.purchaseDate || new Date().toISOString().split('T')[0],
-        purchasePrice: vehicle.purchasePrice || 0,
-        user_id: vehicle.user_id || user.uid,
-        created_at: new Date(vehicle.created_at || new Date()),
-        updated_at: new Date(vehicle.updated_at || new Date())
-      }));
-      setVehicles(transformedData);
-    } catch (error) {
-      console.error('Error loading vehicles:', error);
-      toast.error('Failed to load vehicles');
-    }
-  };
+  const vehicles = useLiveQuery(() => db.vehicles.toArray(), []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,21 +56,16 @@ export function VehicleManager() {
 
     setIsLoading(true);
     try {
-      const vehicleData = {
+      const vehicleData: Omit<Vehicle, 'id'> = {
         ...formData,
-        user_id: user.uid,
-        purchaseDate: formData.purchaseDate.toISOString().split('T')[0],
-        created_at: new Date(),
-        updated_at: new Date(),
-        name: `${formData.make} ${formData.model}`,
-        registrationNumber: ''
+        fuelLogs: [],
+        serviceLogs: [],
+        claims: [],
+        treadDepthMM: 5.0,
       };
 
       if (editingId) {
-        await VehicleService.update(editingId, {
-          ...vehicleData,
-          purchaseDate: formData.purchaseDate.toISOString().split('T')[0]
-        });
+        await VehicleService.update(editingId, vehicleData);
         toast.success('Vehicle updated successfully');
       } else {
         await VehicleService.create(vehicleData);
@@ -110,7 +74,6 @@ export function VehicleManager() {
 
       setFormData(initialFormData);
       setEditingId(null);
-      loadVehicles();
     } catch (error) {
       console.error('Error saving vehicle:', error);
       toast.error('Failed to save vehicle');
@@ -125,9 +88,14 @@ export function VehicleManager() {
       setFormData({
         make: vehicle.make || '',
         model: vehicle.model || '',
-        year: vehicle.year || new Date().getFullYear(),
-        purchaseDate: new Date(vehicle.purchaseDate || new Date()),
-        purchasePrice: vehicle.purchasePrice || 0,
+        type: vehicle.type || 'Car',
+        purchaseDate: vehicle.purchaseDate || new Date(),
+        owner: vehicle.owner || 'Me',
+        regNo: vehicle.regNo || '',
+        odometer: vehicle.odometer || 0,
+        fuelEfficiency: vehicle.fuelEfficiency || 15,
+        insuranceExpiry: vehicle.insuranceExpiry || new Date(),
+        pucExpiry: vehicle.pucExpiry || new Date(),
       });
       setEditingId(vehicle.id);
     }
@@ -137,7 +105,6 @@ export function VehicleManager() {
     try {
       await VehicleService.delete(id);
       toast.success('Vehicle deleted successfully');
-      loadVehicles();
     } catch (error) {
       console.error('Error deleting vehicle:', error);
       toast.error('Failed to delete vehicle');
@@ -174,12 +141,32 @@ export function VehicleManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="year">Year</Label>
+                <Label htmlFor="type">Type</Label>
+                <Select
+                  value={formData.type}
+                  onValueChange={(value: 'Car' | 'Motorcycle' | 'Scooter' | 'Truck' | 'Other') => 
+                    setFormData({ ...formData, type: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Car">Car</SelectItem>
+                    <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                    <SelectItem value="Scooter">Scooter</SelectItem>
+                    <SelectItem value="Truck">Truck</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="regNo">Registration Number</Label>
                 <Input
-                  id="year"
-                  type="number"
-                  value={formData.year}
-                  onChange={(e) => setFormData({ ...formData, year: parseInt(e.target.value) })}
+                  id="regNo"
+                  value={formData.regNo}
+                  onChange={(e) => setFormData({ ...formData, regNo: e.target.value })}
                   required
                 />
               </div>
@@ -211,13 +198,11 @@ export function VehicleManager() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="purchasePrice">Purchase Price</Label>
+                <Label htmlFor="owner">Owner</Label>
                 <Input
-                  id="purchasePrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.purchasePrice}
-                  onChange={(e) => setFormData({ ...formData, purchasePrice: parseFloat(e.target.value) })}
+                  id="owner"
+                  value={formData.owner}
+                  onChange={(e) => setFormData({ ...formData, owner: e.target.value })}
                   required
                 />
               </div>
@@ -251,33 +236,33 @@ export function VehicleManager() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {vehicles.map((vehicle) => (
+            {vehicles?.map((vehicle) => (
               <div key={vehicle.id} className="flex items-center justify-between p-4 border rounded-lg">
                 <div>
                   <h3 className="font-semibold">{vehicle.make} {vehicle.model}</h3>
                   <div className="text-sm text-muted-foreground">
-                    Year: {vehicle.year}, Purchased on: {format(new Date(vehicle.purchaseDate), 'MMM dd, yyyy')}
+                    Type: {vehicle.type}, Registration: {vehicle.regNo}
                   </div>
                 </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleEdit(vehicle.id)}
+                    onClick={() => handleEdit(vehicle.id!)}
                   >
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleDelete(vehicle.id)}
+                    onClick={() => handleDelete(vehicle.id!)}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
-            {vehicles.length === 0 && (
+            {!vehicles?.length && (
               <div className="text-center py-8 text-muted-foreground">
                 No vehicles found. Add your first vehicle to get started.
               </div>

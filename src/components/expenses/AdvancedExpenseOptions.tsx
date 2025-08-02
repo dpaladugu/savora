@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TagsInput } from '@/components/tags/TagsInput';
 import { Label } from '@/components/ui/label';
@@ -5,23 +6,23 @@ import { Label } from '@/components/ui/label';
 interface AdvancedExpenseOptionsProps {
   tags: string[];
   onTagsChange: (tags: string[]) => void;
-  userId?: string; // Add userId prop
+  userId?: string;
 }
 
 export const AdvancedExpenseOptions: React.FC<AdvancedExpenseOptionsProps> = ({
   tags,
   onTagsChange,
-  userId, // Destructure userId
+  userId,
 }) => {
   return (
     <div className="space-y-3">
       <div>
         <Label htmlFor="tags">Tags</Label>
         <TagsInput
-          tags={tags}
-          onTagsChange={onTagsChange}
+          value={tags}
+          onChange={onTagsChange}
           placeholder="Add relevant tags..."
-          userId={userId} // Pass userId to TagsInput
+          userId={userId}
           className="mt-1"
         />
       </div>
