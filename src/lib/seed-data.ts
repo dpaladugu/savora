@@ -21,7 +21,7 @@ export async function seedInitialData() {
 
     console.log('Seeding initial data...');
 
-    // Add global settings
+    // Add global settings with all required fields
     const globalSettings: GlobalSettings = {
       id: '1',
       taxRegime: 'New',
@@ -30,11 +30,25 @@ export async function seedInitialData() {
       birthdayAlertDays: 7,
       emergencyContacts: [
         { name: 'Emergency Contact', phone: '+91-9999999999', relation: 'Family' }
-      ]
+      ],
+      dependents: [],
+      salaryCreditDay: 15,
+      annualBonus: 100000,
+      medicalInflationRate: 10.0,
+      educationInflation: 7.0,
+      vehicleInflation: 5.0,
+      maintenanceInflation: 6.0,
+      privacyMask: true,
+      failedPinAttempts: 0,
+      maxFailedAttempts: 10,
+      darkMode: false,
+      timeZone: "Asia/Kolkata",
+      isTest: false,
+      theme: 'auto'
     };
     await db.globalSettings.add(globalSettings);
 
-    // Add some sample transactions
+    // Add some sample transactions with correct PaymentSplit structure
     const sampleTransactions: Txn[] = [
       {
         id: crypto.randomUUID(),
@@ -44,7 +58,7 @@ export async function seedInitialData() {
         category: 'Food',
         note: 'Grocery shopping',
         tags: ['grocery', 'monthly'],
-        paymentMix: [{ method: 'UPI', amount: 2500 }],
+        paymentMix: [{ mode: 'UPI', amount: 2500 }],
         splitWith: [],
         isPartialRent: false,
         isSplit: false
@@ -57,7 +71,7 @@ export async function seedInitialData() {
         category: 'Salary',
         note: 'Monthly salary',
         tags: ['salary', 'income'],
-        paymentMix: [{ method: 'Bank Transfer', amount: 50000 }],
+        paymentMix: [{ mode: 'Bank', amount: 50000 }],
         splitWith: [],
         isPartialRent: false,
         isSplit: false
@@ -70,7 +84,7 @@ export async function seedInitialData() {
         category: 'Rent',
         note: 'Monthly rent payment',
         tags: ['rent', 'housing'],
-        paymentMix: [{ method: 'UPI', amount: 15000 }],
+        paymentMix: [{ mode: 'UPI', amount: 15000 }],
         splitWith: [],
         isPartialRent: false,
         isSplit: false
@@ -79,11 +93,12 @@ export async function seedInitialData() {
 
     await db.txns.bulkAdd(sampleTransactions);
 
-    // Add sample goals
+    // Add sample goals with required slug field
     const sampleGoals: Goal[] = [
       {
         id: crypto.randomUUID(),
         name: 'Emergency Fund',
+        slug: 'emergency-fund',
         type: 'Short',
         targetAmount: 300000,
         targetDate: new Date('2024-12-31'),
@@ -93,6 +108,7 @@ export async function seedInitialData() {
       {
         id: crypto.randomUUID(),
         name: 'House Down Payment',
+        slug: 'house-down-payment',
         type: 'Long',
         targetAmount: 2000000,
         targetDate: new Date('2027-01-01'),
@@ -110,7 +126,9 @@ export async function seedInitialData() {
       targetAmount: 300000,
       currentAmount: 50000,
       lastReviewDate: new Date(),
-      status: 'Under-Target'
+      status: 'Under-Target',
+      medicalSubBucket: 200000,
+      medicalSubBucketUsed: 0
     };
 
     await db.emergencyFunds.add(emergencyFund);

@@ -1,149 +1,167 @@
-
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { db } from '@/lib/db';
-import { toast } from 'sonner';
-import { useCreditCards } from '@/hooks/useLiveData';
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+} from "@/components/ui/modal"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Txn } from '@/lib/db';
 
 interface AddTxnModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onAdd: (txn: Omit<Txn, 'id'>) => Promise<void>;
 }
 
-export function AddTxnModal({ isOpen, onClose }: AddTxnModalProps) {
-  const creditCards = useCreditCards();
-  const [formData, setFormData] = useState({
-    amount: '',
-    category: '',
-    date: new Date().toISOString().split('T')[0],
-    tags: '',
-    cardId: ''
-  });
+export function AddTxnModal({ 
+  isOpen, 
+  onClose, 
+  onAdd 
+}: AddTxnModalProps) {
+  const [amount, setAmount] = useState(0);
+  const [category, setCategory] = useState('');
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState('');
+  const [tags, setTags] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('Cash');
+  const [goalId, setGoalId] = useState('');
+  const [type, setType] = useState<'income' | 'expense'>('expense');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      await db.txns.add({
-        id: crypto.randomUUID(),
-        date: new Date(formData.date),
-        amount: parseFloat(formData.amount),
-        currency: 'INR',
-        category: formData.category,
-        note: '',
-        tags: formData.tags ? formData.tags.split(',').map(tag => tag.trim()) : [],
-        cardId: formData.cardId || undefined,
-        paymentMix: [{ method: 'UPI', amount: parseFloat(formData.amount) }],
-        splitWith: [],
-        isPartialRent: false,
-        isSplit: false
-      });
+    const newTxn: Omit<Txn, 'id'> = {
+      date: new Date(date),
+      amount: type === 'expense' ? -Math.abs(amount) : Math.abs(amount),
+      currency: 'INR',
+      category,
+      note,
+      tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+      goalId: goalId || undefined,
+      paymentMix: [{ mode: paymentMethod as any, amount: Math.abs(amount) }], // Fixed: use 'mode' instead of 'method'
+      splitWith: [],
+      isPartialRent: false,
+      isSplit: false,
+    };
 
-      toast.success('Transaction added successfully!');
-      setFormData({
-        amount: '',
-        category: '',
-        date: new Date().toISOString().split('T')[0],
-        tags: '',
-        cardId: ''
-      });
+    try {
+      await onAdd(newTxn);
+      // Reset form
+      setAmount(0);
+      setCategory('');
+      setNote('');
+      setDate('');
+      setTags('');
+      setPaymentMethod('Cash');
+      setGoalId('');
       onClose();
     } catch (error) {
-      toast.error('Failed to add transaction');
       console.error('Error adding transaction:', error);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Transaction</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="amount">Amount</Label>
-            <Input
-              id="amount"
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              placeholder="Enter amount"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Groceries">Groceries</SelectItem>
-                <SelectItem value="Transport">Transport</SelectItem>
-                <SelectItem value="Entertainment">Entertainment</SelectItem>
-                <SelectItem value="Utilities">Utilities</SelectItem>
-                <SelectItem value="Healthcare">Healthcare</SelectItem>
-                <SelectItem value="Shopping">Shopping</SelectItem>
-                <SelectItem value="Dining">Dining</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="date">Date</Label>
-            <Input
-              id="date"
-              type="date"
-              value={formData.date}
-              onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="tags">Tags</Label>
-            <Input
-              id="tags"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              placeholder="Enter tags (comma-separated)"
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="creditCard">Credit Card</Label>
-            <Select value={formData.cardId} onValueChange={(value) => setFormData({ ...formData, cardId: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select credit card (optional)" />
-              </SelectTrigger>
-              <SelectContent>
-                {creditCards?.map((card) => (
-                  <SelectItem key={card.id} value={card.id}>
-                    {card.issuer} - {card.last4}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1">
-              Add Transaction
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
+    <Modal open={isOpen} onOpenChange={onClose}>
+      <ModalContent>
+        <ModalHeader>Add Transaction</ModalHeader>
+        <ModalBody>
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            <div>
+              <Label htmlFor="type">Type</Label>
+              <Select value={type} onValueChange={(value) => setType(value as 'income' | 'expense')}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="expense">Expense</SelectItem>
+                  <SelectItem value="income">Income</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="amount">Amount</Label>
+              <Input
+                type="number"
+                id="amount"
+                value={amount}
+                onChange={(e) => setAmount(Number(e.target.value))}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Input
+                type="text"
+                id="category"
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="note">Note</Label>
+              <Input
+                type="text"
+                id="note"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="date">Date</Label>
+              <Input
+                type="date"
+                id="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="tags">Tags (comma separated)</Label>
+              <Input
+                type="text"
+                id="tags"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="paymentMethod">Payment Method</Label>
+              <Select value={paymentMethod} onValueChange={(value) => setPaymentMethod(value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select payment method" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Cash">Cash</SelectItem>
+                  <SelectItem value="Card">Card</SelectItem>
+                  <SelectItem value="UPI">UPI</SelectItem>
+                  <SelectItem value="Bank">Bank Transfer</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="goalId">Goal (Optional)</Label>
+              <Input
+                type="text"
+                id="goalId"
+                value={goalId}
+                onChange={(e) => setGoalId(e.target.value)}
+              />
+            </div>
+            <Button type="submit">Add Transaction</Button>
+          </form>
+        </ModalBody>
+        <ModalFooter>
+          <ModalCloseButton />
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 }

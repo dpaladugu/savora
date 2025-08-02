@@ -4,17 +4,31 @@ import { db } from './db';
 export const seed = async () => {
   if (localStorage.getItem('seedLoaded')) return;
 
-  // Initialize global settings
+  // Initialize global settings with all required fields
   await db.globalSettings.add({
     id: 'main',
     taxRegime: 'New',
     autoLockMinutes: 5,
     birthdayBudget: 0,
     birthdayAlertDays: 7,
-    emergencyContacts: []
+    emergencyContacts: [],
+    dependents: [],
+    salaryCreditDay: 15,
+    annualBonus: 100000,
+    medicalInflationRate: 10.0,
+    educationInflation: 7.0,
+    vehicleInflation: 5.0,
+    maintenanceInflation: 6.0,
+    privacyMask: true,
+    failedPinAttempts: 0,
+    maxFailedAttempts: 10,
+    darkMode: false,
+    timeZone: "Asia/Kolkata",
+    isTest: false,
+    theme: 'auto'
   });
 
-  // Add sample transactions
+  // Add sample transactions with correct PaymentSplit structure
   await db.txns.bulkAdd([
     { 
       id: 'tx1', 
@@ -24,7 +38,7 @@ export const seed = async () => {
       category: 'Salary', 
       note: 'July salary',
       tags: ['salary', 'income'],
-      paymentMix: [{ method: 'Bank Transfer', amount: 50000 }],
+      paymentMix: [{ mode: 'Bank', amount: 50000 }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false
@@ -37,7 +51,7 @@ export const seed = async () => {
       category: 'Rent', 
       note: 'Home rent',
       tags: ['rent', 'housing'],
-      paymentMix: [{ method: 'UPI', amount: 1200 }],
+      paymentMix: [{ mode: 'UPI', amount: 1200 }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false
@@ -50,7 +64,7 @@ export const seed = async () => {
       category: 'Groceries', 
       note: 'Monthly groceries',
       tags: ['groceries', 'food'],
-      paymentMix: [{ method: 'Cash', amount: 500 }],
+      paymentMix: [{ mode: 'Cash', amount: 500 }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false
@@ -63,7 +77,7 @@ export const seed = async () => {
       category: 'EMI', 
       note: 'Plot loan EMI',
       tags: ['emi', 'loan'],
-      paymentMix: [{ method: 'Auto Debit', amount: 17964 }],
+      paymentMix: [{ mode: 'Bank', amount: 17964 }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false
@@ -76,7 +90,7 @@ export const seed = async () => {
       category: 'Rental-Income', 
       note: 'Tenant rent',
       tags: ['rental', 'income'],
-      paymentMix: [{ method: 'UPI', amount: 8000 }],
+      paymentMix: [{ mode: 'UPI', amount: 8000 }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false
@@ -99,12 +113,14 @@ export const seed = async () => {
     propertyTaxAnnual: 12000,
     propertyTaxDueDay: 31,
     waterTaxAnnual: 2400,
-    waterTaxDueDay: 31
+    waterTaxDueDay: 31,
+    maintenanceReserve: 24000
   });
 
   await db.goals.add({
     id: 'g1', 
-    name: 'Emergency Fund', 
+    name: 'Emergency Fund',
+    slug: 'emergency-fund', 
     type: 'Short', 
     targetAmount: 120000, 
     targetDate: new Date('2025-12-31'), 
