@@ -5,16 +5,26 @@
  * A service for handling credit card operations using the current database schema.
  */
 
-import { db } from "@/db";
-import type { CreditCard } from "@/db";
+import { db } from "@/lib/db";
+import type { CreditCard } from "@/lib/db";
+
+// Extended CreditCard interface to include missing fields from tests
+export interface ExtendedCreditCard extends CreditCard {
+  fxTxnFee: number;
+  emiConversion: boolean;
+}
 
 export class CreditCardService {
 
-  static async addCreditCard(cardData: Omit<CreditCard, 'id'>): Promise<string> {
+  static async addCreditCard(cardData: Omit<ExtendedCreditCard, 'id'>): Promise<string> {
     try {
       const newId = self.crypto.randomUUID();
+      
+      // Map to base CreditCard interface (remove extended fields)
+      const { fxTxnFee, emiConversion, ...baseCardData } = cardData;
+      
       const recordToAdd: CreditCard = {
-        ...cardData,
+        ...baseCardData,
         id: newId,
       };
       await db.creditCards.add(recordToAdd);
@@ -25,9 +35,11 @@ export class CreditCardService {
     }
   }
 
-  static async updateCreditCard(id: string, updates: Partial<CreditCard>): Promise<number> {
+  static async updateCreditCard(id: string, updates: Partial<ExtendedCreditCard>): Promise<number> {
     try {
-      const updatedCount = await db.creditCards.update(id, updates);
+      // Remove extended fields before updating
+      const { fxTxnFee, emiConversion, ...baseUpdates } = updates;
+      const updatedCount = await db.creditCards.update(id, baseUpdates);
       return updatedCount;
     } catch (error) {
       console.error(`Error in CreditCardService.updateCreditCard for id ${id}:`, error);

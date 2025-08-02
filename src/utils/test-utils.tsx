@@ -1,10 +1,11 @@
+
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
 import { vi } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import type { Txn, Goal, Investment } from '@/lib/db';
+import type { Txn, Goal, Investment, CreditCard } from '@/lib/db';
 
 // Export screen and render for use in tests
 export { screen, render };
@@ -14,12 +15,12 @@ export const createMockTxn = (overrides: Partial<Txn> = {}): Txn => ({
   id: 'mock-txn-' + Math.random().toString(36).substr(2, 9),
   date: new Date(),
   amount: -1000,
-  category: 'Test Category',
   currency: 'INR',
+  category: 'Test Category',
   note: 'Test transaction',
+  tags: [],
   paymentMix: [],
   splitWith: [],
-  tags: [],
   isPartialRent: false,
   isSplit: false,
   ...overrides
@@ -60,6 +61,8 @@ export const createMockDb = () => ({
     update: vi.fn().mockResolvedValue(1),
     delete: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
     where: vi.fn().mockReturnThis(),
     equals: vi.fn().mockReturnThis(),
     between: vi.fn().mockReturnThis(),
@@ -70,6 +73,8 @@ export const createMockDb = () => ({
     update: vi.fn().mockResolvedValue(1),
     delete: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
     where: vi.fn().mockReturnThis(),
     equals: vi.fn().mockReturnThis(),
   },
@@ -79,6 +84,41 @@ export const createMockDb = () => ({
     update: vi.fn().mockResolvedValue(1),
     delete: vi.fn().mockResolvedValue(undefined),
     get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+  },
+  creditCards: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+  },
+  globalSettings: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
+    where: vi.fn().mockReturnThis(),
+    equals: vi.fn().mockReturnThis(),
+  },
+  emergencyFunds: {
+    toArray: vi.fn().mockResolvedValue([]),
+    add: vi.fn().mockResolvedValue('new-id'),
+    update: vi.fn().mockResolvedValue(1),
+    delete: vi.fn().mockResolvedValue(undefined),
+    get: vi.fn().mockResolvedValue(null),
+    put: vi.fn().mockResolvedValue('new-id'),
+    bulkAdd: vi.fn().mockResolvedValue(['id1', 'id2']),
     where: vi.fn().mockReturnThis(),
     equals: vi.fn().mockReturnThis(),
   },
@@ -90,13 +130,6 @@ export const createMockDb = () => ({
     get: vi.fn().mockResolvedValue(null),
   },
   tenants: {
-    toArray: vi.fn().mockResolvedValue([]),
-    add: vi.fn().mockResolvedValue('new-id'),
-    update: vi.fn().mockResolvedValue(1),
-    delete: vi.fn().mockResolvedValue(undefined),
-    get: vi.fn().mockResolvedValue(null),
-  },
-  emergencyFunds: {
     toArray: vi.fn().mockResolvedValue([]),
     add: vi.fn().mockResolvedValue('new-id'),
     update: vi.fn().mockResolvedValue(1),

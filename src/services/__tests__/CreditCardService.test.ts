@@ -44,7 +44,10 @@ describe('CreditCardService', () => {
       expect(result).toBe('new-card-id');
       expect(mockDb.creditCards.add).toHaveBeenCalledWith(
         expect.objectContaining({
-          ...cardData,
+          issuer: cardData.issuer,
+          bankName: cardData.bankName,
+          last4: cardData.last4,
+          network: cardData.network,
           id: expect.any(String),
         })
       );
