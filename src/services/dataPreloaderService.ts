@@ -1,6 +1,6 @@
 
 import Dexie, { Table } from 'dexie';
-import { db } from '@/db'; // Import Dexie db instance
+import { db } from '@/lib/db'; // Import Dexie db instance
 import { Logger } from './logger';
 
 import { z } from 'zod';
@@ -28,7 +28,8 @@ import type {
   CreditCard,
   Investment,
   Expense,
-  Income
+  Income,
+  Claim
 } from '@/lib/db';
 
 // Local interface for loans since loans table doesn't exist

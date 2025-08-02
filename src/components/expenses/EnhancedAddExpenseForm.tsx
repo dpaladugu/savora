@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ExpenseService } from '@/services/ExpenseService';
-import { Expense } from '@/db';
+import { Expense } from '@/lib/db';
 
 interface EnhancedAddExpenseFormProps {
   onExpenseAdded?: () => void;
@@ -34,7 +34,7 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
       setCategories(uniqueCategories);
       
       // Get payment methods from existing expenses  
-      const uniquePaymentMethods = [...new Set(expenses.map(e => e.paymentMethod).filter(Boolean))];
+      const uniquePaymentMethods = [...new Set(expenses.map(e => e.payment_method).filter(Boolean))];
       setPaymentMethods(uniquePaymentMethods);
     } catch (error) {
       console.error('Error loading initial data:', error);
@@ -55,7 +55,7 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
         ? editingExpense.date 
         : editingExpense.date.toISOString().split('T')[0];
       setDate(dateStr);
-      setPaymentMethod(editingExpense.paymentMethod || '');
+      setPaymentMethod(editingExpense.payment_method || '');
       // Handle tags properly - convert array to string
       const tagsString = Array.isArray(editingExpense.tags) 
         ? editingExpense.tags.join(', ') 
@@ -87,7 +87,9 @@ export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditC
         amount: parseFloat(amount),
         date,
         category,
-        paymentMethod: paymentMethod || '',
+        payment_method: paymentMethod || '',
+        source: 'manual',
+        account: '',
         // Convert tags string to array
         tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
       };
