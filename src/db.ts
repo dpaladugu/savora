@@ -1,279 +1,285 @@
 import Dexie, { Table } from 'dexie';
-import type {
-  AppSetting,
-  ProfileData,
-  ExpenseData,
-  IncomeSourceData,
-  InvestmentData,
-  YearlySummary
-} from '@/types/jsonPreload';
 
-import type { Income as AppIncome } from '@/components/income/income-tracker';
-import type { Expense as AppExpense } from '@/services/supabase-data-service';
+// --- Enhanced Interfaces from Requirements Spec ---
 
-export type AppSettingTable = AppSetting;
-
-// --- Record Interface Definitions for Dexie Tables ---
-
-export interface RecurringTransactionRecord {
-  id: string; user_id?: string; description: string; amount: number; type: 'income' | 'expense';
-  category: string; payment_method?: string; frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
-  interval: number; start_date: string; end_date?: string; day_of_week?: number; day_of_month?: number;
-  next_occurrence_date?: string; is_active?: boolean; created_at?: Date; updated_at?: Date;
+export interface GlobalSettings {
+  id: string;
+  taxRegime: 'Old' | 'New';
+  autoLockMinutes: number;
+  birthdayBudget: number;
+  birthdayAlertDays: number;
+  emergencyContacts: Contact[];
+  incomeTaxReturnJson?: string;
+  telegramBotToken?: string;
+  dependents: Dependent[];
+  salaryCreditDay: number;
+  annualBonus?: number;
+  medicalInflationRate: number;
+  educationInflation: number;
+  vehicleInflation: number;
+  maintenanceInflation: number;
+  privacyMask: boolean;
+  revealSecret?: string;
+  failedPinAttempts: number;
+  maxFailedAttempts: number;
+  darkMode: boolean;
+  timeZone: string;
+  isTest: boolean;
+  theme: 'light' | 'dark' | 'auto';
+  deviceThemes?: Record<string, 'light' | 'dark' | 'auto'>;
 }
 
-export interface DexieCreditCardRecord {
-  id: string; user_id?: string; name: string; issuer: string; limit: number; currentBalance: number;
-  billCycleDay: number; dueDate: string; autoDebit: boolean; last4Digits?: string;
-  created_at?: Date; updated_at?: Date;
-}
-
-export interface DexieGoldInvestmentRecord {
-  id: string; user_id?: string; weight: number; purity: string; purchasePrice: number; currentPrice?: number;
-  purchaseDate: string; paymentMethod: string; storageLocation: string; form: string;
-  vendor?: string; note?: string; created_at?: Date; updated_at?: Date;
-}
-
-export interface DexieInsurancePolicyRecord {
-  id: string; user_id?: string; policyName: string; policyNumber?: string; insurer: string; type: string;
-  premium: number; frequency: string; startDate?: string; endDate?: string; coverageAmount?: number;
-  nextDueDate?: string; status: string; note?: string; created_at?: Date; updated_at?: Date;
-}
-
-export interface DexieLoanEMIRecord {
-  id: string; user_id?: string; loanType: string; lender: string; principalAmount: number; emiAmount: number;
-  interestRate?: number; tenureMonths: number; startDate?: string; endDate?: string; nextDueDate?: string;
-  remainingAmount?: number; status: string; account?: string; note?: string; created_at?: Date; updated_at?: Date;
-}
-
-export interface DexieVehicleRecord {
-  id: string; // Primary Key
-  user_id?: string; // Foreign key to user
-
-  // Core identification
-  name: string; // Vehicle's display name (e.g., "My Red Swift", "Office Bike")
-  registrationNumber: string; // Vehicle Registration Number (License Plate)
-  make?: string; // e.g., "Maruti Suzuki", "Honda", "Toyota"
-  model?: string; // e.g., "Swift", "Activa", "Corolla"
-  year?: number; // Manufacturing year
-  color?: string;
-  type?: string; // General type like "Car", "Motorcycle", "Scooter"
-  owner?: string; // e.g., "Self", "Spouse", "Company"
-  status?: string; // e.g., "Active", "Sold", "In Repair", "Out of service"
-
-  // Purchase and Financials
-  purchaseDate?: string; // ISO Date string (YYYY-MM-DD)
-  purchasePrice?: number;
-
-  // Technical Details
-  fuelType?: string; // e.g., "Petrol", "Diesel", "Electric", "Hybrid", "CNG"
-  engineNumber?: string;
-  chassisNumber?: string;
-  currentOdometer?: number; // Current odometer reading
-  fuelEfficiency?: string; // e.g., "15 km/l", "50 km/charge" (can be string to accommodate units)
-
-  // Insurance Details (Basic)
-  insuranceProvider?: string;
-  insurancePolicyNumber?: string; // Kept from original, though not in v10 schema. Good to have.
-  insuranceExpiryDate?: string; // ISO Date string (YYYY-MM-DD) - This was in v10 schema
-  insurance_premium?: number; // Renaming from previous VehicleData to align naming
-  insurance_frequency?: string; // e.g., "Annual", "Bi-Annual", "3-Year"
-
-  // Tracking & Maintenance (Basic)
-  tracking_type?: string; // e.g., "GPS", "FASTag", "None"
-  tracking_last_service_odometer?: number;
-  next_pollution_check?: string; // ISO Date string (YYYY-MM-DD)
-  location?: string; // Current general location or parking spot
-  repair_estimate?: number; // For any ongoing or upcoming repair
-
-  // Misc
-  notes?: string; // General notes
-
-  // Audit
-  created_at?: Date;
-  updated_at?: Date;
-}
-
-export interface DexieTagRecord {
-  id: string; user_id?: string; name: string; color?: string;
-  created_at?: Date; updated_at?: Date;
-}
-
-export interface DexieAccountRecord { // New interface for Accounts
-  id: string; // UUID
-  user_id?: string;
+export interface Contact {
   name: string;
-  type: 'Bank' | 'Wallet' | string; // Allow string for other types
-  balance: number;
-  accountNumber?: string; // Optional, mainly for bank accounts
-  provider: string; // Bank name or Wallet provider name
-  isActive: boolean;
-  notes?: string;
-  created_at?: Date;
-  updated_at?: Date;
+  phone: string;
+  relation: string;
 }
 
-// --- Dexie Database Class ---
+export interface Dependent {
+  id: string;
+  relation: 'Spouse' | 'Child' | 'Mother' | 'Grandmother' | 'Brother';
+  name: string;
+  dob: Date;
+  gender: 'M' | 'F';
+  chronic: boolean;
+  schoolFeesAnnual?: number;
+  isNominee: boolean;
+}
+
+export interface PaymentSplit {
+  mode: 'Cash' | 'Card' | 'UPI' | 'Bank';
+  amount: number;
+  refId?: string;
+}
+
+export interface SplitItem {
+  person: string;
+  amount: number;
+  settled: boolean;
+}
+
+// Universal Transaction - Core of the system
+export interface Txn {
+  id: string;
+  date: Date;
+  amount: number;
+  currency: string; // hard-coded "INR"
+  category: string;
+  note: string;
+  tags: string[];
+  goalId?: string;
+  receiptUri?: string;
+  cardId?: string;
+  vehicleId?: string;
+  tenantId?: string;
+  propertyId?: string;
+  rentMonth?: string;
+  isPartialRent: boolean;
+  paymentMix: PaymentSplit[];
+  cashbackAmount?: number;
+  isSplit: boolean;
+  splitWith: SplitItem[];
+  gstPaid?: number;
+}
+
+export interface Goal {
+  id: string;
+  name: string;
+  slug: string;
+  type: 'Micro' | 'Small' | 'Short' | 'Medium' | 'Long';
+  targetAmount: number;
+  targetDate: Date;
+  currentAmount: number;
+  notes: string;
+}
+
+export interface CreditCard {
+  id: string;
+  issuer: string;
+  bankName: string;
+  last4: string;
+  network: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex';
+  cardVariant: string;
+  productVariant: string;
+  annualFee: number;
+  annualFeeGst: number;
+  creditLimit: number;
+  creditLimitShared: boolean;
+  fuelSurchargeWaiver: boolean;
+  rewardPointsBalance: number;
+  cycleStart: number;
+  stmtDay: number;
+  dueDay: number;
+  fxTxnFee: number;
+  emiConversion: boolean;
+  // Compatibility fields
+  name?: string;
+  currentBalance?: number;
+  limit?: number;
+  last4Digits?: string;
+  dueDate?: string;
+}
+
+export interface Vehicle {
+  id: string;
+  owner: string;
+  regNo: string;
+  make: string;
+  model: string;
+  type: 'Car' | 'Motorcycle' | 'Scooter' | 'Truck' | 'Other';
+  purchaseDate: Date;
+  insuranceExpiry: Date;
+  pucExpiry: Date;
+  odometer: number;
+  fuelEfficiency: number;
+  fuelLogs: FuelFill[];
+  serviceLogs: ServiceEntry[];
+  claims: Claim[];
+  treadDepthMM: number;
+  depreciationRate?: number;
+  ncbPercent?: number;
+}
+
+export interface FuelFill {
+  date: Date;
+  litres: number;
+  odometer: number;
+  isFullTank: boolean;
+  cost: number;
+}
+
+export interface ServiceEntry {
+  date: Date;
+  odometer: number;
+  description: string;
+  cost: number;
+  nextServiceDate?: Date;
+  items: ServiceItem[];
+}
+
+export interface ServiceItem {
+  category: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export interface Claim {
+  date: Date;
+  amount: number;
+  description: string;
+}
+
+export interface Investment {
+  id: string;
+  type: 'MF-Growth' | 'MF-Dividend' | 'SIP' | 'PPF' | 'EPF' | 'NPS-T1' | 'NPS-T2' | 'Gold-Coin' | 'Gold-ETF' | 'SGB' | 'FD' | 'RD' | 'Stocks' | 'Others' | 'Gift-Card-Float';
+  name: string;
+  folioNo?: string;
+  currentNav: number;
+  units: number;
+  investedValue: number;
+  currentValue: number;
+  startDate: Date;
+  maturityDate?: Date;
+  sipAmount?: number;
+  sipDay?: number;
+  frequency: 'Monthly' | 'Quarterly' | 'Annually' | 'One-time';
+  goalId?: string;
+  lockInYears?: number;
+  taxBenefit: boolean;
+  familyMember: string;
+  notes: string;
+  interestRate?: number;
+  interestCreditDate?: Date;
+  dividendReceived?: number;
+  indexCostInflation?: number;
+  // Compatibility fields
+  current_value?: number;
+  invested_value?: number;
+}
+
+// Expense compatibility interface
+export interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string | Date;
+  tags?: string[];
+  paymentMethod?: string;
+}
+
+// Income compatibility interface  
+export interface Income {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string | Date;
+  source?: string;
+}
+
+// App Settings for compatibility
+export interface AppSettingTable {
+  key: string;
+  value: any;
+}
+
+// Enhanced Dexie Database Class
 export class SavoraDB extends Dexie {
+  public globalSettings!: Table<GlobalSettings, string>;
+  public txns!: Table<Txn, string>;
+  public goals!: Table<Goal, string>;
+  public creditCards!: Table<CreditCard, string>;
+  public vehicles!: Table<Vehicle, string>;
+  public investments!: Table<Investment, string>;
+  
+  // Legacy compatibility tables
+  public expenses!: Table<Expense, string>;
+  public incomes!: Table<Income, string>;
   public appSettings!: Table<AppSettingTable, string>;
-  public expenses!: Table<AppExpense, string>;
-  public incomes!: Table<AppIncome, string>;
-  public incomeSources!: Table<IncomeSourceData, string>;
-  public vehicles!: Table<DexieVehicleRecord, string>;
-  public loans!: Table<DexieLoanEMIRecord, string>;
-  public investments!: Table<InvestmentData, string>;
-  public creditCards!: Table<DexieCreditCardRecord, string>;
-  public yearlySummaries!: Table<YearlySummary, number>;
-  public recurringTransactions!: Table<RecurringTransactionRecord, string>;
-  public goldInvestments!: Table<DexieGoldInvestmentRecord, string>;
-  public insurancePolicies!: Table<DexieInsurancePolicyRecord, string>;
-  public tags!: Table<DexieTagRecord, string>;
-  public accounts!: Table<DexieAccountRecord, string>; // New table property
 
   constructor() {
     super('SavoraFinanceDB');
 
-    // Base schema definition, version 1 (or your initial version)
     this.version(1).stores({
-      appSettings: '&key',
-      // ... other initial tables if any
+      globalSettings: '&id',
+      txns: '&id, date, category, amount, goalId, cardId, vehicleId',
+      goals: '&id, type, targetDate, name, slug',
+      creditCards: '&id, issuer, bankName, last4',
+      vehicles: '&id, regNo, owner, type',
+      investments: '&id, type, name, startDate, goalId',
+      // Legacy compatibility tables
+      expenses: '&id, date, category, amount',
+      incomes: '&id, date, category, amount',
+      appSettings: '&key'
     });
-
-    // Version 3: Added many new tables
-    this.version(3).stores({
-        appSettings: '&key', // No change to appSettings PK
-        expenses: '++id, date, category, amount, cardLast4, type, merchant, *tags',
-        vehicles: '++id, name, type',
-        investments: '++id, type, date, name, platform',
-        creditCards: '++id, &lastDigits, name, bankName',
-        loans: '++id, name, lenderName, type',
-        insurancePolicies: '++id, type, policyNumber, renewalDate',
-        maintenanceRecords: '++id, vehicleId, date, [vehicleId+date], type',
-        parts: '++id, maintenanceId, name',
-        fuelRecords: '++id, vehicleId, date, [vehicleId+date]',
-        yearlySummaries: '++id, year, category, type',
-        realEstateProperties: '++id, name, address',
-        financialGoals: '++id, name, priority, targetDate',
-        incomeSources: '++id, source, frequency, account',
-        accounts: '++id, name, type, provider',
-    });
-
-    // Version 4: Schema changes and data migration
-    this.version(4).stores({
-      incomes: '&id, user_id, date, category, source', // New table
-      vehicles: '++id, vehicle_name, owner, type', // Modified
-      loans: '++id, user_id, loan_name, lender, interest_rate', // Modified
-      investments: '++id, fund_name, investment_type, category', // Modified
-      creditCards: '++id, &lastDigits, bank_name, card_name', // Modified
-      incomeSources: '++id, source, frequency, account', // No change, but good to list
-    }).upgrade(async tx => {
-        console.log("Upgrading Dexie DB to v4.");
-        await tx.table('vehicles').toCollection().modify(v => { if(v.name && !v.vehicle_name) {v.vehicle_name = v.name; delete v.name;} });
-        await tx.table('investments').toCollection().modify(i => { if(i.name && !i.fund_name) {i.fund_name = i.name; delete i.name;} if(!i.investment_type && i.type) {i.investment_type = i.type;} });
-        await tx.table('loans').toCollection().modify(l => { if(l.name && !l.loan_name) {l.loan_name = l.name; delete l.name;} });
-    });
-
-    // Version 5: Expenses table primary key changed to UUID
-    this.version(5).stores({
-      expenses: '&id, user_id, date, category, amount, description, payment_method, *tags_flat, source, merchant, account',
-    });
-
-    // Version 6: Added recurringTransactions table
-    this.version(6).stores({
-      recurringTransactions: '&id, user_id, description, type, category, frequency, start_date, next_occurrence_date, end_date, is_active',
-    });
-
-    // Version 8: Added goldInvestments table
-    this.version(8).stores({
-      goldInvestments: '&id, user_id, purchaseDate, form, purity, storageLocation, vendor',
-    });
-
-    // Version 9: Added insurancePolicies table
-    this.version(9).stores({
-      insurancePolicies: '&id, user_id, policyName, insurer, type, nextDueDate, status',
-    });
-
-    // Version 11: Updated investments table
-    this.version(11).stores({
-      investments: '&id, user_id, fund_name, investment_type, category, purchaseDate',
-    });
-
-    // Version 12: Updated incomeSources table
-    this.version(12).stores({
-      incomeSources: '&id, user_id, name, frequency, account, defaultAmount',
-    });
-
-    // Version 13: Added tags table
-    this.version(13).stores({
-      tags: '&id, user_id, &[user_id+name], color',
-    });
-
-    // Version 14: Added/Updated accounts table
-    this.version(14).stores({
-      accounts: '&id, user_id, name, type, provider, isActive',
-    });
-
-    // Version 15: Enhanced Vehicle Schema
-    this.version(15).stores({
-      vehicles: '&id, user_id, name, registrationNumber, type, status, purchaseDate, insuranceExpiryDate, next_pollution_check, make, model, fuelType, owner',
-    });
-
-    // Version 17: Added user_id index to loans
-    this.version(17).stores({
-      loans: '&id, user_id, loanType, lender, status, nextDueDate',
-    });
-
-    // Version 18: Corrected loans primary key and removed user_id
-    this.version(18).stores({
-      loans: '++id, loanType, lender, status, nextDueDate',
-    });
-
-    // Final, current version of the database.
-    // This should be the highest version number.
-
-
-    // Initialize table properties
-    this.appSettings = this.table('appSettings');
-    this.expenses = this.table('expenses');
-    this.incomes = this.table('incomes');
-    this.incomeSources = this.table('incomeSources');
-    this.vehicles = this.table('vehicles');
-    this.loans = this.table('loans');
-    this.investments = this.table('investments');
-    this.creditCards = this.table('creditCards');
-    this.yearlySummaries = this.table('yearlySummaries');
-    this.recurringTransactions = this.table('recurringTransactions');
-    this.goldInvestments = this.table('goldInvestments');
-    this.insurancePolicies = this.table('insurancePolicies');
-    this.tags = this.table('tags');
-    this.accounts = this.table('accounts'); // Initialize new accounts table
   }
 
-  async savePersonalProfile(profile: ProfileData): Promise<void> {
+  // Enhanced methods for data access
+  async savePersonalProfile(profile: any): Promise<void> {
     await this.appSettings.put({ key: 'userPersonalProfile_v1', value: profile });
   }
 
-  async getPersonalProfile(): Promise<ProfileData | null> {
+  async getPersonalProfile(): Promise<any | null> {
     const setting = await this.appSettings.get('userPersonalProfile_v1');
-    return setting ? (setting.value as ProfileData) : null;
+    return setting ? setting.value : null;
+  }
+
+  async getEmergencyFundSettings(): Promise<any> {
+    const setting = await this.appSettings.get('emergencyFundSettings_v1');
+    return setting ? setting.value : { efMonths: 6 };
+  }
+
+  async saveEmergencyFundSettings(settings: any): Promise<void> {
+    await this.appSettings.put({ key: 'emergencyFundSettings_v1', value: settings });
   }
 }
 
 export const db = new SavoraDB();
 
-// A custom event to notify the UI about critical DB errors.
-export const dispatchDbErrorEvent = (error: any) => {
-  const event = new CustomEvent('db-error', {
-    detail: {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    },
-  });
-  window.dispatchEvent(event);
-};
-
-// Open the database and handle potential errors, especially schema-related ones.
+// Enhanced error handling for database initialization
 db.open().catch(async (err) => {
   if (err.name === "UpgradeError") {
     if (import.meta.env.DEV) {
@@ -281,20 +287,9 @@ db.open().catch(async (err) => {
       await db.delete();
       await db.open();
     } else {
-      dispatchDbErrorEvent(err);
+      console.error("Database upgrade error:", err);
     }
   } else {
     console.error("Failed to open Dexie database:", err);
-    dispatchDbErrorEvent(err);
   }
 });
-
-export type Expense = ExpenseData;
-export { YearlySummary };
-export type Vehicle = DexieVehicleRecord; // Exporting DexieVehicleRecord as Vehicle
-
-// Note on other *Data types from jsonPreload:
-// IncomeSourceData and InvestmentData are now the primary types for their respective tables.
-// VehicleData, LoanData, CreditCardData from jsonPreload are effectively superseded by
-// DexieVehicleRecord, DexieLoanEMIRecord, DexieCreditCardRecord for new Dexie interactions.
-// An AccountData type might be useful if defined in jsonPreload and used by DexieAccountRecord.

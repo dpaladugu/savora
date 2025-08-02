@@ -1,60 +1,10 @@
+
 import { useQuery } from "@tanstack/react-query";
-import { DashboardData, Goal } from "@/types/dashboard";
+import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { db, AppSettingTable } from "@/db";
-// Use AppExpense for expenses table as defined in SavoraDB
-import type { Expense as AppExpense } from '@/services/supabase-data-service';
-// Use Income from income-tracker for incomes table as defined in SavoraDB
-import type { Income as AppIncome } from '@/components/income/income-tracker';
+import { db } from "@/db";
+import type { Expense, Income, Investment } from '@/db';
 import { format, parseISO, isValid } from 'date-fns';
-
-// Use types from jsonPreload instead of db module
-import type { InvestmentData } from '@/types/jsonPreload';
-
-// Define CreditCardData type locally
-interface CreditCardData {
-  id: string;
-  name?: string;
-  issuer?: string;
-  limit?: number;
-  currentBalance?: number;
-  due_date?: string;
-  bank_name?: string;
-  card_name?: string;
-  last_digits?: string;
-}
-
-// Default AppSetting for Emergency Fund if not found in DB
-const DEFAULT_EF_MONTHS = 6;
-const EF_SETTING_KEY = 'emergencyFundSettings_v1';
-
-interface EmergencyFundSetting {
-  key: string; // Should be EF_SETTING_KEY
-  value: {
-    efMonths: number;
-    // could add targetAmount manually if preferred over calculation
-    // manualTargetAmount?: number;
-  };
-}
-
-// Keep mock for structure reference, but aim to replace all fields with real data or null/empty.
-const fallbackDashboardData: DashboardData = {
-  totalExpenses: 0,
-  monthlyExpenses: 0,
-  totalInvestments: 0,
-  expenseCount: 0,
-  investmentCount: 0,
-  emergencyFundTarget: 0,
-  emergencyFundCurrent: 0, // Placeholder - requires specific tracking
-  monthlyIncome: 0,
-  savingsRate: 0,
-  investmentValue: 0, // Same as totalInvestments
-  creditCardDebt: 0,
-  emergencyFund: 0, // Same as emergencyFundTarget
-  goals: [], // Placeholder - requires goal tracking feature
-  recentTransactions: [],
-  categoryBreakdown: []
-};
 
 // Helper function to safely parse dates
 const safeParseDate = (dateValue: any): Date | null => {
@@ -83,43 +33,31 @@ const safeParseDate = (dateValue: any): Date | null => {
 };
 
 async function fetchDashboardData(): Promise<DashboardData> {
-  Logger.info('Fetching dashboard data from Dexie');
+  Logger.info('Fetching dashboard data from database');
 
   try {
-    // Fetch all necessary data concurrently with error handling
-    const [
-      allDexieExpenses,
-      allDexieIncomes,
-      allDexieInvestments,
-      allDexieCreditCards,
-      efSettingsData
-    ] = await Promise.allSettled([
-      db.expenses.toArray(),
-      db.incomes.toArray(),
-      db.investments.toArray(),
-      db.creditCards.toArray(),
-      db.appSettings.get(EF_SETTING_KEY) as Promise<EmergencyFundSetting | AppSettingTable | undefined>
-    ]);
+    // Fetch all data concurrently with proper error handling
+    const [expensesResult, incomesResult, investmentsResult, creditCardsResult, goalsResult, efSettingsResult] = 
+      await Promise.allSettled([
+        db.expenses.toArray(),
+        db.incomes.toArray(),
+        db.investments.toArray(),
+        db.creditCards.toArray(),
+        db.goals.toArray(),
+        db.getEmergencyFundSettings()
+      ]);
 
     // Extract successful results or use fallbacks
-    const allExpenses = (allDexieExpenses.status === 'fulfilled' ? allDexieExpenses.value : []) as AppExpense[];
-    const allIncomes = (allDexieIncomes.status === 'fulfilled' ? allDexieIncomes.value : []) as AppIncome[];
-    const allInvestments = (allDexieInvestments.status === 'fulfilled' ? allDexieInvestments.value : []) as InvestmentData[];
-    const allCreditCards = (allDexieCreditCards.status === 'fulfilled' ? allDexieCreditCards.value : []).map(card => ({
-      id: card.id,
-      name: card.name,
-      issuer: card.issuer,
-      limit: card.limit,
-      currentBalance: card.currentBalance,
-      bank_name: card.issuer, // Map issuer to bank_name
-      card_name: card.name,   // Map name to card_name
-      last_digits: card.last4Digits,
-      due_date: card.dueDate
-    })) as CreditCardData[];
-    const efSettings = efSettingsData.status === 'fulfilled' ? efSettingsData.value : undefined;
+    const allExpenses = expensesResult.status === 'fulfilled' ? expensesResult.value : [];
+    const allIncomes = incomesResult.status === 'fulfilled' ? incomesResult.value : [];
+    const allInvestments = investmentsResult.status === 'fulfilled' ? investmentsResult.value : [];
+    const allCreditCards = creditCardsResult.status === 'fulfilled' ? creditCardsResult.value : [];
+    const allGoals = goalsResult.status === 'fulfilled' ? goalsResult.value : [];
+    const efSettings = efSettingsResult.status === 'fulfilled' ? efSettingsResult.value : { efMonths: 6 };
 
-    // Calculate Expense Metrics with safe date parsing
+    // Calculate current month metrics
     const currentMonthStr = format(new Date(), 'yyyy-MM');
+    
     const monthlyExpenses = allExpenses
       .filter(e => {
         const expenseDate = safeParseDate(e.date);
@@ -127,12 +65,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
       })
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    const totalExpenses = allExpenses
-      .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const totalExpenses = allExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-    const expenseCount = allExpenses.length;
-
-    // Calculate Income Metrics with safe date parsing
     const monthlyIncome = allIncomes
       .filter(i => {
         const incomeDate = safeParseDate(i.date);
@@ -140,12 +74,28 @@ async function fetchDashboardData(): Promise<DashboardData> {
       })
       .reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
 
-    // Calculate Investment Metrics
-    // Assuming InvestmentData has 'current_value' or 'invested_value'
-    const totalInvestments = allInvestments.reduce((sum, inv) => sum + (Number(inv.current_value) || Number(inv.invested_value) || 0), 0);
-    const investmentCount = allInvestments.length;
+    // Calculate investment metrics
+    const totalInvestments = allInvestments.reduce((sum, inv) => {
+      const currentValue = Number(inv.current_value || inv.currentValue) || 0;
+      const investedValue = Number(inv.invested_value || inv.investedValue) || 0;
+      return sum + Math.max(currentValue, investedValue);
+    }, 0);
 
-    // Calculate Category Breakdown for Expenses
+    // Calculate credit card debt
+    const creditCardDebt = allCreditCards.reduce((sum, card) => {
+      return sum + (Number(card.currentBalance) || 0);
+    }, 0);
+
+    // Calculate emergency fund
+    const avgMonthlyExpenses = monthlyExpenses > 0 ? monthlyExpenses : (totalExpenses / Math.max(6, 1));
+    const emergencyFundTarget = avgMonthlyExpenses * efSettings.efMonths;
+    const emergencyFundCurrent = efSettings.currentAmount || 0;
+
+    // Calculate savings rate
+    const savingsRate = monthlyIncome > 0 ? 
+      Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
+
+    // Create category breakdown
     const categoryTotals: { [key: string]: number } = {};
     allExpenses.forEach(e => {
       const category = e.category || 'Uncategorized';
@@ -161,25 +111,20 @@ async function fetchDashboardData(): Promise<DashboardData> {
         color: ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#6366f1', '#ec4899'][index % 7] || '#6b7280'
       }));
 
-    // Calculate Emergency Fund
-    const efMonths = (efSettings?.value as EmergencyFundSetting['value'])?.efMonths || DEFAULT_EF_MONTHS;
-    // More robust average monthly expenses (e.g., last 3-6 months average)
-    // For simplicity, using current month's expenses, or total if current is zero.
-    const avgMonthlyExpensesForEF = monthlyExpenses > 0 ? monthlyExpenses : (expenseCount > 0 ? totalExpenses / Math.max(1, 6) : 30000); // Fallback if no expenses
-    const emergencyFundTarget = avgMonthlyExpensesForEF * efMonths;
-    const emergencyFundCurrent = 0; // Placeholder: Requires specific accounts/investments tagged as EF
-
-    // Calculate Savings Rate
-    const savingsRate = monthlyIncome > 0 ? Math.max(0, Math.round(((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)) : 0;
-
-    // Calculate Credit Card Debt
-    // Assuming CreditCardData has 'currentBalance'
-    const creditCardDebt = allCreditCards.reduce((sum, card) => sum + (Number(card.currentBalance) || 0), 0);
-
-    // Prepare Recent Transactions with safe date sorting
+    // Create recent transactions
     const allTransactions = [
-      ...allExpenses.map(e => ({ ...e, type: 'expense' as const, date: e.date || ''})),
-      ...allIncomes.map(i => ({ ...i, type: 'income' as const, date: i.date || ''}))
+      ...allExpenses.map(e => ({ 
+        ...e, 
+        type: 'expense' as const,
+        date: e.date?.toString() || '',
+        description: e.description || 'Expense'
+      })),
+      ...allIncomes.map(i => ({ 
+        ...i, 
+        type: 'income' as const,
+        date: i.date?.toString() || '',
+        description: i.description || 'Income'
+      }))
     ];
 
     const recentTransactions = allTransactions
@@ -194,49 +139,76 @@ async function fetchDashboardData(): Promise<DashboardData> {
       })
       .slice(0, 5)
       .map(t => ({
-        id: String(t.id || self.crypto.randomUUID()),
+        id: String(t.id || crypto.randomUUID()),
         amount: t.type === 'expense' ? -(Number(t.amount) || 0) : (Number(t.amount) || 0),
-        description: t.description || 'N/A',
+        description: t.description,
         category: t.category || 'Uncategorized',
         date: t.date,
         type: t.type
       }));
 
-    const realData: DashboardData = {
+    // Transform goals data
+    const transformedGoals = allGoals.map(goal => ({
+      id: goal.id,
+      title: goal.name,
+      targetAmount: goal.targetAmount,
+      currentAmount: goal.currentAmount,
+      deadline: goal.targetDate.toISOString(),
+      category: goal.type
+    }));
+
+    const dashboardData: DashboardData = {
       totalExpenses,
       monthlyExpenses,
       totalInvestments,
-      expenseCount,
-      investmentCount,
+      expenseCount: allExpenses.length,
+      investmentCount: allInvestments.length,
       emergencyFundTarget,
-      emergencyFundCurrent, // Placeholder
+      emergencyFundCurrent,
       monthlyIncome,
       savingsRate,
-      investmentValue: totalInvestments, // Typically same as totalInvestments unless defined differently
+      investmentValue: totalInvestments,
       creditCardDebt,
-      emergencyFund: emergencyFundTarget, // DashboardData might expect 'emergencyFund' to be the target
-      goals: [], // Placeholder - needs goal feature & Dexie table
+      emergencyFund: emergencyFundTarget,
+      goals: transformedGoals,
       recentTransactions,
-      categoryBreakdown,
+      categoryBreakdown
     };
 
-    Logger.info('Dashboard data calculated from Dexie:', realData);
-    console.log("Dashboard data calculated from Dexie:", realData);
-    return realData;
+    Logger.info('Dashboard data calculated successfully', dashboardData);
+    return dashboardData;
 
   } catch (error) {
     Logger.error('Error fetching dashboard data:', error);
-    console.error('Error fetching dashboard data:', error);
-    return fallbackDashboardData;
+    console.error('Dashboard data fetch error:', error);
+    
+    // Return minimal fallback data
+    return {
+      totalExpenses: 0,
+      monthlyExpenses: 0,
+      totalInvestments: 0,
+      expenseCount: 0,
+      investmentCount: 0,
+      emergencyFundTarget: 0,
+      emergencyFundCurrent: 0,
+      monthlyIncome: 0,
+      savingsRate: 0,
+      investmentValue: 0,
+      creditCardDebt: 0,
+      emergencyFund: 0,
+      goals: [],
+      recentTransactions: [],
+      categoryBreakdown: []
+    };
   }
 }
 
 export function useOptimizedDashboardData() {
   const query = useQuery({
     queryKey: ['dashboard-data'],
-    queryFn: () => fetchDashboardData(),
+    queryFn: fetchDashboardData,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
     refetchOnWindowFocus: false,
     retry: 2,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),

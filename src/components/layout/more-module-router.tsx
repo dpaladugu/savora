@@ -1,7 +1,7 @@
 
 import { Dashboard } from "@/components/dashboard/dashboard";
 import { InvestmentsTracker } from "@/components/investments/investments-tracker";
-import { EmergencyFundCalculator } from "@/components/goals/emergency-fund-calculator";
+import { EnhancedEmergencyFundCalculator } from "@/components/goals/enhanced-emergency-fund-calculator";
 import { RentalTracker } from "@/components/rentals/rental-tracker";
 import { CreditCardStatements } from "@/components/credit-cards/credit-card-statements";
 import { CreditCardFlowTracker } from "@/components/credit-cards/credit-card-flow-tracker";
@@ -9,8 +9,10 @@ import { RecommendationsEngine } from "@/components/recommendations/recommendati
 import { CashflowAnalysis } from "@/components/cashflow/cashflow-analysis";
 import { TelegramIntegration } from "@/components/telegram/telegram-integration";
 import { RecurringTransactionsPage } from "@/components/recurring-transactions/recurring-transactions-page";
-import { VehicleManager } from "@/components/vehicles/VehicleManager"; // Import VehicleManager
+import { VehicleManager } from "@/components/vehicles/VehicleManager";
 import { ModuleHeader } from "./module-header";
+import { ErrorBoundary } from "@/components/error/error-boundary";
+import { Logger } from "@/services/logger";
 
 interface MoreModuleRouterProps {
   activeModule: string;
@@ -18,6 +20,8 @@ interface MoreModuleRouterProps {
 }
 
 export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps) {
+  Logger.debug('MoreModuleRouter render', { activeModule });
+
   const getModuleConfig = (moduleId: string) => {
     const configs = {
       "investments": { title: "Investments", subtitle: "Track stocks, mutual funds & more", showHeader: true },
@@ -37,45 +41,53 @@ export function MoreModuleRouter({ activeModule, onBack }: MoreModuleRouterProps
   const config = getModuleConfig(activeModule);
 
   const renderModuleContent = () => {
-    switch (activeModule) {
-      case "investments":
-        return <InvestmentsTracker />;
-      case "emergency-fund":
-        return <EmergencyFundCalculator />;
-      case "rentals":
-        return <RentalTracker />;
-      case "credit-cards":
-        return <CreditCardFlowTracker />;
-      case "credit-card-statements":
-        return <CreditCardStatements />;
-      case "recommendations":
-        return <RecommendationsEngine />;
-      case "cashflow":
-        return <CashflowAnalysis />;
-      case "telegram":
-        return <TelegramIntegration />;
-      case "recurring-transactions":
-        return <RecurringTransactionsPage />;
-      case "vehicles":
-        return <VehicleManager />;
-      default:
-        return <Dashboard onTabChange={() => {}} onMoreNavigation={() => {}} />;
+    try {
+      switch (activeModule) {
+        case "investments":
+          return <InvestmentsTracker />;
+        case "emergency-fund":
+          return <EnhancedEmergencyFundCalculator />;
+        case "rentals":
+          return <RentalTracker />;
+        case "credit-cards":
+          return <CreditCardFlowTracker />;
+        case "credit-card-statements":
+          return <CreditCardStatements />;
+        case "recommendations":
+          return <RecommendationsEngine />;
+        case "cashflow":
+          return <CashflowAnalysis />;
+        case "telegram":
+          return <TelegramIntegration />;
+        case "recurring-transactions":
+          return <RecurringTransactionsPage />;
+        case "vehicles":
+          return <VehicleManager />;
+        default:
+          Logger.debug('Unknown module, rendering dashboard', { activeModule });
+          return <Dashboard onTabChange={() => {}} onMoreNavigation={() => {}} />;
+      }
+    } catch (error) {
+      Logger.error('Error rendering module content', { activeModule, error });
+      throw error; // Let ErrorBoundary handle it
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
-      <ModuleHeader 
-        title={config.title}
-        subtitle={config.subtitle}
-        onBack={onBack}
-        showBackButton={!!onBack}
-        showHeader={config.showHeader}
-        showThemeToggle={true}
-      />
-      <div className="px-4 py-4">
-        {renderModuleContent()}
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 dark:from-slate-900 dark:to-slate-800 pb-24">
+        <ModuleHeader 
+          title={config.title}
+          subtitle={config.subtitle}
+          onBack={onBack}
+          showBackButton={!!onBack}
+          showHeader={config.showHeader}
+          showThemeToggle={true}
+        />
+        <div className="px-4 py-4">
+          {renderModuleContent()}
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

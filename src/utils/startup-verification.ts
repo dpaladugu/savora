@@ -1,10 +1,10 @@
 
+import { db } from '@/db';
 import { Logger } from '@/services/logger';
-import { db } from '@/db'; // Changed from '@/lib/db' to '@/db'
 
 export interface StartupCheck {
   name: string;
-  status: 'success' | 'error' | 'warning';
+  status: 'success' | 'warning' | 'error';
   message: string;
   details?: any;
 }
@@ -12,103 +12,73 @@ export interface StartupCheck {
 export async function performStartupVerification(): Promise<StartupCheck[]> {
   const checks: StartupCheck[] = [];
   
-  // Check 1: Database connectivity
   try {
-    await db.expenses.toArray();
+    // Database connectivity check
+    await db.expenses.limit(1).toArray();
     checks.push({
-      name: 'Database Connectivity',
+      name: 'Database Connection',
       status: 'success',
-      message: 'Database is accessible and functioning'
+      message: 'Database is accessible'
     });
   } catch (error) {
     checks.push({
-      name: 'Database Connectivity',
+      name: 'Database Connection',
       status: 'error',
       message: 'Failed to connect to database',
       details: error
     });
   }
 
-  // Check 2: Essential services
   try {
-    Logger.info('Startup verification running');
+    // Check for essential tables
+    const expenseCount = await db.expenses.count();
+    const incomeCount = await db.incomes.count();
+    const investmentCount = await db.investments.count();
+    
     checks.push({
-      name: 'Logging Service',
+      name: 'Data Integrity',
       status: 'success',
-      message: 'Logger service is working'
+      message: `Found ${expenseCount} expenses, ${incomeCount} incomes, ${investmentCount} investments`
     });
   } catch (error) {
     checks.push({
-      name: 'Logging Service',
-      status: 'error',
-      message: 'Logger service failed',
+      name: 'Data Integrity',
+      status: 'warning',
+      message: 'Could not verify data integrity',
       details: error
     });
   }
 
-  // Check 3: Local storage availability
   try {
-    localStorage.setItem('test', 'test');
-    localStorage.removeItem('test');
+    // Check app settings
+    const profile = await db.getPersonalProfile();
     checks.push({
-      name: 'Local Storage',
+      name: 'User Profile',
+      status: profile ? 'success' : 'warning',
+      message: profile ? 'User profile found' : 'No user profile found'
+    });
+  } catch (error) {
+    checks.push({
+      name: 'User Profile',
+      status: 'warning',
+      message: 'Could not check user profile',
+      details: error
+    });
+  }
+
+  try {
+    // Check emergency fund settings
+    const efSettings = await db.getEmergencyFundSettings();
+    checks.push({
+      name: 'Emergency Fund Settings',
       status: 'success',
-      message: 'Local storage is available'
+      message: `Emergency fund target: ${efSettings.efMonths} months`
     });
   } catch (error) {
     checks.push({
-      name: 'Local Storage',
+      name: 'Emergency Fund Settings',
       status: 'warning',
-      message: 'Local storage might not be available',
-      details: error
-    });
-  }
-
-  // Check 4: Crypto API availability
-  try {
-    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-      const uuid = crypto.randomUUID();
-      checks.push({
-        name: 'Crypto API',
-        status: 'success',
-        message: 'Crypto API is available for UUID generation'
-      });
-    } else {
-      checks.push({
-        name: 'Crypto API',
-        status: 'warning',
-        message: 'Crypto API not available, using fallback'
-      });
-    }
-  } catch (error) {
-    checks.push({
-      name: 'Crypto API',
-      status: 'warning',
-      message: 'Crypto API check failed',
-      details: error
-    });
-  }
-
-  // Check 5: React/DOM availability
-  try {
-    if (typeof document !== 'undefined' && typeof window !== 'undefined') {
-      checks.push({
-        name: 'DOM Environment',
-        status: 'success',
-        message: 'Running in proper DOM environment'
-      });
-    } else {
-      checks.push({
-        name: 'DOM Environment',
-        status: 'error',
-        message: 'DOM environment not detected'
-      });
-    }
-  } catch (error) {
-    checks.push({
-      name: 'DOM Environment',
-      status: 'error',
-      message: 'DOM environment check failed',
+      message: 'Using default emergency fund settings',
       details: error
     });
   }
@@ -116,22 +86,19 @@ export async function performStartupVerification(): Promise<StartupCheck[]> {
   return checks;
 }
 
-export function logStartupResults(checks: StartupCheck[]) {
-  console.log('=== Startup Verification Results ===');
+export function logStartupResults(checks: StartupCheck[]): void {
   checks.forEach(check => {
-    const icon = check.status === 'success' ? '✅' : check.status === 'warning' ? '⚠️' : '❌';
-    console.log(`${icon} ${check.name}: ${check.message}`);
-    if (check.details) {
-      console.log('  Details:', check.details);
+    const logMessage = `${check.name}: ${check.message}`;
+    switch (check.status) {
+      case 'success':
+        Logger.info(logMessage);
+        break;
+      case 'warning':
+        Logger.debug(logMessage, check.details);
+        break;
+      case 'error':
+        Logger.error(logMessage, check.details);
+        break;
     }
   });
-  
-  const errorCount = checks.filter(c => c.status === 'error').length;
-  const warningCount = checks.filter(c => c.status === 'warning').length;
-  
-  if (errorCount === 0 && warningCount === 0) {
-    console.log('🎉 All startup checks passed!');
-  } else {
-    console.log(`🔍 Startup completed with ${errorCount} errors and ${warningCount} warnings`);
-  }
 }
