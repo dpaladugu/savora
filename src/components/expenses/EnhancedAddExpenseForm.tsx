@@ -1,355 +1,202 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from 'sonner';
+import { ExpenseService } from '@/services/ExpenseService';
+import { Expense } from '@/db';
 
-import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { CalendarIcon, Plus, X, Receipt, MapPin } from "lucide-react";
-import { format } from "date-fns";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { useAuth } from "@/services/auth-service";
-
-import { ExpenseService } from "@/services/ExpenseService";
-import { TagService } from "@/services/TagService";
-import { AccountService } from "@/services/AccountService";
-import { VehicleService } from "@/services/VehicleService";
-
-interface ExpenseFormProps {
-  expenseId?: string;
+interface EnhancedAddExpenseFormProps {
   onExpenseAdded?: () => void;
-  onExpenseUpdated?: () => void;
+  editingExpense?: Expense | null;
+  onEditComplete?: () => void;
 }
 
-export function EnhancedAddExpenseForm({ expenseId, onExpenseAdded, onExpenseUpdated }: ExpenseFormProps) {
-  const [description, setDescription] = useState("");
-  const [amount, setAmount] = useState("");
-  const [date, setDate] = useState<Date | undefined>(new Date());
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [selectedAccount, setSelectedAccount] = useState("");
-  const [selectedVehicle, setSelectedVehicle] = useState("");
-  const [category, setCategory] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("");
-  const [isAddingTag, setIsAddingTag] = useState(false);
-  const [newTagName, setNewTagName] = useState("");
-  const [newTagDescription, setNewTagDescription] = useState("");
-  const [tags, setTags] = useState<any[]>([]);
-  const [accounts, setAccounts] = useState<any[]>([]);
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isNewExpense, setIsNewExpense] = useState(true);
+export function EnhancedAddExpenseForm({ onExpenseAdded, editingExpense, onEditComplete }: EnhancedAddExpenseFormProps) {
+  const [amount, setAmount] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState('');
+  const [date, setDate] = useState('');
+  const [tags, setTags] = useState('');
+  const [account, setAccount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [categories, setCategories] = useState<string[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<string[]>([]);
 
-  const { user } = useAuth();
-
-  useEffect(() => {
-    const fetchTags = async () => {
-      if (!user?.uid) return;
-      try {
-        const fetchedTags = await TagService.getTags();
-        setTags(fetchedTags);
-      } catch (error: any) {
-        toast.error(`Failed to fetch tags: ${error.message}`);
-      }
-    };
-
-    const fetchAccounts = async () => {
-      if (!user?.uid) return;
-      try {
-        const fetchedAccounts = await AccountService.getAccounts();
-        setAccounts(fetchedAccounts);
-      } catch (error: any) {
-        toast.error(`Failed to fetch accounts: ${error.message}`);
-      }
-    };
-
-    const fetchVehicles = async () => {
-      if (!user?.uid) return;
-      try {
-        const fetchedVehicles = await VehicleService.getVehicles();
-        setVehicles(fetchedVehicles);
-      } catch (error: any) {
-        toast.error(`Failed to fetch vehicles: ${error.message}`);
-      }
-    };
-
-    fetchTags();
-    fetchAccounts();
-    fetchVehicles();
-  }, [user?.uid]);
-
-  useEffect(() => {
-    const fetchExpense = async () => {
-      if (!expenseId || !user?.uid) return;
-      try {
-        const expense = await ExpenseService.getExpenseById(expenseId);
-        if (expense) {
-          setIsNewExpense(false);
-          setDescription(expense.description || "");
-          setAmount(expense.amount ? expense.amount.toString() : "");
-          setDate(expense.date ? new Date(expense.date) : undefined);
-          setCategory(expense.category || "");
-          setPaymentMethod(expense.payment_method || "");
-          // Handle tags as array
-          setSelectedTags(Array.isArray(expense.tags) ? expense.tags : (expense.tags ? [expense.tags] : []));
-        }
-      } catch (error: any) {
-        toast.error(`Failed to fetch expense: ${error.message}`);
-      }
-    };
-
-    if (expenseId) {
-      fetchExpense();
-    } else {
-      setIsNewExpense(true);
-      setDescription("");
-      setAmount("");
-      setDate(new Date());
-      setCategory("");
-      setPaymentMethod("");
-      setSelectedTags([]);
-    }
-  }, [expenseId, user?.uid]);
-
-  const handleAddTag = async () => {
-    if (!user?.uid) {
-      toast.error("User not authenticated.");
-      return;
-    }
-
-    if (!newTagName.trim()) {
-      toast.error("Tag name cannot be empty.");
-      return;
-    }
-
-    setIsSaving(true);
+  const loadInitialData = async () => {
     try {
-      const newTag = await TagService.addTag({
-        name: newTagName,
-        user_id: user.uid,
-        created_at: new Date(),
-        updated_at: new Date()
-      });
-      setTags([...tags, newTag]);
-      setNewTagName("");
-      setNewTagDescription("");
-      setIsAddingTag(false);
-      toast.success("Tag added successfully!");
-    } catch (error: any) {
-      toast.error(`Failed to add tag: ${error.message}`);
-    } finally {
-      setIsSaving(false);
+      // Get categories from existing expenses
+      const expenses = await ExpenseService.getExpenses();
+      const uniqueCategories = [...new Set(expenses.map(e => e.category))];
+      setCategories(uniqueCategories);
+      
+      // Get payment methods from existing expenses  
+      const uniquePaymentMethods = [...new Set(expenses.map(e => e.paymentMethod).filter(Boolean))];
+      setPaymentMethods(uniquePaymentMethods);
+    } catch (error) {
+      console.error('Error loading initial data:', error);
     }
   };
 
-  const handleSaveExpense = async () => {
-    if (!user?.uid) {
-      toast.error("User not authenticated.");
+  useEffect(() => {
+    loadInitialData();
+  }, []);
+
+  useEffect(() => {
+    if (editingExpense) {
+      setAmount(editingExpense.amount.toString());
+      setDescription(editingExpense.description);
+      setCategory(editingExpense.category);
+      setDate(editingExpense.date);
+      setPaymentMethod(editingExpense.paymentMethod || '');
+      // Handle tags properly - convert array to string
+      const tagsString = Array.isArray(editingExpense.tags) 
+        ? editingExpense.tags.join(', ') 
+        : (editingExpense.tags || '');
+      setTags(tagsString);
+      setAccount(editingExpense.account || '');
+    }
+  }, [editingExpense]);
+
+  const resetForm = () => {
+    setAmount('');
+    setDescription('');
+    setCategory('');
+    setDate('');
+    setTags('');
+    setAccount('');
+    setPaymentMethod('');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!amount || !description || !category || !date) {
+      toast.error('Please fill in all required fields');
       return;
     }
 
-    if (!amount.trim() || isNaN(Number(amount))) {
-      toast.error("Amount must be a valid number.");
-      return;
-    }
-
-    setIsSaving(true);
     try {
       const expenseData = {
-        id: expenseId || crypto.randomUUID(),
+        user_id: 'current-user', // This should come from auth context
         description,
         amount: parseFloat(amount),
-        date: date ? date.toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-        category: category || "Other",
-        tags: selectedTags
+        date,
+        category,
+        paymentMethod: paymentMethod || '',
+        // Convert tags string to array
+        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        account: account || '',
+        source: 'manual',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      if (isNewExpense && !expenseId) {
-        await ExpenseService.addExpense(expenseData);
-        toast.success("Expense added successfully!");
-        if (onExpenseAdded) {
-          onExpenseAdded();
-        }
+      if (editingExpense) {
+        await ExpenseService.updateExpense(editingExpense.id, expenseData);
+        toast.success('Expense updated successfully');
+        onEditComplete?.();
       } else {
-        if (expenseId) {
-          await ExpenseService.updateExpense(expenseId, expenseData);
-          toast.success("Expense updated successfully!");
-          if (onExpenseUpdated) {
-            onExpenseUpdated();
-          }
-        } else {
-          toast.error("Expense ID is missing for update operation.");
-        }
+        await ExpenseService.addExpense(expenseData);
+        toast.success('Expense added successfully');
+        onExpenseAdded?.();
       }
-    } catch (error: any) {
-      toast.error(`Failed to save expense: ${error.message}`);
-    } finally {
-      setIsSaving(false);
+
+      // Reset form
+      resetForm();
+    } catch (error) {
+      console.error('Error saving expense:', error);
+      toast.error('Failed to save expense');
     }
   };
-
-  const handleDeleteExpense = async () => {
-    if (!user?.uid || !expenseId) {
-      toast.error("User not authenticated or Expense ID missing.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await ExpenseService.deleteExpense(expenseId);
-      toast.success("Expense deleted successfully!");
-      if (onExpenseUpdated) {
-        onExpenseUpdated();
-      }
-    } catch (error: any) {
-      toast.error(`Failed to delete expense: ${error.message}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleTagToggle = (tagId: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tagId) 
-        ? prev.filter(id => id !== tagId)
-        : [...prev, tagId]
-    );
-  };
-
-  const sortedTags = [...tags].sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{isNewExpense ? "Add Expense" : "Edit Expense"}</CardTitle>
+        <CardTitle>{editingExpense ? 'Edit Expense' : 'Add Expense'}</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-2">
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            placeholder="Brief description of the expense"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="amount">Amount</Label>
-          <Input
-            id="amount"
-            placeholder="0.00"
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="category">Category</Label>
-          <Input
-            id="category"
-            placeholder="Expense category"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="paymentMethod">Payment Method</Label>
-          <Input
-            id="paymentMethod"
-            placeholder="Cash, Card, etc."
-            value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value)}
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label>Date</Label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant={"outline"}
-                className={cn(
-                  "w-[240px] justify-start text-left font-normal",
-                  !date && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {date ? format(date, "PPP") : <span>Pick a date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="center" side="bottom">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={setDate}
-                disabled={(date) =>
-                  date > new Date()
-                }
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-        </div>
-        <div className="grid gap-2">
-          <Label>Tags</Label>
-          <div className="flex flex-wrap gap-2">
-            {sortedTags.map((tag) => (
-              <Badge
-                key={tag.id}
-                variant={selectedTags.includes(tag.id) ? "default" : "outline"}
-                className="cursor-pointer"
-                onClick={() => handleTagToggle(tag.id)}
-              >
-                {tag.name}
-              </Badge>
-            ))}
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="amount">Amount</Label>
+            <Input
+              type="number"
+              id="amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              required
+            />
           </div>
-          <Button variant="outline" size="sm" onClick={() => setIsAddingTag(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Tag
-          </Button>
-        </div>
-        <Button onClick={handleSaveExpense} disabled={isSaving}>
-          {isSaving ? "Saving..." : "Save Expense"}
-        </Button>
-        {!isNewExpense && expenseId ? (
-          <Button variant="destructive" onClick={handleDeleteExpense} disabled={isSaving}>
-            {isSaving ? "Deleting..." : "Delete Expense"}
-          </Button>
-        ) : null}
+          <div>
+            <Label htmlFor="description">Description</Label>
+            <Input
+              type="text"
+              id="description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="category">Category</Label>
+            <Select value={category} onValueChange={setCategory} required>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map(cat => (
+                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="date">Date</Label>
+            <Input
+              type="date"
+              id="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              required
+            />
+          </div>
+          <div>
+            <Label htmlFor="paymentMethod">Payment Method</Label>
+            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select payment method" />
+              </SelectTrigger>
+              <SelectContent>
+                {paymentMethods.map(method => (
+                  <SelectItem key={method} value={method}>{method}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="tags">Tags (comma-separated)</Label>
+            <Textarea
+              id="tags"
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+              placeholder="e.g., food, groceries"
+            />
+          </div>
+          <div>
+            <Label htmlFor="account">Account</Label>
+            <Input
+              type="text"
+              id="account"
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
+            />
+          </div>
+          <Button type="submit">{editingExpense ? 'Update Expense' : 'Add Expense'}</Button>
+        </form>
       </CardContent>
-      {isAddingTag && (
-        <Dialog open={isAddingTag} onOpenChange={setIsAddingTag}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Tag</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="tagName">Tag Name</Label>
-                <Input
-                  id="tagName"
-                  placeholder="Tag Name"
-                  value={newTagName}
-                  onChange={(e) => setNewTagName(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex justify-end space-x-2">
-              <Button variant="secondary" onClick={() => setIsAddingTag(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddTag} disabled={isSaving}>
-                {isSaving ? "Adding..." : "Add Tag"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </Card>
   );
 }

@@ -1,320 +1,295 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { CalendarIcon, Plus, Search, Filter, Edit, Trash2 } from 'lucide-react';
+import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { ExpenseService } from '@/services/ExpenseService';
+import { Expense } from '@/db';
+import { EnhancedAddExpenseForm } from './EnhancedAddExpenseForm';
+import { toast } from 'sonner';
 
-import React, { useState, useEffect, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CalendarIcon, Plus, Filter, Download, Upload, Trash2, Edit, Search } from "lucide-react";
-import { format, parseISO, isWithinInterval, startOfMonth, endOfMonth } from "date-fns";
-import { cn } from "@/lib/utils";
-import { toast } from "sonner";
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from "@/db";
-import type { Expense } from "@/db";
-import { ExpenseService } from "@/services/ExpenseService";
-import { EnhancedAddExpenseForm } from "./EnhancedAddExpenseForm";
+interface DateFilter {
+  from?: Date;
+  to?: Date;
+}
 
 export function ExpenseTracker() {
-  const [selectedTab, setSelectedTab] = useState("list");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("");
-  const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date())
-  });
-  const [editingExpenseId, setEditingExpenseId] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(false);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState<DateFilter>({});
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
 
-  // Get expenses from database
-  const expenses = useLiveQuery(() => db.expenses.orderBy('date').reverse().toArray(), []);
-
-  // Filter and search expenses
-  const filteredExpenses = useMemo(() => {
-    if (!expenses) return [];
-
-    return expenses.filter((expense) => {
-      const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesCategory = !selectedCategory || expense.category === selectedCategory;
-      
-      const matchesPaymentMethod = !selectedPaymentMethod || 
-                                  (expense.payment_method && expense.payment_method === selectedPaymentMethod);
-
-      let matchesDateRange = true;
-      if (dateRange.from || dateRange.to) {
-        const expenseDate = typeof expense.date === 'string' ? parseISO(expense.date) : expense.date;
-        if (dateRange.from && dateRange.to) {
-          matchesDateRange = isWithinInterval(expenseDate, { start: dateRange.from, end: dateRange.to });
-        } else if (dateRange.from) {
-          matchesDateRange = expenseDate >= dateRange.from;
-        } else if (dateRange.to) {
-          matchesDateRange = expenseDate <= dateRange.to;
-        }
-      }
-
-      return matchesSearch && matchesCategory && matchesPaymentMethod && matchesDateRange;
-    });
-  }, [expenses, searchTerm, selectedCategory, selectedPaymentMethod, dateRange]);
-
-  // Get unique categories and payment methods
-  const categories = useMemo(() => {
-    if (!expenses) return [];
-    return [...new Set(expenses.map(e => e.category))].sort();
-  }, [expenses]);
-
-  const paymentMethods = useMemo(() => {
-    if (!expenses) return [];
-    return [...new Set(expenses.map(e => e.payment_method).filter(Boolean))].sort();
-  }, [expenses]);
-
-  // Calculate totals
-  const totalAmount = filteredExpenses.reduce((sum, expense) => sum + expense.amount, 0);
-  const averageAmount = filteredExpenses.length > 0 ? totalAmount / filteredExpenses.length : 0;
-
-  const handleDeleteExpense = async (id: string) => {
+  const loadExpenses = async () => {
     try {
-      setIsLoading(true);
-      await ExpenseService.deleteExpense(id);
-      toast.success("Expense deleted successfully!");
-    } catch (error: any) {
-      toast.error(`Failed to delete expense: ${error.message}`);
+      setLoading(true);
+      const expenseData = await ExpenseService.getExpenses();
+      setExpenses(expenseData);
+    } catch (error) {
+      console.error('Error loading expenses:', error);
+      toast.error('Failed to load expenses');
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const handleEditExpense = (id: string) => {
-    setEditingExpenseId(id);
-    setSelectedTab("add");
+  useEffect(() => {
+    loadExpenses();
+  }, []);
+
+  const filteredExpenses = useMemo(() => {
+    return expenses.filter(expense => {
+      const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           expense.category.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesCategory = !categoryFilter || expense.category === categoryFilter;
+      const matchesPayment = !paymentMethodFilter || expense.paymentMethod === paymentMethodFilter;
+      
+      let matchesDate = true;
+      if (dateFilter?.from && dateFilter?.to) {
+        const expenseDate = new Date(expense.date);
+        matchesDate = expenseDate >= dateFilter.from && expenseDate <= dateFilter.to;
+      }
+      
+      return matchesSearch && matchesCategory && matchesPayment && matchesDate;
+    });
+  }, [expenses, searchTerm, categoryFilter, paymentMethodFilter, dateFilter]);
+
+  const categories = useMemo(() => {
+    return [...new Set(expenses.map(e => e.category))];
+  }, [expenses]);
+
+  const paymentMethods = useMemo(() => {
+    return [...new Set(expenses.map(e => e.paymentMethod).filter(Boolean))];
+  }, [expenses]);
+
+  const handleDeleteExpense = async (id: string) => {
+    try {
+      await ExpenseService.deleteExpense(id);
+      await loadExpenses();
+      toast.success('Expense deleted successfully');
+    } catch (error) {
+      console.error('Error deleting expense:', error);
+      toast.error('Failed to delete expense');
+    }
   };
 
-  const handleExpenseAdded = () => {
-    setSelectedTab("list");
-    setEditingExpenseId(undefined);
+  const handleEditExpense = (expense: Expense) => {
+    setEditingExpense(expense);
+    setShowEditDialog(true);
   };
 
-  const handleExpenseUpdated = () => {
-    setSelectedTab("list");
-    setEditingExpenseId(undefined);
+  const handleUpdateExpense = async (updatedData: Partial<Expense>) => {
+    if (!editingExpense) return;
+    
+    try {
+      // Convert tags to array if it's a string
+      const processedData = {
+        ...updatedData,
+        tags: typeof updatedData.tags === 'string' 
+          ? updatedData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+          : updatedData.tags
+      };
+      
+      await ExpenseService.updateExpense(editingExpense.id, processedData);
+      await loadExpenses();
+      setEditingExpense(null);
+      setShowEditDialog(false);
+      toast.success('Expense updated successfully');
+    } catch (error) {
+      console.error('Error updating expense:', error);
+      toast.error('Failed to update expense');
+    }
   };
 
-  const formatDate = (date: string | Date) => {
-    const d = typeof date === 'string' ? parseISO(date) : date;
-    return format(d, 'dd MMM yyyy');
-  };
-
-  const formatTags = (tags: string[] | undefined) => {
-    if (!tags || !Array.isArray(tags)) return [];
-    return tags;
+  const handleAddExpense = async (expenseData: Omit<Expense, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
+    try {
+      // Convert tags to array if it's a string
+      const processedData = {
+        ...expenseData,
+        tags: typeof expenseData.tags === 'string' 
+          ? expenseData.tags.split(',').map(tag => tag.trim()).filter(Boolean)
+          : expenseData.tags || []
+      };
+      
+      await ExpenseService.addExpense(processedData);
+      await loadExpenses();
+      setShowAddDialog(false);
+      toast.success('Expense added successfully');
+    } catch (error) {
+      console.error('Error adding expense:', error);
+      toast.error('Failed to add expense');
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Expense Tracker</h2>
+        <h2 className="text-2xl font-bold">Expenses</h2>
+        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Expense
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add New Expense</DialogTitle>
+            </DialogHeader>
+            <EnhancedAddExpenseForm
+              onExpenseAdded={() => {
+                loadExpenses();
+                setShowAddDialog(false);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="list">Expense List</TabsTrigger>
-          <TabsTrigger value="add">
-            {editingExpenseId ? "Edit Expense" : "Add Expense"}
-          </TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+      <div className="flex items-center space-x-4">
+        <Input
+          type="search"
+          placeholder="Search expenses..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="flex-1"
+        />
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by category" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Categories</SelectItem>
+            {categories.map((category) => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={paymentMethodFilter} onValueChange={setPaymentMethodFilter}>
+          <SelectTrigger>
+            <SelectValue placeholder="Filter by payment method" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">All Payment Methods</SelectItem>
+            {paymentMethods.map((method) => (
+              <SelectItem key={method} value={method}>
+                {method}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        <TabsContent value="list" className="space-y-4">
-          {/* Filters */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="w-5 h-5" />
-                Filters & Search
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div>
-                  <Label>Search</Label>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search expenses..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
-                    />
+      {/* Date Filter */}
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {dateFilter?.from ? (
+              dateFilter.to ? (
+                <>
+                  {format(dateFilter.from, "LLL dd, y")} -{" "}
+                  {format(dateFilter.to, "LLL dd, y")}
+                </>
+              ) : (
+                format(dateFilter.from, "LLL dd, y")
+              )
+            ) : (
+              "Pick a date range"
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            initialFocus
+            mode="range"
+            defaultMonth={dateFilter?.from}
+            selected={dateFilter as any}
+            onSelect={setDateFilter}
+            numberOfMonths={2}
+          />
+        </PopoverContent>
+      </Popover>
+
+      {/* Expenses List */}
+      <div className="grid gap-4">
+        {filteredExpenses.map((expense) => (
+          <Card key={expense.id}>
+            <CardContent className="p-4">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="font-medium">{expense.description}</h3>
+                    <Badge variant="secondary">{expense.category}</Badge>
+                    {expense.paymentMethod && (
+                      <Badge variant="outline">{expense.paymentMethod}</Badge>
+                    )}
+                  </div>
+                  <div className="text-sm text-muted-foreground space-y-1">
+                    <p>Amount: ₹{expense.amount.toLocaleString()}</p>
+                    <p>Date: {format(new Date(expense.date), 'PPP')}</p>
+                    {expense.tags && expense.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {expense.tags.map((tag, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 
-                <div>
-                  <Label>Category</Label>
-                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All categories</SelectItem>
-                      {categories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Payment Method</Label>
-                  <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="All methods" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">All methods</SelectItem>
-                      {paymentMethods.map((method) => (
-                        <SelectItem key={method} value={method}>
-                          {method}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label>Date Range</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className="w-full justify-start">
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {dateRange.from ? format(dateRange.from, "dd MMM") : "From"} - {dateRange.to ? format(dateRange.to, "dd MMM") : "To"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="range"
-                        selected={dateRange}
-                        onSelect={(range) => setDateRange(range || {})}
-                        numberOfMonths={2}
-                      />
-                    </PopoverContent>
-                  </Popover>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleEditExpense(expense)}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteExpense(expense.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             </CardContent>
           </Card>
+        ))}
+      </div>
 
-          {/* Summary */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-2xl font-bold">₹{totalAmount.toLocaleString()}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Transactions</p>
-                  <p className="text-2xl font-bold">{filteredExpenses.length}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-4">
-                <div className="text-center">
-                  <p className="text-sm text-muted-foreground">Average Amount</p>
-                  <p className="text-2xl font-bold">₹{averageAmount.toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Expense List */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Expenses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredExpenses.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredExpenses.map((expense) => (
-                    <div key={expense.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium">{expense.description}</p>
-                          <Badge variant="outline">{expense.category}</Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>{formatDate(expense.date)}</span>
-                          {expense.payment_method && <span>{expense.payment_method}</span>}
-                        </div>
-                        {formatTags(expense.tags).length > 0 && (
-                          <div className="flex gap-1 mt-2">
-                            {formatTags(expense.tags).map((tag, index) => (
-                              <Badge key={index} variant="secondary" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">₹{expense.amount.toLocaleString()}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEditExpense(expense.id)}
-                          disabled={isLoading}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteExpense(expense.id)}
-                          disabled={isLoading}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No expenses found matching your criteria.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="add">
-          <EnhancedAddExpenseForm 
-            expenseId={editingExpenseId}
-            onExpenseAdded={handleExpenseAdded}
-            onExpenseUpdated={handleExpenseUpdated}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Expense</DialogTitle>
+          </DialogHeader>
+          <EnhancedAddExpenseForm
+            editingExpense={editingExpense}
+            onEditComplete={() => {
+              loadExpenses();
+              setEditingExpense(null);
+              setShowEditDialog(false);
+            }}
           />
-        </TabsContent>
-
-        <TabsContent value="analytics">
-          <Card>
-            <CardContent className="p-8 text-center">
-              <p className="text-muted-foreground">Analytics coming soon...</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
