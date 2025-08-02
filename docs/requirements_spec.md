@@ -1,3 +1,4 @@
+'''
 # Savora Personal Finance App  
 **Requirement Specification v1.1 – FINAL & LIFE-OPTIMIZED**  
 **Effective Date:** 26 July 2025  
