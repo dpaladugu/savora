@@ -8,24 +8,17 @@
 import { db } from "@/lib/db";
 import type { CreditCard } from "@/lib/db";
 
-// Extended CreditCard interface to include missing fields from tests
-export interface ExtendedCreditCard extends CreditCard {
-  fxTxnFee: number;
-  emiConversion: boolean;
-}
-
 export class CreditCardService {
 
-  static async addCreditCard(cardData: Omit<ExtendedCreditCard, 'id'>): Promise<string> {
+  static async addCreditCard(cardData: Omit<CreditCard, 'id'>): Promise<string> {
     try {
       const newId = self.crypto.randomUUID();
       
-      // Map to base CreditCard interface (remove extended fields)
-      const { fxTxnFee, emiConversion, ...baseCardData } = cardData;
-      
       const recordToAdd: CreditCard = {
-        ...baseCardData,
+        ...cardData,
         id: newId,
+        fxTxnFee: cardData.fxTxnFee || 0,
+        emiConversion: cardData.emiConversion || false,
       };
       await db.creditCards.add(recordToAdd);
       return newId;
@@ -35,11 +28,9 @@ export class CreditCardService {
     }
   }
 
-  static async updateCreditCard(id: string, updates: Partial<ExtendedCreditCard>): Promise<number> {
+  static async updateCreditCard(id: string, updates: Partial<CreditCard>): Promise<number> {
     try {
-      // Remove extended fields before updating
-      const { fxTxnFee, emiConversion, ...baseUpdates } = updates;
-      const updatedCount = await db.creditCards.update(id, baseUpdates);
+      const updatedCount = await db.creditCards.update(id, updates);
       return updatedCount;
     } catch (error) {
       console.error(`Error in CreditCardService.updateCreditCard for id ${id}:`, error);

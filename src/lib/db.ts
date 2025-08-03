@@ -1,4 +1,3 @@
-
 import Dexie, { Table } from 'dexie';
 
 // --- Enhanced Interfaces from Requirements Spec ---

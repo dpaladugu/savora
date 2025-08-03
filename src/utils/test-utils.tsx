@@ -3,6 +3,72 @@ import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
 
+// Mock data creators
+export const createMockTxn = (overrides: any = {}) => ({
+  id: 'mock-txn-id',
+  date: new Date('2024-01-01'),
+  amount: -1000,
+  currency: 'INR',
+  category: 'Food',
+  note: 'Test transaction',
+  tags: ['test'],
+  paymentMix: [{ mode: 'Cash', amount: 1000 }],
+  splitWith: [],
+  isPartialRent: false,
+  isSplit: false,
+  ...overrides,
+});
+
+export const createMockGoal = (overrides: any = {}) => ({
+  id: 'mock-goal-id',
+  name: 'Test Goal',
+  slug: 'test-goal',
+  type: 'Short' as const,
+  targetAmount: 50000,
+  targetDate: new Date('2024-12-31'),
+  currentAmount: 10000,
+  notes: 'Test goal notes',
+  ...overrides,
+});
+
+export const createMockInvestment = (overrides: any = {}) => ({
+  id: 'mock-investment-id',
+  type: 'MF-Growth' as const,
+  name: 'Test Mutual Fund',
+  currentNav: 100,
+  units: 100,
+  investedValue: 10000,
+  currentValue: 12000,
+  startDate: new Date('2024-01-01'),
+  frequency: 'Monthly' as const,
+  taxBenefit: false,
+  familyMember: 'Self',
+  notes: 'Test investment',
+  ...overrides,
+});
+
+export const createMockCreditCard = (overrides: any = {}) => ({
+  id: 'mock-card-id',
+  issuer: 'Test Bank',
+  bankName: 'Test Bank',
+  last4: '1234',
+  network: 'Visa' as const,
+  cardVariant: 'Premium',
+  productVariant: 'Rewards',
+  annualFee: 1000,
+  annualFeeGst: 180,
+  creditLimit: 100000,
+  creditLimitShared: false,
+  fuelSurchargeWaiver: true,
+  rewardPointsBalance: 5000,
+  cycleStart: 1,
+  stmtDay: 5,
+  dueDay: 20,
+  fxTxnFee: 3.5,
+  emiConversion: true,
+  ...overrides,
+});
+
 // Mock database tables with all required methods
 export const createMockDb = () => ({
   // Core tables
@@ -75,7 +141,7 @@ export const createMockDb = () => ({
     get: vi.fn().mockResolvedValue(undefined),
     put: vi.fn().mockResolvedValue('mock-id'),
     bulkAdd: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mockResolvedValue(undefined),
+    clear: vi.fn().mkResolvedValue(undefined),
   },
   // New required tables
   rentalProperties: {

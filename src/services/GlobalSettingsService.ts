@@ -1,122 +1,91 @@
 
-import { db } from "@/lib/db";
-import type { GlobalSettings, Contact } from "@/lib/db";
-import { Logger } from './logger';
+import { db } from '@/lib/db';
+import type { GlobalSettings } from '@/lib/db';
 
 export class GlobalSettingsService {
-  private static readonly SETTINGS_ID = 'global-settings-singleton';
-
   static async getGlobalSettings(): Promise<GlobalSettings> {
     try {
-      const settings = await db.globalSettings.get(GlobalSettingsService.SETTINGS_ID);
-      
-      if (!settings) {
-        // Create default settings if none exist
-        const defaultSettings: GlobalSettings = {
-          id: GlobalSettingsService.SETTINGS_ID,
-          taxRegime: 'New',
-          autoLockMinutes: 5,
-          birthdayBudget: 0,
-          birthdayAlertDays: 7,
-          emergencyContacts: [],
-        };
-        
-        await db.globalSettings.add(defaultSettings);
-        Logger.info('Created default global settings');
-        return defaultSettings;
+      const settings = await db.globalSettings.get('default');
+      if (settings) {
+        return settings;
       }
-      
-      return settings;
-    } catch (error) {
-      Logger.error('Error in GlobalSettingsService.getGlobalSettings:', error);
-      throw error;
-    }
-  }
 
-  static async updateGlobalSettings(updates: Partial<Omit<GlobalSettings, 'id'>>): Promise<void> {
-    try {
-      const existingSettings = await GlobalSettingsService.getGlobalSettings();
-      
-      const updatedSettings: GlobalSettings = {
-        ...existingSettings,
-        ...updates,
-        id: GlobalSettingsService.SETTINGS_ID, // Ensure ID remains constant
+      // Create default settings if none exist
+      const defaultSettings: GlobalSettings = {
+        id: 'default',
+        taxRegime: 'New',
+        autoLockMinutes: 5,
+        birthdayBudget: 5000,
+        birthdayAlertDays: 7,
+        emergencyContacts: [],
+        dependents: [],
+        salaryCreditDay: 1,
+        annualBonus: 0,
+        medicalInflationRate: 8.0,
+        educationInflation: 10.0,
+        vehicleInflation: 6.0,
+        maintenanceInflation: 7.0,
+        privacyMask: false,
+        failedPinAttempts: 0,
+        maxFailedAttempts: 10,
+        darkMode: false,
+        timeZone: 'Asia/Kolkata',
+        isTest: false,
+        theme: 'light',
+        deviceThemes: {},
       };
 
-      await db.globalSettings.put(updatedSettings);
-      Logger.info('Updated global settings', updates);
+      await db.globalSettings.add(defaultSettings);
+      return defaultSettings;
     } catch (error) {
-      Logger.error('Error in GlobalSettingsService.updateGlobalSettings:', error);
+      console.error('Error fetching global settings:', error);
       throw error;
     }
   }
 
-  static async addEmergencyContact(contact: Contact): Promise<void> {
+  static async updateGlobalSettings(updates: Partial<GlobalSettings>): Promise<void> {
     try {
-      const settings = await GlobalSettingsService.getGlobalSettings();
-      const updatedContacts = [...settings.emergencyContacts, contact];
+      await db.globalSettings.update('default', updates);
+    } catch (error) {
+      console.error('Error updating global settings:', error);
+      throw error;
+    }
+  }
+
+  static async incrementFailedPinAttempts(): Promise<number> {
+    try {
+      const settings = await this.getGlobalSettings();
+      const newAttempts = settings.failedPinAttempts + 1;
       
-      await GlobalSettingsService.updateGlobalSettings({
-        emergencyContacts: updatedContacts
+      await this.updateGlobalSettings({ 
+        failedPinAttempts: newAttempts 
       });
-      Logger.info('Added emergency contact', contact);
-    } catch (error) {
-      Logger.error('Error in GlobalSettingsService.addEmergencyContact:', error);
-      throw error;
-    }
-  }
-
-  static async removeEmergencyContact(contactName: string): Promise<void> {
-    try {
-      const settings = await GlobalSettingsService.getGlobalSettings();
-      const updatedContacts = settings.emergencyContacts.filter(
-        contact => contact.name !== contactName
-      );
       
-      await GlobalSettingsService.updateGlobalSettings({
-        emergencyContacts: updatedContacts
+      return newAttempts;
+    } catch (error) {
+      console.error('Error incrementing failed PIN attempts:', error);
+      throw error;
+    }
+  }
+
+  static async resetFailedPinAttempts(): Promise<void> {
+    try {
+      await this.updateGlobalSettings({ 
+        failedPinAttempts: 0 
       });
-      Logger.info('Removed emergency contact', contactName);
     } catch (error) {
-      Logger.error('Error in GlobalSettingsService.removeEmergencyContact:', error);
+      console.error('Error resetting failed PIN attempts:', error);
       throw error;
     }
   }
 
-  static async updateTaxRegime(regime: 'Old' | 'New'): Promise<void> {
+  static async shouldTriggerSelfDestruct(): Promise<boolean> {
     try {
-      await GlobalSettingsService.updateGlobalSettings({ taxRegime: regime });
-      Logger.info('Updated tax regime', regime);
+      const settings = await this.getGlobalSettings();
+      return settings.failedPinAttempts >= settings.maxFailedAttempts;
     } catch (error) {
-      Logger.error('Error in GlobalSettingsService.updateTaxRegime:', error);
-      throw error;
-    }
-  }
-
-  static async updateAutoLockMinutes(minutes: number): Promise<void> {
-    try {
-      if (minutes < 1 || minutes > 10) {
-        throw new Error('Auto lock minutes must be between 1 and 10');
-      }
-      
-      await GlobalSettingsService.updateGlobalSettings({ autoLockMinutes: minutes });
-      Logger.info('Updated auto lock minutes', minutes);
-    } catch (error) {
-      Logger.error('Error in GlobalSettingsService.updateAutoLockMinutes:', error);
-      throw error;
-    }
-  }
-
-  static async updateBirthdaySettings(budget: number, alertDays: number): Promise<void> {
-    try {
-      await GlobalSettingsService.updateGlobalSettings({
-        birthdayBudget: budget,
-        birthdayAlertDays: alertDays
-      });
-      Logger.info('Updated birthday settings', { budget, alertDays });
-    } catch (error) {
-      Logger.error('Error in GlobalSettingsService.updateBirthdaySettings:', error);
-      throw error;
+      console.error('Error checking self-destruct status:', error);
+      return false;
     }
   }
 }

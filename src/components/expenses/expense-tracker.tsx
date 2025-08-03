@@ -1,31 +1,30 @@
+
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Edit, Trash2, Search, Filter } from 'lucide-react';
-import { toast } from 'sonner';
-import { ExpenseService } from '@/services/ExpenseService';
-import { Expense } from '@/db';
+import { Trash2, Edit3, Plus } from 'lucide-react';
+import { ExpenseService, type Expense } from '@/services/ExpenseService';
+import { useToast } from '@/hooks/use-toast';
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   // Form state
-  const [amount, setAmount] = useState('');
-  const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
-  const [date, setDate] = useState('');
-  const [tags, setTags] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [formData, setFormData] = useState({
+    amount: '',
+    description: '',
+    category: '',
+    date: new Date().toISOString().split('T')[0],
+    tags: '',
+    paymentMethod: 'Cash',
+  });
 
   useEffect(() => {
     loadExpenses();
@@ -34,356 +33,280 @@ export function ExpenseTracker() {
   const loadExpenses = async () => {
     try {
       setLoading(true);
-      const expenseData = await ExpenseService.getExpenses();
-      setExpenses(expenseData);
+      const data = await ExpenseService.getExpenses();
+      setExpenses(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
     } catch (error) {
       console.error('Error loading expenses:', error);
-      toast.error('Failed to load expenses');
+      toast({
+        title: 'Error',
+        description: 'Failed to load expenses',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setAmount('');
-    setDescription('');
-    setCategory('');
-    setDate('');
-    setTags('');
-    setPaymentMethod('');
-  };
-
-  const handleAddExpense = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!amount || !description || !category || !date) {
-      toast.error('Please fill in all required fields');
+    if (!formData.amount || !formData.description || !formData.category) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
       return;
     }
 
     try {
       const expenseData = {
-        description,
-        amount: parseFloat(amount),
-        category,
-        date,
-        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        paymentMethod: paymentMethod || ''
+        amount: parseFloat(formData.amount),
+        description: formData.description,
+        category: formData.category,
+        date: formData.date,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        payment_method: formData.paymentMethod,
+        source: 'manual',
+        account: 'default',
       };
 
-      await ExpenseService.addExpense(expenseData);
-      toast.success('Expense added successfully');
-      await loadExpenses();
-      setShowAddDialog(false);
-      resetForm();
-    } catch (error) {
-      console.error('Error adding expense:', error);
-      toast.error('Failed to add expense');
-    }
-  };
+      if (editingExpense) {
+        await ExpenseService.updateExpense(editingExpense.id, expenseData);
+        toast({
+          title: 'Success',
+          description: 'Expense updated successfully',
+        });
+      } else {
+        await ExpenseService.addExpense(expenseData);
+        toast({
+          title: 'Success',
+          description: 'Expense added successfully',
+        });
+      }
 
-  const handleEditExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!editingExpense || !amount || !description || !category || !date) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    try {
-      const updates = {
-        description,
-        amount: parseFloat(amount),
-        category,
-        date,
-        tags: tags.split(',').map(tag => tag.trim()).filter(Boolean),
-        paymentMethod: paymentMethod || ''
-      };
-
-      await ExpenseService.updateExpense(editingExpense.id, updates);
-      toast.success('Expense updated successfully');
-      await loadExpenses();
+      // Reset form
+      setFormData({
+        amount: '',
+        description: '',
+        category: '',
+        date: new Date().toISOString().split('T')[0],
+        tags: '',
+        paymentMethod: 'Cash',
+      });
+      setShowAddForm(false);
       setEditingExpense(null);
-      resetForm();
+      loadExpenses();
     } catch (error) {
-      console.error('Error updating expense:', error);
-      toast.error('Failed to update expense');
+      console.error('Error saving expense:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to save expense',
+        variant: 'destructive',
+      });
     }
   };
 
-  const handleDeleteExpense = async (id: string) => {
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setFormData({
+      amount: expense.amount.toString(),
+      description: expense.description,
+      category: expense.category,
+      date: expense.date,
+      tags: expense.tags.join(', '),
+      paymentMethod: expense.payment_method,
+    });
+    setShowAddForm(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this expense?')) return;
+
     try {
       await ExpenseService.deleteExpense(id);
-      toast.success('Expense deleted successfully');
-      await loadExpenses();
+      toast({
+        title: 'Success',
+        description: 'Expense deleted successfully',
+      });
+      loadExpenses();
     } catch (error) {
       console.error('Error deleting expense:', error);
-      toast.error('Failed to delete expense');
+      toast({
+        title: 'Error',
+        description: 'Failed to delete expense',
+        variant: 'destructive',
+      });
     }
   };
 
-  const startEdit = (expense: Expense) => {
-    setEditingExpense(expense);
-    setAmount(expense.amount.toString());
-    setDescription(expense.description);
-    setCategory(expense.category);
-    setDate(typeof expense.date === 'string' ? expense.date : expense.date.toISOString().split('T')[0]);
-    // Handle tags - convert array to string
-    const tagsString = Array.isArray(expense.tags) 
-      ? expense.tags.join(', ') 
-      : (expense.tags || '');
-    setTags(tagsString);
-    setPaymentMethod(expense.paymentMethod || '');
-  };
-
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesSearch = expense.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         expense.category.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = !filterCategory || expense.category === filterCategory;
-    return matchesSearch && matchesCategory;
-  });
-
-  const categories = [...new Set(expenses.map(e => e.category))];
+  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
 
   if (loading) {
-    return <div>Loading expenses...</div>;
+    return <div className="flex justify-center items-center h-32">Loading expenses...</div>;
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Expenses</h2>
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Expense
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Expense</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleAddExpense} className="space-y-4">
-              <div>
-                <Label htmlFor="amount">Amount</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Input
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Input
-                  id="category"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="paymentMethod">Payment Method</Label>
-                <Input
-                  id="paymentMethod"
-                  value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value)}
-                />
-              </div>
-              <div>
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
-                <Input
-                  id="tags"
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="e.g., food, groceries"
-                />
-              </div>
-              <Button type="submit">Add Expense</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Search and Filter */}
-      <div className="flex gap-4">
-        <div className="flex-1">
-          <Input
-            placeholder="Search expenses..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
+        <div>
+          <h1 className="text-2xl font-bold">Expense Tracker</h1>
+          <p className="text-gray-600">Total Expenses: ₹{totalExpenses.toLocaleString('en-IN')}</p>
         </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-48">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">All categories</SelectItem>
-            {categories.map(cat => (
-              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add Expense
+        </Button>
       </div>
 
-      {/* Expenses List */}
-      <div className="grid gap-4">
-        {filteredExpenses.map((expense) => (
-          <Card key={expense.id}>
-            <CardContent className="p-4">
-              <div className="flex justify-between items-start">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{expense.description}</h3>
-                    <Badge variant="secondary">{expense.category}</Badge>
-                  </div>
-                  <p className="text-2xl font-bold">₹{expense.amount.toLocaleString()}</p>
-                  <div className="text-sm text-muted-foreground">
-                    <p>Date: {typeof expense.date === 'string' ? expense.date : expense.date.toLocaleDateString()}</p>
-                    {expense.paymentMethod && <p>Payment: {expense.paymentMethod}</p>}
-                    {expense.tags && Array.isArray(expense.tags) && expense.tags.length > 0 && (
-                      <div className="flex gap-1 mt-2">
-                        {expense.tags.map((tag, index) => (
-                          <Badge key={index} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+      {showAddForm && (
+        <Card>
+          <CardHeader>
+            <CardTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Amount (₹)</label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={formData.amount}
+                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                    placeholder="0.00"
+                    required
+                  />
                 </div>
-                <div className="flex gap-1">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => startEdit(expense)}
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDeleteExpense(expense.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Category</label>
+                  <Input
+                    value={formData.category}
+                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                    placeholder="e.g., Food, Transport, Entertainment"
+                    required
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Description</label>
+                  <Input
+                    value={formData.description}
+                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    placeholder="Brief description of the expense"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Date</label>
+                  <Input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Payment Method</label>
+                  <Select value={formData.paymentMethod} onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Cash">Cash</SelectItem>
+                      <SelectItem value="Card">Card</SelectItem>
+                      <SelectItem value="UPI">UPI</SelectItem>
+                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">Tags (comma-separated)</label>
+                  <Input
+                    value={formData.tags}
+                    onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
+                    placeholder="e.g., work, personal, urgent"
+                  />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      {/* Edit Dialog */}
-      <Dialog open={!!editingExpense} onOpenChange={() => setEditingExpense(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Edit Expense</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleEditExpense} className="space-y-4">
-            
-            <div>
-              <Label htmlFor="edit-amount">Amount</Label>
-              <Input
-                id="edit-amount"
-                type="number"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-description">Description</Label>
-              <Input
-                id="edit-description"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-category">Category</Label>
-              <Input
-                id="edit-category"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-date">Date</Label>
-              <Input
-                id="edit-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-paymentMethod">Payment Method</Label>
-              <Input
-                id="edit-paymentMethod"
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value)}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit-tags">Tags (comma-separated)</Label>
-              <Input
-                id="edit-tags"
-                value={tags}
-                onChange={(e) => setTags(e.target.value)}
-                placeholder="e.g., food, groceries"
-              />
-            </div>
-            <Button type="submit">Update Expense</Button>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {filteredExpenses.length === 0 && (
-        <Card className="p-8 text-center">
-          <CardContent>
-            <h3 className="text-lg font-semibold mb-2">No Expenses Found</h3>
-            <p className="text-muted-foreground mb-4">
-              {expenses.length === 0 
-                ? "Start tracking your expenses by adding your first expense."
-                : "No expenses match your current search or filter criteria."
-              }
-            </p>
-            <Button onClick={() => setShowAddDialog(true)}>
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Add Expense
-            </Button>
+              <div className="flex gap-2">
+                <Button type="submit">{editingExpense ? 'Update' : 'Add'} Expense</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => {
+                    setShowAddForm(false);
+                    setEditingExpense(null);
+                    setFormData({
+                      amount: '',
+                      description: '',
+                      category: '',
+                      date: new Date().toISOString().split('T')[0],
+                      tags: '',
+                      paymentMethod: 'Cash',
+                    });
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
           </CardContent>
         </Card>
       )}
+
+      <div className="grid gap-4">
+        {expenses.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-gray-500">No expenses recorded yet. Add your first expense to get started!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          expenses.map((expense) => (
+            <Card key={expense.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-lg">₹{expense.amount.toLocaleString('en-IN')}</h3>
+                      <Badge variant="outline">{expense.category}</Badge>
+                      <Badge variant="secondary">{expense.payment_method}</Badge>
+                    </div>
+                    <p className="text-gray-700 mb-2">{expense.description}</p>
+                    <div className="flex items-center gap-4 text-sm text-gray-500">
+                      <span>{new Date(expense.date).toLocaleDateString('en-IN')}</span>
+                      {expense.tags.length > 0 && (
+                        <div className="flex gap-1">
+                          {expense.tags.map((tag, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEdit(expense)}
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(expense.id)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
     </div>
   );
 }

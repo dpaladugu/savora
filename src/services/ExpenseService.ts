@@ -31,7 +31,7 @@ export class ExpenseService {
         note: expenseData.description,
         tags: expenseData.tags,
         paymentMix: [{
-          method: expenseData.payment_method,
+          mode: expenseData.payment_method as any,
           amount: expenseData.amount
         }],
         splitWith: [],
@@ -76,7 +76,7 @@ export class ExpenseService {
         note: expense.description,
         tags: expense.tags,
         paymentMix: [{
-          method: expense.payment_method,
+          mode: expense.payment_method as any,
           amount: expense.amount
         }],
         splitWith: [],
@@ -113,7 +113,7 @@ export class ExpenseService {
           amount: Math.abs(txn.amount),
           description: txn.note,
           category: txn.category,
-          payment_method: txn.paymentMix[0]?.method || 'Cash',
+          payment_method: txn.paymentMix[0]?.mode || 'Cash',
           source: 'manual',
           tags: txn.tags,
           account: '',
@@ -135,7 +135,7 @@ export class ExpenseService {
         amount: Math.abs(txn.amount),
         description: txn.note,
         category: txn.category,
-        payment_method: txn.paymentMix[0]?.method || 'Cash',
+        payment_method: txn.paymentMix[0]?.mode || 'Cash',
         source: 'manual',
         tags: txn.tags,
         account: '',
