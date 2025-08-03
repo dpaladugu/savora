@@ -53,17 +53,28 @@ export interface CreditCard {
 
 export interface Vehicle {
   id: string;
+  owner?: string;
+  regNo: string;
+  registrationNumber: string;
   make: string;
   model: string;
-  year: number;
+  type?: string;
+  year?: number;
   purchaseDate: Date;
-  purchasePrice: number;
-  fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'CNG';
-  registrationNumber: string;
+  purchasePrice?: number;
+  fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'CNG';
   insuranceExpiry: Date;
-  serviceDueDate: Date;
-  odometerReading: number;
-  owner?: string;
+  pucExpiry?: Date;
+  serviceDueDate?: Date;
+  odometer?: number;
+  odometerReading?: number;
+  fuelEfficiency?: number;
+  fuelLogs?: FuelFill[];
+  serviceLogs?: ServiceEntry[];
+  claims?: Claim[];
+  treadDepthMM?: number;
+  depreciationRate?: number;
+  ncbPercent?: number;
 }
 
 export interface Investment {
@@ -100,27 +111,26 @@ export interface RentalProperty {
   propertyTaxDueDay?: number;
   waterTaxAnnual?: number;
   waterTaxDueDay?: number;
-  maintenanceReserve?: number;
+  maintenanceReserve: number;
 }
 
 export interface Tenant {
   id: string;
-  name: string;
-  phone: string;
-  email?: string;
-  moveInDate: Date;
-  rentDueDate: number;
-  rentAmount: number;
-  securityDeposit: number;
-  rentalPropertyId: string;
-  // Add missing properties
   propertyId: string;
+  rentalPropertyId: string;
   tenantName: string;
+  name: string;
+  phone?: string;
+  email?: string;
   roomNo?: string;
   monthlyRent: number;
+  rentAmount: number;
   depositPaid: number;
+  securityDeposit: number;
   joinDate: Date;
+  moveInDate: Date;
   endDate?: Date;
+  rentDueDate: number;
   depositRefundPending: boolean;
   tenantContact: string;
 }
@@ -138,36 +148,34 @@ export interface Gold {
 export interface Insurance {
   id: string;
   type: 'Health' | 'Life' | 'Vehicle' | 'Property' | 'Term';
-  company: string;
-  policyNumber: string;
-  sumAssured: number;
-  premiumAmount: number;
-  premiumDueDate: Date;
-  nominee: string;
-  notes?: string;
-  // Add missing properties
-  sumInsured: number;
-  endDate: Date;
+  company?: string;
   provider: string;
-  isActive?: boolean;
+  policyNumber?: string;
+  sumAssured?: number;
+  sumInsured: number;
+  premiumAmount?: number;
+  premiumDueDate?: Date;
+  endDate: Date;
+  nominee?: string;
+  notes?: string;
+  isActive: boolean;
 }
 
 export interface Loan {
   id: string;
   type: 'Home' | 'Vehicle' | 'Personal' | 'Education';
-  bank: string;
-  loanAmount: number;
-  interestRate: number;
-  startDate: Date;
-  endDate: Date;
-  emiAmount: number;
-  notes?: string;
-  // Add missing properties
+  bank?: string;
+  loanAmount?: number;
+  interestRate?: number;
+  startDate?: Date;
+  endDate?: Date;
+  emiAmount?: number;
   emi: number;
   roi: number;
   outstanding: number;
   tenureMonths: number;
   isActive: boolean;
+  notes?: string;
 }
 
 export interface BrotherRepayment {
@@ -377,7 +385,7 @@ export class SavoraDatabase extends Dexie {
       txns: 'id, date, amount, category, *tags',
       goals: 'id, name, type, targetAmount, targetDate',
       creditCards: 'id, issuer, bankName, network, annualFee, creditLimit',
-      vehicles: 'id, make, model, year, purchaseDate, fuelType',
+      vehicles: 'id, make, model, year, purchaseDate, fuelType, regNo',
       investments: 'id, type, name, currentNav, units, investedValue',
       rentalProperties: 'id, address, owner, type, squareYards, monthlyRent',
       tenants: 'id, name, phone, moveInDate, rentDueDate, rentAmount',

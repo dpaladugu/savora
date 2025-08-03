@@ -1,158 +1,191 @@
-
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { db } from '@/lib/db';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { db } from "@/lib/db";
+import type { Tenant, RentalProperty } from "@/lib/db";
+import { useToast } from "@/hooks/use-toast";
 
 interface TenantModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  rentalId: string | null;
+  tenant?: Tenant;
+  onSave: () => void;
+  trigger: React.ReactNode;
 }
 
-export function TenantModal({ isOpen, onClose, rentalId }: TenantModalProps) {
+export function TenantModal({ tenant, onSave, trigger }: TenantModalProps) {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [properties, setProperties] = useState<RentalProperty[]>([]);
+  
   const [formData, setFormData] = useState({
-    tenantName: '',
-    roomNo: '',
-    monthlyRent: '',
-    depositPaid: '',
-    tenantContact: '',
-    joinDate: new Date().toISOString().split('T')[0],
-    endDate: ''
+    propertyId: tenant?.propertyId || "",
+    tenantName: tenant?.tenantName || "",
+    roomNo: tenant?.roomNo || "",
+    monthlyRent: tenant?.monthlyRent || 0,
+    depositPaid: tenant?.depositPaid || 0,
+    joinDate: tenant?.joinDate ? tenant.joinDate.toISOString().split('T')[0] : "",
+    endDate: tenant?.endDate ? tenant.endDate.toISOString().split('T')[0] : "",
+    tenantContact: tenant?.tenantContact || "",
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!rentalId) return;
-
+  const handleSave = async () => {
     try {
-      await db.tenants.add({
-        id: crypto.randomUUID(),
-        propertyId: rentalId,
+      const tenantData = {
+        id: tenant?.id || crypto.randomUUID(),
+        propertyId: formData.propertyId,
+        rentalPropertyId: formData.propertyId, // Same as propertyId
         tenantName: formData.tenantName,
+        name: formData.tenantName, // Same as tenantName
         roomNo: formData.roomNo || undefined,
-        monthlyRent: parseFloat(formData.monthlyRent),
-        depositPaid: parseFloat(formData.depositPaid),
+        monthlyRent: formData.monthlyRent,
+        rentAmount: formData.monthlyRent, // Same as monthlyRent
+        depositPaid: formData.depositPaid,
+        securityDeposit: formData.depositPaid, // Same as depositPaid
         joinDate: new Date(formData.joinDate),
+        moveInDate: new Date(formData.joinDate), // Same as joinDate
         endDate: formData.endDate ? new Date(formData.endDate) : undefined,
+        phone: formData.tenantContact,
+        rentDueDate: 1, // Default to 1st of month
         depositRefundPending: false,
-        tenantContact: formData.tenantContact
-      });
+        tenantContact: formData.tenantContact,
+      };
 
-      toast.success('Tenant added successfully!');
-      setFormData({
-        tenantName: '',
-        roomNo: '',
-        monthlyRent: '',
-        depositPaid: '',
-        tenantContact: '',
-        joinDate: new Date().toISOString().split('T')[0],
-        endDate: ''
+      if (tenant) {
+        await db.tenants.update(tenant.id, tenantData);
+      } else {
+        await db.tenants.add(tenantData);
+      }
+
+      onSave();
+      setOpen(false);
+      toast({
+        title: `Tenant ${tenant ? 'updated' : 'added'} successfully`,
+        variant: "default",
       });
-      onClose();
     } catch (error) {
-      toast.error('Failed to add tenant');
-      console.error('Error adding tenant:', error);
+      console.error('Error saving tenant:', error);
+      toast({
+        title: "Error saving tenant",
+        description: "Please try again",
+        variant: "destructive",
+      });
     }
   };
 
+  useEffect(() => {
+    const fetchProperties = async () => {
+      const properties = await db.rentalProperties.findMany();
+      setProperties(properties);
+    };
+
+    fetchProperties();
+  }, []);
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {trigger}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Tenant</DialogTitle>
+          <DialogTitle>{tenant ? 'Edit' : 'Add'} Tenant</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tenantName">Tenant Name</Label>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="property" className="text-right">Property</Label>
+            <Select value={formData.propertyId} onValueChange={(value) => setFormData({...formData, propertyId: value})}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select property" />
+              </SelectTrigger>
+              <SelectContent>
+                {properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id}>
+                    {property.address}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="tenantName" className="text-right">Name</Label>
             <Input
               id="tenantName"
               value={formData.tenantName}
-              onChange={(e) => setFormData({ ...formData, tenantName: e.target.value })}
-              placeholder="Enter tenant name"
-              required
+              onChange={(e) => setFormData({...formData, tenantName: e.target.value})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="tenantContact">Tenant Contact</Label>
-            <Input
-              id="tenantContact"
-              value={formData.tenantContact}
-              onChange={(e) => setFormData({ ...formData, tenantContact: e.target.value })}
-              placeholder="Enter tenant contact number"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="roomNo">Room Number</Label>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="roomNo" className="text-right">Room No</Label>
             <Input
               id="roomNo"
               value={formData.roomNo}
-              onChange={(e) => setFormData({ ...formData, roomNo: e.target.value })}
-              placeholder="Room number (optional)"
+              onChange={(e) => setFormData({...formData, roomNo: e.target.value})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="monthlyRent">Monthly Rent</Label>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="monthlyRent" className="text-right">Monthly Rent</Label>
             <Input
               id="monthlyRent"
               type="number"
               value={formData.monthlyRent}
-              onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
-              placeholder="Monthly rent amount"
-              required
+              onChange={(e) => setFormData({...formData, monthlyRent: Number(e.target.value)})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="depositPaid">Deposit Paid</Label>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="depositPaid" className="text-right">Deposit</Label>
             <Input
               id="depositPaid"
               type="number"
               value={formData.depositPaid}
-              onChange={(e) => setFormData({ ...formData, depositPaid: e.target.value })}
-              placeholder="Security deposit amount"
-              required
+              onChange={(e) => setFormData({...formData, depositPaid: Number(e.target.value)})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="joinDate">Join Date</Label>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="joinDate" className="text-right">Join Date</Label>
             <Input
               id="joinDate"
               type="date"
               value={formData.joinDate}
-              onChange={(e) => setFormData({ ...formData, joinDate: e.target.value })}
-              required
+              onChange={(e) => setFormData({...formData, joinDate: e.target.value})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="endDate">End Date</Label>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="endDate" className="text-right">End Date</Label>
             <Input
               id="endDate"
               type="date"
               value={formData.endDate}
-              onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+              onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+              className="col-span-3"
             />
           </div>
-          
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1">
-              Add Tenant
-            </Button>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="tenantContact" className="text-right">Contact</Label>
+            <Input
+              id="tenantContact"
+              value={formData.tenantContact}
+              onChange={(e) => setFormData({...formData, tenantContact: e.target.value})}
+              className="col-span-3"
+            />
           </div>
-        </form>
+        </div>
+        <div className="flex justify-end">
+          <Button onClick={handleSave}>Save</Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
