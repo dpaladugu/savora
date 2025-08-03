@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { vi } from 'vitest';
@@ -141,7 +140,7 @@ export const createMockDb = () => ({
     get: vi.fn().mockResolvedValue(undefined),
     put: vi.fn().mockResolvedValue('mock-id'),
     bulkAdd: vi.fn().mockResolvedValue(undefined),
-    clear: vi.fn().mkResolvedValue(undefined),
+    clear: vi.fn().mockResolvedValue(undefined),
   },
   // New required tables
   rentalProperties: {

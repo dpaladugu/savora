@@ -1,4 +1,3 @@
-
 import { db } from '@/lib/db';
 import type { EmergencyFund } from '@/lib/db';
 
@@ -36,6 +35,99 @@ export class EmergencyFundService {
     }
   }
 
+  static async getEmergencyFund(): Promise<EmergencyFund | undefined> {
+    try {
+      const funds = await db.emergencyFunds.toArray();
+      return funds[0];
+    } catch (error) {
+      console.error('Error fetching emergency fund:', error);
+      throw error;
+    }
+  }
+
+  static async calculateTargetAmount(monthlyExpenses: number, targetMonths: number = 6): Promise<number> {
+    return monthlyExpenses * targetMonths;
+  }
+
+  static async addToEmergencyFund(id: string, amount: number): Promise<void> {
+    try {
+      const fund = await db.emergencyFunds.get(id);
+      if (fund) {
+        await db.emergencyFunds.update(id, { 
+          currentAmount: fund.currentAmount + amount 
+        });
+      }
+    } catch (error) {
+      console.error('Error adding to emergency fund:', error);
+      throw error;
+    }
+  }
+
+  static async withdrawFromEmergencyFund(id: string, amount: number, reason?: string): Promise<void> {
+    try {
+      const fund = await db.emergencyFunds.get(id);
+      if (!fund) throw new Error('Emergency fund not found');
+      
+      if (fund.currentAmount < amount) {
+        throw new Error('Insufficient emergency fund balance');
+      }
+
+      await db.emergencyFunds.update(id, { 
+        currentAmount: fund.currentAmount - amount 
+      });
+    } catch (error) {
+      console.error('Error withdrawing from emergency fund:', error);
+      throw error;
+    }
+  }
+
+  static async setTargetMonths(id: string, months: number): Promise<void> {
+    try {
+      if (months < 3 || months > 24) {
+        throw new Error('Target months must be between 3 and 24');
+      }
+      await db.emergencyFunds.update(id, { targetMonths: months });
+    } catch (error) {
+      console.error('Error setting target months:', error);
+      throw error;
+    }
+  }
+
+  static async getEmergencyFundStatus(id: string): Promise<{
+    fund: EmergencyFund;
+    progressPercentage: number;
+    medicalSubBucket: number;
+    medicalSubBucketUsed: number;
+    recommendedAction: string;
+  }> {
+    try {
+      const fund = await db.emergencyFunds.get(id);
+      if (!fund) throw new Error('Emergency fund not found');
+
+      const progressPercentage = Math.min((fund.currentAmount / fund.targetAmount) * 100, 100);
+      
+      let recommendedAction = 'Continue building emergency fund';
+      if (progressPercentage >= 100) {
+        recommendedAction = 'Emergency fund target achieved!';
+      } else if (progressPercentage >= 80) {
+        recommendedAction = 'On track - maintain regular contributions';
+      } else {
+        recommendedAction = 'Increase emergency fund contributions';
+      }
+
+      return {
+        fund,
+        progressPercentage,
+        medicalSubBucket: fund.medicalSubBucket || 0,
+        medicalSubBucketUsed: fund.medicalSubBucketUsed || 0,
+        recommendedAction,
+      };
+    } catch (error) {
+      console.error('Error getting emergency fund status:', error);
+      throw error;
+    }
+  }
+
   static async updateEmergencyFundAmount(
     fundId: string, 
     newAmount: number
@@ -62,13 +154,6 @@ export class EmergencyFundService {
       console.error('Error updating emergency fund:', error);
       throw error;
     }
-  }
-
-  static async calculateRecommendedAmount(
-    monthlyExpenses: number,
-    targetMonths: number = 6
-  ): Promise<number> {
-    return monthlyExpenses * targetMonths;
   }
 
   static async getProgressPercentage(fundId: string): Promise<number> {

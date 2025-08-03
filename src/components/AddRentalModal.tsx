@@ -16,7 +16,7 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
   const [formData, setFormData] = useState({
     address: '',
     owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Land',
+    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Plot',
     squareYards: '',
     monthlyRent: '',
     deposit: ''
@@ -99,14 +99,14 @@ export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
             <select
               id="type"
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Land' })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Plot' })}
               className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               required
             >
               <option value="Apartment">Apartment</option>
               <option value="House">House</option>
               <option value="Commercial">Commercial</option>
-              <option value="Land">Land</option>
+              <option value="Plot">Plot</option>
             </select>
           </div>
           

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
   const [formData, setFormData] = useState({
     address: '',
     owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Land',
+    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Plot',
     squareYards: '',
     monthlyRent: '',
     dueDay: '',
@@ -59,7 +58,6 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
 
     try {
       await db.rentalProperties.update(rentalId, {
-        address: formData.address,
         owner: formData.owner,
         type: formData.type,
         squareYards: parseInt(formData.squareYards),
@@ -114,14 +112,14 @@ export function EditRentalModal({ isOpen, onClose, rentalId }: EditRentalModalPr
             <select
               id="type"
               value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Land' })}
+              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Plot' })}
               className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
               required
             >
               <option value="Apartment">Apartment</option>
               <option value="House">House</option>
               <option value="Commercial">Commercial</option>
-              <option value="Land">Land</option>
+              <option value="Plot">Plot</option>
             </select>
           </div>
           

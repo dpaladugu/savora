@@ -33,6 +33,9 @@ export function AddMedicineModal({ isOpen, onClose, profileId }: AddMedicineModa
       await db.health.add({
         id: crypto.randomUUID(),
         refillAlertDays: parseInt(formData.refillAlertDays),
+        familyHistory: [],
+        vaccinations: [],
+        vitals: [],
         prescriptions: [{
           date: new Date(formData.startDate),
           doctor: formData.prescribedBy || 'Unknown',
