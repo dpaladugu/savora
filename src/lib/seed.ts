@@ -25,7 +25,7 @@ export const seedDatabase = async () => {
       darkMode: false,
       timeZone: 'Asia/Kolkata',
       isTest: true,
-      theme: 'system', // Fixed: was "auto"
+      theme: 'system',
       deviceThemes: {},
       revealSecret: ''
     };
@@ -112,7 +112,7 @@ export const seedDatabase = async () => {
     ]);
   }
 
-  // Seed Vehicles
+  // Seed Vehicles - Fix regNo property
   const existingVehicles = await db.vehicles.toArray();
   if (existingVehicles.length === 0) {
     await db.vehicles.bulkAdd([
@@ -153,7 +153,7 @@ export const seedDatabase = async () => {
     ]);
   }
 
-  // Seed Investments
+  // Seed Investments - Fix frequency enum
   const existingInvestments = await db.investments.toArray();
   if (existingInvestments.length === 0) {
     await db.investments.bulkAdd([
@@ -180,7 +180,7 @@ export const seedDatabase = async () => {
         investedValue: 100000,
         currentValue: 108000,
         startDate: new Date('2023-01-01'),
-        frequency: 'One-time',
+        frequency: 'OneTime',
         taxBenefit: false,
         familyMember: 'Self',
         notes: 'Safe investment with guaranteed returns'
@@ -202,37 +202,54 @@ export const seedDatabase = async () => {
       escalationPercent: 5,
       depositRefundPending: false,
       propertyTaxAnnual: 12000,
-      waterTaxAnnual: 3000
-      // Removed maintenanceReserve as it's causing error
+      waterTaxAnnual: 3000,
+      maintenanceReserve: 50000
     });
   }
 
-  // Seed Tenants
+  // Seed Tenants - Fix property mapping
   const existingTenants = await db.tenants.toArray();
   if (existingTenants.length === 0) {
     await db.tenants.bulkAdd([
       {
         id: 'tenant-1',
         propertyId: 'property-1',
+        rentalPropertyId: 'property-1',
         tenantName: 'John Doe',
+        name: 'John Doe',
         phone: '+91-9876543210',
         moveInDate: new Date('2023-01-01'),
+        joinDate: new Date('2023-01-01'),
         rentDueDate: 5,
         rentAmount: 25000,
+        monthlyRent: 25000,
         securityDeposit: 50000,
-        depositRefundPending: false
+        depositPaid: 50000,
+        depositRefundPending: false,
+        tenantContact: '+91-9876543210'
       },
       {
         id: 'tenant-2',
         propertyId: 'property-1',
+        rentalPropertyId: 'property-1',
         tenantName: 'Jane Smith',
+        name: 'Jane Smith',
         phone: '+91-8765432109',
         moveInDate: new Date('2023-05-01'),
+        joinDate: new Date('2023-05-01'),
         rentDueDate: 5,
         rentAmount: 25000,
+        monthlyRent: 25000,
         securityDeposit: 50000,
-        depositRefundPending: false
+        depositPaid: 50000,
+        depositRefundPending: false,
+        tenantContact: '+91-8765432109'
       }
     ]);
   }
 };
+
+// Add the missing seed export
+export async function seed(): Promise<void> {
+  await seedDatabase();
+}
