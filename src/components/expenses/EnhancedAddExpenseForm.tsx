@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,7 +7,17 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { ExpenseService } from '@/services/ExpenseService';
-import { Expense } from '@/lib/db';
+
+// Use compatible interface
+interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string | Date;
+  tags?: string[];
+  payment_method?: string;
+}
 
 interface EnhancedAddExpenseFormProps {
   onExpenseAdded?: () => void;

@@ -1,3 +1,4 @@
+
 import Dexie, { type EntityTable } from 'dexie';
 
 export interface Txn {
@@ -33,7 +34,7 @@ export interface CreditCard {
   last4: string;
   network: 'Visa' | 'Mastercard' | 'Amex' | 'Rupay';
   cardVariant: string;
-	productVariant: string;
+  productVariant: string;
   annualFee: number;
   annualFeeGst: number;
   creditLimit: number;
@@ -45,6 +46,10 @@ export interface CreditCard {
   dueDay: number;
   fxTxnFee?: number;
   emiConversion?: boolean;
+  // Add missing properties for compatibility
+  name?: string;
+  currentBalance?: number;
+  dueDate?: string;
 }
 
 export interface Vehicle {
@@ -59,11 +64,12 @@ export interface Vehicle {
   insuranceExpiry: Date;
   serviceDueDate: Date;
   odometerReading: number;
+  owner?: string;
 }
 
 export interface Investment {
   id: string;
-  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold';
+  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB';
   name: string;
   currentNav: number;
   units: number;
@@ -72,8 +78,10 @@ export interface Investment {
   startDate: Date;
   frequency: 'OneTime' | 'Monthly' | 'Quarterly' | 'Annually';
   taxBenefit: boolean;
-	familyMember: string;
+  familyMember: string;
   notes?: string;
+  goalId?: string;
+  maturityDate?: Date;
 }
 
 export interface RentalProperty {
@@ -93,6 +101,7 @@ export interface RentalProperty {
   propertyTaxDueDay?: number;
   waterTaxAnnual?: number;
   waterTaxDueDay?: number;
+  maintenanceReserve?: number;
 }
 
 export interface Tenant {
@@ -105,6 +114,16 @@ export interface Tenant {
   rentAmount: number;
   securityDeposit: number;
   rentalPropertyId: string;
+  // Add missing properties
+  propertyId: string;
+  tenantName: string;
+  roomNo?: string;
+  monthlyRent: number;
+  depositPaid: number;
+  joinDate: Date;
+  endDate?: Date;
+  depositRefundPending: boolean;
+  tenantContact: string;
 }
 
 export interface Gold {
@@ -119,7 +138,7 @@ export interface Gold {
 
 export interface Insurance {
   id: string;
-  type: 'Health' | 'Life' | 'Vehicle' | 'Property';
+  type: 'Health' | 'Life' | 'Vehicle' | 'Property' | 'Term';
   company: string;
   policyNumber: string;
   sumAssured: number;
@@ -127,6 +146,11 @@ export interface Insurance {
   premiumDueDate: Date;
   nominee: string;
   notes?: string;
+  // Add missing properties
+  sumInsured: number;
+  endDate: Date;
+  provider: string;
+  isActive?: boolean;
 }
 
 export interface Loan {
@@ -139,6 +163,12 @@ export interface Loan {
   endDate: Date;
   emiAmount: number;
   notes?: string;
+  // Add missing properties
+  emi: number;
+  roi: number;
+  outstanding: number;
+  tenureMonths: number;
+  isActive: boolean;
 }
 
 export interface BrotherRepayment {
@@ -289,6 +319,33 @@ export interface AppSettings {
   value: string;
 }
 
+// Add missing exports for compatibility
+export interface Expense {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string | Date;
+  tags?: string[];
+  payment_method?: string;
+}
+
+export interface Income {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  date: string | Date;
+  source?: string;
+}
+
+export interface Claim {
+  id: string;
+  amount: number;
+  date: Date;
+  description: string;
+}
+
 export class SavoraDatabase extends Dexie {
   txns: EntityTable<Txn, 'id'>;
   goals: EntityTable<Goal, 'id'>;
@@ -342,6 +399,16 @@ export class SavoraDatabase extends Dexie {
       expenses: 'id, date, amount, category, *tags',
       incomes: 'id, date, amount, category, *tags',
     });
+  }
+
+  // Add missing methods
+  async getPersonalProfile(): Promise<any> {
+    const setting = await this.appSettings.get('userPersonalProfile_v1');
+    return setting ? setting.value : null;
+  }
+
+  async savePersonalProfile(profile: any): Promise<void> {
+    await this.appSettings.put({ id: 'userPersonalProfile_v1', key: 'userPersonalProfile_v1', value: profile });
   }
 }
 
