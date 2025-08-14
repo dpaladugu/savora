@@ -315,7 +315,7 @@ export class CFARecommendationEngine {
     const advice: PrepaymentAdvice[] = [];
     
     try {
-      const loans = await db.loans.where('isActive').equals(true).toArray();
+      const loans = await db.loans.where('isActive').equals(1).toArray();
       
       for (const loan of loans) {
         // High interest rate loans (>8% per spec)

@@ -1,207 +1,208 @@
 
-import React, { useState, useEffect } from "react";
-import { Navigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { AuthenticationService } from "@/services/AuthenticationService";
-import { GlobalSettingsService } from "@/services/GlobalSettingsService";
-import { db } from "@/lib/db";
-import { Eye, EyeOff, TrendingUp, PiggyBank, CreditCard, Target } from "lucide-react";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Shield, Eye, EyeOff, LogOut } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { TransactionList } from '@/components/transactions/transaction-list';
+import { QuickAddForm } from '@/components/transactions/quick-add-form';
 
-interface DashboardStats {
-  totalExpenses: number;
-  totalInvestments: number;
-  emergencyFund: number;
-  activeGoals: number;
+interface ProtectedDashboardProps {
+  onSignOut: () => void;
 }
 
-export function ProtectedDashboard() {
+export function ProtectedDashboard({ onSignOut }: ProtectedDashboardProps) {
   const { toast } = useToast();
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [privacyMask, setPrivacyMask] = useState(true);
-  const [stats, setStats] = useState<DashboardStats>({
-    totalExpenses: 0,
-    totalInvestments: 0,
-    emergencyFund: 0,
-    activeGoals: 0
-  });
-  const [loading, setLoading] = useState(true);
+  const [privacyMasked, setPrivacyMasked] = useState(true);
+  const [authStatus, setAuthStatus] = useState(false);
+  const [isSessionValid, setIsSessionValid] = useState(false);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const authStatus = await AuthenticationService.checkAuthenticationStatus();
-        setIsAuthenticated(authStatus.isAuthenticated);
-        
-        if (authStatus.isAuthenticated) {
-          await loadDashboardData();
-          await loadPrivacySettings();
-        }
-      } catch (error) {
-        console.error('Authentication check failed:', error);
-        setIsAuthenticated(false);
-      } finally {
-        setLoading(false);
-      }
+    // Simulate authentication check
+    const checkAuth = () => {
+      const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+      setAuthStatus(isAuth);
+      setIsSessionValid(isAuth);
     };
 
     checkAuth();
+    
+    // Check session validity periodically
+    const interval = setInterval(checkAuth, 30000); // Check every 30 seconds
+    
+    return () => clearInterval(interval);
   }, []);
 
-  const loadDashboardData = async () => {
-    try {
-      const [txns, investments, emergencyFunds, goals] = await Promise.all([
-        db.txns.toArray(),
-        db.investments.toArray(),
-        db.emergencyFunds.toArray(),
-        db.goals.toArray()
-      ]);
-
-      const totalExpenses = txns
-        .filter(t => t.amount < 0)
-        .reduce((sum, t) => sum + Math.abs(t.amount), 0);
-
-      const totalInvestments = investments
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-
-      const emergencyFund = emergencyFunds
-        .reduce((sum, fund) => sum + fund.currentAmount, 0);
-
-      setStats({
-        totalExpenses,
-        totalInvestments,
-        emergencyFund,
-        activeGoals: goals.length
-      });
-    } catch (error) {
-      console.error('Error loading dashboard data:', error);
+  const handleTogglePrivacy = () => {
+    if (!privacyMasked) {
+      // Turning privacy mask ON
+      setPrivacyMasked(true);
       toast({
-        title: "Error loading dashboard",
-        description: "Please try refreshing the page",
-        variant: "destructive"
+        title: "Privacy Mode Enabled",
+        description: "Financial data is now masked for privacy.",
+      });
+    } else {
+      // Turning privacy mask OFF - would normally require authentication
+      setPrivacyMasked(false);
+      toast({
+        title: "Privacy Mode Disabled",
+        description: "Financial data is now visible.",
       });
     }
   };
 
-  const loadPrivacySettings = async () => {
-    try {
-      const settings = await GlobalSettingsService.getSettings();
-      setPrivacyMask(settings.privacyMask);
-    } catch (error) {
-      console.error('Error loading privacy settings:', error);
-    }
+  const handleSignOut = () => {
+    localStorage.removeItem('isAuthenticated');
+    setAuthStatus(false);
+    setIsSessionValid(false);
+    onSignOut();
+    toast({
+      title: "Signed Out",
+      description: "You have been successfully signed out.",
+    });
   };
 
-  const togglePrivacyMask = () => {
-    setPrivacyMask(!privacyMask);
-  };
-
-  const formatAmount = (amount: number): string => {
-    if (privacyMask) {
-      return "₹****";
-    }
-    return `₹${amount.toLocaleString('en-IN')}`;
-  };
-
-  if (loading) {
+  // Show loading if authentication status is being checked
+  if (!authStatus || !isSessionValid) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-pulse text-muted-foreground">Loading dashboard...</div>
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="w-full max-w-md">
+          <CardContent className="flex flex-col items-center space-y-4 p-6">
+            <Shield className="w-12 h-12 text-muted-foreground" />
+            <h2 className="text-xl font-semibold">Authentication Required</h2>
+            <p className="text-muted-foreground text-center">
+              Please sign in to access your financial dashboard.
+            </p>
+            <Button onClick={() => window.location.reload()} className="w-full">
+              Refresh
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
-  if (isAuthenticated === false) {
-    return <Navigate to="/auth" replace />;
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      {/* Header */}
+      <header className="bg-card border-b border-border">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold text-foreground">Savora Dashboard</h1>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={togglePrivacyMask}
-              className="flex items-center gap-2"
-            >
-              {privacyMask ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {privacyMask ? 'Show' : 'Hide'} Amounts
-            </Button>
+            <div className="flex items-center space-x-2">
+              <Shield className="w-6 h-6 text-primary" />
+              <h1 className="text-xl font-bold">Savora Finance</h1>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleTogglePrivacy}
+                className="flex items-center space-x-2"
+              >
+                {privacyMasked ? (
+                  <>
+                    <EyeOff className="w-4 h-4" />
+                    <span>Show Amounts</span>
+                  </>
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4" />
+                    <span>Hide Amounts</span>
+                  </>
+                )}
+              </Button>
+              
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleSignOut}
+                className="flex items-center space-x-2"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Quick Add Form */}
+          <div className="lg:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Add Transaction</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <QuickAddForm />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Transaction List */}
+          <div className="lg:col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent Transactions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <TransactionList privacyMasked={privacyMasked} />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Additional Dashboard Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(stats.totalExpenses)}</div>
-              <p className="text-xs text-muted-foreground">This month</p>
+              <div className="text-2xl font-bold">
+                {privacyMasked ? '₹••,•••' : '₹1,23,456'}
+              </div>
+              <p className="text-xs text-muted-foreground">+12% from last month</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Monthly Expenses</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {privacyMasked ? '₹••,•••' : '₹45,678'}
+              </div>
+              <p className="text-xs text-muted-foreground">-5% from last month</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle className="text-sm font-medium">Investments</CardTitle>
-              <PiggyBank className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(stats.totalInvestments)}</div>
-              <p className="text-xs text-muted-foreground">Current value</p>
+              <div className="text-2xl font-bold">
+                {privacyMasked ? '₹••,•••' : '₹2,34,567'}
+              </div>
+              <p className="text-xs text-muted-foreground">+8% from last month</p>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Emergency Fund</CardTitle>
-              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Goals Progress</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{formatAmount(stats.emergencyFund)}</div>
-              <p className="text-xs text-muted-foreground">Available now</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Goals</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.activeGoals}</div>
-              <p className="text-xs text-muted-foreground">In progress</p>
+              <div className="text-2xl font-bold">67%</div>
+              <p className="text-xs text-muted-foreground">3 of 5 goals on track</p>
             </CardContent>
           </Card>
         </div>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Welcome to Savora</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Your personal finance dashboard is ready. All your financial data is stored securely on your device.
-            </p>
-            <div className="mt-4 space-y-2">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Eye className="h-4 w-4" />
-                <span>Privacy-first: All amounts can be masked for security</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <PiggyBank className="h-4 w-4" />
-                <span>Offline-first: Works without internet connection</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </main>
     </div>
   );

@@ -1,12 +1,12 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { seed } from '@/lib/seed';
+import { seedDatabase } from '@/lib/seed';
 
 export function SeedToggle() {
   const handleSeed = async () => {
     try {
-      await seed();
+      await seedDatabase();
       console.log('Seed loaded');
     } catch (error) {
       console.error('Seed error:', error);
