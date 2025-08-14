@@ -1,4 +1,3 @@
-
 import { GlobalSettingsService } from './GlobalSettingsService';
 import { db } from '@/lib/db';
 
@@ -213,6 +212,21 @@ export class AuthenticationService {
     } catch (error) {
       console.error('Error clearing database:', error);
       throw error;
+    }
+  }
+
+  static async checkAuthenticationStatus(): Promise<boolean> {
+    try {
+      // Check if user has set up authentication
+      const settings = await db.globalSettings.limit(1).first();
+      if (!settings) return false;
+      
+      // For now, return true if settings exist
+      // This should be enhanced with actual PIN/biometric check
+      return true;
+    } catch (error) {
+      console.error('Error checking authentication status:', error);
+      return false;
     }
   }
 }

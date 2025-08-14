@@ -51,6 +51,37 @@ export interface CreditCard {
   dueDate?: string;
 }
 
+export interface FuelFill {
+  date: Date;
+  litres: number;
+  odometer: number;
+  isFullTank: boolean;
+  cost: number;
+}
+
+export interface ServiceEntry {
+  date: Date;
+  odometer: number;
+  description: string;
+  cost: number;
+  nextServiceDate?: Date;
+  items: ServiceItem[];
+}
+
+export interface ServiceItem {
+  category: string;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  amount: number;
+}
+
+export interface Claim {
+  date: Date;
+  amount: number;
+  description: string;
+}
+
 export interface Vehicle {
   id: string;
   owner?: string;

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -110,11 +109,13 @@ export function RentalManager() {
         ))}
       </div>
 
-      <TenantModal
-        isOpen={showTenantModal}
-        onClose={() => setShowTenantModal(false)}
-        rentalId={selectedRentalId}
-      />
+      {showTenantModal && (
+        <TenantModal
+          isOpen={showTenantModal}
+          onClose={() => setShowTenantModal(false)}
+          rentalId={selectedRentalId || ''}
+        />
+      )}
 
       <EditRentalModal
         isOpen={showEditModal}

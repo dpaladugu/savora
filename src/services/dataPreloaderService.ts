@@ -68,16 +68,17 @@ const sampleCreditCards: Omit<CreditCard, 'id'>[] = [
 
 const sampleVehicles: Omit<Vehicle, 'id'>[] = [
   {
-    make: 'Honda',
-    model: 'City',
+    make: 'Maruti',
+    model: 'Swift',
     year: 2020,
     purchaseDate: new Date('2020-05-15'),
-    purchasePrice: 1200000,
-    fuelType: 'Petrol',
-    registrationNumber: 'TS09EA1234',
-    insuranceExpiry: new Date('2024-05-15'),
-    serviceDueDate: new Date('2024-04-01'),
-    odometerReading: 45000
+    purchasePrice: 650000,
+    fuelType: 'Petrol' as const,
+    registrationNumber: 'KA01AB1234',
+    regNo: 'KA01AB1234',
+    insuranceExpiry: new Date('2025-05-15'),
+    serviceDueDate: new Date('2024-09-15'),
+    odometerReading: 45000,
   }
 ];
 
@@ -99,16 +100,17 @@ const sampleInvestments: Omit<Investment, 'id'>[] = [
 
 const sampleRentalProperties: Omit<RentalProperty, 'id'>[] = [
   {
-    address: 'Sample Address, City',
-    owner: 'Me',
-    type: 'Apartment',
-    squareYards: 1500,
+    address: '123 MG Road, Bangalore',
+    owner: 'Me' as const,
+    type: 'Apartment' as const,
+    squareYards: 1200,
     monthlyRent: 25000,
     dueDay: 5,
     escalationPercent: 5,
     depositRefundPending: false,
-    propertyTaxAnnual: 10000,
-    waterTaxAnnual: 2000
+    propertyTaxAnnual: 12000,
+    waterTaxAnnual: 3000,
+    maintenanceReserve: 30000, // Annual maintenance reserve
   }
 ];
 
@@ -143,16 +145,17 @@ const sampleGold: Omit<Gold, 'id'>[] = [
 
 const sampleInsurance: Omit<Insurance, 'id'>[] = [
   {
-    type: 'Health',
-    company: 'Sample Insurance Co.',
-    policyNumber: 'SI12345',
+    type: 'Health' as const,
+    company: 'Star Health',
+    policyNumber: 'SH12345678',
     sumAssured: 500000,
-    premiumAmount: 12000,
-    premiumDueDate: new Date('2023-12-31'),
+    premiumAmount: 15000,
+    premiumDueDate: new Date('2024-12-31'),
     nominee: 'Spouse',
     sumInsured: 500000,
-    endDate: new Date('2023-12-31'),
-    provider: 'Sample Insurance Co.'
+    endDate: new Date('2024-12-31'),
+    provider: 'Star Health',
+    isActive: true,
   }
 ];
 

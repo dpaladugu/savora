@@ -1,160 +1,185 @@
-
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 import { db } from '@/lib/db';
-import { toast } from 'sonner';
+import { RentalProperty } from '@/lib/db';
 
-interface AddRentalModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-export function AddRentalModal({ isOpen, onClose }: AddRentalModalProps) {
+export function AddRentalModal() {
+  const { toast } = useToast()
+  const [open, setOpen] = useState(false)
   const [formData, setFormData] = useState({
     address: '',
-    owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-    type: 'Apartment' as 'Apartment' | 'House' | 'Commercial' | 'Plot',
+    owner: 'Me',
+    type: 'Apartment',
     squareYards: '',
     monthlyRent: '',
-    deposit: ''
+    dueDay: '',
+    escalationPercent: '',
+    escalationDate: '',
+    lateFeeRate: '',
+    noticePeriodDays: '',
+    propertyTaxAnnual: '',
+    propertyTaxDueDay: '',
+    waterTaxAnnual: '',
+    waterTaxDueDay: '',
   });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement> | React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prevData => ({
+      ...prevData,
+      [name]: value
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      await db.rentalProperties.add({
-        id: crypto.randomUUID(),
-        address: formData.address,
-        owner: formData.owner,
-        type: formData.type,
-        squareYards: parseInt(formData.squareYards),
-        monthlyRent: parseFloat(formData.monthlyRent),
-        dueDay: 1,
-        escalationPercent: 10,
-        escalationDate: new Date(),
-        lateFeeRate: 5,
-        noticePeriodDays: 30,
-        depositRefundPending: false,
-        propertyTaxAnnual: 0,
-        propertyTaxDueDay: 1,
-        waterTaxAnnual: 0,
-        waterTaxDueDay: 1
-      });
+    const rentalData: Omit<RentalProperty, 'id'> = {
+      id: crypto.randomUUID(),
+      address: formData.address,
+      owner: formData.owner as 'Me' | 'Mother' | 'Grandmother',
+      type: formData.type as 'Apartment' | 'House' | 'Commercial' | 'Plot',
+      squareYards: parseFloat(formData.squareYards),
+      monthlyRent: parseFloat(formData.monthlyRent),
+      dueDay: parseInt(formData.dueDay),
+      escalationPercent: parseFloat(formData.escalationPercent) || 0,
+      escalationDate: formData.escalationDate ? new Date(formData.escalationDate) : undefined,
+      lateFeeRate: parseFloat(formData.lateFeeRate) || 0,
+      noticePeriodDays: parseInt(formData.noticePeriodDays) || 30,
+      depositRefundPending: false,
+      propertyTaxAnnual: parseFloat(formData.propertyTaxAnnual) || 0,
+      propertyTaxDueDay: parseInt(formData.propertyTaxDueDay) || 1,
+      waterTaxAnnual: parseFloat(formData.waterTaxAnnual) || 0,
+      waterTaxDueDay: parseInt(formData.waterTaxDueDay) || 1,
+      maintenanceReserve: parseFloat(formData.monthlyRent) * 0.1 // Default to 10% of monthly rent
+    };
 
-      toast.success('Rental property added successfully!');
-      setFormData({
-        address: '',
-        owner: 'Me',
-        type: 'Apartment',
-        squareYards: '',
-        monthlyRent: '',
-        deposit: ''
-      });
-      onClose();
+    try {
+      await db.rentalProperties.add(rentalData);
+      toast({
+        title: "Success",
+        description: "Rental property added successfully.",
+      })
+      setOpen(false);
     } catch (error) {
-      toast.error('Failed to add rental property');
-      console.error('Error adding rental:', error);
+      console.error("Error adding rental property:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add rental property. Please try again.",
+        variant: "destructive",
+      })
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Add Rental Property</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              value={formData.address}
-              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-              placeholder="Enter property address"
-              required
-            />
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button variant="outline">Add Rental Property</Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Add New Rental Property</AlertDialogTitle>
+          <AlertDialogDescription>
+            Enter the details of the rental property to keep track of your investments.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="address" className="text-right">Address</Label>
+            <Input type="text" id="address" name="address" value={formData.address} onChange={handleChange} className="col-span-3" />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="owner">Owner</Label>
-            <select
-              id="owner"
-              value={formData.owner}
-              onChange={(e) => setFormData({ ...formData, owner: e.target.value as 'Me' | 'Mother' | 'Grandmother' })}
-              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
-              required
-            >
-              <option value="Me">Me</option>
-              <option value="Mother">Mother</option>
-              <option value="Grandmother">Grandmother</option>
-            </select>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="owner" className="text-right">Owner</Label>
+            <Select onValueChange={(value) => setFormData(prevData => ({ ...prevData, owner: value }))} defaultValue={formData.owner}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select owner" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Me">Me</SelectItem>
+                <SelectItem value="Mother">Mother</SelectItem>
+                <SelectItem value="Grandmother">Grandmother</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="type">Property Type</Label>
-            <select
-              id="type"
-              value={formData.type}
-              onChange={(e) => setFormData({ ...formData, type: e.target.value as 'Apartment' | 'House' | 'Commercial' | 'Plot' })}
-              className="w-full h-10 px-3 rounded-md border border-border bg-background text-foreground"
-              required
-            >
-              <option value="Apartment">Apartment</option>
-              <option value="House">House</option>
-              <option value="Commercial">Commercial</option>
-              <option value="Plot">Plot</option>
-            </select>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="type" className="text-right">Type</Label>
+            <Select onValueChange={(value) => setFormData(prevData => ({ ...prevData, type: value }))} defaultValue={formData.type}>
+              <SelectTrigger className="col-span-3">
+                <SelectValue placeholder="Select type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Apartment">Apartment</SelectItem>
+                <SelectItem value="House">House</SelectItem>
+                <SelectItem value="Commercial">Commercial</SelectItem>
+                <SelectItem value="Plot">Plot</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="squareYards">Square Yards</Label>
-            <Input
-              id="squareYards"
-              type="number"
-              value={formData.squareYards}
-              onChange={(e) => setFormData({ ...formData, squareYards: e.target.value })}
-              placeholder="Property size"
-              required
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="squareYards" className="text-right">Square Yards</Label>
+            <Input type="number" id="squareYards" name="squareYards" value={formData.squareYards} onChange={handleChange} className="col-span-3" />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="monthlyRent">Monthly Rent</Label>
-            <Input
-              id="monthlyRent"
-              type="number"
-              value={formData.monthlyRent}
-              onChange={(e) => setFormData({ ...formData, monthlyRent: e.target.value })}
-              placeholder="Monthly rent amount"
-              required
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="monthlyRent" className="text-right">Monthly Rent</Label>
+            <Input type="number" id="monthlyRent" name="monthlyRent" value={formData.monthlyRent} onChange={handleChange} className="col-span-3" />
           </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="deposit">Deposit</Label>
-            <Input
-              id="deposit"
-              type="number"
-              value={formData.deposit}
-              onChange={(e) => setFormData({ ...formData, deposit: e.target.value })}
-              placeholder="Security deposit"
-            />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="dueDay" className="text-right">Due Day</Label>
+            <Input type="number" id="dueDay" name="dueDay" value={formData.dueDay} onChange={handleChange} className="col-span-3" />
           </div>
-          
-          <div className="flex gap-2 pt-4">
-            <Button type="button" variant="outline" onClick={onClose} className="flex-1">
-              Cancel
-            </Button>
-            <Button type="submit" className="flex-1">
-              Add Property
-            </Button>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="escalationPercent" className="text-right">Escalation %</Label>
+            <Input type="number" id="escalationPercent" name="escalationPercent" value={formData.escalationPercent} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="escalationDate" className="text-right">Escalation Date</Label>
+            <Input type="date" id="escalationDate" name="escalationDate" value={formData.escalationDate} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="lateFeeRate" className="text-right">Late Fee Rate</Label>
+            <Input type="number" id="lateFeeRate" name="lateFeeRate" value={formData.lateFeeRate} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="noticePeriodDays" className="text-right">Notice Period (Days)</Label>
+            <Input type="number" id="noticePeriodDays" name="noticePeriodDays" value={formData.noticePeriodDays} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="propertyTaxAnnual" className="text-right">Property Tax (Annual)</Label>
+            <Input type="number" id="propertyTaxAnnual" name="propertyTaxAnnual" value={formData.propertyTaxAnnual} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="propertyTaxDueDay" className="text-right">Property Tax Due Day</Label>
+            <Input type="number" id="propertyTaxDueDay" name="propertyTaxDueDay" value={formData.propertyTaxDueDay} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="waterTaxAnnual" className="text-right">Water Tax (Annual)</Label>
+            <Input type="number" id="waterTaxAnnual" name="waterTaxAnnual" value={formData.waterTaxAnnual} onChange={handleChange} className="col-span-3" />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="waterTaxDueDay" className="text-right">Water Tax Due Day</Label>
+            <Input type="number" id="waterTaxDueDay" name="waterTaxDueDay" value={formData.waterTaxDueDay} onChange={handleChange} className="col-span-3" />
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
-  );
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction type="submit" onClick={handleSubmit}>Add Property</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
 }

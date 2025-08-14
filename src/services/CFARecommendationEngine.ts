@@ -1,4 +1,3 @@
-
 /**
  * CFA-Level Recommendations Engine
  * Implements professional-grade financial advice algorithms per requirements spec

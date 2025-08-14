@@ -127,4 +127,14 @@ export class GlobalSettingsService {
       return false;
     }
   }
+
+  static async getSettings(): Promise<GlobalSettings | null> {
+    try {
+      const settings = await db.globalSettings.limit(1).first();
+      return settings || null;
+    } catch (error) {
+      console.error('Error getting settings:', error);
+      return null;
+    }
+  }
 }
