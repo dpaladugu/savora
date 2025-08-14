@@ -13,6 +13,8 @@ export interface DecryptedAiConfig {
 // --- App State (combining Auth, UI, and new AI Config) ---
 interface AppState {
   isUnlocked: boolean;
+  isAuthenticated: boolean; // Added missing property
+  privacyMask: boolean; // Added missing property
   decryptedAiApiKey: string | null; // Stores the raw API key in memory after decryption
   currentAiProvider: string | null; // e.g., 'deepseek', 'ollama_local'
   aiServiceBaseUrl: string | null;  // For providers like Ollama
@@ -24,10 +26,14 @@ interface AppActions {
   setDecryptedAiConfig: (config: DecryptedAiConfig) => void; // Config now includes model
   lockApp: () => void;
   setGlobalLoading: (isLoading: boolean) => void;
+  setAuthenticated: (isAuthenticated: boolean) => void;
+  setPrivacyMask: (privacyMask: boolean) => void;
 }
 
 const initialState: AppState = {
   isUnlocked: false,
+  isAuthenticated: false, // Initialize new property
+  privacyMask: false, // Initialize new property
   decryptedAiApiKey: null,
   currentAiProvider: null,
   aiServiceBaseUrl: null,
@@ -42,6 +48,7 @@ export const useAppStore = create<AppState & AppActions>()(
       setDecryptedAiConfig: (config) => {
         set({
           isUnlocked: true,
+          isAuthenticated: true,
           decryptedAiApiKey: config.apiKey,
           currentAiProvider: config.provider,
           aiServiceBaseUrl: config.baseUrl,
@@ -51,6 +58,7 @@ export const useAppStore = create<AppState & AppActions>()(
       lockApp: () => {
         set({
           isUnlocked: false,
+          isAuthenticated: false,
           decryptedAiApiKey: null,
           currentAiProvider: null,
           aiServiceBaseUrl: null,
@@ -58,6 +66,8 @@ export const useAppStore = create<AppState & AppActions>()(
         });
       },
       setGlobalLoading: (isLoading) => set({ isLoadingGlobal: isLoading }),
+      setAuthenticated: (isAuthenticated) => set({ isAuthenticated }),
+      setPrivacyMask: (privacyMask) => set({ privacyMask }),
     }),
     {
       name: 'savora-app-storage',
@@ -66,6 +76,7 @@ export const useAppStore = create<AppState & AppActions>()(
         // Persist user's preferred provider and model if set
         currentAiProvider: state.currentAiProvider,
         currentAiModel: state.currentAiModel,
+        privacyMask: state.privacyMask,
         // Do NOT persist isUnlocked, decryptedAiApiKey, or aiServiceBaseUrl (if it can be sensitive)
       }),
     }
@@ -78,6 +89,24 @@ export const useIsUnlocked = () => {
     return useAppStore((state) => state.isUnlocked);
   } catch (error) {
     console.error('useIsUnlocked hook error:', error);
+    return false; // Safe fallback
+  }
+};
+
+export const useIsAuthenticated = () => {
+  try {
+    return useAppStore((state) => state.isAuthenticated);
+  } catch (error) {
+    console.error('useIsAuthenticated hook error:', error);
+    return false; // Safe fallback
+  }
+};
+
+export const usePrivacyMask = () => {
+  try {
+    return useAppStore((state) => state.privacyMask);
+  } catch (error) {
+    console.error('usePrivacyMask hook error:', error);
     return false; // Safe fallback
   }
 };

@@ -4,13 +4,14 @@ import { useNavigationRouter } from './navigation-router';
 import { MainContentRouter } from './main-content-router';
 import { PersistentNavigation } from './persistent-navigation';
 import { GlobalHeader } from './global-header';
-import { useAppStore } from '@/store/appStore';
+import { useIsAuthenticated, usePrivacyMask } from '@/store/appStore';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { PrivacyMask } from '@/components/auth/PrivacyMask';
 
 export function ProtectedDashboard() {
   const navigation = useNavigationRouter();
-  const { isAuthenticated, privacyMask } = useAppStore();
+  const isAuthenticated = useIsAuthenticated();
+  const privacyMask = usePrivacyMask();
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export function ProtectedDashboard() {
   return (
     <AuthGuard>
       <div className="min-h-screen bg-background">
-        <GlobalHeader />
+        <GlobalHeader title="Savora" />
         
         <div className="flex flex-col lg:flex-row">
           {/* Desktop Sidebar Navigation */}
@@ -46,25 +47,32 @@ export function ProtectedDashboard() {
               activeMoreModule={navigation.activeMoreModule}
               onTabChange={navigation.handleTabChange}
               onMoreNavigation={navigation.handleMoreNavigation}
-              onGoBack={navigation.goBack}
             />
           </div>
 
           {/* Main Content Area */}
           <div className="flex-1 lg:ml-64 lg:pt-16">
             {privacyMask ? (
-              <PrivacyMask>
+              <div className="relative">
+                <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center">
+                  <div className="text-center">
+                    <p className="text-muted-foreground mb-4">Privacy mode is active</p>
+                    <PrivacyMask amount={0} />
+                  </div>
+                </div>
                 <MainContentRouter
                   activeTab={navigation.activeTab}
                   activeMoreModule={navigation.activeMoreModule}
                   onMoreNavigation={navigation.handleMoreNavigation}
+                  onTabChange={navigation.handleTabChange}
                 />
-              </PrivacyMask>
+              </div>
             ) : (
               <MainContentRouter
                 activeTab={navigation.activeTab}
                 activeMoreModule={navigation.activeMoreModule}
                 onMoreNavigation={navigation.handleMoreNavigation}
+                onTabChange={navigation.handleTabChange}
               />
             )}
           </div>
@@ -76,8 +84,6 @@ export function ProtectedDashboard() {
               activeMoreModule={navigation.activeMoreModule}
               onTabChange={navigation.handleTabChange}
               onMoreNavigation={navigation.handleMoreNavigation}
-              onGoBack={navigation.goBack}
-              isMobile
             />
           </div>
         </div>
