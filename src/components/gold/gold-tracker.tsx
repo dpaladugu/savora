@@ -5,381 +5,357 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { CalendarIcon, Coins, Plus, Edit, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown } from 'lucide-react';
+import { GoldService } from '@/services/GoldService';
 import { toast } from 'sonner';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '@/db';
-import type { Investment } from '@/db';
-
-interface GoldInvestmentForm {
-  name: string;
-  type: 'Gold-Coin' | 'Gold-ETF' | 'SGB';
-  investedValue: number;
-  currentValue: number;
-  units: number;
-  startDate: Date;
-  notes: string;
-}
-
-const initialFormData: GoldInvestmentForm = {
-  name: '',
-  type: 'Gold-Coin',
-  investedValue: 0,
-  currentValue: 0,
-  units: 0,
-  startDate: new Date(),
-  notes: '',
-};
+import { formatCurrency } from '@/lib/format-utils';
+import type { Gold } from '@/lib/db-extended';
 
 export function GoldTracker() {
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState<GoldInvestmentForm>(initialFormData);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [goldHoldings, setGoldHoldings] = useState<Gold[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingGold, setEditingGold] = useState<Gold | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [formData, setFormData] = useState({
+    type: 'Physical' as 'Physical' | 'Digital' | 'ETF' | 'Mutual Fund',
+    weight: '',
+    purity: '24',
+    purchasePrice: '',
+    currentPrice: '',
+    location: '',
+    description: '',
+    purchaseDate: new Date().toISOString().split('T')[0]
+  });
 
-  // Get gold investments from database
-  const goldInvestments = useLiveQuery(() => 
-    db.investments
-      .where('type')
-      .anyOf(['Gold-Coin', 'Gold-ETF', 'SGB'])
-      .toArray(), 
-    []
-  );
+  useEffect(() => {
+    loadGoldHoldings();
+  }, []);
+
+  const loadGoldHoldings = async () => {
+    try {
+      setLoading(true);
+      const holdings = await GoldService.getAllGold();
+      setGoldHoldings(holdings);
+    } catch (error) {
+      toast.error('Failed to load gold holdings');
+      console.error('Error loading gold:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-
     try {
-      const investmentData: Omit<Investment, 'id'> = {
+      const goldData = {
         type: formData.type,
-        name: formData.name,
-        currentNav: formData.currentValue / formData.units || 0,
-        units: formData.units,
-        investedValue: formData.investedValue,
-        currentValue: formData.currentValue,
-        startDate: formData.startDate,
-        frequency: 'One-time',
-        taxBenefit: false,
-        familyMember: 'Me',
-        notes: formData.notes,
-        folioNo: '',
-        maturityDate: undefined,
-        sipAmount: undefined,
-        sipDay: undefined,
-        goalId: undefined,
-        lockInYears: undefined,
-        interestRate: undefined,
-        interestCreditDate: undefined
+        weight: parseFloat(formData.weight),
+        purity: parseInt(formData.purity),
+        purchasePrice: parseFloat(formData.purchasePrice),
+        currentPrice: parseFloat(formData.currentPrice),
+        location: formData.location,
+        description: formData.description,
+        purchaseDate: new Date(formData.purchaseDate)
       };
 
-      if (editingId) {
-        await db.investments.update(editingId, investmentData);
-        toast.success('Gold investment updated successfully');
+      if (editingGold) {
+        await GoldService.updateGold(editingGold.id, goldData);
+        toast.success('Gold holding updated successfully');
       } else {
-        const newId = self.crypto.randomUUID();
-        await db.investments.add({
-          ...investmentData,
-          id: newId,
-        });
-        toast.success('Gold investment added successfully');
+        await GoldService.addGold(goldData);
+        toast.success('Gold holding added successfully');
       }
 
-      setFormData(initialFormData);
-      setShowForm(false);
-      setEditingId(null);
+      resetForm();
+      setShowAddModal(false);
+      setEditingGold(null);
+      loadGoldHoldings();
     } catch (error) {
-      console.error('Error saving gold investment:', error);
-      toast.error('Failed to save gold investment');
-    } finally {
-      setIsLoading(false);
+      toast.error('Failed to save gold holding');
+      console.error('Error saving gold:', error);
     }
   };
 
-  const handleEdit = (investment: Investment) => {
+  const handleEdit = (gold: Gold) => {
+    setEditingGold(gold);
     setFormData({
-      name: investment.name,
-      type: investment.type as 'Gold-Coin' | 'Gold-ETF' | 'SGB',
-      investedValue: investment.investedValue,
-      currentValue: investment.currentValue,
-      units: investment.units,
-      startDate: investment.startDate,
-      notes: investment.notes,
+      type: gold.type,
+      weight: gold.weight.toString(),
+      purity: gold.purity.toString(),
+      purchasePrice: gold.purchasePrice.toString(),
+      currentPrice: gold.currentPrice.toString(),
+      location: gold.location || '',
+      description: gold.description || '',
+      purchaseDate: gold.purchaseDate.toISOString().split('T')[0]
     });
-    setEditingId(investment.id);
-    setShowForm(true);
+    setShowAddModal(true);
   };
 
   const handleDelete = async (id: string) => {
-    try {
-      await db.investments.delete(id);
-      toast.success('Gold investment deleted successfully');
-    } catch (error) {
-      console.error('Error deleting gold investment:', error);
-      toast.error('Failed to delete gold investment');
+    if (confirm('Are you sure you want to delete this gold holding?')) {
+      try {
+        await GoldService.deleteGold(id);
+        toast.success('Gold holding deleted successfully');
+        loadGoldHoldings();
+      } catch (error) {
+        toast.error('Failed to delete gold holding');
+        console.error('Error deleting gold:', error);
+      }
     }
   };
 
-  const calculateTotalValue = () => {
-    if (!goldInvestments) return { invested: 0, current: 0 };
-    return goldInvestments.reduce(
-      (acc, investment) => ({
-        invested: acc.invested + investment.investedValue,
-        current: acc.current + investment.currentValue
-      }),
-      { invested: 0, current: 0 }
-    );
+  const resetForm = () => {
+    setFormData({
+      type: 'Physical',
+      weight: '',
+      purity: '24',
+      purchasePrice: '',
+      currentPrice: '',
+      location: '',
+      description: '',
+      purchaseDate: new Date().toISOString().split('T')[0]
+    });
   };
 
-  const totals = calculateTotalValue();
-  const profitLoss = totals.current - totals.invested;
-  const profitLossPercent = totals.invested > 0 ? (profitLoss / totals.invested) * 100 : 0;
+  const totalValue = goldHoldings.reduce((sum, gold) => sum + (gold.weight * gold.currentPrice), 0);
+  const totalInvestment = goldHoldings.reduce((sum, gold) => sum + (gold.weight * gold.purchasePrice), 0);
+  const totalGains = totalValue - totalInvestment;
+  const gainsPercentage = totalInvestment > 0 ? (totalGains / totalInvestment) * 100 : 0;
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-32">Loading gold holdings...</div>;
+  }
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gold Investments</h2>
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Gold Investment
+        <div>
+          <h1 className="text-2xl font-bold">Gold Tracker</h1>
+          <p className="text-muted-foreground">Manage your gold investments and track their performance</p>
+        </div>
+        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add Gold
         </Button>
       </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Total Invested</p>
-              <p className="text-2xl font-bold">₹{totals.invested.toLocaleString()}</p>
-            </div>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">Current Value</p>
-              <p className="text-2xl font-bold">₹{totals.current.toLocaleString()}</p>
-            </div>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Investment</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrency(totalInvestment)}</div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">P&L</p>
-              <p className={`text-2xl font-bold ${profitLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ₹{profitLoss.toLocaleString()} ({profitLossPercent.toFixed(1)}%)
-              </p>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Gains</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className={`text-2xl font-bold flex items-center gap-2 ${totalGains >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {totalGains >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
+              {formatCurrency(Math.abs(totalGains))} ({gainsPercentage.toFixed(2)}%)
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingId ? 'Edit Gold Investment' : 'Add Gold Investment'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Investment Name</Label>
-                  <Input
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="e.g., Gold Coins 22K"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={formData.type}
-                    onValueChange={(value: 'Gold-Coin' | 'Gold-ETF' | 'SGB') => 
-                      setFormData({ ...formData, type: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Gold-Coin">Gold Coins</SelectItem>
-                      <SelectItem value="Gold-ETF">Gold ETF</SelectItem>
-                      <SelectItem value="SGB">Sovereign Gold Bonds</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label>Invested Amount (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.investedValue}
-                    onChange={(e) => setFormData({ ...formData, investedValue: Number(e.target.value) })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Current Value (₹)</Label>
-                  <Input
-                    type="number"
-                    value={formData.currentValue}
-                    onChange={(e) => setFormData({ ...formData, currentValue: Number(e.target.value) })}
-                    required
-                  />
-                </div>
-
-                <div>
-                  <Label>Units/Quantity</Label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    value={formData.units}
-                    onChange={(e) => setFormData({ ...formData, units: Number(e.target.value) })}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label>Purchase Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !formData.startDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.startDate ? format(formData.startDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar
-                        mode="single"
-                        selected={formData.startDate}
-                        onSelect={(date) => date && setFormData({ ...formData, startDate: date })}
-                        disabled={(date) =>
-                          date > new Date() || date < new Date("1900-01-01")
-                        }
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <div>
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Additional notes..."
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2">
-                <Button type="submit" disabled={isLoading}>
-                  {editingId ? 'Update Investment' : 'Add Investment'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                    setFormData(initialFormData);
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Investments List */}
+      {/* Gold Holdings List */}
       <div className="grid gap-4">
-        {goldInvestments?.map((investment) => {
-          const pnl = investment.currentValue - investment.investedValue;
-          const pnlPercent = investment.investedValue > 0 ? (pnl / investment.investedValue) * 100 : 0;
+        {goldHoldings.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-muted-foreground">No gold holdings recorded yet. Add your first holding to get started!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          goldHoldings.map((gold) => {
+            const currentValue = gold.weight * gold.currentPrice;
+            const investmentValue = gold.weight * gold.purchasePrice;
+            const gains = currentValue - investmentValue;
+            const gainsPercent = investmentValue > 0 ? (gains / investmentValue) * 100 : 0;
 
-          return (
-            <Card key={investment.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Coins className="w-5 h-5 text-yellow-600" />
-                    <div>
-                      <h3 className="font-semibold">{investment.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {investment.type} • {investment.units} units
-                      </p>
+            return (
+              <Card key={gold.id}>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg">{gold.type} Gold</h3>
+                        <Badge variant="outline">{gold.purity}K</Badge>
+                        <Badge variant="secondary">{gold.weight}g</Badge>
+                      </div>
+                      <p className="text-muted-foreground mb-2">{gold.description}</p>
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Current Value:</span>
+                          <p className="font-medium">{formatCurrency(currentValue)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Investment:</span>
+                          <p className="font-medium">{formatCurrency(investmentValue)}</p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Gains:</span>
+                          <p className={`font-medium ${gains >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(Math.abs(gains))} ({gainsPercent.toFixed(2)}%)
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground">Location:</span>
+                          <p className="font-medium">{gold.location || 'Not specified'}</p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="font-semibold">₹{investment.currentValue.toLocaleString()}</p>
-                      <p className={`text-sm ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {pnl >= 0 ? '+' : ''}₹{pnl.toLocaleString()} ({pnlPercent.toFixed(1)}%)
-                      </p>
-                    </div>
-                    
-                    <div className="flex gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(investment)}
-                      >
+                    <div className="flex gap-2 ml-4">
+                      <Button size="sm" variant="outline" onClick={() => handleEdit(gold)}>
                         <Edit className="w-4 h-4" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(investment.id)}
-                      >
+                      <Button size="sm" variant="outline" onClick={() => handleDelete(gold.id)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>
-                </div>
-                
-                {investment.notes && (
-                  <p className="text-sm text-muted-foreground mt-2">{investment.notes}</p>
-                )}
-              </CardContent>
-            </Card>
-          );
-        })}
-        
-        {!goldInvestments?.length && (
-          <Card>
-            <CardContent className="p-8 text-center">
-              <Coins className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-lg font-semibold mb-2">No Gold Investments</h3>
-              <p className="text-muted-foreground">
-                Add your first gold investment to get started.
-              </p>
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            );
+          })
         )}
       </div>
+
+      {/* Add/Edit Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingGold ? 'Edit Gold Holding' : 'Add Gold Holding'}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="type">Type</Label>
+              <Select value={formData.type} onValueChange={(value: any) => setFormData({...formData, type: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Physical">Physical</SelectItem>
+                  <SelectItem value="Digital">Digital</SelectItem>
+                  <SelectItem value="ETF">ETF</SelectItem>
+                  <SelectItem value="Mutual Fund">Mutual Fund</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="weight">Weight (grams)</Label>
+                <Input
+                  id="weight"
+                  type="number"
+                  step="0.01"
+                  value={formData.weight}
+                  onChange={(e) => setFormData({...formData, weight: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="purity">Purity (Karat)</Label>
+                <Select value={formData.purity} onValueChange={(value) => setFormData({...formData, purity: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="24">24K</SelectItem>
+                    <SelectItem value="22">22K</SelectItem>
+                    <SelectItem value="18">18K</SelectItem>
+                    <SelectItem value="14">14K</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="purchasePrice">Purchase Price (₹/g)</Label>
+                <Input
+                  id="purchasePrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.purchasePrice}
+                  onChange={(e) => setFormData({...formData, purchasePrice: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="currentPrice">Current Price (₹/g)</Label>
+                <Input
+                  id="currentPrice"
+                  type="number"
+                  step="0.01"
+                  value={formData.currentPrice}
+                  onChange={(e) => setFormData({...formData, currentPrice: e.target.value})}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => setFormData({...formData, location: e.target.value})}
+                placeholder="Bank locker, Home safe, etc."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Input
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({...formData, description: e.target.value})}
+                placeholder="Jewelry, coins, bars, etc."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={formData.purchaseDate}
+                onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})}
+                required
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowAddModal(false);
+                setEditingGold(null);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {editingGold ? 'Update' : 'Add'} Gold
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -1,153 +1,141 @@
-
-import { motion } from "framer-motion";
-import { 
-  Shield, 
-  Coins, 
-  Home, 
-  DollarSign, 
-  FileText, 
-  Calculator, 
-  PieChart, 
-  TrendingUp, 
-  CreditCard, 
-  Car,
-  Wallet,
-  Target,
-  Repeat, // Already imported, good.
-  Bell,
-  Lightbulb,
-  Upload,
-  Settings // Settings icon is Calculator, let's use an actual Settings icon if available or keep Calculator for now.
-           // For Recurring Transactions, Repeat is good.
-} from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface MoreScreenProps {
-  onNavigate: (screen: string) => void;
-  onClose?: () => void;
+  onModuleSelect: (moduleId: string) => void;
 }
 
-export function MoreScreen({ onNavigate, onClose }: MoreScreenProps) {
+export function MoreScreen({ onModuleSelect }: MoreScreenProps) {
   const modules = [
     {
       id: 'emergency-fund',
       title: 'Emergency Fund',
-      description: 'Calculate and track your emergency corpus',
-      icon: Shield,
-      color: 'bg-gradient-to-r from-green-500 to-green-600'
+      description: 'Calculate and track your emergency fund savings',
+      icon: '⛑️',
+      category: 'Financial Planning'
     },
     {
       id: 'rentals',
-      title: 'Rental Properties',
-      description: 'Track rental income and expenses',
-      icon: Home,
-      color: 'bg-gradient-to-r from-blue-500 to-blue-600'
+      title: 'Rental Manager',
+      description: 'Manage your rental properties and track income',
+      icon: '🏠',
+      category: 'Real Estate'
     },
     {
       id: 'recommendations',
-      title: 'Smart Tips',
-      description: 'Personalized financial recommendations',
-      icon: Lightbulb,
-      color: 'bg-gradient-to-r from-purple-500 to-purple-600'
+      title: 'Recommendations',
+      description: 'Get personalized financial recommendations',
+      icon: '💡',
+      category: 'Insights'
     },
     {
       id: 'cashflow',
-      title: 'Cashflow Analysis',
-      description: 'Income vs expense analysis',
-      icon: PieChart,
-      color: 'bg-gradient-to-r from-indigo-500 to-indigo-600'
+      title: 'Cash Flow',
+      description: 'Visualize your income and expenses',
+      icon: '📊',
+      category: 'Analytics'
     },
     {
       id: 'telegram',
       title: 'Telegram Bot',
-      description: 'Connect Telegram for quick updates',
-      icon: Bell,
-      color: 'bg-gradient-to-r from-teal-500 to-teal-600'
+      description: 'Connect to Telegram for instant updates',
+      icon: '🤖',
+      category: 'Integrations'
     },
     {
-      id: 'goals',
-      title: 'Goals & SIPs',
-      description: 'Financial goals and SIP tracking',
-      icon: Target,
-      color: 'bg-gradient-to-r from-orange-500 to-orange-600'
+      id: 'credit-cards',
+      title: 'Credit Cards',
+      description: 'Manage your credit cards and track spending',
+      icon: '💳',
+      category: 'Credit Management'
     },
     {
-      id: 'upload',
-      title: 'Import CSV',
-      description: 'Import Axio, Kuvera data',
-      icon: Upload,
-      color: 'bg-gradient-to-r from-cyan-500 to-cyan-600'
+      id: 'credit-card-statements',
+      title: 'Credit Card Statements',
+      description: 'Upload and analyze your credit card statements',
+      icon: '🧾',
+      category: 'Credit Management'
     },
     {
       id: 'recurring-transactions',
-      title: 'Recurring',
-      description: 'Manage automated transactions',
-      icon: Repeat,
-      color: 'bg-gradient-to-r from-pink-500 to-pink-600'
+      title: 'Recurring Transactions',
+      description: 'Manage and track your recurring transactions',
+      icon: '🔄',
+      category: 'Transaction Management'
+    },
+    {
+      id: 'gold',
+      title: 'Gold Tracker',
+      description: 'Track your gold investments and current market value',
+      icon: '🥇',
+      category: 'Investments'
+    },
+    {
+      id: 'loans',
+      title: 'Loan Manager',
+      description: 'Manage loans, EMIs and track repayment progress',
+      icon: '💰',
+      category: 'Debt Management'
+    },
+    {
+      id: 'insurance',
+      title: 'Insurance Tracker',
+      description: 'Track insurance policies and renewal dates',
+      icon: '🛡️',
+      category: 'Protection'
     },
     {
       id: 'vehicles',
-      title: 'Vehicle Management',
-      description: 'Track vehicle details, maintenance, and insurance',
-      icon: Car,
-      color: 'bg-gradient-to-r from-amber-500 to-amber-600'
+      title: 'Vehicle Manager',
+      description: 'Manage vehicles and track document renewals',
+      icon: '🚗',
+      category: 'Assets'
     },
-    {
-      id: 'settings',
-      title: 'Settings',
-      description: 'App preferences and data export',
-      icon: Calculator, // Note: Settings icon is Calculator, consider changing if a specific Settings icon is available
-      color: 'bg-gradient-to-r from-gray-500 to-gray-600'
-    }
   ];
 
-  const handleModuleClick = (moduleId: string) => {
-    onNavigate(moduleId);
-    if (onClose) {
-      onClose();
-    }
-  };
+  const groupedModules = modules.reduce((acc: { [key: string]: any[] }, module) => {
+    (acc[module.category] = acc[module.category] || []).push(module);
+    return acc;
+  }, {});
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-foreground mb-2">
-          More Features
-        </h2>
-        <p className="text-muted-foreground">
-          Explore additional financial modules
-        </p>
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">More</h1>
+        <Link to="/settings">
+          <Button variant="outline">
+            <Settings className="w-4 h-4 mr-2" />
+            Settings
+          </Button>
+        </Link>
       </div>
 
-      <div className="grid gap-3">
-        {modules.map((module, index) => (
-          <motion.div
-            key={module.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.05 }}
-          >
-            <Card 
-              className="cursor-pointer hover:shadow-md transition-all duration-200 border-border/50 hover:border-primary/50"
-              onClick={() => handleModuleClick(module.id)}
-            >
-              <CardContent className="flex items-center gap-4 p-4">
-                <div className={`p-3 rounded-xl ${module.color} text-white flex-shrink-0`}>
-                  <module.icon className="w-6 h-6" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-foreground text-base">
+      {Object.entries(groupedModules).map(([category, modules]) => (
+        <div key={category} className="space-y-4">
+          <h2 className="text-xl font-semibold">{category}</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {modules.map((module) => (
+              <Card key={module.id} className="cursor-pointer hover:shadow-md transition-shadow duration-200">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <span className="mr-2">{module.icon}</span>
                     {module.title}
-                  </h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {module.description}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{module.description}</p>
+                  <Button variant="link" className="mt-4" onClick={() => onModuleSelect(module.id)}>
+                    Open Module
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

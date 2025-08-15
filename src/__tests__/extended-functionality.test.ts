@@ -1,4 +1,3 @@
-
 import { describe, it, expect, beforeEach } from 'vitest';
 import { extendedDb } from '@/lib/db-schema-extended';
 import { RentalPropertyService } from '@/services/RentalPropertyService';
@@ -242,6 +241,60 @@ describe('Extended Functionality Tests', () => {
       expect(result).toBeDefined();
       expect(result.allocations).toBeDefined();
       expect(result.remainingSurplus).toBeLessThanOrEqual(surplusAmount);
+    });
+  });
+
+  describe('UI Components Integration', () => {
+    test('should render Gold Tracker component', async () => {
+      // Mock the GoldService
+      jest.spyOn(require('@/services/GoldService').GoldService, 'getAllGold')
+        .mockResolvedValue([]);
+
+      const { render } = await import('@testing-library/react');
+      const { GoldTracker } = await import('@/components/gold/gold-tracker');
+      
+      const { getByText } = render(<GoldTracker />);
+      expect(getByText('Gold Tracker')).toBeInTheDocument();
+      expect(getByText('Manage your gold investments and track their performance')).toBeInTheDocument();
+    });
+
+    test('should render Loan Manager component', async () => {
+      // Mock the LoanService
+      jest.spyOn(require('@/services/LoanService').LoanService, 'getAllLoans')
+        .mockResolvedValue([]);
+
+      const { render } = await import('@testing-library/react');
+      const { LoanManager } = await import('@/components/loans/loan-manager');
+      
+      const { getByText } = render(<LoanManager />);
+      expect(getByText('Loan Manager')).toBeInTheDocument();
+      expect(getByText('Track and manage your loans and EMIs')).toBeInTheDocument();
+    });
+
+    test('should render Insurance Tracker component', async () => {
+      // Mock the InsuranceService
+      jest.spyOn(require('@/services/InsuranceService').InsuranceService, 'getAllInsurance')
+        .mockResolvedValue([]);
+
+      const { render } = await import('@testing-library/react');
+      const { InsuranceTracker } = await import('@/components/insurance/insurance-tracker');
+      
+      const { getByText } = render(<InsuranceTracker />);
+      expect(getByText('Insurance Tracker')).toBeInTheDocument();
+      expect(getByText('Manage your insurance policies and track renewals')).toBeInTheDocument();
+    });
+
+    test('should render Vehicle Manager component', async () => {
+      // Mock the VehicleService
+      jest.spyOn(require('@/services/VehicleService').VehicleService, 'getAllVehicles')
+        .mockResolvedValue([]);
+
+      const { render } = await import('@testing-library/react');
+      const { VehicleManager } = await import('@/components/vehicles/VehicleManager');
+      
+      const { getByText } = render(<VehicleManager />);
+      expect(getByText('Vehicle Manager')).toBeInTheDocument();
+      expect(getByText('Manage your vehicles and track document renewals')).toBeInTheDocument();
     });
   });
 });
