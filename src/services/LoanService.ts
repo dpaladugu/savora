@@ -76,7 +76,7 @@ export class LoanService {
    */
   static async getActiveLoans(): Promise<Loan[]> {
     try {
-      return await extendedDb.loans.where('isActive').equals(true).toArray();
+      return await extendedDb.loans.where('isActive').equals(1).toArray();
     } catch (error) {
       console.error('Error fetching active loans:', error);
       return [];

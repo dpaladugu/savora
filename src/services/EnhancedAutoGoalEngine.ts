@@ -1,4 +1,3 @@
-
 import { extendedDb } from '@/lib/db-schema-extended';
 import { db } from '@/lib/db';
 import type { Goal, Txn, Investment, Insurance, Dependent } from '@/lib/db';
@@ -88,7 +87,9 @@ export class EnhancedAutoGoalEngine {
 
         if (!hasExistingGoal) {
           const inflationRate = policy.type === 'Health' ? 1.05 : 1.03; // 5% health, 3% term
-          const targetAmount = policy.premium * Math.pow(inflationRate, 3);
+          // Use estimated premium since the Insurance interface doesn't have premium field
+          const estimatedPremium = policy.type === 'Health' ? 25000 : 15000;
+          const targetAmount = estimatedPremium * Math.pow(inflationRate, 3);
           const targetDate = addYears(policy.endDate, -1); // 1 year before expiry
 
           goals.push({

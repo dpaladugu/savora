@@ -107,7 +107,7 @@ export class TenantService {
    */
   static async getTenantsWithPendingRefunds(): Promise<Tenant[]> {
     try {
-      return await extendedDb.tenants.where('depositRefundPending').equals(true).toArray();
+      return await extendedDb.tenants.where('depositRefundPending').equals(1).toArray();
     } catch (error) {
       console.error('Error fetching tenants with pending refunds:', error);
       return [];
