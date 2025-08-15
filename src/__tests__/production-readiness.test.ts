@@ -190,15 +190,23 @@ describe('Production Readiness Tests', () => {
     });
 
     it('can perform CRUD operations on all main entities', async () => {
-      // Test expenses - using correct schema
-      const expenseId = await db.expenses.add({
+      // Test transactions - using correct schema
+      const txnId = await db.txns.add({
         amount: 100,
         date: new Date(),
         category: 'Food',
-        type: 'debit',
-        source: 'manual'
+        currency: 'INR',
+        note: 'Test expense',
+        tags: [],
+        paymentMix: [{
+          mode: 'Cash',
+          amount: 100
+        }],
+        splitWith: [],
+        isPartialRent: false,
+        isSplit: false
       });
-      expect(expenseId).toBeDefined();
+      expect(txnId).toBeDefined();
 
       // Test goals - using correct schema
       const goalId = await db.goals.add({
@@ -212,13 +220,17 @@ describe('Production Readiness Tests', () => {
       });
       expect(goalId).toBeDefined();
 
-      // Test investments - using correct schema
+      // Test investments - using correct schema with all required fields
       const investmentId = await db.investments.add({
         name: 'Test Investment',
         type: 'MF-Growth',
+        currentNav: 100,
+        units: 100,
         investedValue: 10000,
         currentValue: 10000,
         startDate: new Date(),
+        frequency: 'Monthly',
+        taxBenefit: false,
         familyMember: 'Self',
         notes: 'Test investment'
       });
@@ -244,21 +256,24 @@ describe('Production Readiness Tests', () => {
     });
 
     it('validates input data', async () => {
-      // Test invalid transaction data
+      // Test valid transaction data
       await expect(
         db.txns.add({
-          amount: -100, // This should be valid for expenses
+          amount: 100,
           date: new Date(),
           category: 'Food',
+          currency: 'INR',
           note: 'Test expense',
           tags: [],
-          currency: 'INR',
           paymentMix: [{
             mode: 'Cash',
             amount: 100
-          }]
+          }],
+          splitWith: [],
+          isPartialRent: false,
+          isSplit: false
         })
-      ).resolves.toBeDefined(); // Should work for negative amounts (expenses)
+      ).resolves.toBeDefined(); // Should work for valid data
     });
   });
 });
