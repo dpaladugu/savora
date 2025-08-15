@@ -34,7 +34,7 @@ const mockSettings = {
   darkMode: false,
   timeZone: 'Asia/Kolkata',
   isTest: false,
-  theme: 'light',
+  theme: 'light' as const,
   deviceThemes: {},
   revealSecret: '',
 };
