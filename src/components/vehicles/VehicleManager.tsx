@@ -8,11 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Edit, Trash2, Car, Calendar, AlertTriangle, Fuel } from 'lucide-react';
+import { Plus, Edit, Trash2, Car, AlertTriangle, Calendar } from 'lucide-react';
 import { VehicleService } from '@/services/VehicleService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import type { Vehicle } from '@/lib/db';
+import type { Vehicle } from '@/db';
 
 export function VehicleManager() {
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -20,17 +20,15 @@ export function VehicleManager() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    type: 'Car' as 'Car' | 'Bike' | 'Scooter' | 'Truck' | 'Other',
+    owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
+    regNo: '',
+    type: 'Car' as 'Car' | 'Other' | 'Motorcycle' | 'Scooter' | 'Truck',
     make: '',
     model: '',
-    year: new Date().getFullYear().toString(),
-    registrationNumber: '',
-    purchasePrice: '',
-    currentValue: '',
-    fuelType: 'Petrol' as 'Petrol' | 'Diesel' | 'CNG' | 'Electric' | 'Hybrid',
-    insuranceExpiryDate: '',
-    pucExpiryDate: '',
-    registrationExpiryDate: ''
+    fuelType: 'Petrol' as 'Petrol' | 'Diesel' | 'Electric' | 'CNG' | 'Hybrid',
+    insuranceExpiry: '',
+    pucExpiry: '',
+    vehicleValue: ''
   });
 
   useEffect(() => {
@@ -40,7 +38,7 @@ export function VehicleManager() {
   const loadVehicles = async () => {
     try {
       setLoading(true);
-      const allVehicles = await VehicleService.getAllVehicles();
+      const allVehicles = await VehicleService.getVehicles();
       setVehicles(allVehicles);
     } catch (error) {
       toast.error('Failed to load vehicles');
@@ -54,17 +52,15 @@ export function VehicleManager() {
     e.preventDefault();
     try {
       const vehicleData = {
+        owner: formData.owner,
+        regNo: formData.regNo,
         type: formData.type,
         make: formData.make,
         model: formData.model,
-        year: parseInt(formData.year),
-        registrationNumber: formData.registrationNumber,
-        purchasePrice: parseFloat(formData.purchasePrice),
-        currentValue: parseFloat(formData.currentValue),
         fuelType: formData.fuelType,
-        insuranceExpiryDate: formData.insuranceExpiryDate ? new Date(formData.insuranceExpiryDate) : undefined,
-        pucExpiryDate: formData.pucExpiryDate ? new Date(formData.pucExpiryDate) : undefined,
-        registrationExpiryDate: formData.registrationExpiryDate ? new Date(formData.registrationExpiryDate) : undefined
+        insuranceExpiry: new Date(formData.insuranceExpiry),
+        pucExpiry: new Date(formData.pucExpiry),
+        vehicleValue: parseFloat(formData.vehicleValue)
       };
 
       if (editingVehicle) {
@@ -88,17 +84,15 @@ export function VehicleManager() {
   const handleEdit = (vehicle: Vehicle) => {
     setEditingVehicle(vehicle);
     setFormData({
+      owner: vehicle.owner,
+      regNo: vehicle.regNo,
       type: vehicle.type,
-      make: vehicle.make,
-      model: vehicle.model,
-      year: vehicle.year.toString(),
-      registrationNumber: vehicle.registrationNumber,
-      purchasePrice: vehicle.purchasePrice.toString(),
-      currentValue: vehicle.currentValue.toString(),
-      fuelType: vehicle.fuelType,
-      insuranceExpiryDate: vehicle.insuranceExpiryDate?.toISOString().split('T')[0] || '',
-      pucExpiryDate: vehicle.pucExpiryDate?.toISOString().split('T')[0] || '',
-      registrationExpiryDate: vehicle.registrationExpiryDate?.toISOString().split('T')[0] || ''
+      make: vehicle.make || '',
+      model: vehicle.model || '',
+      fuelType: vehicle.fuelType || 'Petrol',
+      insuranceExpiry: vehicle.insuranceExpiry.toISOString().split('T')[0],
+      pucExpiry: vehicle.pucExpiry.toISOString().split('T')[0],
+      vehicleValue: vehicle.vehicleValue?.toString() || ''
     });
     setShowAddModal(true);
   };
@@ -118,44 +112,31 @@ export function VehicleManager() {
 
   const resetForm = () => {
     setFormData({
+      owner: 'Me',
+      regNo: '',
       type: 'Car',
       make: '',
       model: '',
-      year: new Date().getFullYear().toString(),
-      registrationNumber: '',
-      purchasePrice: '',
-      currentValue: '',
       fuelType: 'Petrol',
-      insuranceExpiryDate: '',
-      pucExpiryDate: '',
-      registrationExpiryDate: ''
+      insuranceExpiry: '',
+      pucExpiry: '',
+      vehicleValue: ''
     });
   };
 
-  const getExpiringDocuments = () => {
+  const getExpiringVehicles = () => {
     const threeMonthsFromNow = new Date();
     threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
     
-    const expiring = [];
-    
-    vehicles.forEach(vehicle => {
-      if (vehicle.insuranceExpiryDate && new Date(vehicle.insuranceExpiryDate) <= threeMonthsFromNow) {
-        expiring.push({ vehicle, document: 'Insurance', date: vehicle.insuranceExpiryDate });
-      }
-      if (vehicle.pucExpiryDate && new Date(vehicle.pucExpiryDate) <= threeMonthsFromNow) {
-        expiring.push({ vehicle, document: 'PUC', date: vehicle.pucExpiryDate });
-      }
-      if (vehicle.registrationExpiryDate && new Date(vehicle.registrationExpiryDate) <= threeMonthsFromNow) {
-        expiring.push({ vehicle, document: 'Registration', date: vehicle.registrationExpiryDate });
-      }
+    return vehicles.filter(vehicle => {
+      const insuranceExpiring = new Date(vehicle.insuranceExpiry) <= threeMonthsFromNow;
+      const pucExpiring = new Date(vehicle.pucExpiry) <= threeMonthsFromNow;
+      return insuranceExpiring || pucExpiring;
     });
-    
-    return expiring;
   };
 
-  const totalValue = vehicles.reduce((sum, vehicle) => sum + vehicle.currentValue, 0);
-  const totalPurchasePrice = vehicles.reduce((sum, vehicle) => sum + vehicle.purchasePrice, 0);
-  const expiringDocuments = getExpiringDocuments();
+  const expiringVehicles = getExpiringVehicles();
+  const totalValue = vehicles.reduce((sum, vehicle) => sum + (vehicle.vehicleValue || 0), 0);
 
   if (loading) {
     return <div className="flex justify-center items-center h-32">Loading vehicles...</div>;
@@ -166,7 +147,7 @@ export function VehicleManager() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Vehicle Manager</h1>
-          <p className="text-muted-foreground">Manage your vehicles and track document renewals</p>
+          <p className="text-muted-foreground">Track vehicle maintenance, insurance, and documentation</p>
         </div>
         <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
           <Plus className="w-4 h-4" />
@@ -175,45 +156,28 @@ export function VehicleManager() {
       </div>
 
       {/* Expiring Documents Alert */}
-      {expiringDocuments.length > 0 && (
+      {expiringVehicles.length > 0 && (
         <Alert className="border-yellow-200 bg-yellow-50">
           <AlertTriangle className="h-4 w-4 text-yellow-600" />
           <AlertDescription className="text-yellow-800">
-            {expiringDocuments.length} document(s) expiring within 3 months. Please review and renew.
+            {expiringVehicles.length} vehicle(s) have documents expiring within 3 months. Please review and renew.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Car className="w-4 h-4" />
-              Total Vehicles
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{vehicles.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Current Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Purchase Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalPurchasePrice)}</div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Summary Card */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <Car className="w-4 h-4" />
+            Fleet Overview
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
+          <p className="text-sm text-muted-foreground">{vehicles.length} vehicles registered</p>
+        </CardContent>
+      </Card>
 
       {/* Vehicles List */}
       <div className="grid gap-4">
@@ -225,24 +189,25 @@ export function VehicleManager() {
           </Card>
         ) : (
           vehicles.map((vehicle) => {
-            const hasExpiringDocs = expiringDocuments.some(exp => exp.vehicle.id === vehicle.id);
+            const insuranceDays = Math.ceil((new Date(vehicle.insuranceExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            const pucDays = Math.ceil((new Date(vehicle.pucExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+            const isInsuranceExpiring = insuranceDays <= 90 && insuranceDays > 0;
+            const isPucExpiring = pucDays <= 90 && pucDays > 0;
 
             return (
-              <Card key={vehicle.id} className={hasExpiringDocs ? 'border-yellow-200' : ''}>
+              <Card key={vehicle.id} className={isInsuranceExpiring || isPucExpiring ? 'border-yellow-200' : ''}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
                         <h3 className="font-semibold text-lg">{vehicle.make} {vehicle.model}</h3>
                         <Badge variant="outline">{vehicle.type}</Badge>
-                        <Badge variant="secondary">{vehicle.year}</Badge>
-                        {hasExpiringDocs && <Badge variant="outline" className="text-yellow-600 border-yellow-600">Documents Expiring</Badge>}
+                        <Badge variant="secondary">{vehicle.owner}</Badge>
+                        {isInsuranceExpiring && <Badge variant="outline" className="text-yellow-600 border-yellow-600">Insurance Expiring</Badge>}
+                        {isPucExpiring && <Badge variant="outline" className="text-yellow-600 border-yellow-600">PUC Expiring</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">{vehicle.registrationNumber}</p>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Fuel className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{vehicle.fuelType}</span>
-                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">Registration: {vehicle.regNo}</p>
+                      <p className="text-sm text-muted-foreground mb-2">Fuel: {vehicle.fuelType}</p>
                     </div>
                     <div className="flex gap-2 ml-4">
                       <Button size="sm" variant="outline" onClick={() => handleEdit(vehicle)}>
@@ -254,38 +219,34 @@ export function VehicleManager() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
                     <div>
-                      <span className="text-muted-foreground">Purchase Price:</span>
-                      <p className="font-medium">{formatCurrency(vehicle.purchasePrice)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Current Value:</span>
-                      <p className="font-medium">{formatCurrency(vehicle.currentValue)}</p>
+                      <span className="text-muted-foreground">Vehicle Value:</span>
+                      <p className="font-medium">{formatCurrency(vehicle.vehicleValue || 0)}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">Insurance Expiry:</span>
-                      <p className="font-medium">{vehicle.insuranceExpiryDate?.toLocaleDateString() || 'Not set'}</p>
+                      <p className={`font-medium ${isInsuranceExpiring ? 'text-yellow-600' : ''}`}>
+                        {vehicle.insuranceExpiry.toLocaleDateString()}
+                        {insuranceDays > 0 && (
+                          <span className="text-xs block">
+                            {insuranceDays} days remaining
+                          </span>
+                        )}
+                      </p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">PUC Expiry:</span>
-                      <p className="font-medium">{vehicle.pucExpiryDate?.toLocaleDateString() || 'Not set'}</p>
+                      <p className={`font-medium ${isPucExpiring ? 'text-yellow-600' : ''}`}>
+                        {vehicle.pucExpiry.toLocaleDateString()}
+                        {pucDays > 0 && (
+                          <span className="text-xs block">
+                            {pucDays} days remaining
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </div>
-
-                  {/* Expiring Documents for this vehicle */}
-                  {hasExpiringDocs && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
-                      <p className="text-sm font-medium text-yellow-800 mb-1">Expiring Documents:</p>
-                      {expiringDocuments
-                        .filter(exp => exp.vehicle.id === vehicle.id)
-                        .map((exp, index) => (
-                          <p key={index} className="text-xs text-yellow-700">
-                            {exp.document}: {exp.date.toLocaleDateString()}
-                          </p>
-                        ))}
-                    </div>
-                  )}
                 </CardContent>
               </Card>
             );
@@ -295,42 +256,50 @@ export function VehicleManager() {
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{editingVehicle ? 'Edit Vehicle' : 'Add New Vehicle'}</DialogTitle>
+            <DialogTitle>{editingVehicle ? 'Edit Vehicle' : 'Add Vehicle'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="type">Vehicle Type</Label>
-                <Select value={formData.type} onValueChange={(value: any) => setFormData({...formData, type: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Car">Car</SelectItem>
-                    <SelectItem value="Bike">Bike</SelectItem>
-                    <SelectItem value="Scooter">Scooter</SelectItem>
-                    <SelectItem value="Truck">Truck</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="fuelType">Fuel Type</Label>
-                <Select value={formData.fuelType} onValueChange={(value: any) => setFormData({...formData, fuelType: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Petrol">Petrol</SelectItem>
-                    <SelectItem value="Diesel">Diesel</SelectItem>
-                    <SelectItem value="CNG">CNG</SelectItem>
-                    <SelectItem value="Electric">Electric</SelectItem>
-                    <SelectItem value="Hybrid">Hybrid</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <div>
+              <Label htmlFor="owner">Owner</Label>
+              <Select value={formData.owner} onValueChange={(value: any) => setFormData({...formData, owner: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Me">Me</SelectItem>
+                  <SelectItem value="Mother">Mother</SelectItem>
+                  <SelectItem value="Grandmother">Grandmother</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="regNo">Registration Number</Label>
+              <Input
+                id="regNo"
+                value={formData.regNo}
+                onChange={(e) => setFormData({...formData, regNo: e.target.value})}
+                placeholder="MH01AB1234"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="type">Vehicle Type</Label>
+              <Select value={formData.type} onValueChange={(value: any) => setFormData({...formData, type: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Car">Car</SelectItem>
+                  <SelectItem value="Motorcycle">Motorcycle</SelectItem>
+                  <SelectItem value="Scooter">Scooter</SelectItem>
+                  <SelectItem value="Truck">Truck</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -340,7 +309,7 @@ export function VehicleManager() {
                   id="make"
                   value={formData.make}
                   onChange={(e) => setFormData({...formData, make: e.target.value})}
-                  placeholder="e.g., Maruti, Honda"
+                  placeholder="Honda, Maruti, etc."
                   required
                 />
               </div>
@@ -350,88 +319,58 @@ export function VehicleManager() {
                   id="model"
                   value={formData.model}
                   onChange={(e) => setFormData({...formData, model: e.target.value})}
-                  placeholder="e.g., Swift, City"
+                  placeholder="City, Swift, etc."
                   required
                 />
               </div>
+            </div>
+
+            <div>
+              <Label htmlFor="fuelType">Fuel Type</Label>
+              <Select value={formData.fuelType} onValueChange={(value: any) => setFormData({...formData, fuelType: value})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Petrol">Petrol</SelectItem>
+                  <SelectItem value="Diesel">Diesel</SelectItem>
+                  <SelectItem value="Electric">Electric</SelectItem>
+                  <SelectItem value="CNG">CNG</SelectItem>
+                  <SelectItem value="Hybrid">Hybrid</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="vehicleValue">Vehicle Value (₹)</Label>
+              <Input
+                id="vehicleValue"
+                type="number"
+                value={formData.vehicleValue}
+                onChange={(e) => setFormData({...formData, vehicleValue: e.target.value})}
+                placeholder="Current market value"
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="year">Year</Label>
+                <Label htmlFor="insuranceExpiry">Insurance Expiry</Label>
                 <Input
-                  id="year"
-                  type="number"
-                  min="1990"
-                  max={new Date().getFullYear() + 1}
-                  value={formData.year}
-                  onChange={(e) => setFormData({...formData, year: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="registrationNumber">Registration Number</Label>
-                <Input
-                  id="registrationNumber"
-                  value={formData.registrationNumber}
-                  onChange={(e) => setFormData({...formData, registrationNumber: e.target.value})}
-                  placeholder="e.g., MH12AB1234"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="purchasePrice">Purchase Price (₹)</Label>
-                <Input
-                  id="purchasePrice"
-                  type="number"
-                  step="0.01"
-                  value={formData.purchasePrice}
-                  onChange={(e) => setFormData({...formData, purchasePrice: e.target.value})}
-                  required
-                />
-              </div>
-              <div>
-                <Label htmlFor="currentValue">Current Value (₹)</Label>
-                <Input
-                  id="currentValue"
-                  type="number"
-                  step="0.01"
-                  value={formData.currentValue}
-                  onChange={(e) => setFormData({...formData, currentValue: e.target.value})}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="insuranceExpiryDate">Insurance Expiry</Label>
-                <Input
-                  id="insuranceExpiryDate"
+                  id="insuranceExpiry"
                   type="date"
-                  value={formData.insuranceExpiryDate}
-                  onChange={(e) => setFormData({...formData, insuranceExpiryDate: e.target.value})}
+                  value={formData.insuranceExpiry}
+                  onChange={(e) => setFormData({...formData, insuranceExpiry: e.target.value})}
+                  required
                 />
               </div>
               <div>
-                <Label htmlFor="pucExpiryDate">PUC Expiry</Label>
+                <Label htmlFor="pucExpiry">PUC Expiry</Label>
                 <Input
-                  id="pucExpiryDate"
+                  id="pucExpiry"
                   type="date"
-                  value={formData.pucExpiryDate}
-                  onChange={(e) => setFormData({...formData, pucExpiryDate: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="registrationExpiryDate">Registration Expiry</Label>
-                <Input
-                  id="registrationExpiryDate"
-                  type="date"
-                  value={formData.registrationExpiryDate}
-                  onChange={(e) => setFormData({...formData, registrationExpiryDate: e.target.value})}
+                  value={formData.pucExpiry}
+                  onChange={(e) => setFormData({...formData, pucExpiry: e.target.value})}
+                  required
                 />
               </div>
             </div>

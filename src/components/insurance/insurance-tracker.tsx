@@ -12,21 +12,43 @@ import { Plus, Edit, Trash2, Shield, Calendar, AlertTriangle } from 'lucide-reac
 import { InsuranceService } from '@/services/InsuranceService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import type { Insurance } from '@/lib/db';
+
+interface InsurancePolicy {
+  id: string;
+  type: 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident';
+  provider: string;
+  policyNo: string;
+  sumInsured: number;
+  premium: number;
+  dueDay: number;
+  startDate: Date;
+  endDate: Date;
+  nomineeName: string;
+  nomineeDOB: string;
+  nomineeRelation: string;
+  familyMember: string;
+  notes: string;
+}
 
 export function InsuranceTracker() {
-  const [policies, setPolicies] = useState<Insurance[]>([]);
+  const [policies, setPolicies] = useState<InsurancePolicy[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState<Insurance | null>(null);
+  const [editingPolicy, setEditingPolicy] = useState<InsurancePolicy | null>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
-    type: 'Health' as 'Health' | 'Life' | 'Term' | 'Vehicle' | 'Home' | 'Travel',
-    company: '',
-    policyNumber: '',
-    coverageAmount: '',
+    type: 'Health' as 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident',
+    provider: '',
+    policyNo: '',
+    sumInsured: '',
+    premium: '',
+    dueDay: '',
     startDate: new Date().toISOString().split('T')[0],
     endDate: '',
-    description: ''
+    nomineeName: '',
+    nomineeDOB: '',
+    nomineeRelation: '',
+    familyMember: '',
+    notes: ''
   });
 
   useEffect(() => {
@@ -36,11 +58,12 @@ export function InsuranceTracker() {
   const loadPolicies = async () => {
     try {
       setLoading(true);
-      const allPolicies = await InsuranceService.getAllInsurance();
-      setPolicies(allPolicies);
+      const allPolicies = await InsuranceService.getPolicies();
+      setPolicies(allPolicies as InsurancePolicy[]);
     } catch (error) {
-      toast.error('Failed to load insurance policies');
+      toast.error('Insurance service not yet implemented');
       console.error('Error loading insurance:', error);
+      setPolicies([]); // Set empty array for now
     } finally {
       setLoading(false);
     }
@@ -51,19 +74,25 @@ export function InsuranceTracker() {
     try {
       const policyData = {
         type: formData.type,
-        company: formData.company,
-        policyNumber: formData.policyNumber,
-        coverageAmount: parseFloat(formData.coverageAmount),
+        provider: formData.provider,
+        policyNo: formData.policyNo,
+        sumInsured: parseFloat(formData.sumInsured),
+        premium: parseFloat(formData.premium),
+        dueDay: parseInt(formData.dueDay),
         startDate: new Date(formData.startDate),
         endDate: new Date(formData.endDate),
-        description: formData.description
+        nomineeName: formData.nomineeName,
+        nomineeDOB: formData.nomineeDOB,
+        nomineeRelation: formData.nomineeRelation,
+        familyMember: formData.familyMember,
+        notes: formData.notes
       };
 
       if (editingPolicy) {
-        await InsuranceService.updateInsurance(editingPolicy.id, policyData);
+        await InsuranceService.updatePolicy(editingPolicy.id, policyData);
         toast.success('Insurance policy updated successfully');
       } else {
-        await InsuranceService.addInsurance(policyData);
+        await InsuranceService.addPolicy(policyData);
         toast.success('Insurance policy added successfully');
       }
 
@@ -72,21 +101,27 @@ export function InsuranceTracker() {
       setEditingPolicy(null);
       loadPolicies();
     } catch (error) {
-      toast.error('Failed to save insurance policy');
+      toast.error('Insurance service not yet implemented');
       console.error('Error saving insurance:', error);
     }
   };
 
-  const handleEdit = (policy: Insurance) => {
+  const handleEdit = (policy: InsurancePolicy) => {
     setEditingPolicy(policy);
     setFormData({
       type: policy.type,
-      company: policy.company,
-      policyNumber: policy.policyNumber,
-      coverageAmount: policy.coverageAmount.toString(),
+      provider: policy.provider,
+      policyNo: policy.policyNo,
+      sumInsured: policy.sumInsured.toString(),
+      premium: policy.premium.toString(),
+      dueDay: policy.dueDay.toString(),
       startDate: policy.startDate.toISOString().split('T')[0],
       endDate: policy.endDate.toISOString().split('T')[0],
-      description: policy.description || ''
+      nomineeName: policy.nomineeName,
+      nomineeDOB: policy.nomineeDOB,
+      nomineeRelation: policy.nomineeRelation,
+      familyMember: policy.familyMember,
+      notes: policy.notes
     });
     setShowAddModal(true);
   };
@@ -94,11 +129,11 @@ export function InsuranceTracker() {
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this insurance policy?')) {
       try {
-        await InsuranceService.deleteInsurance(id);
+        await InsuranceService.deletePolicy(id);
         toast.success('Insurance policy deleted successfully');
         loadPolicies();
       } catch (error) {
-        toast.error('Failed to delete insurance policy');
+        toast.error('Insurance service not yet implemented');
         console.error('Error deleting insurance:', error);
       }
     }
@@ -107,27 +142,23 @@ export function InsuranceTracker() {
   const resetForm = () => {
     setFormData({
       type: 'Health',
-      company: '',
-      policyNumber: '',
-      coverageAmount: '',
+      provider: '',
+      policyNo: '',
+      sumInsured: '',
+      premium: '',
+      dueDay: '',
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
-      description: ''
+      nomineeName: '',
+      nomineeDOB: '',
+      nomineeRelation: '',
+      familyMember: '',
+      notes: ''
     });
   };
 
-  const getExpiringPolicies = () => {
-    const threeMonthsFromNow = new Date();
-    threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-    
-    return policies.filter(policy => 
-      new Date(policy.endDate) <= threeMonthsFromNow && 
-      new Date(policy.endDate) > new Date()
-    );
-  };
-
-  const totalCoverage = policies.reduce((sum, policy) => sum + policy.coverageAmount, 0);
-  const expiringPolicies = getExpiringPolicies();
+  const totalCoverage = policies.reduce((sum, policy) => sum + policy.sumInsured, 0);
+  const totalPremium = policies.reduce((sum, policy) => sum + policy.premium, 0);
 
   if (loading) {
     return <div className="flex justify-center items-center h-32">Loading insurance policies...</div>;
@@ -146,15 +177,13 @@ export function InsuranceTracker() {
         </Button>
       </div>
 
-      {/* Expiring Policies Alert */}
-      {expiringPolicies.length > 0 && (
-        <Alert className="border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
-            {expiringPolicies.length} policy(ies) expiring within 3 months. Please review and renew.
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Notice about implementation status */}
+      <Alert className="border-yellow-200 bg-yellow-50">
+        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+        <AlertDescription className="text-yellow-800">
+          Insurance service is not yet fully implemented. This is a preview of the interface.
+        </AlertDescription>
+      </Alert>
 
       {/* Summary Card */}
       <Card>
@@ -166,7 +195,9 @@ export function InsuranceTracker() {
         </CardHeader>
         <CardContent>
           <div className="text-2xl font-bold">{formatCurrency(totalCoverage)}</div>
-          <p className="text-sm text-muted-foreground">{policies.length} active policies</p>
+          <p className="text-sm text-muted-foreground">
+            {policies.length} policies • Annual premium: {formatCurrency(totalPremium)}
+          </p>
         </CardContent>
       </Card>
 
@@ -179,68 +210,51 @@ export function InsuranceTracker() {
             </CardContent>
           </Card>
         ) : (
-          policies.map((policy) => {
-            const daysToExpiry = Math.ceil((new Date(policy.endDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-            const isExpiringSoon = daysToExpiry <= 90 && daysToExpiry > 0;
-            const isExpired = daysToExpiry <= 0;
-
-            return (
-              <Card key={policy.id} className={isExpiringSoon ? 'border-yellow-200' : isExpired ? 'border-red-200' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-lg">{policy.type} Insurance</h3>
-                        <Badge variant="outline">{policy.company}</Badge>
-                        {isExpiringSoon && <Badge variant="outline" className="text-yellow-600 border-yellow-600">Expiring Soon</Badge>}
-                        {isExpired && <Badge variant="destructive">Expired</Badge>}
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2">Policy: {policy.policyNumber}</p>
-                      {policy.description && (
-                        <p className="text-sm text-muted-foreground mb-2">{policy.description}</p>
-                      )}
+          policies.map((policy) => (
+            <Card key={policy.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-semibold text-lg">{policy.type} Insurance</h3>
+                      <Badge variant="outline">{policy.provider}</Badge>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(policy)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDelete(policy.id)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">Policy: {policy.policyNo}</p>
+                    <p className="text-sm text-muted-foreground mb-2">Family Member: {policy.familyMember}</p>
                   </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Coverage:</span>
-                      <p className="font-medium">{formatCurrency(policy.coverageAmount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Start Date:</span>
-                      <p className="font-medium">{policy.startDate.toLocaleDateString()}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">End Date:</span>
-                      <p className={`font-medium ${isExpiringSoon ? 'text-yellow-600' : isExpired ? 'text-red-600' : ''}`}>
-                        {policy.endDate.toLocaleDateString()}
-                        {daysToExpiry > 0 && (
-                          <span className="text-xs block">
-                            {daysToExpiry} days remaining
-                          </span>
-                        )}
-                      </p>
-                    </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button size="sm" variant="outline" onClick={() => handleEdit(policy)}>
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(policy.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Sum Insured:</span>
+                    <p className="font-medium">{formatCurrency(policy.sumInsured)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Premium:</span>
+                    <p className="font-medium">{formatCurrency(policy.premium)}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">End Date:</span>
+                    <p className="font-medium">{policy.endDate.toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
         )}
       </div>
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingPolicy ? 'Edit Insurance Policy' : 'Add Insurance Policy'}</DialogTitle>
           </DialogHeader>
@@ -252,80 +266,69 @@ export function InsuranceTracker() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Health">Health</SelectItem>
-                  <SelectItem value="Life">Life</SelectItem>
                   <SelectItem value="Term">Term</SelectItem>
-                  <SelectItem value="Vehicle">Vehicle</SelectItem>
+                  <SelectItem value="Health">Health</SelectItem>
+                  <SelectItem value="Motor">Motor</SelectItem>
                   <SelectItem value="Home">Home</SelectItem>
                   <SelectItem value="Travel">Travel</SelectItem>
+                  <SelectItem value="Personal-Accident">Personal Accident</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div>
-              <Label htmlFor="company">Insurance Company</Label>
+              <Label htmlFor="provider">Insurance Provider</Label>
               <Input
-                id="company"
-                value={formData.company}
-                onChange={(e) => setFormData({...formData, company: e.target.value})}
-                placeholder="Insurance company name"
+                id="provider"
+                value={formData.provider}
+                onChange={(e) => setFormData({...formData, provider: e.target.value})}
+                placeholder="LIC, HDFC ERGO, etc."
                 required
               />
             </div>
 
             <div>
-              <Label htmlFor="policyNumber">Policy Number</Label>
+              <Label htmlFor="policyNo">Policy Number</Label>
               <Input
-                id="policyNumber"
-                value={formData.policyNumber}
-                onChange={(e) => setFormData({...formData, policyNumber: e.target.value})}
+                id="policyNo"
+                value={formData.policyNo}
+                onChange={(e) => setFormData({...formData, policyNo: e.target.value})}
                 placeholder="Policy number"
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="coverageAmount">Coverage Amount (₹)</Label>
-              <Input
-                id="coverageAmount"
-                type="number"
-                step="0.01"
-                value={formData.coverageAmount}
-                onChange={(e) => setFormData({...formData, coverageAmount: e.target.value})}
                 required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="startDate">Start Date</Label>
+                <Label htmlFor="sumInsured">Sum Insured (₹)</Label>
                 <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  id="sumInsured"
+                  type="number"
+                  value={formData.sumInsured}
+                  onChange={(e) => setFormData({...formData, sumInsured: e.target.value})}
                   required
                 />
               </div>
               <div>
-                <Label htmlFor="endDate">End Date</Label>
+                <Label htmlFor="premium">Annual Premium (₹)</Label>
                 <Input
-                  id="endDate"
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({...formData, endDate: e.target.value})}
+                  id="premium"
+                  type="number"
+                  value={formData.premium}
+                  onChange={(e) => setFormData({...formData, premium: e.target.value})}
                   required
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="familyMember">Family Member</Label>
               <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Additional notes about the policy"
+                id="familyMember"
+                value={formData.familyMember}
+                onChange={(e) => setFormData({...formData, familyMember: e.target.value})}
+                placeholder="Self, Spouse, etc."
+                required
               />
             </div>
 

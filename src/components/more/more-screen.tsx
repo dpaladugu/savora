@@ -1,10 +1,16 @@
+
 import React from 'react';
 import { MoreModule } from '@/components/layout/more-module';
 import { MoreModuleRouter } from '@/components/layout/more-module-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Building, Users, Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Building, Users, Target, ShieldCheck, Car, Building2 } from 'lucide-react';
 
-interface MoreModule {
+export interface MoreModuleRouterProps {
+  activeModule: string;
+}
+
+interface ModuleConfig {
   id: string;
   name: string;
   description: string;
@@ -12,7 +18,21 @@ interface MoreModule {
   category: string;
 }
 
-const modules: MoreModule[] = [
+const modules: ModuleConfig[] = [
+  {
+    id: 'gold',
+    name: 'Gold Tracker',
+    description: 'Track your gold investments and calculate current market value',
+    icon: Building2,
+    category: 'Investments'
+  },
+  {
+    id: 'loans',
+    name: 'Loan Manager',
+    description: 'Manage loans, EMIs, and track repayment schedules',
+    icon: Building,
+    category: 'Financial Tools'
+  },
   {
     id: 'insurance',
     name: 'Insurance Tracker',
@@ -26,13 +46,6 @@ const modules: MoreModule[] = [
     description: 'Track vehicle maintenance, insurance, and documentation',
     icon: Car,
     category: 'Asset Management'
-  },
-  {
-    id: 'family-accounts',
-    name: 'Family Bank Accounts',
-    description: 'Manage and track family bank accounts and transactions',
-    icon: Bank,
-    category: 'Family Finance'
   },
   {
     id: 'enhanced-rentals',
@@ -73,7 +86,7 @@ export function MoreScreen() {
       {activeModule ? (
         <>
           <Button variant="ghost" onClick={handleBackClick} className="mb-4">
-            &larr; Back to More
+            ← Back to More
           </Button>
           <MoreModuleRouter activeModule={activeModule} />
         </>
