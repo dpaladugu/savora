@@ -9,6 +9,7 @@ import { InsuranceTracker } from '@/components/insurance/insurance-tracker';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { EmptyState } from '@/components/ui/empty-state';
 import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+import { FileX } from 'lucide-react';
 
 // Mock services
 vi.mock('@/services/VehicleService', () => ({
@@ -48,7 +49,8 @@ describe('UI Components', () => {
   });
 
   it('renders EmptyState with message', () => {
-    render(<EmptyState message="No data found" />);
+    render(<EmptyState icon={FileX} title="No Data" description="No data found" />);
+    expect(screen.getByText('No Data')).toBeInTheDocument();
     expect(screen.getByText('No data found')).toBeInTheDocument();
   });
 
@@ -58,11 +60,11 @@ describe('UI Components', () => {
     
     render(
       <ConfirmationDialog
-        isOpen={true}
+        open={true}
         title="Test Dialog"
-        message="Are you sure?"
+        description="Are you sure?"
         onConfirm={mockOnConfirm}
-        onCancel={mockOnCancel}
+        onOpenChange={mockOnCancel}
       />
     );
     

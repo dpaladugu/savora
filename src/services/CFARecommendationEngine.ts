@@ -1,397 +1,366 @@
-/**
- * CFA-Level Recommendations Engine
- * Implements professional-grade financial advice algorithms per requirements spec
- */
 
-import { db } from '@/lib/db';
-import type { Txn, Investment, Insurance, Goal, Loan, GlobalSettings } from '@/lib/db';
+import { ExpenseService } from './ExpenseService';
+import { InvestmentService } from './InvestmentService';
+import { GoalService } from './goal-service';
+import { GlobalSettingsService } from './GlobalSettingsService';
 
-// Core recommendation interfaces
-export interface AssetAllocation {
-  equity: number;
-  debt: number;
-  gold: number;
-  age: number;
-  isOptimal: boolean;
-}
-
-export interface RebalanceRecommendation {
+interface Recommendation {
   id: string;
-  type: 'rebalance';
+  type: 'portfolio' | 'tax' | 'risk' | 'goal' | 'cash_flow';
   priority: 'high' | 'medium' | 'low';
   title: string;
   description: string;
-  action: string;
-  currentAllocation: AssetAllocation;
-  targetAllocation: AssetAllocation;
-  driftPercentage: number;
+  impact: string;
+  actionItems: string[];
+  confidenceScore: number;
+  category: string;
+  expectedReturn?: number;
+  riskLevel?: string;
 }
 
-export interface InsuranceGap {
-  id: string;
-  type: 'insurance';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  action: string;
-  gapAmount: number;
-  currentCoverage: number;
-  recommendedCoverage: number;
-  insuranceType: 'term' | 'health';
-}
-
-export interface SIPRecommendation {
-  id: string;
-  type: 'investment';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  action: string;
-  recommendedAmount: number;
-  currentSIP: number;
-  reason: string;
-}
-
-export interface TaxRecommendation {
-  id: string;
-  type: 'tax';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  action: string;
-  potentialSaving: number;
-  investmentRequired: number;
-  deadline?: Date;
-}
-
-export interface PrepaymentAdvice {
-  id: string;
-  type: 'loan';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  action: string;
-  interestSaved: number;
-  recommendedAmount: number;
-  loanType: string;
-}
-
-export interface MonthlyNudge {
-  id: string;
-  type: 'nudge';
-  priority: 'high' | 'medium' | 'low';
-  title: string;
-  description: string;
-  action: string;
-  dueDate?: Date;
+interface PortfolioAnalysis {
+  assetAllocation: Record<string, number>;
+  riskScore: number;
+  expectedReturn: number;
+  sharpeRatio: number;
+  diversificationScore: number;
+  rebalanceNeeded: boolean;
 }
 
 export class CFARecommendationEngine {
-  /**
-   * Get age-appropriate asset allocation (CFA Level 1 Portfolio Management)
-   */
-  static getAssetAllocation(age: number): AssetAllocation {
-    let equity: number, debt: number, gold: number;
-    
-    // Age-based glide path per requirements spec Section 20.1
-    if (age <= 35) {
-      equity = 70; debt = 20; gold = 10;
-    } else if (age <= 50) {
-      equity = 60; debt = 30; gold = 10;
-    } else {
-      equity = 40; debt = 50; gold = 10;
-    }
+  static async generateRecommendations(): Promise<Recommendation[]> {
+    try {
+      const [expenses, investments, goals, settings] = await Promise.all([
+        ExpenseService.getAllExpenses(),
+        InvestmentService.getAllInvestments(),
+        GoalService.getAllGoals(),
+        GlobalSettingsService.getGlobalSettings()
+      ]);
 
-    return {
-      equity,
-      debt,
-      gold,
-      age,
-      isOptimal: true
-    };
+      const recommendations: Recommendation[] = [];
+
+      // Portfolio optimization recommendations
+      recommendations.push(...await this.generatePortfolioRecommendations(investments));
+
+      // Tax optimization recommendations
+      recommendations.push(...await this.generateTaxRecommendations(expenses, investments, settings));
+
+      // Risk management recommendations
+      recommendations.push(...await this.generateRiskRecommendations(investments, expenses));
+
+      // Goal-based recommendations
+      recommendations.push(...await this.generateGoalRecommendations(goals, investments));
+
+      // Cash flow recommendations
+      recommendations.push(...await this.generateCashFlowRecommendations(expenses));
+
+      return recommendations.sort((a, b) => {
+        const priorityOrder = { high: 3, medium: 2, low: 1 };
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      });
+    } catch (error) {
+      console.error('Error generating recommendations:', error);
+      return [];
+    }
   }
 
-  /**
-   * Analyze current portfolio and recommend rebalancing
-   */
-  static async checkRebalancingNeeds(): Promise<RebalanceRecommendation[]> {
-    const recommendations: RebalanceRecommendation[] = [];
-    
+  static async analyzePortfolio(): Promise<PortfolioAnalysis> {
     try {
-      const investments = await db.investments.toArray();
-      const settings = await db.globalSettings.limit(1).first();
+      const investments = await InvestmentService.getAllInvestments();
       
-      if (investments.length === 0) return recommendations;
+      // Calculate asset allocation
+      const totalValue = investments.reduce((sum, inv) => sum + (inv.current_value || inv.amount), 0);
+      const assetAllocation: Record<string, number> = {};
+      
+      investments.forEach(inv => {
+        const value = inv.current_value || inv.amount;
+        const percentage = (value / totalValue) * 100;
+        assetAllocation[inv.type] = (assetAllocation[inv.type] || 0) + percentage;
+      });
 
-      // Calculate current allocation
-      const totalValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
-      const equityValue = investments
-        .filter(inv => ['MF-Growth', 'Stocks', 'SIP'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-      const debtValue = investments
-        .filter(inv => ['PPF', 'EPF', 'FD', 'RD', 'Bonds'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-      const goldValue = investments
-        .filter(inv => ['Gold', 'SGB'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
+      // Calculate risk score (simplified)
+      const riskScore = this.calculateRiskScore(investments);
+      
+      // Calculate expected return
+      const expectedReturn = investments.reduce((sum, inv) => {
+        const weight = (inv.current_value || inv.amount) / totalValue;
+        return sum + (weight * (inv.expected_return || 8));
+      }, 0);
 
-      const currentAllocation: AssetAllocation = {
-        equity: Math.round((equityValue / totalValue) * 100),
-        debt: Math.round((debtValue / totalValue) * 100),
-        gold: Math.round((goldValue / totalValue) * 100),
-        age: 30, // Default age - should come from user profile
-        isOptimal: false
+      // Calculate Sharpe ratio (simplified)
+      const sharpeRatio = (expectedReturn - 6) / Math.sqrt(riskScore * 2);
+
+      // Calculate diversification score
+      const diversificationScore = this.calculateDiversificationScore(assetAllocation);
+
+      // Check if rebalancing is needed
+      const rebalanceNeeded = this.checkRebalanceNeeded(assetAllocation);
+
+      return {
+        assetAllocation,
+        riskScore,
+        expectedReturn,
+        sharpeRatio,
+        diversificationScore,
+        rebalanceNeeded
       };
-
-      const targetAllocation = this.getAssetAllocation(currentAllocation.age);
-      
-      // Check for drift > 5% per spec
-      const equityDrift = Math.abs(currentAllocation.equity - targetAllocation.equity);
-      const debtDrift = Math.abs(currentAllocation.debt - targetAllocation.debt);
-      const goldDrift = Math.abs(currentAllocation.gold - targetAllocation.gold);
-
-      const maxDrift = Math.max(equityDrift, debtDrift, goldDrift);
-
-      if (maxDrift > 5) {
-        recommendations.push({
-          id: `rebalance-${Date.now()}`,
-          type: 'rebalance',
-          priority: maxDrift > 10 ? 'high' : 'medium',
-          title: 'Portfolio Rebalancing Required',
-          description: `Your portfolio has drifted ${maxDrift}% from target allocation`,
-          action: 'Rebalance portfolio to maintain optimal risk-return profile',
-          currentAllocation,
-          targetAllocation,
-          driftPercentage: maxDrift
-        });
-      }
-
     } catch (error) {
-      console.error('Error analyzing rebalancing needs:', error);
+      console.error('Error analyzing portfolio:', error);
+      return {
+        assetAllocation: {},
+        riskScore: 5,
+        expectedReturn: 8,
+        sharpeRatio: 0.5,
+        diversificationScore: 50,
+        rebalanceNeeded: false
+      };
+    }
+  }
+
+  private static async generatePortfolioRecommendations(investments: any[]): Promise<Recommendation[]> {
+    const recommendations: Recommendation[] = [];
+
+    if (investments.length === 0) {
+      recommendations.push({
+        id: 'start-investing',
+        type: 'portfolio',
+        priority: 'high',
+        title: 'Start Building Your Investment Portfolio',
+        description: 'You have no recorded investments. Building a diversified investment portfolio is crucial for long-term wealth creation.',
+        impact: 'Starting with a diversified portfolio can help you achieve long-term financial goals and beat inflation.',
+        actionItems: [
+          'Start with low-cost index funds or ETFs',
+          'Consider a mix of equity and debt instruments',
+          'Set up systematic investment plans (SIPs)',
+          'Maintain emergency fund before significant investments'
+        ],
+        confidenceScore: 95,
+        category: 'Portfolio Building',
+        expectedReturn: 12,
+        riskLevel: 'Medium'
+      });
+      return recommendations;
+    }
+
+    // Check for diversification
+    const assetTypes = new Set(investments.map(inv => inv.type));
+    if (assetTypes.size < 3) {
+      recommendations.push({
+        id: 'diversify-portfolio',
+        type: 'portfolio',
+        priority: 'high',
+        title: 'Diversify Your Investment Portfolio',
+        description: 'Your portfolio lacks diversification across asset classes, which increases concentration risk.',
+        impact: 'Proper diversification can reduce portfolio volatility by 20-30% without sacrificing returns.',
+        actionItems: [
+          'Add different asset classes (equity, debt, commodities)',
+          'Consider international exposure',
+          'Include REITs for real estate exposure',
+          'Maintain appropriate sector allocation'
+        ],
+        confidenceScore: 88,
+        category: 'Risk Management',
+        expectedReturn: 2.5,
+        riskLevel: 'Low'
+      });
     }
 
     return recommendations;
   }
 
-  /**
-   * Insurance gap analysis (CFA Level 1 Risk Management)
-   */
-  static async analyzeInsuranceGaps(annualIncome: number): Promise<InsuranceGap[]> {
-    const gaps: InsuranceGap[] = [];
-    
-    try {
-      const insurancePolicies = await db.insurance.toArray();
-      
-      // Term insurance analysis (10x income rule per spec)
-      const termPolicies = insurancePolicies.filter(policy => 
-        policy.type === 'Term' || policy.type === 'Life'
-      );
-      const totalTermCoverage = termPolicies.reduce((sum, policy) => 
-        sum + policy.sumInsured, 0
-      );
-      const recommendedTermCoverage = annualIncome * 10;
+  private static async generateTaxRecommendations(expenses: any[], investments: any[], settings: any): Promise<Recommendation[]> {
+    const recommendations: Recommendation[] = [];
 
-      if (totalTermCoverage < recommendedTermCoverage) {
-        gaps.push({
-          id: `term-gap-${Date.now()}`,
-          type: 'insurance',
-          priority: 'high',
-          title: 'Term Insurance Gap Detected',
-          description: `Current term coverage is insufficient for income protection`,
-          action: `Increase term insurance coverage by ₹${(recommendedTermCoverage - totalTermCoverage).toLocaleString()}`,
-          gapAmount: recommendedTermCoverage - totalTermCoverage,
-          currentCoverage: totalTermCoverage,
-          recommendedCoverage: recommendedTermCoverage,
-          insuranceType: 'term'
-        });
-      }
-
-      // Health insurance analysis (5x income rule per spec)
-      const healthPolicies = insurancePolicies.filter(policy => 
-        policy.type === 'Health'
-      );
-      const totalHealthCoverage = healthPolicies.reduce((sum, policy) => 
-        sum + policy.sumInsured, 0
-      );
-      const recommendedHealthCoverage = annualIncome * 5;
-
-      if (totalHealthCoverage < recommendedHealthCoverage) {
-        gaps.push({
-          id: `health-gap-${Date.now()}`,
-          type: 'insurance',
-          priority: 'high',
-          title: 'Health Insurance Gap Detected',
-          description: `Current health coverage may be inadequate for medical emergencies`,
-          action: `Increase health insurance coverage by ₹${(recommendedHealthCoverage - totalHealthCoverage).toLocaleString()}`,
-          gapAmount: recommendedHealthCoverage - totalHealthCoverage,
-          currentCoverage: totalHealthCoverage,
-          recommendedCoverage: recommendedHealthCoverage,
-          insuranceType: 'health'
-        });
-      }
-
-    } catch (error) {
-      console.error('Error analyzing insurance gaps:', error);
+    // Tax regime optimization
+    if (settings.taxRegime === 'Old') {
+      recommendations.push({
+        id: 'optimize-tax-regime',
+        type: 'tax',
+        priority: 'medium',
+        title: 'Consider Switching to New Tax Regime',
+        description: 'Based on your expense patterns, the new tax regime might be more beneficial for your income bracket.',
+        impact: 'Switching could save you ₹15,000 - ₹50,000 annually in taxes.',
+        actionItems: [
+          'Calculate taxes under both regimes',
+          'Consider your deduction eligibility',
+          'Factor in future income growth',
+          'Consult with a tax advisor'
+        ],
+        confidenceScore: 75,
+        category: 'Tax Planning',
+        riskLevel: 'Low'
+      });
     }
 
-    return gaps;
-  }
+    // 80C utilization
+    const investmentDeductions = investments.filter(inv => 
+      ['ELSS', 'PPF', 'EPF', 'Tax Saver FD'].includes(inv.type)
+    );
+    const totalDeductions = investmentDeductions.reduce((sum, inv) => sum + inv.amount, 0);
 
-  /**
-   * SIP recommendations based on income growth
-   */
-  static async getSIPRecommendations(): Promise<SIPRecommendation[]> {
-    const recommendations: SIPRecommendation[] = [];
-    
-    try {
-      const investments = await db.investments.toArray();
-      const sipInvestments = investments.filter(inv => inv.frequency !== 'OneTime');
-      
-      // Basic SIP recommendation for new users
-      if (sipInvestments.length === 0) {
-        recommendations.push({
-          id: `start-sip-${Date.now()}`,
-          type: 'investment',
-          priority: 'high',
-          title: 'Start Systematic Investment Plan',
-          description: 'Begin building wealth through disciplined monthly investments',
-          action: 'Start a diversified equity SIP of ₹5,000 per month',
-          recommendedAmount: 5000,
-          currentSIP: 0,
-          reason: 'No systematic investments detected'
-        });
-      }
-
-      // SIP step-up recommendations could be added based on income growth
-
-    } catch (error) {
-      console.error('Error generating SIP recommendations:', error);
+    if (totalDeductions < 150000) {
+      recommendations.push({
+        id: 'maximize-80c',
+        type: 'tax',
+        priority: 'high',
+        title: 'Maximize Section 80C Deductions',
+        description: `You're only utilizing ₹${totalDeductions.toLocaleString()} of the ₹1.5L limit under Section 80C.`,
+        impact: `Save up to ₹${((150000 - totalDeductions) * 0.3).toLocaleString()} in taxes annually.`,
+        actionItems: [
+          'Invest in ELSS mutual funds',
+          'Increase PPF contributions',
+          'Consider NSC or tax-saver FDs',
+          'Utilize home loan principal repayment'
+        ],
+        confidenceScore: 90,
+        category: 'Tax Savings',
+        expectedReturn: 30,
+        riskLevel: 'Low'
+      });
     }
 
     return recommendations;
   }
 
-  /**
-   * Tax optimization under New Tax Regime
-   */
-  static async getTaxOptimizationSuggestions(): Promise<TaxRecommendation[]> {
-    const recommendations: TaxRecommendation[] = [];
-    
-    try {
-      const investments = await db.investments.toArray();
-      
-      // NPS Tier-1 80CCD(1B) benefit - ₹50,000 limit per spec
-      const npsT1Investments = investments.filter(inv => inv.type === 'NPS-T1');
-      const totalNpsT1 = npsT1Investments.reduce((sum, inv) => sum + inv.investedValue, 0);
-      
-      if (totalNpsT1 < 50000) {
-        const remainingLimit = 50000 - totalNpsT1;
-        const taxSaving = remainingLimit * 0.3; // Assuming 30% tax bracket
-        
-        recommendations.push({
-          id: `nps-tax-${Date.now()}`,
-          type: 'tax',
-          priority: 'medium',
-          title: 'NPS Tax Benefit Available',
-          description: `Save ₹${taxSaving.toLocaleString()} in taxes through NPS Tier-1 investment`,
-          action: `Invest additional ₹${remainingLimit.toLocaleString()} in NPS Tier-1`,
-          potentialSaving: taxSaving,
-          investmentRequired: remainingLimit,
-          deadline: new Date(new Date().getFullYear() + 1, 2, 31) // 31st March
-        });
-      }
+  private static async generateRiskRecommendations(investments: any[], expenses: any[]): Promise<Recommendation[]> {
+    const recommendations: Recommendation[] = [];
 
-    } catch (error) {
-      console.error('Error generating tax recommendations:', error);
+    // Emergency fund check
+    const monthlyExpenses = expenses
+      .filter(exp => exp.date >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const liquidInvestments = investments.filter(inv => 
+      ['Savings Account', 'Liquid Fund', 'FD'].includes(inv.type)
+    );
+    const emergencyFund = liquidInvestments.reduce((sum, inv) => sum + (inv.current_value || inv.amount), 0);
+
+    if (emergencyFund < monthlyExpenses * 6) {
+      recommendations.push({
+        id: 'build-emergency-fund',
+        type: 'risk',
+        priority: 'high',
+        title: 'Build Adequate Emergency Fund',
+        description: `Your emergency fund covers only ${Math.round(emergencyFund / monthlyExpenses)} months of expenses. Aim for 6-12 months.`,
+        impact: 'Adequate emergency fund prevents forced liquidation of investments during emergencies.',
+        actionItems: [
+          'Set aside 6-12 months of expenses in liquid funds',
+          'Keep emergency fund in high-yield savings or liquid funds',
+          'Automate monthly contributions to emergency fund',
+          'Review and adjust fund size annually'
+        ],
+        confidenceScore: 95,
+        category: 'Financial Security',
+        riskLevel: 'Critical'
+      });
     }
 
     return recommendations;
   }
 
-  /**
-   * Loan prepayment analysis
-   */
-  static async analyzeLoanPrepayments(): Promise<PrepaymentAdvice[]> {
-    const advice: PrepaymentAdvice[] = [];
-    
-    try {
-      const loans = await db.loans.where('isActive').equals(1).toArray();
-      
-      for (const loan of loans) {
-        // High interest rate loans (>8% per spec)
-        if (loan.roi > 8) {
-          const remainingYears = loan.tenureMonths / 12;
-          const interestSaved = loan.outstanding * (loan.roi / 100) * remainingYears;
-          
-          if (interestSaved > 10000) { // ₹10k threshold per spec
-            advice.push({
-              id: `prepay-${loan.id}`,
-              type: 'loan',
-              priority: 'medium',
-              title: 'Loan Prepayment Opportunity',
-              description: `Prepaying ${loan.type} loan can save significant interest`,
-              action: `Consider partial prepayment of ₹${Math.min(loan.outstanding * 0.2, 200000).toLocaleString()}`,
-              interestSaved: Math.round(interestSaved),
-              recommendedAmount: Math.min(loan.outstanding * 0.2, 200000),
-              loanType: loan.type
-            });
-          }
-        }
-      }
+  private static async generateGoalRecommendations(goals: any[], investments: any[]): Promise<Recommendation[]> {
+    const recommendations: Recommendation[] = [];
 
-    } catch (error) {
-      console.error('Error analyzing loan prepayments:', error);
+    if (goals.length === 0) {
+      recommendations.push({
+        id: 'set-financial-goals',
+        type: 'goal',
+        priority: 'medium',
+        title: 'Define Clear Financial Goals',
+        description: 'Having specific, measurable financial goals is essential for effective wealth building.',
+        impact: 'Clear goals improve investment discipline and help optimize asset allocation strategies.',
+        actionItems: [
+          'Set short-term goals (1-3 years)',
+          'Define medium-term goals (3-7 years)',
+          'Plan long-term goals (retirement, children\'s education)',
+          'Assign target amounts and timelines'
+        ],
+        confidenceScore: 85,
+        category: 'Goal Planning',
+        riskLevel: 'Low'
+      });
     }
 
-    return advice;
+    return recommendations;
   }
 
-  /**
-   * Generate monthly financial nudges
-   */
-  static async generateMonthlyNudges(): Promise<MonthlyNudge[]> {
-    const nudges: MonthlyNudge[] = [];
-    
-    try {
-      // Insurance renewal reminders (30 days before)
-      const insurancePolicies = await db.insurance.toArray();
-      const today = new Date();
-      
-      for (const policy of insurancePolicies) {
-        const daysToExpiry = Math.floor((policy.endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
-        if (daysToExpiry <= 30 && daysToExpiry > 0) {
-          nudges.push({
-            id: `renewal-${policy.id}`,
-            type: 'nudge',
-            priority: 'high',
-            title: 'Insurance Renewal Due',
-            description: `${policy.type} insurance expires in ${daysToExpiry} days`,
-            action: 'Review and renew policy to avoid coverage gaps',
-            dueDate: policy.endDate
-          });
-        }
-      }
+  private static async generateCashFlowRecommendations(expenses: any[]): Promise<Recommendation[]> {
+    const recommendations: Recommendation[] = [];
 
-      // Emergency fund check
-      const emergencyFunds = await db.emergencyFunds.toArray();
-      const totalEmergencyFund = emergencyFunds.reduce((sum, fund) => sum + fund.currentAmount, 0);
-      
-      if (totalEmergencyFund < 500000) { // Basic threshold
-        nudges.push({
-          id: `emergency-fund-${Date.now()}`,
-          type: 'nudge',
-          priority: 'high',
-          title: 'Build Emergency Fund',
-          description: 'Strengthen your financial safety net',
-          action: 'Allocate surplus funds to emergency corpus'
-        });
-      }
+    // Analyze spending patterns
+    const monthlyExpenses = expenses
+      .filter(exp => exp.date >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000))
+      .reduce((sum, exp) => sum + exp.amount, 0);
 
-    } catch (error) {
-      console.error('Error generating monthly nudges:', error);
+    const discretionaryExpenses = expenses
+      .filter(exp => 
+        exp.date >= new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) &&
+        ['Entertainment', 'Dining', 'Shopping', 'Travel'].includes(exp.category)
+      )
+      .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const discretionaryRatio = discretionaryExpenses / monthlyExpenses;
+
+    if (discretionaryRatio > 0.3) {
+      recommendations.push({
+        id: 'optimize-discretionary-spending',
+        type: 'cash_flow',
+        priority: 'medium',
+        title: 'Optimize Discretionary Spending',
+        description: `${Math.round(discretionaryRatio * 100)}% of your expenses are discretionary. Consider optimizing for better savings rate.`,
+        impact: `Reducing discretionary spending by 20% could free up ₹${Math.round(discretionaryExpenses * 0.2).toLocaleString()} monthly for investments.`,
+        actionItems: [
+          'Track and categorize all expenses',
+          'Set monthly budgets for discretionary categories',
+          'Use the 50/30/20 rule for budgeting',
+          'Automate investments to pay yourself first'
+        ],
+        confidenceScore: 80,
+        category: 'Cash Flow Management',
+        riskLevel: 'Low'
+      });
     }
 
-    return nudges;
+    return recommendations;
+  }
+
+  private static calculateRiskScore(investments: any[]): number {
+    const riskWeights: Record<string, number> = {
+      'Equity': 8,
+      'Mutual Fund': 7,
+      'Stock': 9,
+      'Bond': 3,
+      'FD': 1,
+      'PPF': 2,
+      'Gold': 6,
+      'Real Estate': 5
+    };
+
+    const totalValue = investments.reduce((sum, inv) => sum + (inv.current_value || inv.amount), 0);
+    
+    return investments.reduce((weightedRisk, inv) => {
+      const weight = (inv.current_value || inv.amount) / totalValue;
+      const risk = riskWeights[inv.type] || 5;
+      return weightedRisk + (weight * risk);
+    }, 0);
+  }
+
+  private static calculateDiversificationScore(allocation: Record<string, number>): number {
+    const allocations = Object.values(allocation);
+    const idealAllocation = 100 / allocations.length;
+    
+    const deviation = allocations.reduce((sum, alloc) => {
+      return sum + Math.abs(alloc - idealAllocation);
+    }, 0);
+
+    return Math.max(0, 100 - deviation);
+  }
+
+  private static checkRebalanceNeeded(allocation: Record<string, number>): boolean {
+    const allocations = Object.values(allocation);
+    const maxAllocation = Math.max(...allocations);
+    const minAllocation = Math.min(...allocations);
+    
+    return (maxAllocation - minAllocation) > 40;
   }
 }

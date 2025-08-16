@@ -5,7 +5,7 @@ import { ExpenseTracker } from '@/components/expenses/expense-tracker';
 import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker';
 import { InvestmentsTracker } from '@/components/investments/investments-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
-import { CsvUpload } from '@/components/csv/csv-upload';
+import { CSVUpload } from '@/components/csv/csv-upload';
 import { SettingsScreen } from '@/components/settings/settings-screen';
 import { MoreScreen } from '@/components/more/more-screen';
 import { MoreModuleRouter } from '@/components/layout/more-module-router';
@@ -69,7 +69,7 @@ export function MainContentRouter({ activeTab, activeMoreModule }: MainContentRo
     case 'goals':
       return <GoalsManager />;
     case 'upload':
-      return <CsvUpload />;
+      return <CSVUpload />;
     case 'settings':
       return <SettingsScreen />;
     default:

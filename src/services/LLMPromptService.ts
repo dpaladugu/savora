@@ -1,238 +1,282 @@
 
-/**
- * Privacy-First LLM Prompt Generator
- * Generates anonymous financial prompts for external LLM analysis per requirements spec Section 25
- */
+import { GlobalSettingsService } from './GlobalSettingsService';
 
-import { db } from '@/lib/db';
-import type { Investment, Loan, Goal, Txn } from '@/lib/db';
+interface LLMConfig {
+  provider: 'openai' | 'anthropic' | 'gemini' | 'local';
+  model: string;
+  apiKey?: string;
+  baseUrl?: string;
+  temperature: number;
+  maxTokens: number;
+}
 
-export interface AnonymousFinancialPrompt {
-  type: 'AssetReview' | 'GoalReview' | 'TaxReview' | 'HealthReview' | 'VehicleReview' | 'RentalReview' | 'EmergencyReview';
-  data: Record<string, any>;
-  generated: Date;
+interface PromptTemplate {
+  id: string;
+  name: string;
+  category: 'expense_analysis' | 'investment_advice' | 'tax_planning' | 'goal_setting' | 'general';
+  prompt: string;
+  variables: string[];
+  description: string;
 }
 
 export class LLMPromptService {
-  /**
-   * Generate anonymous asset allocation review prompt
-   */
-  static async generateAssetReviewPrompt(): Promise<string> {
-    try {
-      const investments = await db.investments.toArray();
+  private static readonly DEFAULT_PROMPTS: PromptTemplate[] = [
+    {
+      id: 'expense-categorization',
+      name: 'Expense Categorization',
+      category: 'expense_analysis',
+      prompt: `Analyze the following expense: "{description}" for amount ₹{amount}.
       
-      if (investments.length === 0) {
-        return JSON.stringify({
-          type: "AssetReview",
-          equity: 0,
-          debt: 0,
-          gold: 0,
-          cash: 100,
-          age: 30,
-          message: "No investments detected. Please provide asset allocation guidance for a 30-year-old beginner."
-        }, null, 2);
+      Based on the description, suggest:
+      1. The most appropriate category from: {categories}
+      2. Any relevant tags
+      3. Whether this seems like a reasonable expense for the amount
+      
+      Respond in JSON format with: {"category": "...", "tags": [...], "analysis": "..."}`,
+      variables: ['description', 'amount', 'categories'],
+      description: 'Automatically categorize expenses based on description and amount'
+    },
+    {
+      id: 'investment-advice',
+      name: 'Investment Portfolio Analysis',
+      category: 'investment_advice',
+      prompt: `Analyze this investment portfolio:
+      
+      Current Investments: {investments}
+      Monthly Income: ₹{income}
+      Monthly Expenses: ₹{expenses}
+      Age: {age}
+      Risk Tolerance: {risk_tolerance}
+      
+      Provide specific recommendations for:
+      1. Asset allocation optimization
+      2. Missing investment categories
+      3. Risk assessment
+      4. Rebalancing suggestions
+      
+      Format as professional financial advice.`,
+      variables: ['investments', 'income', 'expenses', 'age', 'risk_tolerance'],
+      description: 'Get personalized investment advice based on your portfolio'
+    },
+    {
+      id: 'tax-optimization',
+      name: 'Tax Optimization Strategy',
+      category: 'tax_planning',
+      prompt: `Review tax optimization opportunities:
+      
+      Annual Income: ₹{income}
+      Current Tax Regime: {tax_regime}
+      Existing Deductions: {deductions}
+      Investment Details: {investments}
+      
+      Suggest:
+      1. Section 80C optimization strategies
+      2. Other applicable deductions
+      3. Tax-efficient investment options
+      4. Whether to switch tax regimes
+      
+      Provide specific amounts and actionable steps.`,
+      variables: ['income', 'tax_regime', 'deductions', 'investments'],
+      description: 'Optimize your tax planning with AI-powered recommendations'
+    },
+    {
+      id: 'goal-planning',
+      name: 'Financial Goal Planning',
+      category: 'goal_setting',
+      prompt: `Help plan for this financial goal:
+      
+      Goal: {goal_name}
+      Target Amount: ₹{target_amount}
+      Time Horizon: {years} years
+      Current Savings: ₹{current_savings}
+      Monthly Budget: ₹{monthly_budget}
+      Risk Tolerance: {risk_tolerance}
+      
+      Calculate and suggest:
+      1. Required monthly SIP amount
+      2. Suitable investment instruments
+      3. Risk-adjusted returns needed
+      4. Milestone tracking plan
+      
+      Provide a detailed action plan.`,
+      variables: ['goal_name', 'target_amount', 'years', 'current_savings', 'monthly_budget', 'risk_tolerance'],
+      description: 'Create detailed plans to achieve your financial goals'
+    },
+    {
+      id: 'spending-analysis',
+      name: 'Spending Pattern Analysis',
+      category: 'expense_analysis',
+      prompt: `Analyze spending patterns from this data:
+      
+      Monthly Expenses by Category: {expense_breakdown}
+      Income: ₹{income}
+      Previous Month Comparison: {previous_month}
+      
+      Identify:
+      1. Unusual spending patterns
+      2. Areas for cost optimization
+      3. Budget recommendations
+      4. Potential savings opportunities
+      
+      Provide actionable insights with specific amounts.`,
+      variables: ['expense_breakdown', 'income', 'previous_month'],
+      description: 'Get insights into your spending habits and optimization opportunities'
+    }
+  ];
+
+  static async getLLMConfig(): Promise<LLMConfig | null> {
+    try {
+      const settings = await GlobalSettingsService.getGlobalSettings();
+      
+      // In a real implementation, this would be stored securely
+      return {
+        provider: 'openai',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 1000,
+        baseUrl: 'https://api.openai.com/v1'
+      };
+    } catch (error) {
+      console.error('Error getting LLM config:', error);
+      return null;
+    }
+  }
+
+  static async updateLLMConfig(config: Partial<LLMConfig>): Promise<void> {
+    try {
+      // In a real implementation, this would securely store the configuration
+      await GlobalSettingsService.updateGlobalSettings({
+        // Store encrypted config
+      });
+    } catch (error) {
+      console.error('Error updating LLM config:', error);
+      throw error;
+    }
+  }
+
+  static getPromptTemplates(): PromptTemplate[] {
+    return [...this.DEFAULT_PROMPTS];
+  }
+
+  static getPromptTemplate(id: string): PromptTemplate | null {
+    return this.DEFAULT_PROMPTS.find(template => template.id === id) || null;
+  }
+
+  static async executePrompt(templateId: string, variables: Record<string, any>): Promise<string> {
+    try {
+      const template = this.getPromptTemplate(templateId);
+      if (!template) {
+        throw new Error(`Prompt template ${templateId} not found`);
       }
 
-      const totalValue = investments.reduce((sum, inv) => sum + inv.currentValue, 0);
-      
-      // Categorize investments anonymously
-      const equityValue = investments
-        .filter(inv => ['MF-Growth', 'Stocks', 'SIP'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-      
-      const debtValue = investments
-        .filter(inv => ['PPF', 'EPF', 'FD', 'RD', 'Bonds'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-      
-      const goldValue = investments
-        .filter(inv => ['Gold', 'SGB'].includes(inv.type))
-        .reduce((sum, inv) => sum + inv.currentValue, 0);
-
-      const equityPercentage = Math.round((equityValue / totalValue) * 100);
-      const debtPercentage = Math.round((debtValue / totalValue) * 100);
-      const goldPercentage = Math.round((goldValue / totalValue) * 100);
-      const cashPercentage = 100 - equityPercentage - debtPercentage - goldPercentage;
-
-      const prompt = {
-        type: "AssetReview",
-        equity: equityPercentage,
-        debt: debtPercentage,
-        gold: goldPercentage,
-        cash: Math.max(0, cashPercentage),
-        age: 30, // Default - should come from user profile
-        totalInvestments: investments.length,
-        hasEmergencyFund: true, // Anonymized
-        riskTolerance: "moderate"
-      };
-
-      return JSON.stringify(prompt, null, 2);
-    } catch (error) {
-      console.error('Error generating asset review prompt:', error);
-      return JSON.stringify({ type: "AssetReview", error: "Unable to generate prompt" });
-    }
-  }
-
-  /**
-   * Generate anonymous goal review prompt
-   */
-  static async generateGoalReviewPrompt(): Promise<string> {
-    try {
-      const goals = await db.goals.toArray();
-      
-      if (goals.length === 0) {
-        return JSON.stringify({
-          type: "GoalReview",
-          activeGoals: 0,
-          message: "No financial goals set. Please provide guidance on essential financial goals for wealth building."
-        }, null, 2);
+      const config = await this.getLLMConfig();
+      if (!config) {
+        throw new Error('LLM configuration not found');
       }
 
-      const currentDate = new Date();
-      const anonymizedGoals = goals.map(goal => {
-        const yearsToTarget = Math.ceil((goal.targetDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24 * 365));
-        const progressPercentage = Math.round((goal.currentAmount / goal.targetAmount) * 100);
-        
-        return {
-          type: goal.type,
-          yearsRemaining: yearsToTarget,
-          progressPercentage: Math.min(100, Math.max(0, progressPercentage)),
-          priority: yearsToTarget <= 2 ? "high" : yearsToTarget <= 5 ? "medium" : "low"
-        };
+      // Replace variables in prompt
+      let prompt = template.prompt;
+      template.variables.forEach(variable => {
+        const value = variables[variable] || `[${variable} not provided]`;
+        prompt = prompt.replace(new RegExp(`{${variable}}`, 'g'), value);
       });
 
-      const prompt = {
-        type: "GoalReview",
-        activeGoals: goals.length,
-        shortTermGoals: anonymizedGoals.filter(g => g.yearsRemaining <= 2).length,
-        mediumTermGoals: anonymizedGoals.filter(g => g.yearsRemaining > 2 && g.yearsRemaining <= 5).length,
-        longTermGoals: anonymizedGoals.filter(g => g.yearsRemaining > 5).length,
-        onTrackGoals: anonymizedGoals.filter(g => g.progressPercentage >= 80).length,
-        laggingGoals: anonymizedGoals.filter(g => g.progressPercentage < 50).length,
-        hasEmergencyFund: true // Anonymized
-      };
-
-      return JSON.stringify(prompt, null, 2);
-    } catch (error) {
-      console.error('Error generating goal review prompt:', error);
-      return JSON.stringify({ type: "GoalReview", error: "Unable to generate prompt" });
-    }
-  }
-
-  /**
-   * Generate anonymous tax optimization prompt
-   */
-  static async generateTaxReviewPrompt(): Promise<string> {
-    try {
-      const investments = await db.investments.toArray();
+      // In a real implementation, this would call the actual LLM API
+      console.log('Executing prompt:', prompt);
       
-      // Analyze tax-saving investments anonymously
-      const taxSavingInvestments = investments.filter(inv => inv.taxBenefit);
-      const npsT1Amount = investments
-        .filter(inv => inv.type === 'NPS-T1')
-        .reduce((sum, inv) => sum + inv.investedValue, 0);
+      // Mock response for now
+      return this.getMockResponse(templateId, variables);
+    } catch (error) {
+      console.error('Error executing prompt:', error);
+      throw error;
+    }
+  }
+
+  private static getMockResponse(templateId: string, variables: Record<string, any>): string {
+    switch (templateId) {
+      case 'expense-categorization':
+        return JSON.stringify({
+          category: 'Food & Dining',
+          tags: ['restaurant', 'dinner'],
+          analysis: 'This appears to be a reasonable restaurant expense for the amount.'
+        });
       
-      const ppfAmount = investments
-        .filter(inv => inv.type === 'PPF')
-        .reduce((sum, inv) => sum + inv.investedValue, 0);
+      case 'investment-advice':
+        return `Based on your portfolio analysis:
 
-      const prompt = {
-        type: "TaxReview",
-        taxRegime: "new", // Fixed per spec
-        npsT1Utilization: Math.min(100, Math.round((npsT1Amount / 50000) * 100)),
-        ppfUtilization: Math.min(100, Math.round((ppfAmount / 150000) * 100)),
-        taxSavingInvestments: taxSavingInvestments.length,
-        hasELSS: investments.some(inv => inv.type.includes('ELSS')),
-        sgbInvestments: investments.filter(inv => inv.type === 'SGB').length,
-        financialYear: new Date().getFullYear()
-      };
+1. **Asset Allocation Optimization**:
+   - Increase equity allocation to 70% for your age group
+   - Add international equity exposure (10-15%)
+   - Consider adding REITs for diversification
 
-      return JSON.stringify(prompt, null, 2);
-    } catch (error) {
-      console.error('Error generating tax review prompt:', error);
-      return JSON.stringify({ type: "TaxReview", error: "Unable to generate prompt" });
+2. **Missing Investment Categories**:
+   - No exposure to international markets
+   - Consider adding gold ETFs (5-10%)
+   - Small-cap funds are underrepresented
+
+3. **Risk Assessment**:
+   - Current risk level: Moderate
+   - Portfolio volatility: Medium
+   - Suitable for long-term wealth creation
+
+4. **Rebalancing Suggestions**:
+   - Reduce debt allocation from 40% to 30%
+   - Increase equity exposure gradually
+   - Review and rebalance quarterly`;
+
+      case 'tax-optimization':
+        return `**Tax Optimization Strategy**:
+
+1. **Section 80C Optimization**:
+   - Current utilization: ₹1,20,000/₹1,50,000
+   - Opportunity: Save ₹9,000 in taxes by investing additional ₹30,000
+   - Recommend: ELSS funds for better returns
+
+2. **Other Deductions**:
+   - Section 80D: Health insurance premiums
+   - Section 24: Home loan interest
+   - NPS under 80CCD(1B): Additional ₹50,000 deduction
+
+3. **Tax Regime Analysis**:
+   - Old regime more beneficial given your deductions
+   - Annual tax savings: ₹25,000-₹40,000
+
+4. **Action Items**:
+   - Invest ₹30,000 more in ELSS before March 31st
+   - Consider NPS for additional tax benefits
+   - Maintain comprehensive health insurance`;
+
+      default:
+        return 'Analysis completed. Please refer to the detailed recommendations above.';
     }
   }
 
-  /**
-   * Generate anonymous emergency fund review prompt
-   */
-  static async generateEmergencyReviewPrompt(): Promise<string> {
-    try {
-      const emergencyFunds = await db.emergencyFunds.toArray();
-      const transactions = await db.txns.toArray();
-      
-      // Calculate monthly expenses (anonymized)
-      const monthlyExpenses = Math.abs(
-        transactions
-          .filter(txn => txn.amount < 0)
-          .reduce((sum, txn) => sum + txn.amount, 0)
-      ) / 12;
-
-      const totalEmergencyFund = emergencyFunds.reduce((sum, fund) => sum + fund.currentAmount, 0);
-      const monthsOfExpensesCovered = monthlyExpenses > 0 ? totalEmergencyFund / monthlyExpenses : 0;
-
-      const prompt = {
-        type: "EmergencyReview",
-        monthsCovered: Math.round(monthsOfExpensesCovered * 10) / 10,
-        targetMonths: 12, // Per spec
-        fundingStatus: monthsOfExpensesCovered >= 12 ? "adequate" : monthsOfExpensesCovered >= 6 ? "partial" : "inadequate",
-        hasMultipleFunds: emergencyFunds.length > 1,
-        liquidityLevel: "high" // Anonymized assumption
-      };
-
-      return JSON.stringify(prompt, null, 2);
-    } catch (error) {
-      console.error('Error generating emergency review prompt:', error);
-      return JSON.stringify({ type: "EmergencyReview", error: "Unable to generate prompt" });
-    }
+  static async generateExpenseInsights(expenses: any[]): Promise<string> {
+    const expenseBreakdown = this.calculateExpenseBreakdown(expenses);
+    const totalIncome = 100000; // Mock income
+    
+    return await this.executePrompt('spending-analysis', {
+      expense_breakdown: JSON.stringify(expenseBreakdown),
+      income: totalIncome,
+      previous_month: JSON.stringify({})
+    });
   }
 
-  /**
-   * Store generated prompt for audit trail
-   */
-  static async storePrompt(prompt: AnonymousFinancialPrompt): Promise<void> {
-    try {
-      // Store in a dedicated prompts table or as app settings
-      await db.appSettings.put({
-        id: `prompt-${Date.now()}`,
-        key: `llm_prompt_${prompt.type.toLowerCase()}`,
-        value: JSON.stringify(prompt)
-      });
-    } catch (error) {
-      console.error('Error storing LLM prompt:', error);
-    }
+  static async generateInvestmentAdvice(investments: any[], userProfile: any): Promise<string> {
+    return await this.executePrompt('investment-advice', {
+      investments: JSON.stringify(investments),
+      income: userProfile.income || 0,
+      expenses: userProfile.expenses || 0,
+      age: userProfile.age || 30,
+      risk_tolerance: userProfile.riskTolerance || 'moderate'
+    });
   }
 
-  /**
-   * Generate comprehensive financial review prompt
-   */
-  static async generateComprehensivePrompt(): Promise<string> {
-    try {
-      const [assetPrompt, goalPrompt, taxPrompt, emergencyPrompt] = await Promise.all([
-        this.generateAssetReviewPrompt(),
-        this.generateGoalReviewPrompt(),
-        this.generateTaxReviewPrompt(),
-        this.generateEmergencyReviewPrompt()
-      ]);
-
-      const comprehensivePrompt = {
-        type: "ComprehensiveReview",
-        timestamp: new Date().toISOString(),
-        assets: JSON.parse(assetPrompt),
-        goals: JSON.parse(goalPrompt),
-        taxes: JSON.parse(taxPrompt),
-        emergency: JSON.parse(emergencyPrompt),
-        disclaimer: "This data is anonymized and contains no PII. Please provide comprehensive financial planning advice."
-      };
-
-      return JSON.stringify(comprehensivePrompt, null, 2);
-    } catch (error) {
-      console.error('Error generating comprehensive prompt:', error);
-      return JSON.stringify({ 
-        type: "ComprehensiveReview", 
-        error: "Unable to generate comprehensive prompt",
-        timestamp: new Date().toISOString()
-      });
-    }
+  private static calculateExpenseBreakdown(expenses: any[]): Record<string, number> {
+    const breakdown: Record<string, number> = {};
+    expenses.forEach(expense => {
+      breakdown[expense.category] = (breakdown[expense.category] || 0) + expense.amount;
+    });
+    return breakdown;
   }
 }
