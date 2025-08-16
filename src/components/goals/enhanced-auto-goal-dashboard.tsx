@@ -1,107 +1,121 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Target, TrendingUp, DollarSign, Calendar, AlertTriangle, Lightbulb } from 'lucide-react';
-import { EnhancedAutoGoalEngine } from '@/services/EnhancedAutoGoalEngine';
-import { formatCurrency } from '@/lib/format-utils';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Plus, Edit, Trash2, Target } from 'lucide-react';
 import { toast } from 'sonner';
+import { AutoGoalService } from '@/services/AutoGoalService';
+import { formatCurrency } from '@/lib/format-utils';
+import type { AutoGoal } from '@/db';
 
-interface GoalRecommendation {
-  id: string;
-  goalType: string;
-  priority: 'High' | 'Medium' | 'Low';
-  suggestedAmount: number;
-  timeframe: string;
-  reasoning: string;
-  autoFundingStrategy: string;
-}
-
-interface FundingAllocation {
+interface FundingRecommendation {
   goalId: string;
   goalName: string;
-  allocatedAmount: number;
-  priority: string;
+  amount: number;
+  priority: 'High' | 'Medium' | 'Low';
 }
 
 export function EnhancedAutoGoalDashboard() {
+  const [goals, setGoals] = useState<AutoGoal[]>([]);
+  const [fundingRecs, setFundingRecs] = useState<FundingRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
-  const [goalRecommendations, setGoalRecommendations] = useState<GoalRecommendation[]>([]);
-  const [fundingAllocations, setFundingAllocations] = useState<FundingAllocation[]>([]);
-  const [surplusAmount, setSurplusAmount] = useState(50000);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    targetAmount: '',
+    targetDate: '',
+    type: 'Medium' as 'Micro' | 'Small' | 'Short' | 'Medium' | 'Long',
+    notes: ''
+  });
 
   useEffect(() => {
-    loadGoalRecommendations();
+    loadGoals();
   }, []);
 
-  const loadGoalRecommendations = async () => {
+  const loadGoals = async () => {
     try {
       setLoading(true);
-      
-      // Generate sample recommendations since the actual method doesn't exist yet
-      const sampleRecommendations: GoalRecommendation[] = [
-        {
-          id: '1',
-          goalType: 'Emergency Fund',
-          priority: 'High',
-          suggestedAmount: 300000,
-          timeframe: '6 months',
-          reasoning: 'You should have 6 months of expenses as emergency fund',
-          autoFundingStrategy: 'Allocate 40% of monthly surplus'
-        },
-        {
-          id: '2',
-          goalType: 'Retirement Planning',
-          priority: 'High',
-          suggestedAmount: 50000,
-          timeframe: 'Monthly SIP',
-          reasoning: 'Start early to benefit from compounding',
-          autoFundingStrategy: 'Increase SIP by 10% annually'
-        },
-        {
-          id: '3',
-          goalType: 'House Down Payment',
-          priority: 'Medium',
-          suggestedAmount: 1000000,
-          timeframe: '3 years',
-          reasoning: 'Based on current property prices and income',
-          autoFundingStrategy: 'Debt fund allocation for 3-year horizon'
-        }
-      ];
-
-      setGoalRecommendations(sampleRecommendations);
+      const allGoals = await AutoGoalService.getAutoGoals();
+      setGoals(allGoals);
+      generateFundingRecommendations();
     } catch (error) {
-      toast.error('Failed to load goal recommendations');
-      console.error('Error loading recommendations:', error);
+      toast.error('Failed to load goals');
+      console.error('Error loading goals:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const executeFundingStrategy = async () => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     try {
-      const result = await EnhancedAutoGoalEngine.executeFundingPriorityStack(surplusAmount);
-      
-      // Convert result to display format
-      const allocations: FundingAllocation[] = result.allocations.map((allocation, index) => ({
-        goalId: `goal_${index}`,
-        goalName: `Goal ${index + 1}`,
-        allocatedAmount: allocation.amount,
-        priority: allocation.priority
-      }));
+      const goalData = {
+        name: formData.name,
+        targetAmount: parseFloat(formData.targetAmount),
+        targetDate: new Date(formData.targetDate),
+        type: formData.type,
+        currentAmount: 0,
+        notes: formData.notes
+      };
 
-      setFundingAllocations(allocations);
-      toast.success('Funding strategy executed successfully');
+      await AutoGoalService.addAutoGoal(goalData);
+      toast.success('Goal added successfully');
+
+      resetForm();
+      setShowAddModal(false);
+      loadGoals();
     } catch (error) {
-      toast.error('Failed to execute funding strategy');
-      console.error('Error executing strategy:', error);
+      toast.error('Failed to save goal');
+      console.error('Error saving goal:', error);
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this goal?')) {
+      try {
+        await AutoGoalService.deleteAutoGoal(id);
+        toast.success('Goal deleted successfully');
+        loadGoals();
+      } catch (error) {
+        toast.error('Failed to delete goal');
+        console.error('Error deleting goal:', error);
+      }
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({
+      name: '',
+      targetAmount: '',
+      targetDate: '',
+      type: 'Medium',
+      notes: ''
+    });
+  };
+
+  const generateFundingRecommendations = () => {
+    const recommendations: FundingRecommendation[] = goals
+      .filter(goal => goal.currentAmount < goal.targetAmount)
+      .map(goal => ({
+        goalId: goal.id,
+        goalName: goal.name,
+        amount: Math.min(5000, goal.targetAmount - goal.currentAmount),
+        priority: goal.targetDate < new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) ? 'High' : 'Medium'
+      }))
+      .sort((a, b) => {
+        const priorityOrder = { 'High': 3, 'Medium': 2, 'Low': 1 };
+        return priorityOrder[b.priority] - priorityOrder[a.priority];
+      })
+      .slice(0, 5);
+
+    setFundingRecs(recommendations);
+  };
+
   if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading smart goal recommendations...</div>;
+    return <div className="flex justify-center items-center h-32">Loading goals...</div>;
   }
 
   return (
@@ -111,121 +125,151 @@ export function EnhancedAutoGoalDashboard() {
           <h1 className="text-2xl font-bold">Smart Goal Management</h1>
           <p className="text-muted-foreground">AI-powered goal recommendations and auto-funding strategies</p>
         </div>
-        <Button onClick={executeFundingStrategy} className="flex items-center gap-2">
-          <Target className="w-4 h-4" />
-          Execute Auto-Funding
+        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Add Goal
         </Button>
       </div>
 
-      {/* Surplus Amount Input */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="w-5 h-5" />
-            Available Surplus
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-4">
-            <input
-              type="number"
-              value={surplusAmount}
-              onChange={(e) => setSurplusAmount(parseFloat(e.target.value) || 0)}
-              className="px-3 py-2 border rounded-md w-32"
-              placeholder="50000"
-            />
-            <span className="text-sm text-muted-foreground">
-              Monthly surplus available for goal funding
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* AI Goal Recommendations */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Lightbulb className="w-5 h-5" />
-            AI Goal Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            {goalRecommendations.map((recommendation) => (
-              <Card key={recommendation.id} className="border-l-4 border-l-primary">
-                <CardContent className="p-4">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="font-semibold">{recommendation.goalType}</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {recommendation.reasoning}
-                      </p>
-                    </div>
-                    <Badge variant={
-                      recommendation.priority === 'High' ? 'destructive' :
-                      recommendation.priority === 'Medium' ? 'default' : 'secondary'
-                    }>
-                      {recommendation.priority} Priority
-                    </Badge>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Target Amount:</span>
-                      <p className="font-medium">{formatCurrency(recommendation.suggestedAmount)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Timeframe:</span>
-                      <p className="font-medium">{recommendation.timeframe}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Strategy:</span>
-                      <p className="font-medium text-xs">{recommendation.autoFundingStrategy}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Funding Allocations */}
-      {fundingAllocations.length > 0 && (
+      {/* Funding Recommendations */}
+      {fundingRecs.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5" />
-              Smart Funding Allocation
-            </CardTitle>
+            <CardTitle>Funding Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3">
-              {fundingAllocations.map((allocation) => (
-                <div key={allocation.goalId} className="flex justify-between items-center p-3 bg-secondary rounded-lg">
-                  <div>
-                    <span className="font-medium">{allocation.goalName}</span>
-                    <Badge variant="outline" className="ml-2">
-                      {allocation.priority}
-                    </Badge>
+            <ul className="list-none pl-0">
+              {fundingRecs.map(rec => (
+                <li key={rec.goalId} className="py-2 border-b last:border-none">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-medium">{rec.goalName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        Fund {formatCurrency(rec.amount)} - Priority: {rec.priority}
+                      </p>
+                    </div>
+                    <Button variant="outline" size="sm">Fund Now</Button>
                   </div>
-                  <span className="font-semibold text-primary">
-                    {formatCurrency(allocation.allocatedAmount)}
-                  </span>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </CardContent>
         </Card>
       )}
 
-      {/* Implementation Notice */}
-      <Alert>
-        <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>
-          This is a preview of the Smart Goal Management system. Full AI integration and automatic goal generation will be implemented in future updates.
-        </AlertDescription>
-      </Alert>
+      {/* Goals List */}
+      <div className="grid gap-4">
+        {goals.length === 0 ? (
+          <Card>
+            <CardContent className="text-center py-8">
+              <p className="text-muted-foreground">No goals recorded yet. Add your first goal to get started!</p>
+            </CardContent>
+          </Card>
+        ) : (
+          goals.map((goal) => (
+            <Card key={goal.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">{goal.name}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Target: {formatCurrency(goal.targetAmount)} by {goal.targetDate.toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-muted-foreground">Current: {formatCurrency(goal.currentAmount)}</p>
+                  </div>
+                  <div className="flex gap-2 ml-4">
+                    <Button size="sm" variant="outline" onClick={() => handleDelete(goal.id)}>
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
+      </div>
+
+      {/* Add Goal Modal */}
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Goal</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="name">Goal Name</Label>
+              <Input
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., New Car, Vacation"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="targetAmount">Target Amount (₹)</Label>
+              <Input
+                id="targetAmount"
+                type="number"
+                value={formData.targetAmount}
+                onChange={(e) => setFormData({ ...formData, targetAmount: e.target.value })}
+                placeholder="e.g., 50000"
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="targetDate">Target Date</Label>
+              <Input
+                id="targetDate"
+                type="date"
+                value={formData.targetDate}
+                onChange={(e) => setFormData({ ...formData, targetDate: e.target.value })}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="type">Goal Type</Label>
+              <Select value={formData.type} onValueChange={(value: any) => setFormData({ ...formData, type: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Micro">Micro</SelectItem>
+                  <SelectItem value="Small">Small</SelectItem>
+                  <SelectItem value="Short">Short</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Long">Long</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="notes">Notes</Label>
+              <Input
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes about the goal"
+              />
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <Button type="button" variant="outline" onClick={() => {
+                setShowAddModal(false);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                Add Goal
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

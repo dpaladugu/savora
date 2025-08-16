@@ -26,8 +26,10 @@ export function VehicleManager() {
     make: '',
     model: '',
     fuelType: 'Petrol' as 'Petrol' | 'Diesel' | 'Electric' | 'CNG' | 'Hybrid',
+    purchaseDate: '',
     insuranceExpiry: '',
     pucExpiry: '',
+    odometer: '',
     vehicleValue: ''
   });
 
@@ -58,9 +60,16 @@ export function VehicleManager() {
         make: formData.make,
         model: formData.model,
         fuelType: formData.fuelType,
+        purchaseDate: new Date(formData.purchaseDate),
         insuranceExpiry: new Date(formData.insuranceExpiry),
         pucExpiry: new Date(formData.pucExpiry),
-        vehicleValue: parseFloat(formData.vehicleValue)
+        odometer: parseFloat(formData.odometer) || 0,
+        fuelEfficiency: 0,
+        vehicleValue: parseFloat(formData.vehicleValue) || 0,
+        fuelLogs: [],
+        serviceLogs: [],
+        claims: [],
+        treadDepthMM: 0
       };
 
       if (editingVehicle) {
@@ -90,8 +99,10 @@ export function VehicleManager() {
       make: vehicle.make || '',
       model: vehicle.model || '',
       fuelType: vehicle.fuelType || 'Petrol',
+      purchaseDate: vehicle.purchaseDate.toISOString().split('T')[0],
       insuranceExpiry: vehicle.insuranceExpiry.toISOString().split('T')[0],
       pucExpiry: vehicle.pucExpiry.toISOString().split('T')[0],
+      odometer: vehicle.odometer?.toString() || '0',
       vehicleValue: vehicle.vehicleValue?.toString() || ''
     });
     setShowAddModal(true);
@@ -118,8 +129,10 @@ export function VehicleManager() {
       make: '',
       model: '',
       fuelType: 'Petrol',
+      purchaseDate: '',
       insuranceExpiry: '',
       pucExpiry: '',
+      odometer: '',
       vehicleValue: ''
     });
   };
@@ -339,6 +352,29 @@ export function VehicleManager() {
                   <SelectItem value="Hybrid">Hybrid</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="purchaseDate">Purchase Date</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={formData.purchaseDate}
+                onChange={(e) => setFormData({...formData, purchaseDate: e.target.value})}
+                required
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="odometer">Odometer (km)</Label>
+              <Input
+                id="odometer"
+                type="number"
+                value={formData.odometer}
+                onChange={(e) => setFormData({...formData, odometer: e.target.value})}
+                placeholder="Current reading"
+                required
+              />
             </div>
 
             <div>

@@ -122,20 +122,22 @@ export interface CreditCard {
 
 export interface Vehicle {
   id: string;
-  owner: string;
+  owner: 'Me' | 'Mother' | 'Grandmother';
   regNo: string;
-  make: string;
-  model: string;
-  type: 'Car' | 'Motorcycle' | 'Scooter' | 'Truck' | 'Other';
+  type: 'Car' | 'Other' | 'Motorcycle' | 'Scooter' | 'Truck';
+  make?: string;
+  model?: string;
+  fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'CNG' | 'Hybrid';
   purchaseDate: Date;
   insuranceExpiry: Date;
   pucExpiry: Date;
   odometer: number;
   fuelEfficiency: number;
+  vehicleValue?: number;
   fuelLogs: FuelFill[];
   serviceLogs: ServiceEntry[];
   claims: Claim[];
-  treadDepthMM: number;
+  treadDepthMM?: number;
   depreciationRate?: number;
   ncbPercent?: number;
 }

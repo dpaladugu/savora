@@ -14,7 +14,7 @@ interface ModuleConfig {
   id: string;
   name: string;
   description: string;
-  icon: React.ComponentType<any>;
+  icon: typeof Building2;
   category: string;
 }
 

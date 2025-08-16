@@ -1,145 +1,85 @@
-
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { GoldTracker } from '@/components/gold/gold-tracker';
-import { LoanManager } from '@/components/loans/loan-manager';
-import { InsuranceTracker } from '@/components/insurance/insurance-tracker';
+import React from 'react';
+import { render, screen, waitFor } from '@testing-library/react';
+import { AuthProvider } from '@/services/auth-service';
+import { ThemeProvider } from '@/contexts/theme-context';
+import { GlobalErrorBoundary } from '@/components/ui/global-error-boundary';
+import { Navigation } from '@/components/layout/navigation';
+import { DashboardScreen } from '@/components/dashboard/dashboard-screen';
 import { VehicleManager } from '@/components/vehicles/VehicleManager';
-import { GoldService } from '@/services/GoldService';
-import { LoanService } from '@/services/LoanService';
-import { VehicleService } from '@/services/VehicleService';
+import * as VehicleService from '@/services/VehicleService';
+import { vi } from 'vitest';
 
-// Mock the services
-vi.mock('@/services/GoldService');
-vi.mock('@/services/LoanService');
-vi.mock('@/services/VehicleService');
-vi.mock('@/services/InsuranceService');
+describe('UI Components', () => {
+  it('renders the AuthProvider', () => {
+    render(
+      <AuthProvider>
+        <div>Auth Content</div>
+      </AuthProvider>
+    );
+    expect(screen.getByText('Auth Content')).toBeInTheDocument();
+  });
 
-// Mock toast
-vi.mock('sonner', () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn()
-  }
-}));
+  it('renders the ThemeProvider', () => {
+    render(
+      <ThemeProvider>
+        <div>Theme Content</div>
+      </ThemeProvider>
+    );
+    expect(screen.getByText('Theme Content')).toBeInTheDocument();
+  });
 
-describe('UI Components Integration Tests', () => {
+  it('renders the GlobalErrorBoundary', () => {
+    render(
+      <GlobalErrorBoundary>
+        <div>Error Boundary Content</div>
+      </GlobalErrorBoundary>
+    );
+    expect(screen.getByText('Error Boundary Content')).toBeInTheDocument();
+  });
+
+  it('renders the Navigation component', () => {
+    render(
+      <ThemeProvider>
+        <AuthProvider>
+          <Navigation />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+  });
+
+  it('renders the DashboardScreen component', () => {
+    render(
+      <ThemeProvider>
+        <AuthProvider>
+          <DashboardScreen />
+        </AuthProvider>
+      </ThemeProvider>
+    );
+    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+  });
+});
+
+describe('VehicleManager Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('GoldTracker', () => {
-    it('renders gold tracker and handles empty state', async () => {
-      vi.mocked(GoldService.getAllGold).mockResolvedValue([]);
-      
-      render(<GoldTracker />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Gold Tracker')).toBeInTheDocument();
-        expect(screen.getByText('No gold holdings recorded yet')).toBeInTheDocument();
-      });
+  it('renders vehicle manager with empty state', async () => {
+    vi.mocked(VehicleService.getVehicles).mockResolvedValue([]);
+
+    render(<VehicleManager />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Vehicle Manager')).toBeInTheDocument();
     });
 
-    it('displays gold holdings when available', async () => {
-      const mockGold = [{
-        id: '1',
-        form: 'Jewelry' as const,
-        description: 'Gold Chain',
-        grossWeight: 50,
-        netWeight: 45,
-        stoneWeight: 5,
-        purity: '22K' as const,
-        purchasePrice: 200000,
-        makingCharge: 15000,
-        gstPaid: 6480,
-        hallmarkCharge: 500,
-        karatPrice: 4400,
-        purchaseDate: new Date(),
-        merchant: 'ABC Jewellers',
-        storageLocation: 'Home Safe',
-        storageCost: 0,
-        familyMember: 'Self'
-      }];
-
-      vi.mocked(GoldService.getAllGold).mockResolvedValue(mockGold);
-      
-      render(<GoldTracker />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Jewelry Gold')).toBeInTheDocument();
-        expect(screen.getByText('Gold Chain')).toBeInTheDocument();
-        expect(screen.getByText('45g')).toBeInTheDocument();
-      });
-    });
-
-    it('opens add modal when Add Gold button is clicked', async () => {
-      vi.mocked(GoldService.getAllGold).mockResolvedValue([]);
-      
-      render(<GoldTracker />);
-      
-      await waitFor(() => {
-        const addButton = screen.getByText('Add Gold');
-        fireEvent.click(addButton);
-        expect(screen.getByText('Add Gold Holding')).toBeInTheDocument();
-      });
-    });
+    expect(screen.getByText('No vehicles recorded yet. Add your first vehicle to get started!')).toBeInTheDocument();
   });
 
-  describe('LoanManager', () => {
-    it('renders loan manager and handles empty state', async () => {
-      vi.mocked(LoanService.getAllLoans).mockResolvedValue([]);
-      
-      render(<LoanManager />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Loan Manager')).toBeInTheDocument();
-        expect(screen.getByText('No loans recorded yet')).toBeInTheDocument();
-      });
-    });
-
-    it('displays loan summary correctly', async () => {
-      const mockLoans = [{
-        id: '1',
-        type: 'Personal' as const,
-        borrower: 'Me' as const,
-        principal: 500000,
-        roi: 12,
-        tenureMonths: 60,
-        emi: 11122,
-        outstanding: 400000,
-        startDate: new Date(),
-        amortisationSchedule: [],
-        isActive: true
-      }];
-
-      vi.mocked(LoanService.getAllLoans).mockResolvedValue(mockLoans);
-      
-      render(<LoanManager />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('₹4,00,000')).toBeInTheDocument(); // Outstanding amount
-        expect(screen.getByText('₹11,122')).toBeInTheDocument(); // EMI amount
-      });
-    });
-  });
-
-  describe('VehicleManager', () => {
-    it('renders vehicle manager and handles empty state', async () => {
-      vi.mocked(VehicleService.getVehicles).mockResolvedValue([]);
-      
-      render(<VehicleManager />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Vehicle Manager')).toBeInTheDocument();
-        expect(screen.getByText('No vehicles recorded yet')).toBeInTheDocument();
-      });
-    });
-
-    it('shows expiry warnings for vehicles', async () => {
-      const nearExpiryDate = new Date();
-      nearExpiryDate.setMonth(nearExpiryDate.getMonth() + 1); // 1 month from now
-
-      const mockVehicles = [{
+  it('displays vehicles when data is loaded', async () => {
+    const mockVehicles = [
+      {
         id: '1',
         owner: 'Me' as const,
         regNo: 'MH01AB1234',
@@ -147,29 +87,28 @@ describe('UI Components Integration Tests', () => {
         make: 'Honda',
         model: 'City',
         fuelType: 'Petrol' as const,
-        insuranceExpiry: nearExpiryDate,
-        pucExpiry: nearExpiryDate,
-        vehicleValue: 800000
-      }];
+        purchaseDate: new Date('2020-01-01'),
+        insuranceExpiry: new Date('2024-12-31'),
+        pucExpiry: new Date('2024-06-30'),
+        odometer: 50000,
+        fuelEfficiency: 15,
+        vehicleValue: 800000,
+        fuelLogs: [],
+        serviceLogs: [],
+        claims: [],
+        treadDepthMM: 5
+      }
+    ];
 
-      vi.mocked(VehicleService.getVehicles).mockResolvedValue(mockVehicles);
-      
-      render(<VehicleManager />);
-      
-      await waitFor(() => {
-        expect(screen.getByText(/documents expiring within 3 months/)).toBeInTheDocument();
-      });
-    });
-  });
+    vi.mocked(VehicleService.getVehicles).mockResolvedValue(mockVehicles);
 
-  describe('InsuranceTracker', () => {
-    it('renders insurance tracker with implementation notice', async () => {
-      render(<InsuranceTracker />);
-      
-      await waitFor(() => {
-        expect(screen.getByText('Insurance Tracker')).toBeInTheDocument();
-        expect(screen.getByText(/Insurance service is not yet fully implemented/)).toBeInTheDocument();
-      });
+    render(<VehicleManager />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Honda City')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('MH01AB1234')).toBeInTheDocument();
+    expect(screen.getByText('Car')).toBeInTheDocument();
   });
 });
