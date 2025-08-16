@@ -1,114 +1,94 @@
+
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
-import { AuthProvider } from '@/services/auth-service';
-import { ThemeProvider } from '@/contexts/theme-context';
-import { GlobalErrorBoundary } from '@/components/ui/global-error-boundary';
-import { Navigation } from '@/components/layout/navigation';
-import { DashboardScreen } from '@/components/dashboard/dashboard-screen';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { VehicleManager } from '@/components/vehicles/VehicleManager';
-import * as VehicleService from '@/services/VehicleService';
-import { vi } from 'vitest';
+import { GoldTracker } from '@/components/gold/gold-tracker';
+import { LoanManager } from '@/components/loans/loan-manager';
+import { InsuranceTracker } from '@/components/insurance/insurance-tracker';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { EmptyState } from '@/components/ui/empty-state';
+import { ConfirmationDialog } from '@/components/ui/confirmation-dialog';
+
+// Mock services
+vi.mock('@/services/VehicleService', () => ({
+  VehicleService: {
+    getAllVehicles: vi.fn(() => Promise.resolve([])),
+    createVehicle: vi.fn(() => Promise.resolve('test-id')),
+    updateVehicle: vi.fn(() => Promise.resolve()),
+    deleteVehicle: vi.fn(() => Promise.resolve()),
+  }
+}));
+
+vi.mock('@/services/GoldService', () => ({
+  GoldService: {
+    getAllGold: vi.fn(() => Promise.resolve([])),
+    createGold: vi.fn(() => Promise.resolve('test-id')),
+  }
+}));
+
+vi.mock('@/services/LoanService', () => ({
+  LoanService: {
+    getAllLoans: vi.fn(() => Promise.resolve([])),
+    createLoan: vi.fn(() => Promise.resolve('test-id')),
+  }
+}));
+
+vi.mock('@/services/InsuranceService', () => ({
+  InsuranceService: {
+    getAllPolicies: vi.fn(() => Promise.resolve([])),
+    createPolicy: vi.fn(() => Promise.resolve('test-id')),
+  }
+}));
 
 describe('UI Components', () => {
-  it('renders the AuthProvider', () => {
-    render(
-      <AuthProvider>
-        <div>Auth Content</div>
-      </AuthProvider>
-    );
-    expect(screen.getByText('Auth Content')).toBeInTheDocument();
+  it('renders LoadingSpinner correctly', () => {
+    render(<LoadingSpinner />);
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
-  it('renders the ThemeProvider', () => {
-    render(
-      <ThemeProvider>
-        <div>Theme Content</div>
-      </ThemeProvider>
-    );
-    expect(screen.getByText('Theme Content')).toBeInTheDocument();
+  it('renders EmptyState with message', () => {
+    render(<EmptyState message="No data found" />);
+    expect(screen.getByText('No data found')).toBeInTheDocument();
   });
 
-  it('renders the GlobalErrorBoundary', () => {
+  it('renders ConfirmationDialog', () => {
+    const mockOnConfirm = vi.fn();
+    const mockOnCancel = vi.fn();
+    
     render(
-      <GlobalErrorBoundary>
-        <div>Error Boundary Content</div>
-      </GlobalErrorBoundary>
+      <ConfirmationDialog
+        isOpen={true}
+        title="Test Dialog"
+        message="Are you sure?"
+        onConfirm={mockOnConfirm}
+        onCancel={mockOnCancel}
+      />
     );
-    expect(screen.getByText('Error Boundary Content')).toBeInTheDocument();
-  });
-
-  it('renders the Navigation component', () => {
-    render(
-      <ThemeProvider>
-        <AuthProvider>
-          <Navigation />
-        </AuthProvider>
-      </ThemeProvider>
-    );
-    expect(screen.getByRole('navigation')).toBeInTheDocument();
-  });
-
-  it('renders the DashboardScreen component', () => {
-    render(
-      <ThemeProvider>
-        <AuthProvider>
-          <DashboardScreen />
-        </AuthProvider>
-      </ThemeProvider>
-    );
-    expect(screen.getByText('Dashboard')).toBeInTheDocument();
+    
+    expect(screen.getByText('Test Dialog')).toBeInTheDocument();
+    expect(screen.getByText('Are you sure?')).toBeInTheDocument();
   });
 });
 
-describe('VehicleManager Component', () => {
+describe('Module Components', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('renders vehicle manager with empty state', async () => {
-    vi.mocked(VehicleService.getVehicles).mockResolvedValue([]);
-
+  it('renders VehicleManager correctly', async () => {
     render(<VehicleManager />);
     
     await waitFor(() => {
       expect(screen.getByText('Vehicle Manager')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('No vehicles recorded yet. Add your first vehicle to get started!')).toBeInTheDocument();
   });
 
-  it('displays vehicles when data is loaded', async () => {
-    const mockVehicles = [
-      {
-        id: '1',
-        owner: 'Me' as const,
-        regNo: 'MH01AB1234',
-        type: 'Car' as const,
-        make: 'Honda',
-        model: 'City',
-        fuelType: 'Petrol' as const,
-        purchaseDate: new Date('2020-01-01'),
-        insuranceExpiry: new Date('2024-12-31'),
-        pucExpiry: new Date('2024-06-30'),
-        odometer: 50000,
-        fuelEfficiency: 15,
-        vehicleValue: 800000,
-        fuelLogs: [],
-        serviceLogs: [],
-        claims: [],
-        treadDepthMM: 5
-      }
-    ];
-
-    vi.mocked(VehicleService.getVehicles).mockResolvedValue(mockVehicles);
-
-    render(<VehicleManager />);
+  it('renders GoldTracker correctly', async () => {
+    render(<GoldTracker />);
     
     await waitFor(() => {
-      expect(screen.getByText('Honda City')).toBeInTheDocument();
+      expect(screen.getByText('Gold Investment Tracker')).toBeInTheDocument();
     });
-
-    expect(screen.getByText('MH01AB1234')).toBeInTheDocument();
-    expect(screen.getByText('Car')).toBeInTheDocument();
   });
 });

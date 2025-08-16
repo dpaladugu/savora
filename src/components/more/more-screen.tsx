@@ -4,7 +4,10 @@ import { MoreModule } from '@/components/layout/more-module';
 import { MoreModuleRouter } from '@/components/layout/more-module-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Building, Users, Target, ShieldCheck, Car, Building2 } from 'lucide-react';
+import { 
+  Building, Users, Target, ShieldCheck, Car, Building2, 
+  Heart, Calendar, CreditCard 
+} from 'lucide-react';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
@@ -67,6 +70,27 @@ const modules: ModuleConfig[] = [
     description: 'AI-powered goal recommendations and auto-funding strategies',
     icon: Target,
     category: 'Goals & Planning'
+  },
+  {
+    id: 'health-tracker',
+    name: 'Health Tracker',
+    description: 'Track prescriptions, vital signs, and health records',
+    icon: Heart,
+    category: 'Health & Wellness'
+  },
+  {
+    id: 'subscriptions',
+    name: 'Subscription Manager',
+    description: 'Manage recurring subscriptions and track renewal dates',
+    icon: Calendar,
+    category: 'Financial Tools'
+  },
+  {
+    id: 'family-banking',
+    name: 'Family Banking',
+    description: 'Manage family bank accounts and track money transfers',
+    icon: CreditCard,
+    category: 'Family Finance'
   }
 ];
 

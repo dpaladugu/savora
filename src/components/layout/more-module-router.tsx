@@ -7,6 +7,9 @@ import { VehicleManager } from '@/components/vehicles/VehicleManager';
 import { EnhancedRentalManager } from '@/components/rentals/enhanced-rental-manager';
 import { FamilyFinancialDashboard } from '@/components/family/family-financial-dashboard';
 import { EnhancedAutoGoalDashboard } from '@/components/goals/enhanced-auto-goal-dashboard';
+import { HealthTracker } from '@/components/health/health-tracker';
+import { SubscriptionManager } from '@/components/subscriptions/subscription-manager';
+import { FamilyBankManager } from '@/components/family/family-bank-manager';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
@@ -29,6 +32,12 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <FamilyFinancialDashboard />;
       case 'smart-goals':
         return <EnhancedAutoGoalDashboard />;
+      case 'health-tracker':
+        return <HealthTracker />;
+      case 'subscriptions':
+        return <SubscriptionManager />;
+      case 'family-banking':
+        return <FamilyBankManager />;
       default:
         return <div>Module not found</div>;
     }
