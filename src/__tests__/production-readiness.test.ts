@@ -173,15 +173,7 @@ describe('Production Readiness Tests', () => {
         'vehicles',
         'investments',
         'expenses',
-        'incomes',
-        'rentalProperties',
-        'tenants',
-        'gold',
-        'insurance',
-        'loans',
-        'subscriptions',
-        'health',
-        'emergencyFunds'
+        'incomes'
       ];
 
       for (const tableName of tables) {

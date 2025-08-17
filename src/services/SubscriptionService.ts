@@ -1,27 +1,26 @@
 
-import { db } from '@/lib/db';
+import { extendedDb as db } from '@/lib/db-schema-extended';
 import type { Subscription } from '@/lib/db-schema-extended';
 
 export class SubscriptionService {
   static async getAllSubscriptions(): Promise<Subscription[]> {
     try {
-      const subscriptions = await db.subscriptions.orderBy('nextBillingDate').toArray();
-      return subscriptions;
+      return await db.subscriptions.orderBy('nextDue').toArray();
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
-      throw error;
+      return [];
     }
   }
 
-  static async createSubscription(subscription: Omit<Subscription, 'id'>): Promise<string> {
+  static async addSubscription(subscription: Omit<Subscription, 'id'>): Promise<string> {
     try {
       const id = await db.subscriptions.add({
-        ...subscription,
-        id: crypto.randomUUID()
+        id: crypto.randomUUID(),
+        ...subscription
       });
       return id.toString();
     } catch (error) {
-      console.error('Error creating subscription:', error);
+      console.error('Error adding subscription:', error);
       throw error;
     }
   }
@@ -44,22 +43,46 @@ export class SubscriptionService {
     }
   }
 
-  static async getUpcomingSubscriptions(days: number = 7): Promise<Subscription[]> {
+  static async getActiveSubscriptions(): Promise<Subscription[]> {
     try {
-      const today = new Date();
-      const futureDate = new Date();
-      futureDate.setDate(today.getDate() + days);
+      return await db.subscriptions.where('isActive').equals(true).toArray();
+    } catch (error) {
+      console.error('Error fetching active subscriptions:', error);
+      return [];
+    }
+  }
 
-      const subscriptions = await db.subscriptions
-        .where('nextBillingDate')
-        .between(today, futureDate)
+  static async getUpcomingRenewals(days: number = 7): Promise<Subscription[]> {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() + days);
+      
+      return await db.subscriptions
+        .where('nextDue')
+        .belowOrEqual(cutoffDate)
         .and(sub => sub.isActive)
         .toArray();
-
-      return subscriptions;
     } catch (error) {
-      console.error('Error fetching upcoming subscriptions:', error);
-      throw error;
+      console.error('Error fetching upcoming renewals:', error);
+      return [];
     }
+  }
+
+  static calculateNextDue(startDate: Date, cycle: 'Monthly' | 'Quarterly' | 'Yearly'): Date {
+    const nextDue = new Date(startDate);
+    
+    switch (cycle) {
+      case 'Monthly':
+        nextDue.setMonth(nextDue.getMonth() + 1);
+        break;
+      case 'Quarterly':
+        nextDue.setMonth(nextDue.getMonth() + 3);
+        break;
+      case 'Yearly':
+        nextDue.setFullYear(nextDue.getFullYear() + 1);
+        break;
+    }
+    
+    return nextDue;
   }
 }

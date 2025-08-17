@@ -5,74 +5,47 @@ import { ExpenseTracker } from '@/components/expenses/expense-tracker';
 import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker';
 import { InvestmentsTracker } from '@/components/investments/investments-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
-import { CSVUpload } from '@/components/csv/csv-upload';
 import { SettingsScreen } from '@/components/settings/settings-screen';
 import { MoreScreen } from '@/components/more/more-screen';
-import { MoreModuleRouter } from '@/components/layout/more-module-router';
-import { EmergencyFundCalculator } from '@/components/goals/emergency-fund-calculator';
-import { RentalTracker } from '@/components/rentals/rental-tracker';
-import { RecommendationsEngine } from '@/components/recommendations/recommendations-engine';
-import { CashflowAnalysis } from '@/components/cashflow/cashflow-analysis';
-import { TelegramIntegration } from '@/components/telegram/telegram-integration';
-import { CreditCardManager } from '@/components/credit-cards/credit-card-manager';
-import { CreditCardStatements } from '@/components/credit-cards/credit-card-statements';
-import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
-import { VehicleManager } from '@/components/vehicles/VehicleManager';
-import { InsuranceTracker } from '@/components/insurance/insurance-tracker';
-import type { NavigationTab, MoreModule } from './navigation-router';
+import { NavigationTab, MoreModule } from '@/types/common';
 
-interface MainContentRouterProps {
+export interface MainContentRouterProps {
   activeTab: NavigationTab;
   activeMoreModule: MoreModule;
+  onTabChange: (tab: NavigationTab) => void;
+  onMoreNavigation: (moduleId: string) => void;
 }
 
-export function MainContentRouter({ activeTab, activeMoreModule }: MainContentRouterProps) {
-  if (activeTab === 'more') {
-    if (activeMoreModule) {
-      switch (activeMoreModule) {
-        case 'emergency-fund':
-          return <EmergencyFundCalculator />;
-        case 'rentals':
-          return <RentalTracker />;
-        case 'recommendations':
-          return <RecommendationsEngine />;
-        case 'cashflow':
-          return <CashflowAnalysis />;
-        case 'telegram':
-          return <TelegramIntegration />;
-        case 'credit-cards':
-          return <CreditCardManager />;
-        case 'credit-card-statements':
-          return <CreditCardStatements />;
-        case 'recurring-transactions':
-          return <RecurringTransactionsPage />;
-        case 'vehicles':
-          return <VehicleManager />;
-        case 'insurance':
-          return <InsuranceTracker />;
-        default:
-          return <MoreScreen />;
-      }
+export function MainContentRouter({ 
+  activeTab, 
+  activeMoreModule, 
+  onTabChange, 
+  onMoreNavigation 
+}: MainContentRouterProps) {
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+      case 'expenses':
+        return <ExpenseTracker />;
+      case 'credit-cards':
+        return <CreditCardTracker />;
+      case 'investments':
+        return <InvestmentsTracker />;
+      case 'goals':
+        return <GoalsManager />;
+      case 'settings':
+        return <SettingsScreen />;
+      case 'more':
+        return <MoreScreen />;
+      default:
+        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
     }
-    return <MoreScreen />;
-  }
+  };
 
-  switch (activeTab) {
-    case 'dashboard':
-      return <Dashboard />;
-    case 'expenses':
-      return <ExpenseTracker />;
-    case 'credit-cards':
-      return <CreditCardTracker />;
-    case 'investments':
-      return <InvestmentsTracker />;
-    case 'goals':
-      return <GoalsManager />;
-    case 'upload':
-      return <CSVUpload />;
-    case 'settings':
-      return <SettingsScreen />;
-    default:
-      return <Dashboard />;
-  }
+  return (
+    <div className="flex-1 p-4 overflow-auto">
+      {renderContent()}
+    </div>
+  );
 }

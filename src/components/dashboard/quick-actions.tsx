@@ -1,82 +1,60 @@
 
-import { motion } from "framer-motion";
-import { Plus, Upload, Target, CreditCard } from "lucide-react";
-import { AccessibleButton } from "@/components/ui/accessible-button";
-import { Card, CardContent } from "@/components/ui/card";
-import { memo } from "react";
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, CreditCard, Target, TrendingUp } from 'lucide-react';
+import { NavigationTab } from '@/types/common';
 
 interface QuickActionsProps {
-  onAddExpense: () => void;
-  onImportCSV: () => void;
-  onCreateGoal: () => void;
-  onViewCards: () => void;
+  onTabChange: (tab: NavigationTab) => void;
+  onMoreNavigation: (moduleId: string) => void;
 }
 
-export const QuickActions = memo(function QuickActions({ 
-  onAddExpense, 
-  onImportCSV, 
-  onCreateGoal, 
-  onViewCards 
-}: QuickActionsProps) {
-  const actions = [
-    {
-      id: "add-expense",
-      label: "Add Expense",
-      icon: Plus,
-      color: "bg-gradient-to-r from-blue-500 to-blue-600",
-      onClick: onAddExpense,
-      ariaLabel: "Add new expense entry"
-    },
-    {
-      id: "import-csv",
-      label: "Import CSV",
-      icon: Upload,
-      color: "bg-gradient-to-r from-green-500 to-green-600",
-      onClick: onImportCSV,
-      ariaLabel: "Import data from CSV file"
-    },
-    {
-      id: "create-goal",
-      label: "Create Goal",
-      icon: Target,
-      color: "bg-gradient-to-r from-purple-500 to-purple-600",
-      onClick: onCreateGoal,
-      ariaLabel: "Create new financial goal"
-    },
-    {
-      id: "view-cards",
-      label: "Credit Cards",
-      icon: CreditCard,
-      color: "bg-gradient-to-r from-orange-500 to-orange-600",
-      onClick: onViewCards,
-      ariaLabel: "View credit card information"
-    }
-  ];
-
+export function QuickActions({ onTabChange, onMoreNavigation }: QuickActionsProps) {
   return (
-    <Card className="metric-card border-border/50 mb-6">
-      <CardContent className="p-4">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Quick Actions</h3>
-        <div className="grid grid-cols-2 gap-3" role="group" aria-label="Quick action buttons">
-          {actions.map((action, index) => (
-            <motion.div
-              key={action.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <AccessibleButton
-                onClick={action.onClick}
-                ariaLabel={action.ariaLabel}
-                className={`w-full h-16 flex flex-col items-center justify-center gap-2 text-white ${action.color} hover:opacity-90 transition-opacity border-0`}
-              >
-                <action.icon className="w-5 h-5" aria-hidden="true" />
-                <span className="text-sm font-medium">{action.label}</span>
-              </AccessibleButton>
-            </motion.div>
-          ))}
+    <Card>
+      <CardHeader>
+        <CardTitle>Quick Actions</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Button
+            variant="outline"
+            className="h-20 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTabChange('expenses')}
+          >
+            <Plus className="h-5 w-5" />
+            Add Expense
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="h-20 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTabChange('credit-cards')}
+          >
+            <CreditCard className="h-5 w-5" />
+            Credit Cards
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="h-20 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTabChange('goals')}
+          >
+            <Target className="h-5 w-5" />
+            Manage Goals
+          </Button>
+          
+          <Button
+            variant="outline"
+            className="h-20 flex flex-col items-center justify-center gap-2"
+            onClick={() => onTabChange('investments')}
+          >
+            <TrendingUp className="h-5 w-5" />
+            Investments
+          </Button>
         </div>
       </CardContent>
     </Card>
   );
-});
+}
