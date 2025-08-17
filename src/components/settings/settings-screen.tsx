@@ -3,7 +3,8 @@ import React from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GlobalSettingsManager } from './global-settings-manager';
 import { LLMSettingsForm } from './llm-settings-form';
-import { Settings, Brain, Shield } from 'lucide-react';
+import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
+import { Settings, Brain, Shield, User } from 'lucide-react';
 
 export function SettingsScreen() {
   return (
@@ -18,8 +19,12 @@ export function SettingsScreen() {
         </p>
       </div>
 
-      <Tabs defaultValue="global" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+      <Tabs defaultValue="user" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="user" className="flex items-center gap-2">
+            <User className="h-4 w-4" />
+            User Settings
+          </TabsTrigger>
           <TabsTrigger value="global" className="flex items-center gap-2">
             <Shield className="h-4 w-4" />
             Global Settings
@@ -33,6 +38,10 @@ export function SettingsScreen() {
             Data Management
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="user">
+          <ComprehensiveSettingsScreen />
+        </TabsContent>
 
         <TabsContent value="global">
           <GlobalSettingsManager />

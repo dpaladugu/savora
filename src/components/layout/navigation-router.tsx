@@ -1,21 +1,7 @@
 
 import React from 'react';
 import { Logger } from '@/services/logger';
-
-export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investments' | 'goals' | 'upload' | 'settings' | 'more';
-
-export type MoreModule = 
-  | 'emergency-fund' 
-  | 'rentals' 
-  | 'recommendations' 
-  | 'cashflow' 
-  | 'telegram'
-  | 'credit-cards'
-  | 'credit-card-statements'
-  | 'recurring-transactions'
-  | 'vehicles'
-  | 'insurance'
-  | null;
+import type { NavigationTab, MoreModule } from '@/types/common';
 
 interface NavigationState {
   activeTab: NavigationTab;
@@ -51,9 +37,9 @@ export function useNavigationRouter() {
       
       // Validate moduleId is a valid MoreModule
       const validModules: MoreModule[] = [
-        'emergency-fund', 'rentals', 'recommendations', 'cashflow', 
+        'emergency-fund', 'rentals', 'recommendations', 'cfa-recommendations', 'cashflow', 
         'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions', 
-        'vehicles', 'insurance'
+        'vehicles', 'insurance', 'health-tracker', 'subscriptions', 'family-banking'
       ];
       
       const validModuleId = validModules.includes(moduleId as MoreModule) ? moduleId as MoreModule : null;

@@ -10,6 +10,10 @@ import { EnhancedAutoGoalDashboard } from '@/components/goals/enhanced-auto-goal
 import { HealthTracker } from '@/components/health/health-tracker';
 import { SubscriptionManager } from '@/components/subscriptions/subscription-manager';
 import { FamilyBankManager } from '@/components/family/family-bank-manager';
+import { EmergencyFundDashboard } from '@/components/emergency-fund/emergency-fund-dashboard';
+import { CFARecommendationsDashboard } from '@/components/recommendations/cfa-recommendations-dashboard';
+import { RecommendationsEngine } from '@/components/recommendations/recommendations-engine';
+import { ComprehensiveSettingsScreen } from '@/components/settings/comprehensive-settings-screen';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
@@ -38,6 +42,14 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <SubscriptionManager />;
       case 'family-banking':
         return <FamilyBankManager />;
+      case 'emergency-fund':
+        return <EmergencyFundDashboard />;
+      case 'cfa-recommendations':
+        return <CFARecommendationsDashboard />;
+      case 'recommendations':
+        return <RecommendationsEngine />;
+      case 'settings':
+        return <ComprehensiveSettingsScreen />;
       default:
         return <div>Module not found</div>;
     }

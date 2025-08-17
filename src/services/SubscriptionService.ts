@@ -45,7 +45,7 @@ export class SubscriptionService {
 
   static async getActiveSubscriptions(): Promise<Subscription[]> {
     try {
-      return await db.subscriptions.where('isActive').equals(true).toArray();
+      return await db.subscriptions.where('isActive').equals(1).toArray();
     } catch (error) {
       console.error('Error fetching active subscriptions:', error);
       return [];
@@ -59,8 +59,8 @@ export class SubscriptionService {
       
       return await db.subscriptions
         .where('nextDue')
-        .belowOrEqual(cutoffDate)
-        .and(sub => sub.isActive)
+        .belowOrEqual(cutoffDate.getTime())
+        .and(sub => !!sub.isActive)
         .toArray();
     } catch (error) {
       console.error('Error fetching upcoming renewals:', error);

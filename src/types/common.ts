@@ -29,8 +29,17 @@ export type MoreModule =
   | 'emergency-fund' 
   | 'rentals' 
   | 'recommendations' 
+  | 'cfa-recommendations'
   | 'cashflow' 
   | 'telegram'
+  | 'credit-cards'
+  | 'credit-card-statements'
+  | 'recurring-transactions'
+  | 'vehicles'
+  | 'insurance'
+  | 'health-tracker'
+  | 'subscriptions'
+  | 'family-banking'
   | null;
 
 export interface User {

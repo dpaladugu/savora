@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,7 @@ export function SubscriptionManager() {
   const loadSubscriptions = async () => {
     try {
       setLoading(true);
-      const allSubscriptions = await extendedDb.subscriptions.where('isActive').equals(true).toArray();
+      const allSubscriptions = await extendedDb.subscriptions.where('isActive').equals(1).toArray();
       setSubscriptions(allSubscriptions);
     } catch (error) {
       toast.error('Failed to load subscriptions');
