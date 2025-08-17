@@ -3,70 +3,82 @@ import { db } from '@/lib/db';
 import type { EmergencyFund } from '@/lib/db';
 
 export class EmergencyFundService {
-  static async getEmergencyFund(): Promise<EmergencyFund | null> {
+  static async getEmergencyFund(id: string): Promise<EmergencyFund | undefined> {
     try {
-      const fund = await db.emergencyFunds.limit(1).first();
-      return fund || null;
+      return await db.emergencyFunds.get(id);
     } catch (error) {
       console.error('Error fetching emergency fund:', error);
-      return null;
+      throw error;
     }
   }
 
-  static async createEmergencyFund(data: {
-    targetMonths: number;
-    targetAmount: number;
-    currentAmount: number;
-  }): Promise<EmergencyFund> {
+  static async createEmergencyFund(fund: Omit<EmergencyFund, 'id'>): Promise<string> {
     try {
-      const id = crypto.randomUUID();
-      const emergencyFund: EmergencyFund = {
-        id,
-        targetMonths: data.targetMonths,
-        targetAmount: data.targetAmount,
-        currentAmount: data.currentAmount,
-        lastUpdated: new Date()
+      const newId = self.crypto.randomUUID();
+      const fundToAdd: EmergencyFund = {
+        ...fund,
+        id: newId,
+        created_at: new Date(),
+        updated_at: new Date()
       };
-
-      await db.emergencyFunds.add(emergencyFund);
-      return emergencyFund;
+      
+      await db.emergencyFunds.add(fundToAdd);
+      return newId;
     } catch (error) {
       console.error('Error creating emergency fund:', error);
       throw error;
     }
   }
 
-  static async updateCurrentAmount(id: string, amount: number): Promise<void> {
+  static async updateCurrentAmount(id: string, currentAmount: number): Promise<void> {
     try {
-      await db.emergencyFunds.update(id, {
-        currentAmount: amount,
-        lastUpdated: new Date()
+      await db.emergencyFunds.update(id, { 
+        current_amount: currentAmount,
+        updated_at: new Date()
       });
     } catch (error) {
-      console.error('Error updating emergency fund amount:', error);
+      console.error('Error updating current amount:', error);
       throw error;
     }
   }
 
-  static async updateTargetAmount(id: string, targetAmount: number, targetMonths: number): Promise<void> {
+  static async updateTargetAmount(id: string, targetAmount: number): Promise<void> {
     try {
-      await db.emergencyFunds.update(id, {
-        targetAmount,
-        targetMonths,
-        lastUpdated: new Date()
+      await db.emergencyFunds.update(id, { 
+        target_amount: targetAmount,
+        updated_at: new Date()
       });
     } catch (error) {
-      console.error('Error updating emergency fund target:', error);
+      console.error('Error updating target amount:', error);
       throw error;
     }
   }
 
-  static calculateMonthlyTarget(monthlyExpenses: number, targetMonths: number): number {
-    return monthlyExpenses * targetMonths;
+  static async getAllEmergencyFunds(): Promise<EmergencyFund[]> {
+    try {
+      return await db.emergencyFunds.toArray();
+    } catch (error) {
+      console.error('Error fetching all emergency funds:', error);
+      throw error;
+    }
+  }
+
+  static async deleteEmergencyFund(id: string): Promise<void> {
+    try {
+      await db.emergencyFunds.delete(id);
+    } catch (error) {
+      console.error('Error deleting emergency fund:', error);
+      throw error;
+    }
   }
 
   static calculateProgress(currentAmount: number, targetAmount: number): number {
-    if (targetAmount === 0) return 0;
+    if (targetAmount <= 0) return 0;
     return Math.min(100, (currentAmount / targetAmount) * 100);
+  }
+
+  static calculateMonthsOfExpenses(currentAmount: number, monthlyExpenses: number): number {
+    if (monthlyExpenses <= 0) return 0;
+    return currentAmount / monthlyExpenses;
   }
 }

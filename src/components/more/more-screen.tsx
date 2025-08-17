@@ -3,236 +3,343 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Shield, Heart, Car, Home, Coins, CreditCard, 
-  TrendingUp, Users, PiggyBank, Calendar, Settings,
-  Brain, Target, BarChart3, FileText
+import {
+  CreditCard,
+  FileText,
+  Repeat,
+  Car,
+  Shield,
+  Heart,
+  Coins,
+  Users2,
+  Target,
+  TrendingUp,
+  Brain,
+  Settings,
+  Sparkles,
+  Home,
+  Banknote,
+  AlertCircle
 } from 'lucide-react';
 
-const modules = [
+interface MoreModule {
+  id: string;
+  title: string;
+  description: string;
+  icon: React.ComponentType<any>;
+  status: 'available' | 'coming-soon' | 'beta';
+  category: 'financial' | 'tracking' | 'analysis' | 'settings';
+  priority: 'high' | 'medium' | 'low';
+}
+
+const modules: MoreModule[] = [
+  // Financial Management
   {
-    id: 'emergency-fund',
-    title: 'Emergency Fund',
-    description: 'Track and manage your emergency savings fund',
-    icon: Shield,
-    color: 'bg-green-500',
-    category: 'Financial Planning'
+    id: 'credit-cards',
+    title: 'Credit Cards',
+    description: 'Manage credit cards, track balances, and monitor due dates',
+    icon: CreditCard,
+    status: 'available',
+    category: 'financial',
+    priority: 'high'
   },
   {
-    id: 'cfa-recommendations',
-    title: 'CFA Recommendations',
-    description: 'Professional-grade portfolio analysis and recommendations',
-    icon: Brain,
-    color: 'bg-purple-500',
-    category: 'Financial Intelligence',
-    badge: 'AI'
-  },
-  {
-    id: 'recommendations',
-    title: 'Smart Recommendations',
-    description: 'AI-powered financial advice and recommendations',
-    icon: Target,
-    color: 'bg-blue-500',
-    category: 'Financial Intelligence',
-    badge: 'AI'
+    id: 'loans',
+    title: 'Loans & EMIs',
+    description: 'Track loan balances, EMI schedules, and prepayment scenarios',
+    icon: Banknote,
+    status: 'coming-soon',
+    category: 'financial',
+    priority: 'high'
   },
   {
     id: 'subscriptions',
     title: 'Subscriptions',
-    description: 'Track recurring subscriptions and payments',
-    icon: Calendar,
-    color: 'bg-orange-500',
-    category: 'Expense Management'
+    description: 'Monitor recurring subscriptions and manage cancellations',
+    icon: Repeat,
+    status: 'beta',
+    category: 'financial',
+    priority: 'high'
   },
   {
-    id: 'health-tracker',
-    title: 'Health Tracker',
-    description: 'Monitor health expenses and medical records',
-    icon: Heart,
-    color: 'bg-red-500',
-    category: 'Health & Wellness'
+    id: 'emergency-fund',
+    title: 'Emergency Fund',
+    description: 'Build and track your emergency fund progress',
+    icon: AlertCircle,
+    status: 'available',
+    category: 'financial',
+    priority: 'high'
   },
+
+  // Asset Tracking
   {
     id: 'vehicles',
-    title: 'Vehicle Manager',
-    description: 'Track vehicle expenses, maintenance, and insurance',
+    title: 'Vehicles',
+    description: 'Track vehicle expenses, maintenance, and fuel costs',
     icon: Car,
-    color: 'bg-indigo-500',
-    category: 'Asset Management'
+    status: 'coming-soon',
+    category: 'tracking',
+    priority: 'medium'
   },
   {
     id: 'insurance',
-    title: 'Insurance Tracker',
-    description: 'Manage all your insurance policies and claims',
+    title: 'Insurance',
+    description: 'Manage insurance policies, premiums, and claims',
     icon: Shield,
-    color: 'bg-cyan-500',
-    category: 'Risk Management'
+    status: 'coming-soon',
+    category: 'tracking',
+    priority: 'medium'
   },
   {
     id: 'enhanced-rentals',
     title: 'Rental Properties',
-    description: 'Complete rental property and tenant management',
+    description: 'Manage rental income, expenses, and tenant information',
     icon: Home,
-    color: 'bg-emerald-500',
-    category: 'Real Estate'
+    status: 'beta',
+    category: 'tracking',
+    priority: 'medium'
   },
   {
     id: 'gold',
     title: 'Gold Investments',
-    description: 'Track gold purchases, sales, and current valuations',
+    description: 'Track gold investments and price movements',
     icon: Coins,
-    color: 'bg-yellow-500',
-    category: 'Investments'
+    status: 'beta',
+    category: 'tracking',
+    priority: 'low'
+  },
+
+  // Analysis & Intelligence
+  {
+    id: 'cfa-recommendations',
+    title: 'CFA Recommendations',
+    description: 'Professional-grade financial analysis and recommendations',
+    icon: Brain,
+    status: 'available',
+    category: 'analysis',
+    priority: 'high'
   },
   {
-    id: 'loans',
-    title: 'Loan Manager',
-    description: 'Track personal loans, EMIs, and repayment schedules',
-    icon: CreditCard,
-    color: 'bg-rose-500',
-    category: 'Debt Management'
-  },
-  {
-    id: 'family-dashboard',
-    title: 'Family Finance',
-    description: 'Comprehensive family financial overview and planning',
-    icon: Users,
-    color: 'bg-violet-500',
-    category: 'Family Planning'
-  },
-  {
-    id: 'family-banking',
-    title: 'Family Banking',
-    description: 'Manage family bank accounts and transfers',
-    icon: PiggyBank,
-    color: 'bg-teal-500',
-    category: 'Family Planning'
+    id: 'recommendations',
+    title: 'Smart Recommendations',
+    description: 'AI-powered financial insights and suggestions',
+    icon: Sparkles,
+    status: 'beta',
+    category: 'analysis',
+    priority: 'medium'
   },
   {
     id: 'smart-goals',
     title: 'Smart Goals',
-    description: 'AI-enhanced goal tracking with automatic recommendations',
+    description: 'Auto-generated financial goals based on your profile',
     icon: Target,
-    color: 'bg-pink-500',
-    category: 'Goal Planning',
-    badge: 'AI'
+    status: 'beta',
+    category: 'analysis',
+    priority: 'medium'
+  },
+
+  // Personal & Family
+  {
+    id: 'health-tracker',
+    title: 'Health Tracker',
+    description: 'Track medical expenses and health-related costs',
+    icon: Heart,
+    status: 'coming-soon',
+    category: 'tracking',
+    priority: 'low'
   },
   {
+    id: 'family-banking',
+    title: 'Family Banking',
+    description: 'Manage shared accounts and family financial planning',
+    icon: Users2,
+    status: 'coming-soon',
+    category: 'financial',
+    priority: 'low'
+  },
+
+  // Settings & Configuration
+  {
     id: 'settings',
-    title: 'Advanced Settings',
-    description: 'Comprehensive app settings and preferences',
+    title: 'Settings',
+    description: 'App preferences, security, and account settings',
     icon: Settings,
-    color: 'bg-gray-500',
-    category: 'Configuration'
+    status: 'available',
+    category: 'settings',
+    priority: 'high'
   }
 ];
 
-const categories = [
-  'Financial Planning',
-  'Financial Intelligence', 
-  'Expense Management',
-  'Asset Management',
-  'Risk Management',
-  'Investments',
-  'Debt Management',
-  'Real Estate',
-  'Family Planning',
-  'Health & Wellness',
-  'Goal Planning',
-  'Configuration'
-];
-
 export function MoreScreen() {
-  const [selectedCategory, setSelectedCategory] = React.useState<string | null>(null);
+  const handleModuleClick = (moduleId: string, status: string) => {
+    if (status === 'coming-soon') {
+      return; // Do nothing for coming soon modules
+    }
+    
+    // Navigate to module
+    window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
+  };
 
-  const filteredModules = selectedCategory 
-    ? modules.filter(module => module.category === selectedCategory)
-    : modules;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'available':
+        return <Badge variant="default" className="bg-green-500">Available</Badge>;
+      case 'beta':
+        return <Badge variant="secondary">Beta</Badge>;
+      case 'coming-soon':
+        return <Badge variant="outline">Coming Soon</Badge>;
+      default:
+        return null;
+    }
+  };
 
-  const handleModuleClick = (moduleId: string) => {
-    // This will be handled by the parent component
-    const event = new CustomEvent('navigate-more', { detail: moduleId });
-    window.dispatchEvent(event);
+  const getStatusStyle = (status: string) => {
+    return status === 'coming-soon' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md';
+  };
+
+  const categorizedModules = {
+    financial: modules.filter(m => m.category === 'financial'),
+    tracking: modules.filter(m => m.category === 'tracking'),
+    analysis: modules.filter(m => m.category === 'analysis'),
+    settings: modules.filter(m => m.category === 'settings')
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="mb-6">
+    <div className="p-6 space-y-6">
+      <div className="text-center mb-8">
         <h1 className="text-3xl font-bold mb-2">More Features</h1>
         <p className="text-muted-foreground">
-          Explore advanced financial management tools and specialized trackers
+          Discover powerful tools to manage your complete financial life
         </p>
       </div>
 
-      {/* Category Filter */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <Button
-          variant={selectedCategory === null ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setSelectedCategory(null)}
-        >
-          All Categories
-        </Button>
-        {categories.map((category) => (
-          <Button
-            key={category}
-            variant={selectedCategory === category ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSelectedCategory(category)}
-          >
-            {category}
-          </Button>
-        ))}
-      </div>
-
-      {/* Modules Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredModules.map((module) => {
-          const IconComponent = module.icon;
-          return (
-            <Card key={module.id} className="hover:shadow-lg transition-shadow cursor-pointer group">
-              <CardHeader className="pb-4">
+      {/* Financial Management */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          Financial Management
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {categorizedModules.financial.map((module) => (
+            <Card 
+              key={module.id}
+              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
+              onClick={() => handleModuleClick(module.id, module.status)}
+            >
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <div className={`p-3 rounded-lg ${module.color} text-white group-hover:scale-110 transition-transform`}>
-                    <IconComponent className="h-6 w-6" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                      <module.icon className="h-5 w-5 text-primary" />
+                    </div>
+                    <CardTitle className="text-lg">{module.title}</CardTitle>
                   </div>
-                  <div className="flex gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      {module.category}
-                    </Badge>
-                    {module.badge && (
-                      <Badge variant="default" className="text-xs bg-gradient-to-r from-purple-500 to-pink-500">
-                        {module.badge}
-                      </Badge>
-                    )}
-                  </div>
+                  {getStatusBadge(module.status)}
                 </div>
-                <CardTitle className="text-lg group-hover:text-primary transition-colors">
-                  {module.title}
-                </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {module.description}
-                </p>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => handleModuleClick(module.id)}
-                >
-                  Open Module
-                </Button>
+                <p className="text-sm text-muted-foreground">{module.description}</p>
               </CardContent>
             </Card>
-          );
-        })}
+          ))}
+        </div>
       </div>
 
-      {filteredModules.length === 0 && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No modules found in this category.</p>
+      {/* Asset Tracking */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <FileText className="h-5 w-5" />
+          Asset & Expense Tracking
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {categorizedModules.tracking.map((module) => (
+            <Card 
+              key={module.id}
+              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
+              onClick={() => handleModuleClick(module.id, module.status)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
+                      <module.icon className="h-5 w-5 text-blue-500" />
+                    </div>
+                    <CardTitle className="text-lg">{module.title}</CardTitle>
+                  </div>
+                  {getStatusBadge(module.status)}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{module.description}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
-      )}
+      </div>
+
+      {/* Analysis & Intelligence */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Brain className="h-5 w-5" />
+          Analysis & Intelligence
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {categorizedModules.analysis.map((module) => (
+            <Card 
+              key={module.id}
+              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
+              onClick={() => handleModuleClick(module.id, module.status)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
+                      <module.icon className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <CardTitle className="text-lg">{module.title}</CardTitle>
+                  </div>
+                  {getStatusBadge(module.status)}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{module.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="space-y-4">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Configuration
+        </h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {categorizedModules.settings.map((module) => (
+            <Card 
+              key={module.id}
+              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
+              onClick={() => handleModuleClick(module.id, module.status)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-500/10 rounded-lg flex items-center justify-center">
+                      <module.icon className="h-5 w-5 text-gray-500" />
+                    </div>
+                    <CardTitle className="text-lg">{module.title}</CardTitle>
+                  </div>
+                  {getStatusBadge(module.status)}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">{module.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

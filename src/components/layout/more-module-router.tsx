@@ -14,6 +14,7 @@ import { EmergencyFundDashboard } from '@/components/emergency-fund/emergency-fu
 import { CFARecommendationsDashboard } from '@/components/recommendations/cfa-recommendations-dashboard';
 import { RecommendationsEngine } from '@/components/recommendations/recommendations-engine';
 import { ComprehensiveSettingsScreen } from '@/components/settings/comprehensive-settings-screen';
+import { CreditCardModule } from '@/components/credit-cards/credit-card-module';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
@@ -50,6 +51,8 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <RecommendationsEngine />;
       case 'settings':
         return <ComprehensiveSettingsScreen />;
+      case 'credit-cards':
+        return <CreditCardModule />;
       default:
         return <div>Module not found</div>;
     }
