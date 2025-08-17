@@ -1,6 +1,6 @@
 
 import { db } from '@/lib/db';
-import type { EmergencyFund } from '@/lib/db';
+import type { EmergencyFund } from '@/types/financial';
 
 export class EmergencyFundService {
   static async getEmergencyFund(id: string): Promise<EmergencyFund | undefined> {
@@ -18,6 +18,10 @@ export class EmergencyFundService {
       const fundToAdd: EmergencyFund = {
         ...fund,
         id: newId,
+        lastReviewDate: new Date(),
+        status: 'Under-Target',
+        medicalSubBucket: 0,
+        medicalSubBucketUsed: 0,
         created_at: new Date(),
         updated_at: new Date()
       };
@@ -33,7 +37,7 @@ export class EmergencyFundService {
   static async updateCurrentAmount(id: string, currentAmount: number): Promise<void> {
     try {
       await db.emergencyFunds.update(id, { 
-        current_amount: currentAmount,
+        currentAmount: currentAmount,
         updated_at: new Date()
       });
     } catch (error) {
@@ -45,7 +49,7 @@ export class EmergencyFundService {
   static async updateTargetAmount(id: string, targetAmount: number): Promise<void> {
     try {
       await db.emergencyFunds.update(id, { 
-        target_amount: targetAmount,
+        targetAmount: targetAmount,
         updated_at: new Date()
       });
     } catch (error) {

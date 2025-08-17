@@ -5,9 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { EmergencyFundService } from '@/services/EmergencyFundService';
-import { GlobalSettingsService } from '@/services/GlobalSettingsService';
 import { Shield, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react';
-import type { EmergencyFund } from '@/lib/db';
+import type { EmergencyFund } from '@/types/financial';
 
 export function EmergencyFundDashboard() {
   const [emergencyFund, setEmergencyFund] = useState<EmergencyFund | null>(null);
@@ -22,17 +21,29 @@ export function EmergencyFundDashboard() {
     try {
       setLoading(true);
       
-      // Get or create emergency fund
-      let fund = await EmergencyFundService.getEmergencyFund();
+      // Get all emergency funds
+      const funds = await EmergencyFundService.getAllEmergencyFunds();
+      let fund = funds[0];
+      
       if (!fund) {
-        fund = await EmergencyFundService.createEmergencyFund({
+        // Create emergency fund with complete data
+        const newFundData: Omit<EmergencyFund, 'id'> = {
+          name: 'Emergency Fund',
           targetMonths: 12,
-          targetAmount: 600000, // Default target
-          currentAmount: 0
-        });
+          targetAmount: 600000,
+          currentAmount: 0,
+          lastReviewDate: new Date(),
+          status: 'Under-Target',
+          medicalSubBucket: 0,
+          medicalSubBucketUsed: 0,
+          created_at: new Date(),
+          updated_at: new Date()
+        };
+        const fundId = await EmergencyFundService.createEmergencyFund(newFundData);
+        fund = await EmergencyFundService.getEmergencyFund(fundId);
       }
       
-      setEmergencyFund(fund);
+      setEmergencyFund(fund || null);
       
       // Calculate monthly expenses (placeholder - would use actual expense data)
       setMonthlyExpenses(50000);

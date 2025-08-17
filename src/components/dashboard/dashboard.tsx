@@ -6,6 +6,7 @@ import { QuickActions } from './quick-actions';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react';
+import type { MetricCardProps, DashboardData } from '@/types/dashboard';
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -15,36 +16,55 @@ interface DashboardProps {
 export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const dashboardData = useDashboardData();
 
-  const metrics = [
+  const metrics: MetricCardProps[] = [
     {
       title: 'Total Balance',
       value: '₹2,45,678',
       change: '+12.5%',
       icon: DollarSign,
-      trend: 'up' as const
+      trend: { value: 12.5, isPositive: true }
     },
     {
       title: 'Monthly Expenses',
       value: '₹45,230',
       change: '-5.2%',
       icon: TrendingDown,
-      trend: 'down' as const
+      trend: { value: 5.2, isPositive: false }
     },
     {
       title: 'Investments',
       value: '₹1,85,450',
       change: '+8.3%',
       icon: TrendingUp,
-      trend: 'up' as const
+      trend: { value: 8.3, isPositive: true }
     },
     {
       title: 'Credit Cards',
       value: '₹12,340',
       change: '+2.1%',
       icon: CreditCard,
-      trend: 'up' as const
+      trend: { value: 2.1, isPositive: true }
     }
   ];
+
+  // Create proper DashboardData structure
+  const fullDashboardData: DashboardData = {
+    totalExpenses: 45230,
+    monthlyExpenses: 45230,
+    totalInvestments: 185450,
+    expenseCount: dashboardData.expenses.length,
+    investmentCount: 5,
+    emergencyFundTarget: 600000,
+    emergencyFundCurrent: 300000,
+    monthlyIncome: 75000,
+    savingsRate: 40,
+    investmentValue: 185450,
+    creditCardDebt: 12340,
+    emergencyFund: 300000,
+    goals: [],
+    recentTransactions: [],
+    categoryBreakdown: []
+  };
 
   return (
     <div className="p-6 space-y-6">

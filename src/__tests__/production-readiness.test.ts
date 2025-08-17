@@ -4,6 +4,7 @@ import { CFARecommendationEngine } from '@/services/CFARecommendationEngine';
 import { EmergencyFundService } from '@/services/EmergencyFundService';
 import { AuthenticationService } from '@/services/AuthenticationService';
 import { GlobalSettingsService } from '@/services/GlobalSettingsService';
+import type { EmergencyFund, Investment } from '@/types/financial';
 
 // Mock services
 vi.mock('@/lib/db', () => ({
@@ -36,11 +37,16 @@ describe('Production Readiness Tests', () => {
 
   describe('Critical Business Logic', () => {
     it('should handle emergency fund calculations', async () => {
-      const mockFund = {
+      const mockFund: EmergencyFund = {
         id: 'test-fund',
         name: 'Emergency Fund',
         targetAmount: 100000,
         currentAmount: 50000,
+        targetMonths: 12,
+        lastReviewDate: new Date(),
+        status: 'Under-Target',
+        medicalSubBucket: 20000,
+        medicalSubBucketUsed: 0,
         monthlyExpenses: 25000,
         created_at: new Date(),
         updated_at: new Date()
@@ -54,15 +60,19 @@ describe('Production Readiness Tests', () => {
     });
 
     it('should generate CFA recommendations', async () => {
-      const mockInvestments = [
+      const mockInvestments: Investment[] = [
         {
           id: '1',
           name: 'Test Investment',
-          type: 'equity',
+          type: 'MF-Growth',
           currentValue: 10000,
           purchasePrice: 8000,
           quantity: 100,
           purchaseDate: new Date(),
+          currentNav: 100,
+          units: 100,
+          investedValue: 8000,
+          startDate: new Date(),
           created_at: new Date(),
           updated_at: new Date()
         }
@@ -90,11 +100,15 @@ describe('Production Readiness Tests', () => {
 
   describe('Data Integrity', () => {
     it('should maintain consistent emergency fund data', async () => {
-      const fund = {
-        id: 'test-fund',
+      const fund: Omit<EmergencyFund, 'id'> = {
         name: 'Test Fund',
         targetAmount: 100000,
         currentAmount: 75000,
+        targetMonths: 12,
+        lastReviewDate: new Date(),
+        status: 'On-Track',
+        medicalSubBucket: 20000,
+        medicalSubBucketUsed: 0,
         monthlyExpenses: 25000,
         created_at: new Date(),
         updated_at: new Date()
@@ -108,26 +122,34 @@ describe('Production Readiness Tests', () => {
     });
 
     it('should handle portfolio analysis correctly', async () => {
-      const mockInvestments = [
+      const mockInvestments: Investment[] = [
         {
           id: '1',
           name: 'Equity Fund',
-          type: 'equity',
+          type: 'MF-Growth',
           currentValue: 50000,
           purchasePrice: 40000,
           quantity: 100,
           purchaseDate: new Date(),
+          currentNav: 500,
+          units: 100,
+          investedValue: 40000,
+          startDate: new Date(),
           created_at: new Date(),
           updated_at: new Date()
         },
         {
           id: '2',
           name: 'Bond Fund',
-          type: 'debt',
+          type: 'Bonds',
           currentValue: 30000,
           purchasePrice: 29000,
           quantity: 300,
           purchaseDate: new Date(),
+          currentNav: 100,
+          units: 300,
+          investedValue: 29000,
+          startDate: new Date(),
           created_at: new Date(),
           updated_at: new Date()
         }

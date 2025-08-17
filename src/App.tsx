@@ -1,22 +1,18 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/sonner';
 import { ThemeProvider } from '@/contexts/theme-context';
 import { AuthProvider } from '@/contexts/auth-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ProtectedDashboard } from '@/components/layout/protected-dashboard';
-import { AuthGuard } from '@/components/auth/AuthGuard';
 import { GlobalErrorBoundary } from '@/components/ui/global-error-boundary';
-import { DbErrorListener } from '@/components/error/DbErrorListener';
-import { NotFound } from '@/pages/NotFound';
-import './App.css';
+import { ProtectedDashboard } from '@/components/layout/protected-dashboard';
+import Index from '@/pages/Index';
+import NotFound from '@/pages/NotFound';
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
-      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
     },
   },
 });
@@ -25,17 +21,13 @@ function App() {
   return (
     <GlobalErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="system" storageKey="savora-ui-theme">
+        <ThemeProvider>
           <AuthProvider>
             <Router>
               <div className="min-h-screen bg-background text-foreground">
-                <DbErrorListener />
                 <Routes>
-                  <Route path="/" element={
-                    <AuthGuard>
-                      <ProtectedDashboard />
-                    </AuthGuard>
-                  } />
+                  <Route path="/" element={<Index />} />
+                  <Route path="/dashboard" element={<ProtectedDashboard />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />

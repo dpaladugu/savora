@@ -1,16 +1,5 @@
 
-import type { Investment } from '@/lib/db';
-
-export interface PortfolioAnalysis {
-  totalValue: number;
-  allocation: {
-    equity: number;
-    debt: number;
-    other: number;
-  };
-  riskLevel: 'Low' | 'Medium' | 'High';
-  diversificationScore: number;
-}
+import type { Investment, PortfolioAnalysis } from '@/types/financial';
 
 export interface Recommendation {
   id: string;
@@ -36,13 +25,18 @@ export interface CFARecommendations {
 }
 
 export class CFARecommendationEngine {
-  static async analyzePortfolio(investments: Investment[]): Promise<PortfolioAnalysis> {
+  static async analyzePortfolio(investments: Investment[], expenses: any[] = []): Promise<PortfolioAnalysis> {
     if (!investments.length) {
       return {
         totalValue: 0,
         allocation: { equity: 0, debt: 0, other: 0 },
         riskLevel: 'Low',
-        diversificationScore: 0
+        diversificationScore: 0,
+        assetAllocation: {},
+        riskScore: 0,
+        expectedReturn: 0,
+        sharpeRatio: 0,
+        rebalanceNeeded: false
       };
     }
 
@@ -58,9 +52,10 @@ export class CFARecommendationEngine {
       const value = inv.currentValue || 0;
       const percentage = totalValue > 0 ? (value / totalValue) * 100 : 0;
       
-      if (inv.type === 'equity' || inv.type === 'mutual_fund') {
+      // Map investment types to categories
+      if (['MF-Growth', 'Stocks'].includes(inv.type)) {
         allocation.equity += percentage;
-      } else if (inv.type === 'debt' || inv.type === 'bond') {
+      } else if (['Bonds', 'FD', 'RD', 'PPF', 'EPF'].includes(inv.type)) {
         allocation.debt += percentage;
       } else {
         allocation.other += percentage;
@@ -76,7 +71,16 @@ export class CFARecommendationEngine {
       totalValue,
       allocation,
       riskLevel,
-      diversificationScore
+      diversificationScore,
+      assetAllocation: {
+        equity: allocation.equity,
+        debt: allocation.debt,
+        other: allocation.other
+      },
+      riskScore: allocation.equity * 0.8 + allocation.other * 0.6,
+      expectedReturn: allocation.equity * 0.12 + allocation.debt * 0.07 + allocation.other * 0.09,
+      sharpeRatio: 0.8,
+      rebalanceNeeded: allocation.equity > 80 || allocation.equity < 20
     };
   }
 
@@ -84,7 +88,6 @@ export class CFARecommendationEngine {
     const analysis = await this.analyzePortfolio(investments);
     const recommendations: Recommendation[] = [];
 
-    // Asset allocation recommendations
     if (analysis.allocation.equity > 80) {
       recommendations.push({
         id: 'rebalance-equity',
@@ -99,23 +102,6 @@ export class CFARecommendationEngine {
         ],
         expectedImpact: 'Reduced portfolio volatility by 15-20%',
         category: 'Asset Allocation'
-      });
-    }
-
-    if (analysis.diversificationScore < 30) {
-      recommendations.push({
-        id: 'improve-diversification',
-        type: 'portfolio',
-        priority: 'Medium',
-        title: 'Improve Portfolio Diversification',
-        description: 'Your portfolio lacks sufficient diversification across asset classes.',
-        actionItems: [
-          'Add international equity exposure',
-          'Consider REITs for real estate exposure',
-          'Include gold/commodities (5-10%)'
-        ],
-        expectedImpact: 'Better risk-adjusted returns',
-        category: 'Diversification'
       });
     }
 

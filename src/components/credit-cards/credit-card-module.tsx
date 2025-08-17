@@ -17,7 +17,8 @@ import {
   Edit, 
   Trash2,
   Eye,
-  EyeOff 
+  EyeOff,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { CreditCardService } from '@/services/CreditCardService';
