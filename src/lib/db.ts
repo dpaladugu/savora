@@ -1,299 +1,159 @@
+
 import Dexie, { type EntityTable } from 'dexie';
+import type { EmergencyFund, Investment } from '@/types/financial';
 
-export interface Txn {
+// Import other types that should exist
+interface Txn {
   id: string;
-  date: Date;
   amount: number;
-  currency: string;
+  description: string;
   category: string;
-  note?: string;
-  tags: string[];
-  paymentMix: { mode: 'Cash' | 'Card' | 'UPI' | 'Bank'; amount: number }[];
-  splitWith: string[];
-  isPartialRent: boolean;
-  isSplit: boolean;
-  goalId?: string;
+  date: Date;
+  type: 'income' | 'expense';
+  paymentMethod?: string;
+  tags?: string[];
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Goal {
+interface RentalProperty {
   id: string;
   name: string;
-  slug: string;
-  type: 'Short' | 'Medium' | 'Long';
-  targetAmount: number;
-  targetDate: Date;
-  currentAmount: number;
-  notes?: string;
-}
-
-export interface CreditCard {
-  id: string;
-  issuer: string;
-  bankName: string;
-  last4: string;
-  network: 'Visa' | 'Mastercard' | 'Amex' | 'Rupay';
-  cardVariant: string;
-  productVariant: string;
-  annualFee: number;
-  annualFeeGst: number;
-  creditLimit: number;
-  creditLimitShared: boolean;
-  fuelSurchargeWaiver: boolean;
-  rewardPointsBalance: number;
-  cycleStart: number;
-  stmtDay: number;
-  dueDay: number;
-  fxTxnFee?: number;
-  emiConversion?: boolean;
-  // Add missing properties for compatibility
-  name?: string;
-  currentBalance?: number;
-  dueDate?: string;
-}
-
-export interface FuelFill {
-  date: Date;
-  litres: number;
-  odometer: number;
-  isFullTank: boolean;
-  cost: number;
-}
-
-export interface ServiceEntry {
-  date: Date;
-  odometer: number;
-  description: string;
-  cost: number;
-  nextServiceDate?: Date;
-  items: ServiceItem[];
-}
-
-export interface ServiceItem {
-  category: string;
-  description: string;
-  qty: number;
-  unitPrice: number;
-  amount: number;
-}
-
-export interface Claim {
-  date: Date;
-  amount: number;
-  description: string;
-}
-
-export interface Vehicle {
-  id: string;
-  owner?: string;
-  regNo: string;
-  registrationNumber: string;
-  make: string;
-  model: string;
-  type?: string;
-  year?: number;
-  purchaseDate: Date;
-  purchasePrice?: number;
-  fuelType?: 'Petrol' | 'Diesel' | 'Electric' | 'CNG';
-  insuranceExpiry: Date;
-  pucExpiry?: Date;
-  serviceDueDate?: Date;
-  odometer?: number;
-  odometerReading?: number;
-  fuelEfficiency?: number;
-  fuelLogs?: FuelFill[];
-  serviceLogs?: ServiceEntry[];
-  claims?: Claim[];
-  treadDepthMM?: number;
-  depreciationRate?: number;
-  ncbPercent?: number;
-}
-
-export interface Investment {
-  id: string;
-  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB';
-  name: string;
-  currentNav: number;
-  units: number;
-  investedValue: number;
-  currentValue: number;
-  startDate: Date;
-  frequency: 'OneTime' | 'Monthly' | 'Quarterly' | 'Annually';
-  taxBenefit: boolean;
-  familyMember: string;
-  notes?: string;
-  goalId?: string;
-  maturityDate?: Date;
-}
-
-export interface RentalProperty {
-  id: string;
   address: string;
-  owner: 'Me' | 'Mother' | 'Grandmother';
-  type: 'Apartment' | 'House' | 'Commercial' | 'Plot';
-  squareYards: number;
   monthlyRent: number;
-  dueDay: number;
-  escalationPercent?: number;
-  escalationDate?: Date;
-  lateFeeRate?: number;
-  noticePeriodDays?: number;
-  depositRefundPending: boolean;
-  propertyTaxAnnual?: number;
-  propertyTaxDueDay?: number;
-  waterTaxAnnual?: number;
-  waterTaxDueDay?: number;
-  maintenanceReserve: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Tenant {
+interface Goal {
   id: string;
-  propertyId: string;
-  rentalPropertyId: string;
-  tenantName: string;
-  name: string;
-  phone?: string;
-  email?: string;
-  roomNo?: string;
-  monthlyRent: number;
-  rentAmount: number;
-  depositPaid: number;
-  securityDeposit: number;
-  joinDate: Date;
-  moveInDate: Date;
-  endDate?: Date;
-  rentDueDate: number;
-  depositRefundPending: boolean;
-  tenantContact: string;
-}
-
-export interface Gold {
-  id: string;
-  purchaseDate: Date;
-  grams: number;
-  ratePerGram: number;
-  makingCharges?: number;
-  gst?: number;
-  notes?: string;
-}
-
-export interface Insurance {
-  id: string;
-  type: 'Health' | 'Life' | 'Vehicle' | 'Property' | 'Term';
-  company?: string;
-  provider: string;
-  policyNumber?: string;
-  sumAssured?: number;
-  sumInsured: number;
-  premiumAmount?: number;
-  premiumDueDate?: Date;
-  endDate: Date;
-  nominee?: string;
-  notes?: string;
-  isActive: boolean;
-}
-
-export interface Loan {
-  id: string;
-  type: 'Home' | 'Vehicle' | 'Personal' | 'Education';
-  bank?: string;
-  loanAmount?: number;
-  interestRate?: number;
-  startDate?: Date;
-  endDate?: Date;
-  emiAmount?: number;
-  emi: number;
-  roi: number;
-  outstanding: number;
-  tenureMonths: number;
-  isActive: boolean;
-  notes?: string;
-}
-
-export interface BrotherRepayment {
-  id: string;
-  date: Date;
-  amount: number;
-  notes?: string;
-}
-
-export interface Subscription {
-  id: string;
-  name: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  deadline: string;
   category: string;
-  amount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Vehicle {
+  id: string;
+  name: string;
+  model: string;
+  year: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface CreditCard {
+  id: string;
+  name: string;
+  last4: string;
+  limit: number;
+  currentBalance: number;
   dueDate: Date;
-  paymentMethod: 'Cash' | 'Card' | 'UPI' | 'Bank';
-  autoRenew: boolean;
-  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Prescription {
-  date: Date;
-  doctor: string;
-  medicines: string[];
-  amount: number;
-}
-
-export interface Vaccination {
-  name: string;
-  date: Date;
-  nextDue?: Date;
-}
-
-export interface Vital {
-  date: Date;
-  bpSystolic?: number;
-  bpDiastolic?: number;
-  heartRate?: number;
-  temperature?: number;
-  spO2?: number;
-  hba1c?: number;
-  tsh?: number;
-  t3?: number;
-  t4?: number;
-  vitaminD?: number;
-  vitaminB12?: number;
-  creatinine?: number;
-}
-
-export interface Health {
+interface Loan {
   id: string;
-  refillAlertDays: number;
-  allergySeverity?: string;
-  emergencyContact?: string;
-  nextCheckupDate?: Date;
-  doctorNotes?: string;
-  medicalHistory?: string;
-  prescriptions: Prescription[];
-  heightCm?: number;
-  weightKg?: number;
-  bmi?: number;
-  familyHistory: string[];
-  vaccinations: Vaccination[];
-  vitals: Vital[];
-  lifeExpectancy?: number;
+  name: string;
+  principal: number;
+  interestRate: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Contact {
+interface Insurance {
+  id: string;
   name: string;
+  type: string;
+  premium: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Tenant {
+  id: string;
+  name: string;
+  email: string;
   phone: string;
-  relation: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export interface Dependent {
-  name: string;
-  dob: Date;
-  relation: string;
-}
-
-export interface GlobalSettings {
+interface Gold {
   id: string;
-  taxRegime: 'Old' | 'New';
+  type: string;
+  weight: number;
+  purity: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Subscription {
+  id: string;
+  name: string;
+  cost: number;
+  billingCycle: string;
+  nextBilling: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Health {
+  id: string;
+  type: string;
+  value: number;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface BrotherRepayment {
+  id: string;
+  amount: number;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface FamilyBankAccount {
+  id: string;
+  name: string;
+  balance: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface FamilyTransfer {
+  id: string;
+  amount: number;
+  from: string;
+  to: string;
+  date: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface AuditLog {
+  id: string;
+  action: string;
+  timestamp: Date;
+  userId?: string;
+}
+
+interface GlobalSettings {
+  id: string;
+  failedPinAttempts: number;
+  maxFailedAttempts: number;
   autoLockMinutes: number;
+  taxRegime: 'Old' | 'New';
   birthdayBudget: number;
   birthdayAlertDays: number;
-  emergencyContacts: Contact[];
-  dependents: Dependent[];
+  emergencyContacts: string[];
+  dependents: string[];
   salaryCreditDay: number;
   annualBonus: number;
   medicalInflationRate: number;
@@ -301,153 +161,56 @@ export interface GlobalSettings {
   vehicleInflation: number;
   maintenanceInflation: number;
   privacyMask: boolean;
-  failedPinAttempts: number;
-  maxFailedAttempts: number;
   darkMode: boolean;
   timeZone: string;
   isTest: boolean;
   theme: 'light' | 'dark' | 'system';
-  deviceThemes: { [deviceId: string]: 'light' | 'dark' | 'system' };
+  deviceThemes: Record<string, string>;
   revealSecret: string;
 }
 
-export interface FamilyBankAccount {
-  id: string;
-  accountHolderName: string;
-  bankName: string;
-  accountNumber: string;
-  ifscCode: string;
-  accountType: 'Savings' | 'Current';
-  jointHolders?: string[];
-  nomineeName?: string;
-  nomineeRelation?: string;
-}
-
-export interface FamilyTransfer {
-  id: string;
-  date: Date;
-  fromAccount: string;
-  toAccount: string;
-  amount: number;
-  description?: string;
-}
-
-export interface EmergencyFund {
-  id: string;
-  targetMonths: number;
-  targetAmount: number;
-  currentAmount: number;
-  lastReviewDate: Date;
-  status: 'OnTrack' | 'Under-Target' | 'Achieved';
-  medicalSubBucket: number;
-  medicalSubBucketUsed: number;
-}
-
-export interface AuditLog {
-  id: string;
-  timestamp: Date;
-  userId: string;
-  action: string;
-  details: string;
-}
-
-export interface AppSettings {
-  id: string;
-  key: string;
-  value: string;
-}
-
-// Add missing exports for compatibility
-export interface Expense {
-  id: string;
-  amount: number;
-  description: string;
-  category: string;
-  date: string | Date;
-  tags?: string[];
-  payment_method?: string;
-}
-
-export interface Income {
-  id: string;
-  amount: number;
-  description: string;
-  category: string;
-  date: string | Date;
-  source?: string;
-}
-
-export interface Claim {
-  id: string;
-  amount: number;
-  date: Date;
-  description: string;
-}
-
-export class SavoraDatabase extends Dexie {
+const db = new Dexie('SavoraDB') as Dexie & {
   txns: EntityTable<Txn, 'id'>;
+  rentalProperties: EntityTable<RentalProperty, 'id'>();
   goals: EntityTable<Goal, 'id'>;
-  creditCards: EntityTable<CreditCard, 'id'>;
   vehicles: EntityTable<Vehicle, 'id'>;
-  investments: EntityTable<Investment, 'id'>;
-  rentalProperties: EntityTable<RentalProperty, 'id'>;
-  tenants: EntityTable<Tenant, 'id'>;
-  gold: EntityTable<Gold, 'id'>;
-  insurance: EntityTable<Insurance, 'id'>;
+  creditCards: EntityTable<CreditCard, 'id'>;
   loans: EntityTable<Loan, 'id'>;
-  brotherRepayments: EntityTable<BrotherRepayment, 'id'>;
+  insurance: EntityTable<Insurance, 'id'>;
+  tenants: EntityTable<Tenant, 'id'>;
+  investments: EntityTable<Investment, 'id'>;
+  gold: EntityTable<Gold, 'id'>;
   subscriptions: EntityTable<Subscription, 'id'>;
+  emergencyFunds: EntityTable<EmergencyFund, 'id'>;
   health: EntityTable<Health, 'id'>;
-  globalSettings: EntityTable<GlobalSettings, 'id'>;
+  brotherRepayments: EntityTable<BrotherRepayment, 'id'>;
   familyBankAccounts: EntityTable<FamilyBankAccount, 'id'>;
   familyTransfers: EntityTable<FamilyTransfer, 'id'>;
-  emergencyFunds: EntityTable<EmergencyFund, 'id'>;
   auditLogs: EntityTable<AuditLog, 'id'>;
-  appSettings: EntityTable<AppSettings, 'id'>;
+  globalSettings: EntityTable<GlobalSettings, 'id'>;
+};
 
-  // Legacy tables for migration
-  expenses: EntityTable<Txn, 'id'>;
-  incomes: EntityTable<Txn, 'id'>;
+// Schema definition using camelCase field names
+db.version(1).stores({
+  txns: '++id, amount, description, category, date, type, paymentMethod, createdAt, updatedAt',
+  rentalProperties: '++id, name, address, monthlyRent, createdAt, updatedAt',
+  goals: '++id, title, targetAmount, currentAmount, deadline, category, createdAt, updatedAt',
+  vehicles: '++id, name, model, year, createdAt, updatedAt',
+  creditCards: '++id, name, last4, limit, currentBalance, dueDate, createdAt, updatedAt',
+  loans: '++id, name, principal, interestRate, createdAt, updatedAt',
+  insurance: '++id, name, type, premium, createdAt, updatedAt',
+  tenants: '++id, name, email, phone, createdAt, updatedAt',
+  investments: '++id, name, type, currentValue, purchasePrice, quantity, purchaseDate, currentNav, units, investedValue, startDate, maturityDate, expectedReturn, createdAt, updatedAt',
+  gold: '++id, type, weight, purity, createdAt, updatedAt',
+  subscriptions: '++id, name, cost, billingCycle, nextBilling, createdAt, updatedAt',
+  emergencyFunds: '++id, name, targetAmount, currentAmount, targetMonths, lastReviewDate, status, medicalSubBucket, medicalSubBucketUsed, monthlyExpenses, createdAt, updatedAt',
+  health: '++id, type, value, date, createdAt, updatedAt',
+  brotherRepayments: '++id, amount, date, createdAt, updatedAt',
+  familyBankAccounts: '++id, name, balance, createdAt, updatedAt',
+  familyTransfers: '++id, amount, from, to, date, createdAt, updatedAt',
+  auditLogs: '++id, action, timestamp, userId',
+  globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, birthdayBudget, birthdayAlertDays, emergencyContacts, dependents, salaryCreditDay, annualBonus, medicalInflationRate, educationInflation, vehicleInflation, maintenanceInflation, privacyMask, darkMode, timeZone, isTest, theme, deviceThemes, revealSecret'
+});
 
-  constructor() {
-    super('SavoraDatabase');
-
-    this.version(1).stores({
-      txns: 'id, date, amount, category, *tags',
-      goals: 'id, name, type, targetAmount, targetDate',
-      creditCards: 'id, issuer, bankName, network, annualFee, creditLimit',
-      vehicles: 'id, make, model, year, purchaseDate, fuelType, regNo',
-      investments: 'id, type, name, currentNav, units, investedValue',
-      rentalProperties: 'id, address, owner, type, squareYards, monthlyRent',
-      tenants: 'id, name, phone, moveInDate, rentDueDate, rentAmount',
-      gold: 'id, purchaseDate, grams, ratePerGram',
-      insurance: 'id, type, company, policyNumber, sumAssured, premiumAmount',
-      loans: 'id, type, bank, loanAmount, interestRate, startDate, endDate, emiAmount',
-      brotherRepayments: 'id, date, amount',
-      subscriptions: 'id, name, category, amount, dueDate',
-      health: 'id, refillAlertDays, prescriptions',
-      globalSettings: 'id',
-      familyBankAccounts: 'id, accountHolderName, bankName, accountNumber',
-      familyTransfers: 'id, date, fromAccount, toAccount, amount',
-      emergencyFunds: 'id, targetMonths, targetAmount, currentAmount',
-      auditLogs: 'id, timestamp, userId, action, details',
-      appSettings: 'id, key, value',
-
-      // Legacy tables for migration
-      expenses: 'id, date, amount, category, *tags',
-      incomes: 'id, date, amount, category, *tags',
-    });
-  }
-
-  // Add missing methods
-  async getPersonalProfile(): Promise<any> {
-    const setting = await this.appSettings.get('userPersonalProfile_v1');
-    return setting ? setting.value : null;
-  }
-
-  async savePersonalProfile(profile: any): Promise<void> {
-    await this.appSettings.put({ id: 'userPersonalProfile_v1', key: 'userPersonalProfile_v1', value: profile });
-  }
-}
-
-export const db = new SavoraDatabase();
+export { db };
+export type { Txn, RentalProperty, Goal, Vehicle, CreditCard, Loan, Insurance, Tenant, Gold, Subscription, Health, BrotherRepayment, FamilyBankAccount, FamilyTransfer, AuditLog, GlobalSettings };

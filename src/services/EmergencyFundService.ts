@@ -22,8 +22,8 @@ export class EmergencyFundService {
         status: 'Under-Target',
         medicalSubBucket: 0,
         medicalSubBucketUsed: 0,
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
       
       await db.emergencyFunds.add(fundToAdd);
@@ -38,7 +38,7 @@ export class EmergencyFundService {
     try {
       await db.emergencyFunds.update(id, { 
         currentAmount: currentAmount,
-        updated_at: new Date()
+        updatedAt: new Date()
       });
     } catch (error) {
       console.error('Error updating current amount:', error);
@@ -50,7 +50,7 @@ export class EmergencyFundService {
     try {
       await db.emergencyFunds.update(id, { 
         targetAmount: targetAmount,
-        updated_at: new Date()
+        updatedAt: new Date()
       });
     } catch (error) {
       console.error('Error updating target amount:', error);

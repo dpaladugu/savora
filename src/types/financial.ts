@@ -6,12 +6,12 @@ export interface EmergencyFund {
   currentAmount: number;
   targetMonths: number;
   lastReviewDate: Date;
-  status: 'Under-Target' | 'On-Track' | 'Achieved';
+  status: 'Under-Target' | 'OnTrack' | 'Achieved';
   medicalSubBucket: number;
   medicalSubBucketUsed: number;
   monthlyExpenses?: number;
-  created_at: Date;
-  updated_at: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Investment {
@@ -28,8 +28,8 @@ export interface Investment {
   startDate: Date;
   maturityDate?: Date;
   expectedReturn?: number;
-  created_at: Date;
-  updated_at: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface DashboardData {

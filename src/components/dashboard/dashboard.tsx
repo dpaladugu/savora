@@ -14,7 +14,7 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
-  const dashboardData = useDashboardData();
+  const { dashboardData, loading, error } = useDashboardData();
 
   const metrics: MetricCardProps[] = [
     {
@@ -26,45 +26,51 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     },
     {
       title: 'Monthly Expenses',
-      value: '₹45,230',
+      value: `₹${dashboardData.monthlyExpenses.toLocaleString()}`,
       change: '-5.2%',
       icon: TrendingDown,
       trend: { value: 5.2, isPositive: false }
     },
     {
       title: 'Investments',
-      value: '₹1,85,450',
+      value: `₹${dashboardData.totalInvestments.toLocaleString()}`,
       change: '+8.3%',
       icon: TrendingUp,
       trend: { value: 8.3, isPositive: true }
     },
     {
       title: 'Credit Cards',
-      value: '₹12,340',
+      value: `₹${dashboardData.creditCardDebt.toLocaleString()}`,
       change: '+2.1%',
       icon: CreditCard,
       trend: { value: 2.1, isPositive: true }
     }
   ];
 
-  // Create proper DashboardData structure
-  const fullDashboardData: DashboardData = {
-    totalExpenses: 45230,
-    monthlyExpenses: 45230,
-    totalInvestments: 185450,
-    expenseCount: dashboardData.expenses.length,
-    investmentCount: 5,
-    emergencyFundTarget: 600000,
-    emergencyFundCurrent: 300000,
-    monthlyIncome: 75000,
-    savingsRate: 40,
-    investmentValue: 185450,
-    creditCardDebt: 12340,
-    emergencyFund: 300000,
-    goals: [],
-    recentTransactions: [],
-    categoryBreakdown: []
-  };
+  if (loading) {
+    return (
+      <div className="p-6 space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-muted rounded w-1/3 mb-6"></div>
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-muted rounded"></div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="text-center text-destructive">
+          Error loading dashboard: {error}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -73,11 +79,11 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />
       </div>
 
-      <MetricSection metrics={metrics} />
+      <MetricSection title="Financial Overview" metrics={metrics} />
 
       <div className="grid gap-6 md:grid-cols-2">
         <DashboardCharts 
-          data={dashboardData.expenses} 
+          data={dashboardData}
         />
         
         <Card>
@@ -85,21 +91,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
           <CardContent>
-            {dashboardData.loading ? (
+            {dashboardData.recentTransactions.length > 0 ? (
               <div className="space-y-2">
-                <div className="h-4 bg-muted animate-pulse rounded"></div>
-                <div className="h-4 bg-muted animate-pulse rounded w-3/4"></div>
-                <div className="h-4 bg-muted animate-pulse rounded w-1/2"></div>
-              </div>
-            ) : dashboardData.expenses.length > 0 ? (
-              <div className="space-y-2">
-                {dashboardData.expenses.slice(0, 5).map((expense: any) => (
-                  <div key={expense.id} className="flex justify-between items-center p-2 border-b">
+                {dashboardData.recentTransactions.slice(0, 5).map((transaction) => (
+                  <div key={transaction.id} className="flex justify-between items-center p-2 border-b">
                     <div>
-                      <p className="font-medium">{expense.description}</p>
-                      <p className="text-sm text-muted-foreground">{expense.category}</p>
+                      <p className="font-medium">{transaction.description}</p>
+                      <p className="text-sm text-muted-foreground">{transaction.category}</p>
                     </div>
-                    <p className="font-semibold">₹{expense.amount.toLocaleString()}</p>
+                    <p className="font-semibold">₹{transaction.amount.toLocaleString()}</p>
                   </div>
                 ))}
               </div>

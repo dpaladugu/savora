@@ -10,30 +10,20 @@ import {
   Target, PieChart, BarChart3, Brain, Lightbulb, Star
 } from 'lucide-react';
 import { CFARecommendationEngine } from '@/services/CFARecommendationEngine';
+import { InvestmentService } from '@/services/InvestmentService';
+import { ExpenseService } from '@/services/ExpenseService';
 import { toast } from 'sonner';
-import { formatCurrency } from '@/lib/format-utils';
+import type { Investment, PortfolioAnalysis } from '@/types/financial';
 
 interface Recommendation {
   id: string;
-  type: 'portfolio' | 'tax' | 'risk' | 'goal' | 'cash_flow';
-  priority: 'high' | 'medium' | 'low';
+  type: 'portfolio' | 'tax' | 'risk' | 'goal';
+  priority: 'High' | 'Medium' | 'Low';
   title: string;
   description: string;
-  impact: string;
   actionItems: string[];
-  confidenceScore: number;
+  expectedImpact: string;
   category: string;
-  expectedReturn?: number;
-  riskLevel?: string;
-}
-
-interface PortfolioAnalysis {
-  assetAllocation: Record<string, number>;
-  riskScore: number;
-  expectedReturn: number;
-  sharpeRatio: number;
-  diversificationScore: number;
-  rebalanceNeeded: boolean;
 }
 
 export function CFARecommendationsDashboard() {
@@ -49,11 +39,27 @@ export function CFARecommendationsDashboard() {
   const loadRecommendations = async () => {
     try {
       setLoading(true);
-      const [recs, analysis] = await Promise.all([
-        CFARecommendationEngine.generateRecommendations(),
-        CFARecommendationEngine.analyzePortfolio()
+      
+      // Get actual data from services
+      const [investments, expenses] = await Promise.all([
+        InvestmentService.getInvestments(),
+        ExpenseService.getExpenses()
       ]);
-      setRecommendations(recs);
+
+      const [cfaRecommendations, analysis] = await Promise.all([
+        CFARecommendationEngine.generateRecommendations(investments, expenses),
+        CFARecommendationEngine.analyzePortfolio(investments, expenses)
+      ]);
+
+      // Flatten all recommendation types into a single array
+      const allRecommendations = [
+        ...cfaRecommendations.portfolio,
+        ...cfaRecommendations.tax,
+        ...cfaRecommendations.risk,
+        ...cfaRecommendations.goals
+      ];
+
+      setRecommendations(allRecommendations);
       setPortfolioAnalysis(analysis);
     } catch (error) {
       toast.error('Failed to load recommendations');
@@ -65,9 +71,9 @@ export function CFARecommendationsDashboard() {
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'high': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'medium': return <TrendingUp className="w-4 h-4 text-yellow-500" />;
-      case 'low': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'High': return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      case 'Medium': return <TrendingUp className="w-4 h-4 text-yellow-500" />;
+      case 'Low': return <CheckCircle className="w-4 h-4 text-green-500" />;
       default: return <Lightbulb className="w-4 h-4" />;
     }
   };
@@ -120,7 +126,7 @@ export function CFARecommendationsDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{portfolioAnalysis.expectedReturn.toFixed(1)}%</div>
+              <div className="text-2xl font-bold">{(portfolioAnalysis.expectedReturn * 100).toFixed(1)}%</div>
               <p className="text-xs text-muted-foreground">Annual</p>
             </CardContent>
           </Card>
@@ -223,30 +229,19 @@ export function CFARecommendationsDashboard() {
                       <h3 className="font-semibold text-lg">{rec.title}</h3>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline">{rec.category}</Badge>
-                        <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
+                        <Badge variant={rec.priority === 'High' ? 'destructive' : rec.priority === 'Medium' ? 'default' : 'secondary'}>
                           {rec.priority} priority
                         </Badge>
-                        <span className="text-sm text-muted-foreground">
-                          Confidence: {rec.confidenceScore}%
-                        </span>
                       </div>
                     </div>
                   </div>
-                  {rec.expectedReturn && (
-                    <div className="text-right">
-                      <div className="text-lg font-semibold text-green-600">
-                        +{rec.expectedReturn.toFixed(1)}%
-                      </div>
-                      <p className="text-xs text-muted-foreground">Expected impact</p>
-                    </div>
-                  )}
                 </div>
 
                 <p className="text-muted-foreground mb-4">{rec.description}</p>
 
                 <div className="mb-4">
                   <h4 className="font-medium mb-2">Impact:</h4>
-                  <p className="text-sm bg-blue-50 p-3 rounded-lg">{rec.impact}</p>
+                  <p className="text-sm bg-blue-50 p-3 rounded-lg">{rec.expectedImpact}</p>
                 </div>
 
                 <div>
@@ -260,13 +255,6 @@ export function CFARecommendationsDashboard() {
                     ))}
                   </ul>
                 </div>
-
-                {rec.riskLevel && (
-                  <div className="mt-4 pt-4 border-t">
-                    <span className="text-sm text-muted-foreground">Risk Level: </span>
-                    <Badge variant="outline">{rec.riskLevel}</Badge>
-                  </div>
-                )}
               </CardContent>
             </Card>
           ))

@@ -36,8 +36,8 @@ export function EmergencyFundDashboard() {
           status: 'Under-Target',
           medicalSubBucket: 0,
           medicalSubBucketUsed: 0,
-          created_at: new Date(),
-          updated_at: new Date()
+          createdAt: new Date(),
+          updatedAt: new Date()
         };
         const fundId = await EmergencyFundService.createEmergencyFund(newFundData);
         fund = await EmergencyFundService.getEmergencyFund(fundId);
@@ -91,7 +91,7 @@ export function EmergencyFundDashboard() {
 
   const getStatus = () => {
     if (progressPercentage >= 100) return { status: 'Achieved', color: 'success', icon: CheckCircle };
-    if (progressPercentage >= 75) return { status: 'On Track', color: 'primary', icon: TrendingUp };
+    if (progressPercentage >= 75) return { status: 'OnTrack', color: 'primary', icon: TrendingUp };
     if (progressPercentage >= 50) return { status: 'Progress', color: 'warning', icon: AlertCircle };
     return { status: 'Behind', color: 'destructive', icon: AlertCircle };
   };
