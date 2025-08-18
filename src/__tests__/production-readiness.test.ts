@@ -48,8 +48,8 @@ describe('Production Readiness Tests', () => {
         medicalSubBucket: 20000,
         medicalSubBucketUsed: 0,
         monthlyExpenses: 25000,
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       vi.mocked(EmergencyFundService.getEmergencyFund).mockResolvedValue(mockFund);
@@ -73,8 +73,8 @@ describe('Production Readiness Tests', () => {
           units: 100,
           investedValue: 8000,
           startDate: new Date(),
-          created_at: new Date(),
-          updated_at: new Date()
+          createdAt: new Date(),
+          updatedAt: new Date()
         }
       ];
 
@@ -106,12 +106,12 @@ describe('Production Readiness Tests', () => {
         currentAmount: 75000,
         targetMonths: 12,
         lastReviewDate: new Date(),
-        status: 'On-Track',
+        status: 'OnTrack',
         medicalSubBucket: 20000,
         medicalSubBucketUsed: 0,
         monthlyExpenses: 25000,
-        created_at: new Date(),
-        updated_at: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       await EmergencyFundService.createEmergencyFund(fund);
@@ -135,8 +135,8 @@ describe('Production Readiness Tests', () => {
           units: 100,
           investedValue: 40000,
           startDate: new Date(),
-          created_at: new Date(),
-          updated_at: new Date()
+          createdAt: new Date(),
+          updatedAt: new Date()
         },
         {
           id: '2',
@@ -150,8 +150,8 @@ describe('Production Readiness Tests', () => {
           units: 300,
           investedValue: 29000,
           startDate: new Date(),
-          created_at: new Date(),
-          updated_at: new Date()
+          createdAt: new Date(),
+          updatedAt: new Date()
         }
       ];
 

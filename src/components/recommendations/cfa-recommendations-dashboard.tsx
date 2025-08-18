@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -170,6 +169,7 @@ export function CFARecommendationsDashboard() {
       )}
 
       {/* Category Filters */}
+      
       <div className="flex gap-2 flex-wrap">
         <Button
           variant={selectedCategory === 'all' ? 'default' : 'outline'}

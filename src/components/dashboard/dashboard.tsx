@@ -6,7 +6,7 @@ import { QuickActions } from './quick-actions';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard } from 'lucide-react';
-import type { MetricCardProps, DashboardData } from '@/types/dashboard';
+import type { MetricCardProps } from '@/types/dashboard';
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
