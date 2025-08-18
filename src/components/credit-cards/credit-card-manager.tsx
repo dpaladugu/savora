@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Plus, Edit, CreditCard } from "lucide-react";
+import { Trash2, Plus, Edit, CreditCard as CreditCardIcon } from "lucide-react";
 import { toast } from "sonner";
 import { CreditCardService } from "@/services/CreditCardService";
 import { useAuth } from "@/services/auth-service";
+import type { CreditCard } from "@/types/financial";
 
 interface CreditCardData {
   id?: string;
@@ -42,7 +44,6 @@ export function CreditCardManager() {
     const fetchCreditCards = async () => {
       try {
         const cards = await CreditCardService.getCreditCards();
-        // Map the cards from db schema to component interface
         const mappedCards: CreditCardData[] = cards.map(card => ({
           id: card.id,
           name: card.name || `${card.issuer} ${card.bankName}`,
@@ -50,7 +51,7 @@ export function CreditCardManager() {
           limit: card.creditLimit || 0,
           currentBalance: card.currentBalance || 0,
           billCycleDay: card.cycleStart || 1,
-          dueDate: card.dueDate || new Date().toISOString(),
+          dueDate: card.dueDate || new Date().toISOString().split('T')[0],
           autoDebit: false,
         }));
         setCreditCards(mappedCards);
@@ -97,11 +98,11 @@ export function CreditCardManager() {
       return;
     }
 
-    // Create a proper CreditCard object that matches the db schema
-    const cardData = {
+    const cardData: Omit<CreditCard, 'id'> = {
+      name: name,
       issuer: issuer || "Unknown",
-      bankName: issuer || "Unknown", // Use issuer as bank name for simplicity
-      last4: "0000", // Default value
+      bankName: issuer || "Unknown",
+      last4: "0000",
       network: 'Visa' as const,
       cardVariant: "Standard",
       productVariant: "Regular",
@@ -116,9 +117,11 @@ export function CreditCardManager() {
       dueDay: 1,
       fxTxnFee: 0,
       emiConversion: false,
-      // Compatibility fields
-      name: name,
       currentBalance: currentBalance,
+      limit: limit,
+      dueDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     try {
@@ -138,7 +141,7 @@ export function CreditCardManager() {
         limit: card.creditLimit || 0,
         currentBalance: card.currentBalance || 0,
         billCycleDay: card.cycleStart || 1,
-        dueDate: card.dueDate || new Date().toISOString(),
+        dueDate: card.dueDate || new Date().toISOString().split('T')[0],
         autoDebit: false,
       }));
       setCreditCards(mappedCards);
@@ -190,7 +193,7 @@ export function CreditCardManager() {
               <Card key={card.id} className="shadow-sm">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-xl font-bold flex items-center">
-                    <CreditCard className="mr-2 h-5 w-5 text-gray-500" />
+                    <CreditCardIcon className="mr-2 h-5 w-5 text-gray-500" />
                     {card.name}
                   </CardTitle>
                   <div>

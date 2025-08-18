@@ -1,57 +1,12 @@
 
 import Dexie, { type EntityTable } from 'dexie';
-import type { EmergencyFund, Investment } from '@/types/financial';
-
-// Import other types that should exist
-interface Txn {
-  id: string;
-  amount: number;
-  description: string;
-  category: string;
-  date: Date;
-  type: 'income' | 'expense';
-  paymentMethod?: string;
-  tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface RentalProperty {
-  id: string;
-  name: string;
-  address: string;
-  monthlyRent: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface Goal {
-  id: string;
-  title: string;
-  targetAmount: number;
-  currentAmount: number;
-  deadline: string;
-  category: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import type { EmergencyFund, Investment, CreditCard, RentalProperty, Health, Txn, Goal, Tenant } from '@/types/financial';
 
 interface Vehicle {
   id: string;
   name: string;
   model: string;
   year: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface CreditCard {
-  id: string;
-  name: string;
-  last4: string;
-  limit: number;
-  currentBalance: number;
-  dueDate: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -74,15 +29,6 @@ interface Insurance {
   updatedAt: Date;
 }
 
-interface Tenant {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 interface Gold {
   id: string;
   type: string;
@@ -98,15 +44,6 @@ interface Subscription {
   cost: number;
   billingCycle: string;
   nextBilling: Date;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface Health {
-  id: string;
-  type: string;
-  value: number;
-  date: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -192,19 +129,19 @@ const db = new Dexie('SavoraDB') as Dexie & {
 
 // Schema definition using camelCase field names
 db.version(1).stores({
-  txns: '++id, amount, description, category, date, type, paymentMethod, createdAt, updatedAt',
-  rentalProperties: '++id, name, address, monthlyRent, createdAt, updatedAt',
-  goals: '++id, title, targetAmount, currentAmount, deadline, category, createdAt, updatedAt',
+  txns: '++id, amount, currency, category, date, note, goalId, cardId, vehicleId, tenantId, propertyId, createdAt, updatedAt',
+  rentalProperties: '++id, address, owner, type, squareYards, monthlyRent, dueDay, escalationPercent, createdAt, updatedAt',
+  goals: '++id, name, title, targetAmount, currentAmount, deadline, category, createdAt, updatedAt',
   vehicles: '++id, name, model, year, createdAt, updatedAt',
-  creditCards: '++id, name, last4, limit, currentBalance, dueDate, createdAt, updatedAt',
+  creditCards: '++id, name, issuer, bankName, last4, network, creditLimit, currentBalance, dueDate, createdAt, updatedAt',
   loans: '++id, name, principal, interestRate, createdAt, updatedAt',
   insurance: '++id, name, type, premium, createdAt, updatedAt',
-  tenants: '++id, name, email, phone, createdAt, updatedAt',
+  tenants: '++id, name, email, phone, propertyId, leaseStart, leaseEnd, depositAmount, isActive, createdAt, updatedAt',
   investments: '++id, name, type, currentValue, purchasePrice, quantity, purchaseDate, currentNav, units, investedValue, startDate, maturityDate, expectedReturn, createdAt, updatedAt',
   gold: '++id, type, weight, purity, createdAt, updatedAt',
   subscriptions: '++id, name, cost, billingCycle, nextBilling, createdAt, updatedAt',
   emergencyFunds: '++id, name, targetAmount, currentAmount, targetMonths, lastReviewDate, status, medicalSubBucket, medicalSubBucketUsed, monthlyExpenses, createdAt, updatedAt',
-  health: '++id, type, value, date, createdAt, updatedAt',
+  health: '++id, refillAlertDays, allergySeverity, emergencyContact, nextCheckupDate, familyHistory, vaccinations, vitals, prescriptions, weightKg, heightCm, createdAt, updatedAt',
   brotherRepayments: '++id, amount, date, createdAt, updatedAt',
   familyBankAccounts: '++id, name, balance, createdAt, updatedAt',
   familyTransfers: '++id, amount, from, to, date, createdAt, updatedAt',
@@ -213,4 +150,4 @@ db.version(1).stores({
 });
 
 export { db };
-export type { Txn, RentalProperty, Goal, Vehicle, CreditCard, Loan, Insurance, Tenant, Gold, Subscription, Health, BrotherRepayment, FamilyBankAccount, FamilyTransfer, AuditLog, GlobalSettings };
+export type { Vehicle, Loan, Insurance, Gold, Subscription, BrotherRepayment, FamilyBankAccount, FamilyTransfer, AuditLog, GlobalSettings };

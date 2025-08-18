@@ -6,7 +6,7 @@
  */
 
 import { db } from "@/lib/db";
-import type { CreditCard } from "@/lib/db";
+import type { CreditCard } from "@/types/financial";
 
 export class CreditCardService {
 
@@ -17,8 +17,6 @@ export class CreditCardService {
       const recordToAdd: CreditCard = {
         ...cardData,
         id: newId,
-        fxTxnFee: cardData.fxTxnFee || 0,
-        emiConversion: cardData.emiConversion || false,
       };
       await db.creditCards.add(recordToAdd);
       return newId;

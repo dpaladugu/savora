@@ -52,11 +52,14 @@ export interface DashboardData {
 
 export interface Goal {
   id: string;
+  name: string;
   title: string;
   targetAmount: number;
   currentAmount: number;
   deadline: string;
   category: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface Transaction {
@@ -89,6 +92,141 @@ export interface PortfolioAnalysis {
   expectedReturn: number;
   sharpeRatio: number;
   rebalanceNeeded: boolean;
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  issuer: string;
+  bankName: string;
+  last4: string;
+  network: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex';
+  cardVariant: string;
+  productVariant: string;
+  annualFee: number;
+  annualFeeGst: number;
+  creditLimit: number;
+  creditLimitShared: boolean;
+  fuelSurchargeWaiver: boolean;
+  rewardPointsBalance: number;
+  cycleStart: number;
+  stmtDay: number;
+  dueDay: number;
+  fxTxnFee: number;
+  emiConversion: boolean;
+  currentBalance: number;
+  limit: number;
+  dueDate: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RentalProperty {
+  id: string;
+  address: string;
+  owner: 'Me' | 'Mother' | 'Grandmother';
+  type: 'Apartment' | 'House' | 'Commercial' | 'Plot';
+  squareYards: number;
+  monthlyRent: number;
+  dueDay: number;
+  escalationPercent: number;
+  escalationDate: Date;
+  lateFeeRate: number;
+  noticePeriodDays: number;
+  depositRefundPending: boolean;
+  propertyTaxAnnual: number;
+  propertyTaxDueDay: number;
+  waterTaxAnnual: number;
+  waterTaxDueDay: number;
+  maintenanceReserve: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Health {
+  id: string;
+  refillAlertDays: number;
+  allergySeverity?: string;
+  emergencyContact?: string;
+  nextCheckupDate?: Date;
+  familyHistory: string[];
+  vaccinations: Vaccination[];
+  vitals: Vital[];
+  prescriptions: Prescription[];
+  weightKg?: number;
+  heightCm?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Prescription {
+  date: Date;
+  doctor: string;
+  medicines: string[];
+  amount: number;
+}
+
+export interface Vaccination {
+  name: string;
+  dueDate: Date;
+  administeredDate?: Date;
+}
+
+export interface Vital {
+  date: Date;
+  type: string;
+  value: number;
+}
+
+export interface Txn {
+  id: string;
+  date: Date;
+  amount: number;
+  currency: string;
+  category: string;
+  note: string;
+  tags: string[];
+  goalId?: string;
+  receiptUri?: string;
+  cardId?: string;
+  vehicleId?: string;
+  tenantId?: string;
+  propertyId?: string;
+  rentMonth?: string;
+  isPartialRent: boolean;
+  paymentMix: PaymentSplit[];
+  cashbackAmount?: number;
+  isSplit: boolean;
+  splitWith: SplitItem[];
+  gstPaid?: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PaymentSplit {
+  mode: 'Cash' | 'Card' | 'UPI' | 'Bank';
+  amount: number;
+  refId?: string;
+}
+
+export interface SplitItem {
+  person: string;
+  amount: number;
+  settled: boolean;
+}
+
+export interface Tenant {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  propertyId: string;
+  leaseStart: Date;
+  leaseEnd: Date;
+  depositAmount: number;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Helper functions for DB field mapping

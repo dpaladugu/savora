@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
+import type { Health } from '@/types/financial';
 
 interface AddMedicineModalProps {
   isOpen: boolean;
@@ -30,8 +31,7 @@ export function AddMedicineModal({ isOpen, onClose, profileId }: AddMedicineModa
     if (!profileId) return;
 
     try {
-      await db.health.add({
-        id: crypto.randomUUID(),
+      const healthRecord: Omit<Health, 'id'> = {
         refillAlertDays: parseInt(formData.refillAlertDays),
         familyHistory: [],
         vaccinations: [],
@@ -41,8 +41,12 @@ export function AddMedicineModal({ isOpen, onClose, profileId }: AddMedicineModa
           doctor: formData.prescribedBy || 'Unknown',
           medicines: [formData.name],
           amount: 0
-        }]
-      });
+        }],
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await db.health.add(healthRecord);
 
       toast.success('Medicine added successfully!');
       setFormData({

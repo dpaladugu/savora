@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/db';
-import type { RentalProperty } from '@/lib/db';
+import type { RentalProperty } from '@/types/financial';
 
 interface AddRentalModalProps {
   isOpen: boolean;
@@ -50,7 +50,9 @@ export function AddRentalModal({ isOpen, onClose, onRentalAdded }: AddRentalModa
         propertyTaxDueDay: 31, // Default to March 31
         waterTaxAnnual: Number(formData.waterTaxAnnual) || 0,
         waterTaxDueDay: 15, // Default to 15th
-        maintenanceReserve: Number(formData.maintenanceReserve) || 0
+        maintenanceReserve: Number(formData.maintenanceReserve) || 0,
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       await db.rentalProperties.add(rentalProperty);

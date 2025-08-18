@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Modal,
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Txn } from '@/lib/db';
+import { Txn } from '@/types/financial';
 
 interface AddTxnModalProps {
   isOpen: boolean;
@@ -44,10 +45,12 @@ export function AddTxnModal({
       note,
       tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag),
       goalId: goalId || undefined,
-      paymentMix: [{ mode: paymentMethod as any, amount: Math.abs(amount) }], // Fixed: use 'mode' instead of 'method'
+      paymentMix: [{ mode: paymentMethod as any, amount: Math.abs(amount) }],
       splitWith: [],
       isPartialRent: false,
       isSplit: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
 
     try {
