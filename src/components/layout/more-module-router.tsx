@@ -9,6 +9,7 @@ import { FamilyFinancialDashboard } from '@/components/family/family-financial-d
 import { EnhancedAutoGoalDashboard } from '@/components/goals/enhanced-auto-goal-dashboard';
 import { HealthTracker } from '@/components/health/health-tracker';
 import { SubscriptionManager } from '@/components/subscriptions/subscription-manager';
+import { SubscriptionTracker } from '@/components/subscriptions/subscription-tracker';
 import { FamilyBankManager } from '@/components/family/family-bank-manager';
 import { EmergencyFundDashboard } from '@/components/emergency-fund/emergency-fund-dashboard';
 import { CFARecommendationsDashboard } from '@/components/recommendations/cfa-recommendations-dashboard';
@@ -40,7 +41,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'health-tracker':
         return <HealthTracker />;
       case 'subscriptions':
-        return <SubscriptionManager />;
+        return <SubscriptionTracker />;
       case 'family-banking':
         return <FamilyBankManager />;
       case 'emergency-fund':

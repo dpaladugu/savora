@@ -1,24 +1,41 @@
 
-import { extendedDb as db } from '@/lib/db-schema-extended';
-import type { Subscription } from '@/lib/db-schema-extended';
+import { db } from '@/lib/db';
+
+interface Subscription {
+  id: string;
+  name: string;
+  cost: number;
+  category: string;
+  billingCycle: 'Monthly' | 'Quarterly' | 'Yearly';
+  nextRenewal: Date;
+  autoRenew: boolean;
+  reminderEnabled: boolean;
+  reminderDays: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 export class SubscriptionService {
   static async getAllSubscriptions(): Promise<Subscription[]> {
     try {
-      return await db.subscriptions.orderBy('nextDue').toArray();
+      return await db.subscriptions.orderBy('nextRenewal').toArray();
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       return [];
     }
   }
 
-  static async addSubscription(subscription: Omit<Subscription, 'id'>): Promise<string> {
+  static async addSubscription(subscription: Omit<Subscription, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     try {
-      const id = await db.subscriptions.add({
-        id: crypto.randomUUID(),
-        ...subscription
+      const now = new Date();
+      const id = crypto.randomUUID();
+      await db.subscriptions.add({
+        ...subscription,
+        id,
+        createdAt: now,
+        updatedAt: now
       });
-      return id.toString();
+      return id;
     } catch (error) {
       console.error('Error adding subscription:', error);
       throw error;
@@ -27,7 +44,10 @@ export class SubscriptionService {
 
   static async updateSubscription(id: string, updates: Partial<Subscription>): Promise<void> {
     try {
-      await db.subscriptions.update(id, updates);
+      await db.subscriptions.update(id, {
+        ...updates,
+        updatedAt: new Date()
+      });
     } catch (error) {
       console.error('Error updating subscription:', error);
       throw error;
@@ -45,7 +65,7 @@ export class SubscriptionService {
 
   static async getActiveSubscriptions(): Promise<Subscription[]> {
     try {
-      return await db.subscriptions.where('isActive').equals(1).toArray();
+      return await db.subscriptions.toArray();
     } catch (error) {
       console.error('Error fetching active subscriptions:', error);
       return [];
@@ -58,9 +78,9 @@ export class SubscriptionService {
       cutoffDate.setDate(cutoffDate.getDate() + days);
       
       return await db.subscriptions
-        .where('nextDue')
-        .belowOrEqual(cutoffDate.getTime())
-        .and(sub => !!sub.isActive)
+        .where('nextRenewal')
+        .belowOrEqual(cutoffDate)
+        .and(sub => sub.reminderEnabled)
         .toArray();
     } catch (error) {
       console.error('Error fetching upcoming renewals:', error);
@@ -68,21 +88,21 @@ export class SubscriptionService {
     }
   }
 
-  static calculateNextDue(startDate: Date, cycle: 'Monthly' | 'Quarterly' | 'Yearly'): Date {
-    const nextDue = new Date(startDate);
+  static calculateNextRenewal(startDate: Date, cycle: 'Monthly' | 'Quarterly' | 'Yearly'): Date {
+    const nextRenewal = new Date(startDate);
     
     switch (cycle) {
       case 'Monthly':
-        nextDue.setMonth(nextDue.getMonth() + 1);
+        nextRenewal.setMonth(nextRenewal.getMonth() + 1);
         break;
       case 'Quarterly':
-        nextDue.setMonth(nextDue.getMonth() + 3);
+        nextRenewal.setMonth(nextRenewal.getMonth() + 3);
         break;
       case 'Yearly':
-        nextDue.setFullYear(nextDue.getFullYear() + 1);
+        nextRenewal.setFullYear(nextRenewal.getFullYear() + 1);
         break;
     }
     
-    return nextDue;
+    return nextRenewal;
   }
 }

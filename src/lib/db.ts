@@ -171,7 +171,7 @@ interface GlobalSettings {
 
 const db = new Dexie('SavoraDB') as Dexie & {
   txns: EntityTable<Txn, 'id'>;
-  rentalProperties: EntityTable<RentalProperty, 'id'>();
+  rentalProperties: EntityTable<RentalProperty, 'id'>;
   goals: EntityTable<Goal, 'id'>;
   vehicles: EntityTable<Vehicle, 'id'>;
   creditCards: EntityTable<CreditCard, 'id'>;
