@@ -5,13 +5,14 @@
  */
 
 import { db } from '@/lib/db';
-import type { Goal, Txn, Investment, Insurance, Dependent } from '@/lib/db';
+import type { Goal, Txn, Investment } from '@/lib/db';
+import { createGoal } from '@/lib/goal-factory';
 import { addYears, addDays } from 'date-fns';
 
 export interface AutoGoalPattern {
   id: string;
   name: string;
-  type: Goal['type'];
+  type: 'Short' | 'Medium' | 'Long';
   targetAmount: number;
   targetDate: Date;
   trigger: string;
@@ -42,10 +43,9 @@ export class AutoGoalEngine {
 
         if (!hasHealthGoal) {
           const lastPremium = healthInsuranceTxns[0].amount;
-          const futureAmount = Math.abs(lastPremium) * Math.pow(1.05, 3); // 5% inflation
+          const futureAmount = Math.abs(lastPremium) * Math.pow(1.05, 3);
           
-          newGoals.push({
-            id: crypto.randomUUID(),
+          newGoals.push(createGoal({
             name: 'Health Insurance 3-Year Buffer',
             slug: 'health-insurance-3yr',
             type: 'Medium',
@@ -53,7 +53,7 @@ export class AutoGoalEngine {
             targetDate: addYears(new Date(), 3),
             currentAmount: 0,
             notes: 'Auto-created from insurance premium pattern'
-          });
+          }));
         }
       }
 
@@ -70,10 +70,9 @@ export class AutoGoalEngine {
 
         if (!hasVehicleGoal) {
           const lastPremium = vehicleInsuranceTxns[0].amount;
-          const renewalAmount = Math.abs(lastPremium) * 1.03; // 3% inflation
+          const renewalAmount = Math.abs(lastPremium) * 1.03;
           
-          newGoals.push({
-            id: crypto.randomUUID(),
+          newGoals.push(createGoal({
             name: 'Vehicle Insurance Renewal',
             slug: 'vehicle-insurance-renewal',
             type: 'Short',
@@ -81,7 +80,7 @@ export class AutoGoalEngine {
             targetDate: addYears(new Date(), 1),
             currentAmount: 0,
             notes: 'Auto-created from vehicle insurance pattern'
-          });
+          }));
         }
       }
 
@@ -118,8 +117,7 @@ export class AutoGoalEngine {
             if (!hasEducationGoal) {
               const targetAmount = this.calculateEducationCorpus(yearsToEducation);
               
-              goals.push({
-                id: crypto.randomUUID(),
+              goals.push(createGoal({
                 name: `${dependent.name} Education (UG@18)`,
                 slug: `${dependent.name.toLowerCase().replace(/\s+/g, '-')}-ug-18`,
                 type: 'Long',
@@ -127,7 +125,7 @@ export class AutoGoalEngine {
                 targetDate: addYears(dependent.dob, 18),
                 currentAmount: 0,
                 notes: `Auto-created education goal for ${dependent.name}. PV calculation for ₹25L with 7% education inflation.`
-              });
+              }));
             }
           }
         }
@@ -158,10 +156,9 @@ export class AutoGoalEngine {
 
       if (hasNPST1 && !hasNPSGoal) {
         const currentFY = new Date().getFullYear();
-        const targetDate = new Date(currentFY + 1, 2, 31); // 31st March
+        const targetDate = new Date(currentFY + 1, 2, 31);
         
-        goals.push({
-          id: crypto.randomUUID(),
+        goals.push(createGoal({
           name: 'NPS-T1 80CCD(1B) Tax Benefit',
           slug: 'nps-t1-80ccdb',
           type: 'Short',
@@ -169,7 +166,7 @@ export class AutoGoalEngine {
           targetDate,
           currentAmount: 0,
           notes: 'Auto-created NPS Tier-1 annual goal for tax benefit under Section 80CCD(1B)'
-        });
+        }));
       }
 
       // PPF annual deposit goal
@@ -180,10 +177,9 @@ export class AutoGoalEngine {
 
       if (hasPPF && !hasPPFGoal) {
         const currentFY = new Date().getFullYear();
-        const targetDate = new Date(currentFY + 1, 3, 5); // 5th April
+        const targetDate = new Date(currentFY + 1, 3, 5);
         
-        goals.push({
-          id: crypto.randomUUID(),
+        goals.push(createGoal({
           name: 'PPF Annual Deposit',
           slug: 'ppf-annual-deposit',
           type: 'Short',
@@ -191,7 +187,7 @@ export class AutoGoalEngine {
           targetDate,
           currentAmount: 0,
           notes: 'Auto-created PPF annual deposit goal to maximize tax benefits'
-        });
+        }));
       }
 
     } catch (error) {
@@ -225,11 +221,9 @@ export class AutoGoalEngine {
         );
 
         if (!hasSeniorGoal) {
-          // Estimate based on medical inflation (10% per spec)
-          const targetAmount = 500000; // Base corpus for senior medical expenses
+          const targetAmount = 500000;
           
-          goals.push({
-            id: crypto.randomUUID(),
+          goals.push(createGoal({
             name: 'Senior Citizen Medical Corpus',
             slug: 'senior-medical-corpus',
             type: 'Medium',
@@ -237,7 +231,7 @@ export class AutoGoalEngine {
             targetDate: addYears(new Date(), 2),
             currentAmount: 0,
             notes: 'Auto-created medical corpus for senior family members. Accounts for 10% medical inflation.'
-          });
+          }));
         }
       }
 
@@ -298,9 +292,8 @@ export class AutoGoalEngine {
   }
 
   private static calculateEducationCorpus(years: number): number {
-    // PV calculation for ₹25L in future with 7% education inflation per spec
-    const futureValue = 2500000; // ₹25L target
-    const inflationRate = 0.07; // 7% as per requirements
+    const futureValue = 2500000;
+    const inflationRate = 0.07;
     const presentValue = futureValue / Math.pow(1 + inflationRate, years);
     return Math.round(presentValue);
   }

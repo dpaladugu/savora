@@ -1,24 +1,36 @@
 
-import { db } from '@/lib/db';
+import { db, type Subscription as DbSubscription } from '@/lib/db';
 
-interface Subscription {
-  id: string;
-  name: string;
-  cost: number;
-  category: string;
-  billingCycle: 'Monthly' | 'Quarterly' | 'Yearly';
+// Extend the base subscription type with service-specific fields
+interface Subscription extends Omit<DbSubscription, 'nextBilling'> {
   nextRenewal: Date;
-  autoRenew: boolean;
   reminderEnabled: boolean;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
+}
+
+// Helper to convert DB subscription to service subscription
+function toServiceSubscription(sub: DbSubscription): Subscription {
+  return {
+    ...sub,
+    nextRenewal: sub.nextBilling || sub.nextDue || new Date(),
+    reminderEnabled: sub.reminderDays ? sub.reminderDays > 0 : false
+  };
+}
+
+// Helper to convert service subscription to DB subscription
+function toDbSubscription(sub: Partial<Subscription>): Partial<DbSubscription> {
+  const { nextRenewal, reminderEnabled, ...rest } = sub;
+  return {
+    ...rest,
+    nextBilling: nextRenewal || new Date(),
+    nextDue: nextRenewal || new Date()
+  };
 }
 
 export class SubscriptionService {
   static async getAllSubscriptions(): Promise<Subscription[]> {
     try {
-      return await db.subscriptions.orderBy('nextRenewal').toArray();
+      const subs = await db.subscriptions.orderBy('nextBilling').toArray();
+      return subs.map(toServiceSubscription);
     } catch (error) {
       console.error('Error fetching subscriptions:', error);
       return [];
@@ -29,12 +41,17 @@ export class SubscriptionService {
     try {
       const now = new Date();
       const id = crypto.randomUUID();
+      const dbSub = toDbSubscription(subscription);
       await db.subscriptions.add({
-        ...subscription,
+        ...dbSub,
         id,
+        name: subscription.name,
+        cost: subscription.cost,
+        billingCycle: subscription.billingCycle,
+        nextBilling: subscription.nextRenewal || now,
         createdAt: now,
         updatedAt: now
-      });
+      } as DbSubscription);
       return id;
     } catch (error) {
       console.error('Error adding subscription:', error);
@@ -44,8 +61,9 @@ export class SubscriptionService {
 
   static async updateSubscription(id: string, updates: Partial<Subscription>): Promise<void> {
     try {
+      const dbUpdates = toDbSubscription(updates);
       await db.subscriptions.update(id, {
-        ...updates,
+        ...dbUpdates,
         updatedAt: new Date()
       });
     } catch (error) {
@@ -65,7 +83,8 @@ export class SubscriptionService {
 
   static async getActiveSubscriptions(): Promise<Subscription[]> {
     try {
-      return await db.subscriptions.toArray();
+      const subs = await db.subscriptions.toArray();
+      return subs.map(toServiceSubscription);
     } catch (error) {
       console.error('Error fetching active subscriptions:', error);
       return [];
@@ -77,11 +96,14 @@ export class SubscriptionService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() + days);
       
-      return await db.subscriptions
-        .where('nextRenewal')
+      const subs = await db.subscriptions
+        .where('nextBilling')
         .belowOrEqual(cutoffDate)
-        .and(sub => sub.reminderEnabled)
         .toArray();
+      
+      return subs
+        .filter(sub => sub.reminderDays && sub.reminderDays > 0)
+        .map(toServiceSubscription);
     } catch (error) {
       console.error('Error fetching upcoming renewals:', error);
       return [];
