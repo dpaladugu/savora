@@ -1,7 +1,25 @@
 import Dexie, { Table } from 'dexie';
 
-// Extended interfaces matching the requirements spec exactly
+// Import all types from db.ts (which re-exports from financial.ts)
+import type { 
+  GlobalSettings, 
+  Txn, 
+  Goal, 
+  CreditCard, 
+  Vehicle, 
+  Investment, 
+  Insurance, 
+  EmergencyFund,
+  Expense,
+  Income,
+  Contact,
+  Dependent
+} from './db';
 
+// Re-export for backwards compatibility
+export type { Contact, Dependent };
+
+// Extended interfaces matching the requirements spec exactly
 export interface RentalProperty {
   id: string;
   address: string;
@@ -11,22 +29,24 @@ export interface RentalProperty {
   latitude?: number;
   longitude?: number;
   monthlyRent: number;
-  dueDay: number; // 1-31
+  dueDay: number;
   escalationPercent: number;
   escalationDate: Date;
   lateFeeRate: number;
   noticePeriodDays: number;
   depositRefundPending: boolean;
   propertyTaxAnnual: number;
-  propertyTaxDueDay: number; // 1-31
+  propertyTaxDueDay: number;
   waterTaxAnnual: number;
-  waterTaxDueDay: number; // 1-31
-  maintenanceReserve: number; // per year
+  waterTaxDueDay: number;
+  maintenanceReserve: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Tenant {
   id: string;
-  propertyId: string; // FK -> RentalProperty
+  propertyId: string;
   tenantName: string;
   roomNo?: string;
   monthlyRent: number;
@@ -35,31 +55,33 @@ export interface Tenant {
   endDate?: Date;
   depositRefundPending: boolean;
   tenantContact: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Gold {
   id: string;
   form: 'Jewelry' | 'Coin' | 'Bar' | 'Biscuit';
   description: string;
-  grossWeight: number; // grams
-  netWeight: number; // grams
-  stoneWeight: number; // grams
+  grossWeight: number;
+  netWeight: number;
+  stoneWeight: number;
   purity: '24K' | '22K' | '20K' | '18K';
-  purchasePrice: number; // INR
-  makingCharge: number; // INR
-  gstPaid: number; // INR
-  hallmarkCharge: number; // INR
+  purchasePrice: number;
+  makingCharge: number;
+  gstPaid: number;
+  hallmarkCharge: number;
   karatPrice: number;
   purchaseDate: Date;
   merchant: string;
   storageLocation: string;
-  storageCost: number; // per year
+  storageCost: number;
   familyMember: string;
   insurancePolicyId?: string;
   receiptUri?: string;
   saleDate?: Date;
   salePrice?: number;
-  profit?: number; // auto-calc
+  profit?: number;
   goldLoanId?: string;
   loanInterestRate?: number;
   currentMcxPrice?: number;
@@ -93,7 +115,7 @@ export interface Loan {
 
 export interface BrotherRepayment {
   id: string;
-  loanId: string; // FK -> Loan (Education-Brother only)
+  loanId: string;
   amount: number;
   date: Date;
   mode: 'Cash' | 'Bank' | 'UPI';
@@ -192,9 +214,9 @@ export interface AuditLog {
 
 export interface Will {
   id: string;
-  assetId: string; // FK -> any asset table
+  assetId: string;
   beneficiary: string;
-  percentage: number; // 0-100
+  percentage: number;
   createdDate: Date;
   lastUpdated: Date;
 }
@@ -213,7 +235,7 @@ export interface SpendingLimit {
   category: string;
   monthlyCap: number;
   currentSpend: number;
-  alertAt: number; // default 80%
+  alertAt: number;
 }
 
 export interface LLMPrompt {
@@ -268,7 +290,7 @@ export class ExtendedSavoraDB extends Dexie {
       insurance: '++id, type, provider, endDate',
       emergencyFunds: '++id, targetAmount, currentAmount',
       expenses: '++id, amount, date, category, description',
-      incomes: '++id, amount, date, category, source_name',
+      incomes: '++id, amount, date, category, sourceName',
       
       // New stores from requirements spec
       rentalProperties: '++id, address, owner, type, dueDay',
@@ -288,19 +310,5 @@ export class ExtendedSavoraDB extends Dexie {
     });
   }
 }
-
-// Import existing types from db.ts
-import type { 
-  GlobalSettings, 
-  Txn, 
-  Goal, 
-  CreditCard, 
-  Vehicle, 
-  Investment, 
-  Insurance, 
-  EmergencyFund,
-  Expense,
-  Income
-} from './db';
 
 export const extendedDb = new ExtendedSavoraDB();

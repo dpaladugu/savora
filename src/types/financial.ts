@@ -58,6 +58,12 @@ export interface Goal {
   currentAmount: number;
   deadline: string;
   category: string;
+  // Extended fields for AutoGoalEngine compatibility
+  slug?: string;
+  type?: 'Short' | 'Medium' | 'Long';
+  targetDate?: Date;
+  notes?: string;
+  priority?: number;
   createdAt: Date;
   updatedAt: Date;
 }

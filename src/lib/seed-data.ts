@@ -1,5 +1,5 @@
 import { db } from './db';
-import type { GlobalSettings, Insurance } from './db';
+import type { GlobalSettings, Insurance, Contact, Dependent } from './db';
 
 export const seedGlobalSettings = async () => {
   const existingSettings = await db.globalSettings.toArray();
@@ -14,7 +14,9 @@ export const seedGlobalSettings = async () => {
     emergencyContacts: [
       { name: 'Emergency Contact', phone: '+91-9999999999', relation: 'Friend' }
     ],
-    dependents: [],
+    dependents: [
+      { name: 'Dependent 1', dob: new Date('2010-01-01'), relation: 'Child' }
+    ],
     salaryCreditDay: 1,
     annualBonus: 50000,
     medicalInflationRate: 8,
@@ -27,7 +29,7 @@ export const seedGlobalSettings = async () => {
     darkMode: false,
     timeZone: 'Asia/Kolkata',
     isTest: false,
-    theme: 'system', // Fixed: was "auto"
+    theme: 'system',
     deviceThemes: {},
     revealSecret: ''
   };
@@ -39,21 +41,26 @@ const seedInsurance = async () => {
   const existingInsurance = await db.insurance.toArray();
   if (existingInsurance.length > 0) return;
 
+  const now = new Date();
+
   const insurancePolicies: Omit<Insurance, 'id'>[] = [
     {
+      name: 'Health Insurance',
       type: 'Health',
+      premium: 15000,
+      provider: 'Star Health Insurance',
       company: 'Star Health Insurance',
       policyNumber: 'SH123456789',
       sumAssured: 500000,
+      sumInsured: 500000,
       premiumAmount: 15000,
       premiumDueDate: new Date('2024-06-15'),
+      endDate: new Date('2024-06-15'),
       nominee: 'Spouse',
       notes: 'Family floater policy',
-      // Add missing properties
-      sumInsured: 500000,
-      endDate: new Date('2024-06-15'),
-      provider: 'Star Health Insurance', // Fixed: was "provider"
-      isActive: true
+      isActive: true,
+      createdAt: now,
+      updatedAt: now
     }
   ];
 

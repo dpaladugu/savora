@@ -80,15 +80,14 @@ const Index = () => {
         // Initialize the database and seed data if needed
         await seedInitialData();
 
-        const existingUser = await db.getPersonalProfile();
-        console.log('Index: Existing user check result:', !!existingUser);
-        setHasExistingUser(!!existingUser);
+        // Check if user exists by looking at globalSettings
+        const settings = await db.globalSettings.toArray();
+        const existingUser = settings.length > 0;
+        console.log('Index: Existing user check result:', existingUser);
+        setHasExistingUser(existingUser);
 
-        if (existingUser) {
-          const pinLastSet = await db.appSettings.get('pinLastSet');
-          console.log('Index: PIN check result:', !!pinLastSet);
-          setHasPin(!!pinLastSet);
-        }
+        // For now, skip PIN check - can be added later
+        setHasPin(false);
       } catch (error) {
         console.error("Index: Error checking initial state:", error);
         setHasExistingUser(false);
@@ -112,13 +111,8 @@ const Index = () => {
   const handleOnboardingComplete = async () => {
     console.log('Index: handleOnboardingComplete called');
     try {
-      // Create a basic user profile
-      const profile = {
-        name: 'Demo User',
-        email: 'demo@savora.app',
-        createdAt: new Date().toISOString()
-      };
-      await db.savePersonalProfile(profile);
+      // Seed initial data which includes basic settings
+      await seedInitialData();
       
       setHasExistingUser(true);
       setHasPin(false); // No PIN set yet
