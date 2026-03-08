@@ -116,23 +116,23 @@ export function RecurringGoals() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      'Insurance': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'Tax': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'EMI': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'Investment': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'Other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      'Insurance': 'bg-primary/10 text-primary border border-primary/20',
+      'Tax': 'bg-destructive/10 text-destructive border border-destructive/20',
+      'EMI': 'bg-accent/10 text-accent border border-accent/20',
+      'Investment': 'bg-success/10 text-success border border-success/20',
+      'Other': 'bg-muted text-muted-foreground border border-border',
     };
     return colors[category] || colors['Other'];
   };
 
   const getSIPTypeColor = (sipType: string) => {
     const colors: Record<string, string> = {
-      'Liquid': 'bg-blue-500',
-      'Arbitrage': 'bg-green-500',
-      'Flexi Cap': 'bg-purple-500',
-      'Gold': 'bg-yellow-500',
+      'Liquid': 'bg-primary',
+      'Arbitrage': 'bg-success',
+      'Flexi Cap': 'bg-accent',
+      'Gold': 'bg-warning',
     };
-    return colors[sipType] || 'bg-gray-500';
+    return colors[sipType] || 'bg-muted-foreground';
   };
 
   const urgentGoals = goals.filter(goal => getDaysUntilDue(goal.nextDueDate) <= 90);
