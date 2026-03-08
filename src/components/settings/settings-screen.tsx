@@ -6,7 +6,9 @@ import { LLMSettingsForm } from './llm-settings-form';
 import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
 import { BackupRestore } from './backup-restore';
 import { BackupNudge } from './backup-nudge';
-import { Settings, Brain, Shield, User, Database } from 'lucide-react';
+import { Settings, Brain, Shield, User, Database, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
 
 const tabs = [
   { value: 'user',   label: 'User',   icon: User     },
