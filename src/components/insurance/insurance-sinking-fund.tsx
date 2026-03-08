@@ -177,7 +177,7 @@ export function InsuranceSinkingFund() {
                         <p className="text-sm font-semibold truncate">{p.provider}</p>
                         <Badge variant="secondary" className="text-[9px] px-1.5">{p.type}</Badge>
                         {(p as any).hasMaternity && (
-                          <Badge className="text-[9px] px-1.5 bg-pink-500/15 text-pink-600 border-pink-500/30 border">Maternity ✓</Badge>
+                          <Badge className="text-[9px] px-1.5 bg-accent/30 text-accent-foreground border-accent/30 border">Maternity ✓</Badge>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
