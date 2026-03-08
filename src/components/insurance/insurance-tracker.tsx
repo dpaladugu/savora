@@ -205,45 +205,40 @@ export function InsuranceTracker() {
       <div className="space-y-3">
         {policies.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No insurance policies recorded yet. Add your first policy to get started!</p>
+            <CardContent className="text-center py-10">
+              <Shield className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">No policies yet. Add your first.</p>
             </CardContent>
           </Card>
         ) : (
           policies.map((policy) => (
-            <Card key={policy.id}>
+            <Card key={policy.id} className="glass">
               <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{policy.type} Insurance</h3>
-                      <Badge variant="outline">{policy.provider}</Badge>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                      <h3 className="text-sm font-semibold text-foreground">{policy.type} Insurance</h3>
+                      <Badge variant="outline" className="text-[10px]">{policy.provider}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">Policy: {policy.policyNo}</p>
-                    <p className="text-sm text-muted-foreground mb-2">Family Member: {policy.familyMember}</p>
+                    <p className="text-xs text-muted-foreground">{policy.policyNo} · {policy.familyMember}</p>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(policy)}>
-                      <Edit className="w-4 h-4" />
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl" onClick={() => handleEdit(policy)}>
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(policy.id)}>
-                      <Trash2 className="w-4 h-4" />
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => handleDelete(policy.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Sum Insured:</span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded-lg bg-muted/40">
+                    <p className="text-muted-foreground">Sum Insured</p>
                     <p className="font-medium">{formatCurrency(policy.sumInsured)}</p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Premium:</span>
-                    <p className="font-medium">{formatCurrency(policy.premium)}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">End Date:</span>
-                    <p className="font-medium">{policy.endDate.toLocaleDateString()}</p>
+                  <div className="p-2 rounded-lg bg-muted/40">
+                    <p className="text-muted-foreground">Premium</p>
+                    <p className="font-medium value-negative">{formatCurrency(policy.premium)}</p>
                   </div>
                 </div>
               </CardContent>
