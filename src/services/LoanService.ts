@@ -43,6 +43,27 @@ export class LoanService {
     );
   }
 
+  static _buildSchedule(principal: number, annualRoi: number, tenureMonths: number): AmortRow[] {
+    if (!principal || !annualRoi || !tenureMonths) return [];
+    const r = annualRoi / 100 / 12;
+    const emi = LoanService._calcEMI(principal, annualRoi, tenureMonths);
+    const schedule: AmortRow[] = [];
+    let balance = principal;
+    for (let month = 1; month <= tenureMonths; month++) {
+      const interestPart  = balance * r;
+      const principalPart = emi - interestPart;
+      balance -= principalPart;
+      schedule.push({
+        month,
+        emi,
+        principalPart: Math.round(principalPart),
+        interestPart:  Math.round(interestPart),
+        balance:       Math.round(Math.max(0, balance)),
+      });
+    }
+    return schedule;
+  }
+
   static async getAllLoans(): Promise<Loan[]> {
     return db.loans.toArray().catch(() => []);
   }
