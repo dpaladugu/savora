@@ -15,9 +15,10 @@ import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import {
   Sparkles, Target, TrendingDown, PiggyBank,
-  Zap, ChevronRight, X, AlertTriangle, ArrowUpRight,
+  Zap, X, AlertTriangle, ArrowUpRight,
 } from 'lucide-react';
 import type { Goal } from '@/types/financial';
+import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 
 interface Nudge {
   id: string;
@@ -74,6 +75,7 @@ const colorMap = {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
+  const setPrefill = useSIPPrefillStore(s => s.setPrefill);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const goals       = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
@@ -111,8 +113,21 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           body: sip
             ? `Start ${formatCurrency(sip)}/month to reach ${formatCurrency(goal.targetAmount)} ${months && months > 0 ? `in ${months} months` : ''}`
             : `You have ${formatCurrency(remaining)} remaining — start a monthly SIP to stay on track`,
-          ctaLabel: 'Plan SIP →',
-          ctaAction: () => onMoreNavigation('sip-planner'),
+          ctaLabel: 'Start SIP →',
+          ctaAction: () => {
+            if (sip) {
+              setPrefill({
+                description: `SIP – ${name}`,
+                amount: sip,
+                category: 'Investment',
+                frequency: 'monthly',
+                type: 'expense',
+                account: 'ICICI Salary Account',
+                goalName: name,
+              });
+            }
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 1,
           color: 'primary',
         });
@@ -133,7 +148,21 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           title: `"${name}" is behind schedule`,
           body: `Expected ${formatCurrency(Math.round(expected))} by now, but at ${formatCurrency(current)}. Gap: ${formatCurrency(Math.round(behindBy))}`,
           ctaLabel: 'Catch up →',
-          ctaAction: () => onMoreNavigation('sip-planner'),
+          ctaAction: () => {
+            const months = monthsUntil((goal as any).deadline ?? (goal as any).targetDate);
+            const remaining = goal.targetAmount - current;
+            if (months && months > 0) {
+              setPrefill({
+                description: `Catch-up SIP – ${name}`,
+                amount: sipNeeded(remaining, months),
+                category: 'Investment',
+                frequency: 'monthly',
+                type: 'expense',
+                goalName: name,
+              });
+            }
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 2,
           color: 'warning',
         });
@@ -174,7 +203,17 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           title: `Prepay "${loan.name}" faster`,
           body: `${loan.interestRate}% interest loan — even ₹1k/month extra prepayment saves years of interest`,
           ctaLabel: 'Add prepayment →',
-          ctaAction: () => onMoreNavigation('recurring-transactions'),
+          ctaAction: () => {
+            setPrefill({
+              description: `Extra EMI – ${loan.name}`,
+              amount: 1000,
+              category: 'Loan Repayment',
+              frequency: 'monthly',
+              type: 'expense',
+              goalName: loan.name,
+            });
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 3,
           color: 'warning',
         });

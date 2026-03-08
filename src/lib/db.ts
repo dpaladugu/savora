@@ -399,6 +399,11 @@ db.version(7).stores({
   appSettings: '&key',
 });
 
+// ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
+import('./audit-middleware').then(({ installAuditMiddleware }) => {
+  installAuditMiddleware(db);
+}).catch(() => {});
+
 // ─── Safe open: if a schema upgrade fails (stale IndexedDB from dev builds),
 //     delete the database and reload once so the user never sees a broken app.
 db.open().catch(err => {
