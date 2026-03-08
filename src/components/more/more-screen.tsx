@@ -53,7 +53,8 @@ const modules: MoreModule[] = [
   { id: 'will-estate',        title: 'Will & Estate',        description: 'Asset distribution, digital legacy & nominees',   icon: Scale,       status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',          icon: Target,      status: 'beta',         category: 'analysis',  priority: 'low' },
   { id: 'debt-strike',        title: 'Debt Strike',          description: 'Snowball calculator · debt-free countdown to 2029', icon: Crosshair, status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
-  { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,    status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
+  { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,       status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
+  { id: 'telegram-pending',   title: 'Telegram Queue',       description: 'ADMIN — approve or reject Telegram-captured txns', icon: MessageCircle,  status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
 
   // ── Configuration ──────────────────────────────────────────────
   { id: 'csv-import',         title: 'CSV Import',           description: 'Import transactions from bank CSV files',         icon: Upload,      status: 'available',    category: 'settings',  priority: 'medium' },
