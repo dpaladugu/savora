@@ -136,9 +136,11 @@ export function CreditCardModule() {
 
       if (editingCard) {
         await CreditCardService.updateCreditCard(editingCard.id, cardData);
+        await import('@/lib/db').then(({ db }) => db.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'creditCard', entityId: editingCard.id, oldValues: editingCard, newValues: cardData, timestamp: new Date() }));
         toast.success('Credit card updated successfully');
       } else {
-        await CreditCardService.addCreditCard(cardData);
+        const newCard = await CreditCardService.addCreditCard(cardData);
+        await import('@/lib/db').then(({ db }) => db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'creditCard', entityId: (newCard as any)?.id ?? 'new', newValues: cardData, timestamp: new Date() }));
         toast.success('Credit card added successfully');
       }
 
@@ -156,7 +158,9 @@ export function CreditCardModule() {
     if (!confirm('Are you sure you want to delete this credit card?')) return;
 
     try {
+      const old = creditCards.find(c => c.id === id);
       await CreditCardService.deleteCreditCard(id);
+      await import('@/lib/db').then(({ db }) => db.auditLogs.add({ id: crypto.randomUUID(), action: 'delete', entity: 'creditCard', entityId: id, oldValues: old, timestamp: new Date() }));
       toast.success('Credit card deleted successfully');
       loadCreditCards();
     } catch (error) {
