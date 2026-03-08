@@ -253,8 +253,8 @@ export function IncomeTracker() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-green-100 dark:bg-green-900/50">
-                        <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-300" />
+                      <div className="p-2 rounded-full bg-success/10">
+                        <TrendingUp className="w-4 h-4 text-success" />
                       </div>
                       <div>
                         <h3 className="font-semibold">{income.description || income.category}</h3>
