@@ -88,19 +88,19 @@ export function SuggestionsEngine() {
   };
 
   const getColorClass = (type: string, priority: string) => {
-    if (type === 'warning' && priority === 'high') return 'border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800';
-    if (type === 'warning') return 'border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800';
-    if (type === 'opportunity') return 'border-green-200 bg-green-50 dark:bg-green-900/10 dark:border-green-800';
-    if (type === 'reminder' && priority === 'high') return 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800';
-    return 'border-gray-200 bg-gray-50 dark:bg-gray-900/10 dark:border-gray-800';
+    if (type === 'warning' && priority === 'high') return 'border-destructive/40 bg-destructive/5';
+    if (type === 'warning') return 'border-warning/40 bg-warning/5';
+    if (type === 'opportunity') return 'border-success/40 bg-success/5';
+    if (type === 'reminder' && priority === 'high') return 'border-primary/40 bg-primary/5';
+    return 'border-border bg-muted/30';
   };
 
   const getIconColor = (type: string, priority: string) => {
-    if (type === 'warning' && priority === 'high') return 'text-red-600';
-    if (type === 'warning') return 'text-orange-600';
-    if (type === 'opportunity') return 'text-green-600';
-    if (type === 'reminder' && priority === 'high') return 'text-blue-600';
-    return 'text-gray-600';
+    if (type === 'warning' && priority === 'high') return 'text-destructive';
+    if (type === 'warning') return 'text-warning';
+    if (type === 'opportunity') return 'text-success';
+    if (type === 'reminder' && priority === 'high') return 'text-primary';
+    return 'text-muted-foreground';
   };
 
   const prioritySuggestions = suggestions.filter(s => s.priority === 'high');
