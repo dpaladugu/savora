@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, MessageCircle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, MessageCircle, ListChecks, ChevronDown, CheckCircle2 } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -163,6 +163,77 @@ function MetricValue({
       placeholder="₹••••••"
       className="tabular-nums"
     />
+  );
+}
+
+// ── Onboarding Checklist ──────────────────────────────────────────────────────
+function OnboardingChecklist({
+  incomeCount, onAddIncome, onTabChange, onMoreNavigation, ef
+}: {
+  incomeCount: number;
+  onAddIncome: () => void;
+  onTabChange: (t: string) => void;
+  onMoreNavigation: (m: string) => void;
+  ef: EmergencyFund | null;
+}) {
+  const [open, setOpen] = useState(true);
+  const expenseCount = useLiveQuery(() => db.expenses.count().catch(() => 0), []) ?? 0;
+  const creditCardCount = useLiveQuery(() => db.creditCards.count().catch(() => 0), []) ?? 0;
+
+  const items = [
+    { done: incomeCount > 0,     label: 'Record your salary',        action: onAddIncome,                            hint: 'So Monthly Surplus shows real data' },
+    { done: expenseCount > 0,    label: 'Add your first expense',    action: () => onTabChange('expenses'),          hint: 'Start tracking where money goes' },
+    { done: creditCardCount > 0, label: 'Add a credit card',         action: () => onTabChange('credit-cards'),      hint: 'Track due dates & balances' },
+    { done: !!ef,                label: 'Set up Emergency Fund',     action: () => onMoreNavigation('emergency-fund'), hint: 'Build your 12-month safety net' },
+  ];
+
+  const doneCount = items.filter(i => i.done).length;
+  const allDone   = doneCount === items.length;
+
+  // Auto-hide once all tasks complete
+  if (allDone) return null;
+
+  return (
+    <Card className={`border-primary/20 bg-primary/3 transition-all`}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between p-4 text-left"
+        aria-expanded={open}
+      >
+        <div className="flex items-center gap-2">
+          <ListChecks className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Setup Checklist</span>
+          <span className="text-xs text-muted-foreground">({doneCount}/{items.length} done)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Progress value={(doneCount / items.length) * 100} className="w-16 h-1.5" />
+          {open ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+        </div>
+      </button>
+      {open && (
+        <CardContent className="pt-0 pb-4 px-4 space-y-1.5">
+          {items.map(item => (
+            <button
+              key={item.label}
+              onClick={item.done ? undefined : item.action}
+              disabled={item.done}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                item.done
+                  ? 'opacity-60 cursor-default'
+                  : 'hover:bg-primary/8 hover:border-primary/20 border border-transparent cursor-pointer active:scale-[0.98]'
+              }`}
+            >
+              <CheckCircle2 className={`h-4 w-4 shrink-0 ${item.done ? 'text-success' : 'text-muted-foreground/40'}`} />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${item.done ? 'line-through text-muted-foreground' : 'text-foreground'}`}>{item.label}</p>
+                {!item.done && <p className="text-[10px] text-muted-foreground">{item.hint}</p>}
+              </div>
+              {!item.done && <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />}
+            </button>
+          ))}
+        </CardContent>
+      )}
+    </Card>
   );
 }
 
@@ -351,6 +422,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
+
+      {/* ── Onboarding Checklist (collapses once all items done) ── */}
+      <OnboardingChecklist
+        incomeCount={incomeCount}
+        onAddIncome={() => setShowIncomeDialog(true)}
+        onTabChange={onTabChange}
+        onMoreNavigation={onMoreNavigation}
+        ef={ef}
+      />
 
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />

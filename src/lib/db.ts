@@ -267,6 +267,33 @@ export interface RecurringTransaction {
   updatedAt: Date;
 }
 
+export interface GunturShopRow {
+  id: string;
+  shopId: string;
+  name: string;
+  tenant: string;
+  rent: number;
+  status: 'Vacant' | 'Occupied';
+  updatedAt: Date;
+}
+
+export interface WaterfallProgressRow {
+  id: string;
+  bucketId: string;
+  accumulated: number;
+  updatedAt: Date;
+}
+
+export interface GorantlaRoomRow {
+  id: string;
+  roomId: string;
+  name: string;
+  tenant: string;
+  rent: number;
+  paid: boolean;
+  updatedAt: Date;
+}
+
 const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
@@ -293,6 +320,9 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   willRows: EntityTable<WillRow, 'id'>;
   digitalAssets: EntityTable<DigitalAsset, 'id'>;
   recurringTransactions: EntityTable<RecurringTransaction, 'id'>;
+  gunturShops: EntityTable<GunturShopRow, 'id'>;
+  waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
+  gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
 };
 
 db.version(1).stores({
@@ -342,5 +372,12 @@ db.version(5).stores({}).upgrade(tx =>
     if (!s.userMission) s.userMission = 'Antifragile Debt-Freedom by 2029';
   })
 );
+
+// Version 6: Guntur waterfall persistence
+db.version(6).stores({
+  gunturShops:       '++id, shopId, name, tenant, rent, status',
+  waterfallProgress: '++id, bucketId, accumulated',
+  gorantlaRooms:     '++id, roomId, name, tenant, rent, paid',
+});
 
 export { db };
