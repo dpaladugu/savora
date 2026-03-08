@@ -53,7 +53,7 @@ export class EncryptionService {
       );
 
       const encryptedPayload: EncryptedData = {
-        iv: this.bufferToBase64(iv),
+        iv: this.bufferToBase64(iv.buffer as ArrayBuffer),
         ciphertext: this.bufferToBase64(encryptedBuffer),
       };
       return JSON.stringify(encryptedPayload);
@@ -72,9 +72,9 @@ export class EncryptionService {
       const ciphertext = this.base64ToBuffer(encryptedPayload.ciphertext);
 
       const decryptedBuffer = await crypto.subtle.decrypt(
-        { name: KEY_ALGORITHM, iv: iv },
+        { name: KEY_ALGORITHM, iv: iv.buffer as ArrayBuffer },
         key,
-        ciphertext
+        ciphertext.buffer as ArrayBuffer
       );
 
       const decryptedString = this.textDecoder.decode(decryptedBuffer);

@@ -240,7 +240,7 @@ describe('Extended Functionality Tests', () => {
       
       expect(result).toBeDefined();
       expect(result.allocations).toBeDefined();
-      expect(result.remainingSurplus).toBeLessThanOrEqual(surplusAmount);
+      expect(result.remaining).toBeLessThanOrEqual(surplusAmount);
     });
   });
 

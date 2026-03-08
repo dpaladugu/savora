@@ -19,14 +19,20 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "dexie": ["./src/lib/dexie-shim.ts"],
+      "dexie-react-hooks": ["./src/lib/dexie-react-hooks-shim.ts"]
     },
     "skipLibCheck": true,
     "strict": false,
     "target": "ES2020",
-    "useDefineForClassFields": true
+    "useDefineForClassFields": true,
+    "typeRoots": ["./node_modules/@types", "./src/types"]
   },
   "include": [
     "src"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }

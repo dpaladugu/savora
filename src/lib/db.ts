@@ -218,7 +218,7 @@ export interface Income {
   updatedAt: Date;
 }
 
-const db = new Dexie('SavoraDB') as Dexie & {
+const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
   goals: EntityTable<Goal, 'id'>;
