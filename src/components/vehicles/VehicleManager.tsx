@@ -232,6 +232,17 @@ export function VehicleManager() {
       </div>
 
       {/* Add / Edit Modal */}
+      {/* Fuelio Import Dialog */}
+      {fuelioTarget && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <FuelioImporter vehicle={fuelioTarget} onDone={() => { setFuelioTarget(null); load(); }} />
+            <Button variant="ghost" size="sm" className="w-full mt-2 rounded-xl text-muted-foreground" onClick={() => setFuelioTarget(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
       <Dialog open={showModal} onOpenChange={(o) => { setShowModal(o); if (!o) { setEditingVehicle(null); setForm({ ...emptyForm }); } }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
