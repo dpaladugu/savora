@@ -42,6 +42,7 @@ import { Shield } from 'lucide-react';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
+  onMoreNavigation?: (moduleId: string) => void;
 }
 
 // ── Access-denied placeholder ────────────────────────────────────────────────
