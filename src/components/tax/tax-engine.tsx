@@ -85,16 +85,16 @@ function AdvanceTaxSection({ annualTaxLiability }: { annualTaxLiability: number 
   });
 
   const statusColors: Record<string, string> = {
-    overdue:   'border-destructive/50 bg-destructive/5',
-    'due-soon':'border-warning/50 bg-warning/5',
+    overdue:   'border-destructive/40 bg-destructive/5',
+    'due-soon':'border-warning/40 bg-warning/5',
     upcoming:  'border-border/60 bg-card/60',
     paid:      'border-success/40 bg-success/5',
   };
   const statusBadge: Record<string, React.ReactNode> = {
     overdue:   <Badge variant="destructive" className="text-[10px]">Overdue</Badge>,
-    'due-soon':<Badge className="text-[10px] bg-warning/20 text-warning border-warning/30">Due Soon</Badge>,
+    'due-soon':<Badge className="text-[10px] bg-warning/15 text-warning border-warning/30">Due Soon</Badge>,
     upcoming:  <Badge variant="outline" className="text-[10px]">Upcoming</Badge>,
-    paid:      <Badge className="text-[10px] bg-success/20 text-success border-success/30">Paid ✓</Badge>,
+    paid:      <Badge className="text-[10px] bg-success/15 text-success border-success/30">Paid ✓</Badge>,
   };
 
   return (
