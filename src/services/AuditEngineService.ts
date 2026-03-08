@@ -172,9 +172,17 @@ export class AuditEngineService {
 
     // ── 5. Risk checklist ────────────────────────────────────────────────────
     const allPolicies = [...insurancePolicies, ...insurance];
+    // Deduplicate policies by id (InsuranceService mirrors writes to both tables)
+    const seenIds = new Set<string>();
+    const uniquePolicies = allPolicies.filter((p: any) => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+
     const annualIncome = AuditEngineService._calcAnnualIncome(allIncomes, allTxns, oneYearAgo);
     const risks = AuditEngineService._buildRisks({
-      policies: allPolicies,
+      policies: uniquePolicies,
       investments,
       emergencyFunds,
       dscr,
@@ -182,6 +190,8 @@ export class AuditEngineService {
       yieldCostSpread,
       debtFreedom,
       annualIncome,
+      gunturShops,
+      waterfallProgress,
     });
 
     // ── 6. Overall score (0-100) ─────────────────────────────────────────────
