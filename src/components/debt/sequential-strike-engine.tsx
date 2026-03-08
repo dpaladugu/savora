@@ -19,10 +19,11 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
   Target, Zap, AlertTriangle, CheckCircle2,
-  ArrowRight, Info, Building2, Home,
+  ArrowRight, Info, Building2, Home, PlusCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { addMonths, format, differenceInMonths } from 'date-fns';
+import { PrepaymentLogger } from './prepayment-logger';
 
 const INCRED_MIN_PART_PAYMENT = 25_000;
 const DEADLINE = new Date(2029, 11, 31);
