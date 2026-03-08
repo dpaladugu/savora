@@ -363,6 +363,8 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
+  const [advanceShop, setAdvanceShop] = useState<GunturShopRow | null>(null);
+
   const totalTaxDeduction = propertyTax + waterTax;
   const bucketProgress: Record<string, number> = {};
   progress.forEach(p => { bucketProgress[p.bucketId] = p.accumulated; });
@@ -379,49 +381,19 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
     if (readOnly) return;
     await db.gunturShops.update(id, { rent, updatedAt: new Date() });
   };
-
-  const runWaterfall = async () => {
-    if (readOnly) { toast.error('Read-only access'); return; }
-    let remaining = netRent;
-    for (const bucket of WATERFALL_BUCKETS) {
-      if (remaining <= 0) break;
-      const monthlyTarget = bucket.monthly ?? bucket.target;
-      const fill = Math.min(remaining, monthlyTarget === Infinity ? remaining : monthlyTarget);
-      remaining -= fill;
-      const existing = await db.waterfallProgress.where('bucketId').equals(bucket.id).first();
-      if (existing) {
-        await db.waterfallProgress.update(existing.id, { accumulated: existing.accumulated + fill, updatedAt: new Date() });
-      } else {
-        await db.waterfallProgress.add({ id: crypto.randomUUID(), bucketId: bucket.id, accumulated: fill, updatedAt: new Date() });
-      }
-    }
-    toast.success(`Waterfall executed! ₹${netRent.toLocaleString('en-IN')} net allocated.`);
-  };
-
-  const getWaterfallBars = () => {
-    let remaining = netRent;
-    return WATERFALL_BUCKETS.map(bucket => {
-      const monthlyTarget = bucket.monthly ?? bucket.target;
-      const fill = Math.min(remaining, monthlyTarget === Infinity ? remaining : monthlyTarget);
-      remaining -= fill;
-      return { ...bucket, fill, pct: netRent > 0 ? (fill / netRent) * 100 : 0 };
-    });
-  };
-
-  const bars = getWaterfallBars();
-
-  if (shops.length === 0) return <div className="text-center text-muted-foreground py-10 text-sm">Loading shops…</div>;
-
-  return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center justify-between text-base">
-            <span className="flex items-center gap-2"><Home className="w-4 h-4 text-primary" />Guntur — 6 Shops</span>
-            <Badge variant="outline">Gross: {formatCurrency(grossRent)}/mo</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+...
+          {advanceShop && (
+            <AdvanceDialog
+              open={!!advanceShop}
+              onClose={() => setAdvanceShop(null)}
+              unitName={advanceShop.name}
+              currentAmount={advanceShop.advanceAmount ?? 0}
+              currentDate={advanceShop.advanceDate ? new Date(advanceShop.advanceDate) : null}
+              onSave={async (amount, date) => {
+                await db.gunturShops.update(advanceShop.id, { advanceAmount: amount, advanceDate: date, updatedAt: new Date() });
+              }}
+            />
+          )}
           <div className="grid grid-cols-2 gap-2">
             {shops.map(shop => (
               <div key={shop.id} className={`p-3 rounded-lg border text-sm ${shop.status === 'Vacant' ? 'border-destructive/30 bg-destructive/5' : shop.paid ? 'border-success/40 bg-success/5' : 'border-border bg-card'}`}>
@@ -444,6 +416,25 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                         className="mt-1 h-6 text-xs w-full">
                         {shop.paid ? '✓ Paid' : 'Mark Paid'}
                       </Button>
+                )}
+                {/* Advance info */}
+                {shop.status === 'Occupied' && (
+                  <div className="mt-1.5 flex items-center justify-between text-xs">
+                    {shop.advanceAmount && shop.advanceAmount > 0 ? (
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <IndianRupee className="w-2.5 h-2.5 text-primary" />
+                        <span className="font-medium text-foreground">{formatCurrency(shop.advanceAmount)}</span>
+                        {shop.advanceDate && <span>· {format(new Date(shop.advanceDate), 'MMM yy')}</span>}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground italic">No advance</span>
+                    )}
+                    {!readOnly && (
+                      <Button size="sm" variant="ghost" className="h-5 text-xs px-1.5" onClick={() => setAdvanceShop(shop)}>
+                        {shop.advanceAmount ? 'Edit' : '+Adv'}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
