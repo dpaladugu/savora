@@ -78,10 +78,16 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const role = useRole();
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
+  const [ef, setEf] = useState<EmergencyFund | null>(null);
 
   useEffect(() => {
     db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
+    db.emergencyFunds.limit(1).first().then(r => setEf(r ?? null)).catch(() => {});
   }, []);
+
+  const efPct = ef && ef.targetAmount > 0
+    ? Math.min(100, Math.round((ef.currentAmount / ef.targetAmount) * 100))
+    : 0;
 
 
 
