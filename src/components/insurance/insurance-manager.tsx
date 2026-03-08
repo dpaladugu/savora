@@ -10,14 +10,16 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/layout/page-header';
 import { MaskedAmount } from '@/components/ui/masked-value';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
-  Heart, Car, Users, Briefcase, CheckCircle2, Clock
+  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp
 } from 'lucide-react';
+import { InsuranceGapAnalysis } from './insurance-gap-analysis';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Insurance } from '@/lib/db';
