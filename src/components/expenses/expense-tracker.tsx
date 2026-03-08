@@ -11,12 +11,8 @@ import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
 import { PageHeader } from '@/components/layout/page-header';
+import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
 
-const CATEGORIES = [
-  'Food & Dining','Transport','Shopping','Utilities','Health',
-  'Entertainment','Education','Rent','Other'
-];
-const PAYMENT_METHODS = ['Cash','UPI','Credit Card','Debit Card','Net Banking','NEFT/RTGS'];
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);

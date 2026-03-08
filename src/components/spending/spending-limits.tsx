@@ -18,7 +18,10 @@ import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { SpendingLimit } from '@/lib/db';
 
-const PRESET_CATEGORIES = ['Dining', 'Shopping', 'Entertainment', 'Fuel', 'Groceries', 'Healthcare', 'Travel', 'Utilities', 'Other'];
+import { SPENDING_LIMIT_CATEGORIES } from '@/lib/categories';
+
+const PRESET_CATEGORIES = SPENDING_LIMIT_CATEGORIES;
+
 
 const emptyForm = { category: '', monthlyCap: '', alertAt: '80' };
 
