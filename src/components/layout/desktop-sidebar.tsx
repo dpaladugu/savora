@@ -8,12 +8,14 @@ import React from "react";
 import {
   Home, Receipt, CreditCard, TrendingUp,
   ChevronDown, ChevronRight,
-  Repeat, Car, Shield, Heart, Coins,
-  Users2, Target, Brain, Settings, Sparkles,
-  Banknote, AlertCircle, Globe, Bike, Building, FileText,
+  Repeat, Shield, Coins,
+  Target, Brain, Settings, Sparkles,
+  Banknote, AlertCircle, Globe, Bike, Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRole } from "@/store/rbacStore";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import type { NavigationTab } from "@/types/common";
 
 interface Props {
