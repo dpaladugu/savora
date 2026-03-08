@@ -11,7 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Download, Calendar, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import { SubscriptionService } from '@/services/SubscriptionService';
+import { SubscriptionService, type Subscription } from '@/services/SubscriptionService';
 
 interface Subscription {
   id: string;
