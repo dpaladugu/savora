@@ -198,6 +198,8 @@ export interface AuditLog {
 
 export interface GlobalSettings {
   id: string;
+  userName: string;
+  userMission?: string;
   failedPinAttempts: number;
   maxFailedAttempts: number;
   autoLockMinutes: number;
