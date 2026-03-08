@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import {
   Moon, Sun, Shield, Bell, Download, Trash2,
   Clock, Globe, Palette, Lock, AlertTriangle, Info,
-  Smartphone, Mail, Key, Database
+  Smartphone, Mail, Key, Database, User, Target
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserSettingsService, type UserSettings } from '@/services/UserSettingsService';
 import { useAuth } from '@/contexts/auth-context';
+import { db } from '@/lib/db';
 
 export function ComprehensiveSettingsScreen() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -24,6 +27,61 @@ export function ComprehensiveSettingsScreen() {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
   const { logout } = useAuth();
+
+  // Profile fields backed by db.globalSettings
+  const [userName, setUserName] = useState('');
+  const [userMission, setUserMission] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+    db.globalSettings.limit(1).first().then(s => {
+      if (s?.userName)    setUserName(s.userName);
+      if (s?.userMission) setUserMission(s.userMission);
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const existing = await db.globalSettings.limit(1).first();
+      if (existing) {
+        await db.globalSettings.update(existing.id, { userName: userName.trim(), userMission: userMission.trim() });
+      } else {
+        await db.globalSettings.add({
+          id: crypto.randomUUID(),
+          userName: userName.trim(),
+          userMission: userMission.trim(),
+          failedPinAttempts: 0,
+          maxFailedAttempts: 5,
+          autoLockMinutes: 30,
+          taxRegime: 'New',
+          birthdayBudget: 0,
+          birthdayAlertDays: 7,
+          emergencyContacts: [],
+          dependents: [],
+          salaryCreditDay: 1,
+          annualBonus: 0,
+          medicalInflationRate: 7,
+          educationInflation: 10,
+          vehicleInflation: 5,
+          maintenanceInflation: 5,
+          privacyMask: false,
+          darkMode: false,
+          timeZone: 'Asia/Kolkata',
+          isTest: false,
+          theme: 'system',
+          deviceThemes: {},
+          revealSecret: '',
+        });
+      }
+      toast.success('Profile saved');
+    } catch {
+      toast.error('Failed to save profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   useEffect(() => { loadSettings(); }, []);
 
@@ -123,6 +181,49 @@ export function ComprehensiveSettingsScreen() {
 
   return (
     <div className="space-y-4">
+
+      {/* ── Profile ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <User className="h-4 w-4 text-primary" /> Profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="userName" className="text-xs text-muted-foreground">Your Name</Label>
+            <Input
+              id="userName"
+              value={userName}
+              onChange={e => setUserName(e.target.value)}
+              placeholder="Devavratha"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="userMission" className="text-xs text-muted-foreground flex items-center gap-1">
+              <Target className="h-3 w-3" /> Mission Statement
+            </Label>
+            <Textarea
+              id="userMission"
+              value={userMission}
+              onChange={e => setUserMission(e.target.value)}
+              placeholder="Antifragile Debt-Freedom by 2029"
+              rows={2}
+              className="text-sm resize-none"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleSaveProfile}
+            disabled={profileSaving || !userName.trim()}
+            className="w-full h-9 text-xs"
+          >
+            {profileSaving ? 'Saving…' : 'Save Profile'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Appearance */}
       <Card>
         <CardHeader className="pb-3">

@@ -121,12 +121,12 @@ export function VehicleFleetWatchdog() {
         return (
           <Card
             key={vehicle.id}
-            className={`border-2 ${
+          className={`border-2 ${
               oil.status === 'overdue'
                 ? 'border-destructive bg-destructive/5'
                 : oil.status === 'warning'
-                ? 'border-yellow-500 bg-yellow-500/5'
-                : 'border-green-500 bg-green-500/5'
+                ? 'border-warning bg-warning/5'
+                : 'border-success bg-success/5'
             }`}
           >
             <CardHeader className="pb-2">
@@ -141,12 +141,12 @@ export function VehicleFleetWatchdog() {
                   </Badge>
                 )}
                 {oil.status === 'warning' && (
-                  <Badge className="bg-yellow-500 text-white">
+                  <Badge className="bg-warning text-warning-foreground">
                     🟠 Service Soon
                   </Badge>
                 )}
                 {oil.status === 'ok' && (
-                  <Badge className="bg-green-500 text-white">
+                  <Badge className="bg-success text-success-foreground">
                     ✅ OK
                   </Badge>
                 )}
@@ -164,7 +164,7 @@ export function VehicleFleetWatchdog() {
                 </div>
                 <div className={`text-center p-2 rounded-lg border ${
                   oil.status === 'overdue' ? 'bg-destructive/10 border-destructive' :
-                  oil.status === 'warning' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-background'
+                  oil.status === 'warning' ? 'bg-warning/10 border-warning' : 'bg-background'
                 }`}>
                   <p className="text-muted-foreground text-xs">Since Service</p>
                   <p className="font-bold">{oil.kmSinceService.toLocaleString()} km</p>
@@ -175,14 +175,14 @@ export function VehicleFleetWatchdog() {
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>0 km</span>
-                  <span className="text-yellow-600">{WARNING_KM} km ⚠️</span>
-                  <span className="text-red-600">{OVERDUE_KM} km 🔴</span>
+                  <span className="text-warning font-medium">{WARNING_KM} km ⚠️</span>
+                  <span className="text-destructive font-medium">{OVERDUE_KM} km 🔴</span>
                 </div>
                 <Progress
                   value={Math.min(100, (oil.kmSinceService / OVERDUE_KM) * 100)}
                   className={`h-3 ${
                     oil.status === 'overdue' ? '[&>div]:bg-destructive' :
-                    oil.status === 'warning' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'
+                    oil.status === 'warning' ? '[&>div]:bg-warning' : '[&>div]:bg-success'
                   }`}
                 />
               </div>
