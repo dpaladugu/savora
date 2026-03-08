@@ -24,6 +24,7 @@ import type { EmergencyFund } from '@/types/financial';
 import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
 import { NetWorthWidget } from './net-worth-widget';
 import { SmartNudgeEngine } from './smart-nudge-engine';
+import { GunturWaterfallCard } from './guntur-waterfall-card';
 
 
 
