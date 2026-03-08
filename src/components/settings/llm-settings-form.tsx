@@ -64,10 +64,8 @@ export function LLMSettingsForm() {
     try {
       setTesting(true);
       setTestResult('Testing...');
-      const result = await LLMPromptService.getLLMConfig();
-      setTestResult(result ? 'Connection OK — config loaded successfully.' : 'No LLM config found. Save your config first.');
-
-      setTestResult(result || 'No response');
+      const cfg = await LLMPromptService.getLLMConfig();
+      setTestResult(cfg ? 'Connection OK — config loaded successfully.' : 'No LLM config found. Save your config first.');
     } catch (e: any) {
       setTestResult('Error: ' + (e.message || 'Unknown error'));
     } finally {
