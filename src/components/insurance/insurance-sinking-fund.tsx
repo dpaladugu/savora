@@ -78,8 +78,12 @@ function sourceTag(p: any) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function InsuranceSinkingFund() {
-  const policies = useLiveQuery(() => db.insurancePolicies?.toArray() ?? Promise.resolve([]), []) ?? [];
-  const goals    = useLiveQuery(() => db.goals.toArray(), []) ?? [];
+  const policies       = useLiveQuery(() => db.insurancePolicies?.toArray() ?? Promise.resolve([]), []) ?? [];
+  const goals          = useLiveQuery(() => db.goals.toArray(), []) ?? [];
+  const globalSettings = useLiveQuery(() => db.globalSettings.limit(1).first().catch(() => undefined), []);
+
+  // Use rate from globalSettings if set, else default 14% IRDAI benchmark
+  const medicalInflation = globalSettings?.medicalInflationRate ?? DEFAULT_MEDICAL_INFLATION;
 
   const { personalPay, corpPay, govtPay } = useMemo(() => {
     const personalPay: typeof policies = [];
@@ -99,25 +103,26 @@ export function InsuranceSinkingFund() {
     let totalMonSave = 0;
     for (const p of personalPay) {
       const termYears = (p as any).premiumTermYears ?? 1;
-      const proj = projectedNextPremium(p.premium ?? 0, termYears);
+      const proj = projectedNextPremium(p.premium ?? 0, termYears, medicalInflation);
       const effectiveMonths = termYears > 1 ? termYears * 12 : monthsUntilRenewal(p.endDate);
       totalProjPremium += proj;
       totalMonSave += Math.ceil(proj / Math.max(1, effectiveMonths));
     }
     return { totalProjectedPremium: totalProjPremium, totalMonthlySave: totalMonSave };
-  }, [personalPay]);
+  }, [personalPay, medicalInflation]);
 
   const hasGoal = (policyId: string) =>
     goals.some(g => (g as any).notes?.includes(`insurance-sf:${policyId}`));
 
   const createGoal = async (p: typeof policies[0]) => {
     if (hasGoal(p.id)) { toast.info('Sinking fund goal already exists'); return; }
-    const termYears      = (p as any).premiumTermYears ?? 1;
+    const termYears       = (p as any).premiumTermYears ?? 1;
     const effectiveMonths = termYears > 1 ? termYears * 12 : monthsUntilRenewal(p.endDate);
-    const projPremium    = projectedNextPremium(p.premium ?? 0, termYears);
-    const monthly        = Math.ceil(projPremium / Math.max(1, effectiveMonths));
-    const inflationPct   = Math.round((projPremium / (p.premium || 1) - 1) * 100);
-    const goalName       = `🛡️ Insurance SF: ${p.provider ?? ''} ${p.type ?? ''}`.trim();
+    const projPremium     = projectedNextPremium(p.premium ?? 0, termYears, medicalInflation);
+    const monthly         = Math.ceil(projPremium / Math.max(1, effectiveMonths));
+    const inflationPct    = Math.round((projPremium / (p.premium || 1) - 1) * 100);
+    const goalName        = `🛡️ Insurance SF: ${p.provider ?? ''} ${p.type ?? ''}`.trim();
+    const inflationLabel  = `${Math.round(medicalInflation * 100)}%`;
 
     try {
       await db.goals.add({
@@ -131,13 +136,13 @@ export function InsuranceSinkingFund() {
         notes: [
           `insurance-sf:${p.id}`,
           `Monthly save: ₹${monthly.toLocaleString('en-IN')} for ${effectiveMonths}mo`,
-          `Projected premium @${MEDICAL_INFLATION * 100}% inflation: ₹${projPremium.toLocaleString('en-IN')} (+${inflationPct}% vs ₹${(p.premium ?? 0).toLocaleString('en-IN')} paid)`,
+          `Projected premium @${inflationLabel} inflation: ₹${projPremium.toLocaleString('en-IN')} (+${inflationPct}% vs ₹${(p.premium ?? 0).toLocaleString('en-IN')} paid)`,
           `Renewal: ${renewalLabel(p.endDate)}`,
         ].join(' | '),
         createdAt: new Date(),
         updatedAt: new Date(),
       } as any);
-      toast.success(`Goal created — save ₹${monthly.toLocaleString('en-IN')}/mo (projected ₹${projPremium.toLocaleString('en-IN')} next premium)`);
+      toast.success(`Goal created — save ₹${monthly.toLocaleString('en-IN')}/mo (projected ₹${projPremium.toLocaleString('en-IN')} next premium @ ${inflationLabel} hike)`);
     } catch {
       toast.error('Failed to create goal');
     }
