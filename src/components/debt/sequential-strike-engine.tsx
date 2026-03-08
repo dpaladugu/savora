@@ -132,18 +132,20 @@ export function SequentialStrikeEngine() {
     async function load() {
       try {
         const loans = await db.loans.toArray();
-        const incred = loans.find(l =>
-          l.isActive &&
-          (l.type?.toLowerCase().includes('incred') ||
-           l.type?.toLowerCase().includes('education') ||
-           (l.roi ?? 0) >= 14)
-        );
-        const icici = loans.find(l =>
-          l.isActive &&
-          (l.type?.toLowerCase().includes('icici') ||
-           l.type?.toLowerCase().includes('personal') ||
-           (l.borrower === 'Me' && (l.roi ?? 0) < 12 && (l.principal ?? 0) >= 2_000_000))
-        );
+        const active = loans.filter(l => l.isActive !== false);
+        // Prefer stable seeded ID, fall back to name/roi heuristic
+        const incred = active.find(l => l.id === 'loan-incred-2026')
+          ?? active.find(l => {
+            const n = (l.name ?? l.type ?? '').toLowerCase();
+            return n.includes('incred') || n.includes('education') || (l.roi ?? 0) >= 14;
+          });
+        const icici = active.find(l => l.id === 'loan-icici-master-2026')
+          ?? active.find(l => {
+            const n = (l.name ?? '').toLowerCase();
+            return n.includes('master') ||
+              (n.includes('icici') && (l.principal ?? 0) >= 20_00_000) ||
+              (l.borrower === 'Me' && (l.roi ?? 0) < 12 && (l.principal ?? 0) >= 20_00_000);
+          });
         setIncredLoan(incred ?? null);
         setIciciLoan(icici ?? null);
       } catch (e) {
