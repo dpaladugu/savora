@@ -46,8 +46,8 @@ export function CFARecommendationsDashboard() {
       ]);
 
       const [cfaRecommendations, analysis] = await Promise.all([
-        CFARecommendationEngine.generateRecommendations(investments, expenses),
-        CFARecommendationEngine.analyzePortfolio(investments, expenses)
+        CFARecommendationEngine.generateRecommendations(investments as any, expenses as any),
+        CFARecommendationEngine.analyzePortfolio(investments as any, expenses as any)
       ]);
 
       // Flatten all recommendation types into a single array

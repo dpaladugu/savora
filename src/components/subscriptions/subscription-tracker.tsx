@@ -89,7 +89,7 @@ export function SubscriptionTracker() {
       name: subscription.name,
       cost: subscription.cost.toString(),
       category: subscription.category,
-      billingCycle: subscription.billingCycle,
+      billingCycle: subscription.billingCycle as 'Monthly' | 'Quarterly' | 'Yearly',
       nextRenewal: subscription.nextRenewal.toISOString().split('T')[0],
       autoRenew: subscription.autoRenew,
       reminderEnabled: subscription.reminderEnabled,

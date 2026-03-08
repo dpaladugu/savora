@@ -53,7 +53,7 @@ export class EncryptionService {
       );
 
       const encryptedPayload: EncryptedData = {
-        iv: this.bufferToBase64(iv),
+        iv: this.bufferToBase64(iv.buffer as ArrayBuffer),
         ciphertext: this.bufferToBase64(encryptedBuffer),
       };
       return JSON.stringify(encryptedPayload);
