@@ -443,6 +443,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />
 
+      {/* ── Goal Progress Row ── */}
+      <GoalProgressRow onNavigate={onTabChange} />
+
       {/* ── Charts + Recent Activity ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardCharts data={dashboardData} />
