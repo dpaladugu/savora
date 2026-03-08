@@ -142,23 +142,39 @@ export function InsuranceManager() {
         }
       />
 
-      {/* Alerts */}
-      {(expiringSoon.length > 0 || expired.length > 0) && (
-        <div className="space-y-2">
-          {expired.map(p => (
-            <div key={p.id} className="flex items-center gap-2 p-3 rounded-xl bg-destructive/8 border border-destructive/20 text-xs text-destructive">
-              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-              <span><strong>{p.provider} {p.type}</strong> expired — renew immediately.</span>
-            </div>
-          ))}
-          {expiringSoon.map(p => (
-            <div key={p.id} className="flex items-center gap-2 p-3 rounded-xl bg-warning/8 border border-warning/20 text-xs text-warning">
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span><strong>{p.provider} {p.type}</strong> renews in {daysUntil(p.endDate!.toString())} days.</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Alerts — expired, expiring soon, and missing nominee */}
+      {(() => {
+        const missingNominee = policies.filter(p => !p.nomineeName || p.nomineeName.trim() === '');
+        const hasAlerts = expiringSoon.length > 0 || expired.length > 0 || missingNominee.length > 0;
+        if (!hasAlerts) return null;
+        return (
+          <div className="space-y-2">
+            {expired.map(p => (
+              <div key={p.id} className="flex items-center gap-2 p-3 rounded-xl bg-destructive/8 border border-destructive/20 text-xs text-destructive">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                <span><strong>{p.provider} {p.type}</strong> expired — renew immediately.</span>
+              </div>
+            ))}
+            {expiringSoon.map(p => (
+              <div key={p.id} className="flex items-center gap-2 p-3 rounded-xl bg-warning/8 border border-warning/20 text-xs text-warning">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span><strong>{p.provider} {p.type}</strong> renews in {daysUntil(p.endDate!.toString())} days.</span>
+              </div>
+            ))}
+            {missingNominee.map(p => (
+              <div key={`nominee-${p.id}`} className="flex items-start gap-2 p-3 rounded-xl bg-destructive/8 border border-destructive/20 text-xs text-destructive">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <span className="font-semibold">Nominee missing — {p.provider} {p.type}</span>
+                  <span className="text-destructive/80"> ({p.familyMember || 'Me'})</span>
+                  <p className="mt-0.5 text-destructive/70">A policy without a nominee is an antifragility failure point. Tap edit to add one.</p>
+                </div>
+                <Button size="sm" variant="ghost" className="h-6 px-2 text-[10px] text-destructive border border-destructive/30 rounded-lg shrink-0" onClick={() => openEdit(p)}>Fix →</Button>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-2">

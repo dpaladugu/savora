@@ -152,26 +152,38 @@ export class LoanService {
 
 export class BrotherRepaymentService {
   /**
-   * Add repayment
+   * Add repayment — also reduces loan.outstanding and writes a FamilyTransfer ledger entry (§17)
    */
   static async addRepayment(repayment: Omit<BrotherRepayment, 'id'>): Promise<string> {
     try {
       const id = crypto.randomUUID();
-      await extendedDb.brotherRepayments.add({
-        ...repayment,
-        id
-      });
-      
-      // Update loan outstanding
+      await extendedDb.brotherRepayments.add({ ...repayment, id });
+
+      // ── Reduce loan outstanding ───────────────────────────────────────────
       const loan = await extendedDb.loans.get(repayment.loanId);
       if (loan) {
         const newOutstanding = Math.max(0, loan.outstanding - repayment.amount);
         await extendedDb.loans.update(repayment.loanId, {
           outstanding: newOutstanding,
-          isActive: newOutstanding > 0
+          isActive: newOutstanding > 0,
         });
       }
-      
+
+      // ── Write Family Transfer Ledger entry (§17) ──────────────────────────
+      // Import db at runtime to avoid circular deps with extendedDb
+      const { db } = await import('@/lib/db');
+      await db.familyTransfers.add({
+        id: crypto.randomUUID(),
+        amount: repayment.amount,
+        toPerson: 'Brother',
+        from: 'Me',
+        to: 'Brother',
+        purpose: loan ? `Repayment – ${loan.name}` : 'Loan Repayment',
+        mode: repayment.mode ?? 'Bank',
+        date: repayment.date ?? new Date(),
+        createdAt: new Date(),
+      });
+
       return id;
     } catch (error) {
       console.error('Error adding repayment:', error);

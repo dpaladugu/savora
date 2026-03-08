@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import {
   Pencil, Trash2, Plus, Play, Pause, Repeat,
-  CalendarClock, TrendingUp, TrendingDown, Zap,
+  CalendarClock, TrendingUp, TrendingDown, Zap, Sparkles, X,
 } from "lucide-react";
 import { RecurringTransactionForm } from "./recurring-transaction-form";
 import { RecurringTransactionService } from "@/services/RecurringTransactionService";
@@ -15,6 +15,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { formatCurrency } from "@/lib/format-utils";
 import { toast } from "sonner";
 import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
+import { useSIPPrefillStore } from "@/store/sipPrefillStore";
 
 function daysUntil(dateStr: string): number {
   const today = new Date(); today.setHours(0, 0, 0, 0);
