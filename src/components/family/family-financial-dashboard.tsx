@@ -104,7 +104,7 @@ export function FamilyFinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalFamilyWealth)}</div>
-            <div className="flex items-center gap-1 text-sm text-green-600">
+            <div className="flex items-center gap-1 text-sm text-success">
               <TrendingUp className="w-3 h-3" />
               +{wealthGrowth}% this year
             </div>
