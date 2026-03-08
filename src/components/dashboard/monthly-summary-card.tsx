@@ -32,34 +32,20 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
     [],
   ) ?? [];
 
-  // Current month incomes
-  const currentIncomes = useLiveQuery(
-    () => db.incomes
-      .where('date')
-      .between(
-        thisBounds.start.toISOString().split('T')[0],
-        thisBounds.end.toISOString().split('T')[0],
-        true,
-        false,
-      )
-      .toArray()
-      .catch(() => []),
-    [],
-  ) ?? [];
+  // Current month incomes — filter in JS to handle both Date objects and strings
+  const allIncomes = useLiveQuery(() => db.incomes.toArray().catch(() => []), []) ?? [];
 
-  const prevIncomes = useLiveQuery(
-    () => db.incomes
-      .where('date')
-      .between(
-        prevBounds.start.toISOString().split('T')[0],
-        prevBounds.end.toISOString().split('T')[0],
-        true,
-        false,
-      )
-      .toArray()
-      .catch(() => []),
-    [],
-  ) ?? [];
+  const currentIncomes = useMemo(() =>
+    allIncomes.filter(i => {
+      const d = i.date instanceof Date ? i.date : new Date(i.date);
+      return d >= thisBounds.start && d < thisBounds.end;
+    }), [allIncomes, thisBounds.start.getTime(), thisBounds.end.getTime()]);
+
+  const prevIncomes = useMemo(() =>
+    allIncomes.filter(i => {
+      const d = i.date instanceof Date ? i.date : new Date(i.date);
+      return d >= prevBounds.start && d < prevBounds.end;
+    }), [allIncomes, prevBounds.start.getTime(), prevBounds.end.getTime()]);
 
   const { income, expenses, surplus, prevExpenses, prevIncome } = useMemo(() => {
     const income   = currentIncomes.reduce((s, i) => s + i.amount, 0);

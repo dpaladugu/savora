@@ -41,15 +41,15 @@ function IncomeQuickAdd({ open, onClose }: { open: boolean; onClose: () => void 
     if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
     try {
-      await (db as any).incomes.add({
+      const now = new Date();
+      await db.incomes.add({
         id: crypto.randomUUID(),
         amount: amt,
         category,
         description: description || category,
-        date: new Date().toISOString().slice(0, 10),
-        frequency: 'monthly',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        date: now,
+        createdAt: now,
+        updatedAt: now,
       });
       toast.success(`₹${amt.toLocaleString('en-IN')} income recorded`);
       setAmount(''); setDescription(''); setCategory('Salary');
@@ -253,7 +253,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
   const userName    = settings?.userName || 'Devavratha';
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
-  const incomeCount = useLiveQuery(() => (db as any).incomes?.count().catch(() => 0) ?? Promise.resolve(0), []) ?? 0;
+  const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
   const pendingCount = useLiveQuery(
     () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
     [role]
