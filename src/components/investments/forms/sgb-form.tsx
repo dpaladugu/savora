@@ -56,8 +56,10 @@ export function SGBForm({ initial, onDone }: Props) {
 
   const onSubmit = async (data: F) => {
     const now = new Date();
-    const investedVal = data.sgbUnits * data.sgbIssuePrice;
-    const currentVal  = data.sgbUnits * data.currentPricePerG;
+    const investedVal  = data.sgbUnits * data.sgbIssuePrice;
+    const currentVal   = data.sgbUnits * data.currentPricePerG;
+    const annualCoupon = currentVal * 0.025;          // 2.5% on current value
+    const semiAnnual   = annualCoupon / 2;             // paid every 6 months
     const maturityDate = data.sgbIssueDate
       ? (() => { const d = new Date(data.sgbIssueDate!); d.setFullYear(d.getFullYear() + 8); return d; })()
       : undefined;
@@ -83,12 +85,39 @@ export function SGBForm({ initial, onDone }: Props) {
       frequency: 'One-time',
       updatedAt: now,
     };
+
     if (initial?.id) {
       await db.investments.update(initial.id, record);
       toast.success('Updated');
     } else {
-      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
-      toast.success('Added');
+      const invId = crypto.randomUUID();
+      await db.investments.add({ ...record, id: invId, createdAt: now });
+
+      // ── Auto-post this month's SGB coupon as an income entry (semi-annual)
+      // Only post if issue date is set and coupon > 0
+      if (semiAnnual > 0 && data.sgbIssueDate) {
+        const issueDate     = new Date(data.sgbIssueDate);
+        const couponMonths  = [issueDate.getMonth(), (issueDate.getMonth() + 6) % 12];
+        const currentMonth  = new Date().getMonth();
+        const isCouponMonth = couponMonths.includes(currentMonth);
+
+        if (isCouponMonth) {
+          await db.incomes.add({
+            id: crypto.randomUUID(),
+            amount: Math.round(semiAnnual),
+            category: 'Investment Returns',
+            sourceName: `SGB Coupon — ${data.name}`,
+            description: `SGB 2.5% semi-annual coupon → ${data.sgbCouponAccount} (${data.sgbUnits}g @ current price)`,
+            frequency: 'semi-annual',
+            date: now,
+            createdAt: now,
+            updatedAt: now,
+          });
+          toast.info(`₹${Math.round(semiAnnual).toLocaleString('en-IN')} SGB coupon income auto-logged to ${data.sgbCouponAccount}`);
+        }
+      }
+
+      toast.success(`Added ${data.sgbUnits}g SGB · annual coupon ${formatCurrency(annualCoupon)}`);
     }
     onDone();
   };
