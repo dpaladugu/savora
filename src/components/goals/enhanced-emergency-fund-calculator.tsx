@@ -127,7 +127,7 @@ export function EnhancedEmergencyFundCalculator() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-primary" />
               Emergency Fund Calculator
             </CardTitle>
           </CardHeader>
