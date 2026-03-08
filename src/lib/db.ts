@@ -343,4 +343,11 @@ db.version(5).stores({}).upgrade(tx =>
   })
 );
 
+// Version 6: Guntur waterfall persistence
+db.version(6).stores({
+  gunturShops:       '++id, shopId, name, tenant, rent, status',
+  waterfallProgress: '++id, bucketId, accumulated',
+  gorantlaRooms:     '++id, roomId, name, tenant, rent, paid',
+});
+
 export { db };
