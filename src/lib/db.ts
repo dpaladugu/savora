@@ -306,6 +306,8 @@ export interface GunturShopRow {
   rent: number;
   status: 'Vacant' | 'Occupied';
   paid: boolean;
+  advanceAmount?: number;
+  advanceDate?: Date;
   updatedAt: Date;
 }
 
@@ -323,6 +325,8 @@ export interface GorantlaRoomRow {
   tenant: string;
   rent: number;
   paid: boolean;
+  advanceAmount?: number;
+  advanceDate?: Date;
   updatedAt: Date;
 }
 
