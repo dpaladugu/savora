@@ -276,6 +276,18 @@ export interface AppSettingTable {
   value: any;
 }
 
+export interface PendingTxn {
+  id: string;
+  rawText: string;
+  amount: number;
+  category: string;
+  note: string;
+  paymentMode?: string;
+  source: 'telegram' | 'manual';
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+}
+
 export interface GunturShopRow {
   id: string;
   shopId: string;
