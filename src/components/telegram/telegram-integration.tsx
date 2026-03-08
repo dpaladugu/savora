@@ -69,9 +69,9 @@ export function TelegramIntegration() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-800 dark:text-blue-200 mb-2">Getting Started</h4>
-              <ol className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4">
+              <h4 className="font-semibold text-foreground mb-2">Getting Started</h4>
+              <ol className="text-sm text-muted-foreground space-y-1">
                 <li>1. Search for @{botUsername} on Telegram</li>
                 <li>2. Send /start to the bot</li>
                 <li>3. Copy your Chat ID from the bot response</li>
