@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Edit, Trash2, Car, AlertTriangle, Flame, Wrench } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Edit, Trash2, Car, AlertTriangle, Flame, Wrench, Upload } from 'lucide-react';
 import { VehicleService } from '@/services/VehicleService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Vehicle } from '@/db';
 import { PageHeader } from '@/components/layout/page-header';
+import { FuelioImporter } from './FuelioImporter';
 
 // FZS oil change watchdog thresholds
 const FZS_WARN_KM   = 1000;
