@@ -116,6 +116,7 @@ export function InsuranceManager() {
       type: p.type, provider: p.provider ?? '', policyNo: p.policyNo || '',
       familyMember: p.familyMember || 'Me',
       policySource: p.policySource || 'Personal',
+      premiumTermYears: String(p.premiumTermYears ?? 1),
       sumInsured: p.sumInsured.toString(), premium: p.premium.toString(),
       startDate: p.startDate ? new Date(p.startDate).toISOString().split('T')[0] : '',
       endDate: p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : '',
@@ -129,6 +130,7 @@ export function InsuranceManager() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const isCorp = form.policySource === 'Corporate / Employer';
+    const termYears = Math.max(1, parseInt(form.premiumTermYears) || 1);
     const data: Omit<Insurance, 'id'> = {
       name: `${form.provider} ${form.type}`,
       type: form.type, provider: form.provider, policyNo: form.policyNo,
@@ -136,6 +138,7 @@ export function InsuranceManager() {
       policySource: form.policySource as Insurance['policySource'],
       isCorporate: isCorp,
       hasMaternity: form.hasMaternity,
+      premiumTermYears: termYears,
       sumInsured: parseFloat(form.sumInsured) || 0,
       premium: parseFloat(form.premium) || 0,
       startDate: form.startDate ? new Date(form.startDate) : new Date(),
