@@ -1,6 +1,7 @@
 
 import { db } from "@/lib/db";
 import type { Txn } from '@/lib/db';
+import { checkSpendingLimitAfterExpense } from '@/lib/spending-limit-checker';
 
 // Expense type for backward compatibility
 export interface Expense {
@@ -43,6 +44,10 @@ export class ExpenseService {
       };
       
       await db.txns.add(txnData);
+
+      // ── Spending-limit check (non-blocking) ─────────────────────────────
+      checkSpendingLimitAfterExpense(expenseData.category, expenseData.amount, expenseData.date);
+
       return newId;
     } catch (error) {
       console.error("Error in ExpenseService.addExpense:", error);
