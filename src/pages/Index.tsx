@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { seedInitialData } from "@/lib/seed-data";
 import { performStartupVerification, logStartupResults } from "@/utils/startup-verification";
 import { GlobalHeader } from "@/components/layout/global-header";
+import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 
 const MainApp = () => {
   let isUnlocked = false;
@@ -27,26 +28,57 @@ const MainApp = () => {
 
   return (
     <GlobalErrorBoundary>
-      {/* Full-height flex column so content fills between header and nav */}
+      {/*
+        Layout grid:
+          Mobile  (< 768px)  : single column, fixed top header + fixed bottom nav
+          Tablet  (768–1024) : single column, fixed top header + fixed bottom nav
+          Desktop (≥ 1024px) : fixed top header spans full width;
+                               content area is split: 240px left sidebar + flex-1 main
+      */}
       <div className="flex flex-col min-h-screen bg-background">
-        {/* Fixed top header */}
+        {/* ── Fixed top header — full width on all devices ── */}
         <GlobalHeader title="Savora" />
 
-        {/* Scrollable content area — pt accounts for fixed header (56px), pb for nav (72px) */}
-        <main
-          className="flex-1 px-4 pt-[70px] pb-[80px] overflow-y-auto"
-          id="main-content"
-          tabIndex={-1}
-        >
-          <MainContentRouter
+        {/* ── Below-header body ── */}
+        <div className="flex flex-1 pt-14">
+          {/* Desktop/laptop sidebar (hidden on mobile & tablet) */}
+          <DesktopSidebar
             activeTab={activeTab}
+            onTabChange={handleTabChange}
             activeMoreModule={activeMoreModule}
             onMoreNavigation={handleMoreNavigation}
-            onTabChange={handleTabChange}
           />
-        </main>
 
-        {/* Persistent bottom nav */}
+          {/*
+            Main scroll area
+            Mobile/tablet : full width, pb-20 for bottom nav
+            Desktop        : remaining width, no bottom nav padding
+          */}
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="
+              flex-1 min-w-0 overflow-y-auto
+              px-4 py-5
+              pb-[env(safe-area-inset-bottom,0px)]
+              md:pb-[calc(80px+env(safe-area-inset-bottom,0px))]
+              lg:pb-6 lg:px-8
+              focus:outline-none
+            "
+          >
+            {/* Content width cap — centres on ultra-wide screens */}
+            <div className="max-w-3xl mx-auto">
+              <MainContentRouter
+                activeTab={activeTab}
+                activeMoreModule={activeMoreModule}
+                onMoreNavigation={handleMoreNavigation}
+                onTabChange={handleTabChange}
+              />
+            </div>
+          </main>
+        </div>
+
+        {/* ── Fixed bottom nav — mobile & tablet only ── */}
         <PersistentNavigation
           activeTab={activeTab}
           onTabChange={handleTabChange}
