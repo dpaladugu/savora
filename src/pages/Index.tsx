@@ -14,6 +14,7 @@ import { performStartupVerification, logStartupResults } from "@/utils/startup-v
 import { GlobalHeader } from "@/components/layout/global-header";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { useAutoLock } from "@/hooks/use-auto-lock";
+import { useLiveQuery } from "dexie-react-hooks";
 import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
 
 const MainApp = () => {
