@@ -94,19 +94,28 @@ export function LLMSettingsForm() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="config" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="config" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" />
-            Configuration
-          </TabsTrigger>
-          <TabsTrigger value="prompts" className="flex items-center gap-2">
-            <Brain className="h-4 w-4" />
-            Prompt Templates
-          </TabsTrigger>
-          <TabsTrigger value="test" className="flex items-center gap-2">
-            <TestTube className="h-4 w-4" />
-            Test & Debug
-          </TabsTrigger>
+        <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 rounded-2xl p-1 bg-muted/60 border border-border/40 h-auto">
+          {[
+            { value: 'config',  icon: Settings, label: 'Config'    },
+            { value: 'prompts', icon: Brain,    label: 'Prompts'   },
+            { value: 'test',    icon: TestTube, label: 'Test'      },
+          ].map(({ value, icon: Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="
+                flex flex-1 min-w-[72px] items-center justify-center gap-1.5
+                py-2.5 px-3 rounded-xl text-xs font-semibold
+                whitespace-nowrap shrink-0
+                data-[state=active]:bg-background data-[state=active]:shadow-sm
+                data-[state=active]:text-primary text-muted-foreground
+                transition-all duration-150
+              "
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="config">
