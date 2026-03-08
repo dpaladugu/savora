@@ -205,17 +205,17 @@ const modules: MoreModule[] = [
   },
 ];
 
-export function MoreScreen() {
+export function MoreScreen({ onNavigate, onClose }: { onNavigate?: (id: string) => void; onClose?: () => void }) {
   const role = useRole();
-
-  const visibleModules = modules.filter(m => {
-    if (m.roleRequired && role !== m.roleRequired && role !== 'ADMIN') return false;
-    return true;
-  });
 
   const handleModuleClick = (moduleId: string, status: string) => {
     if (status === 'coming-soon') return;
-    window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
+    if (onNavigate) {
+      onNavigate(moduleId);
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
+    }
+    onClose?.();
   };
 
   const getStatusBadge = (status: string) => {
