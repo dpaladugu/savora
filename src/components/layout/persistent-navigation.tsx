@@ -160,6 +160,12 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
                 strokeWidth={isMoreActive ? 2.5 : 1.8}
               />
               <span className="text-[10px] font-medium leading-none">More</span>
+              {/* Pending-txn badge (ADMIN only) */}
+              {pendingCount > 0 && (
+                <span className="absolute top-1.5 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground leading-none">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
             </button>
           </SheetTrigger>
 
