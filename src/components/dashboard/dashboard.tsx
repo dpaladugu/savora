@@ -3,10 +3,12 @@ import React from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target, Shield } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useRole, usePermissions } from '@/store/rbacStore';
+import { MaskedValue } from '@/components/ui/masked-value';
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -14,25 +16,14 @@ interface DashboardProps {
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-function QuickActions({
-  onTabChange,
-}: {
-  onTabChange: (t: string) => void;
-}) {
+function QuickActions({ onTabChange }: { onTabChange: (t: string) => void }) {
   const actions = [
     { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')     },
     { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards') },
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')        },
     { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')  },
   ];
-
   return (
-    /*
-      Equal-width grid on all screen sizes.
-      Each button fills its column — no horizontal scroll, no overflow.
-      iPhone SE (320px): 4 × ~68px = fine.
-      S22 Ultra (412px): 4 × ~88px = comfortable.
-    */
     <div className="grid grid-cols-4 gap-2.5" role="group" aria-label="Quick actions">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
@@ -49,7 +40,7 @@ function QuickActions({
           "
         >
           <Icon className="h-5 w-5 text-primary" strokeWidth={1.8} aria-hidden="true" />
-          <span className="text-[10px] font-medium text-foreground leading-none text-center px-1 break-words w-full text-center">
+          <span className="text-[10px] font-medium text-foreground leading-none text-center px-1 w-full">
             {label}
           </span>
         </button>
@@ -58,14 +49,42 @@ function QuickActions({
   );
 }
 
+// ── Role-aware metric value helper ────────────────────────────────────────────
+function MetricValue({
+  raw,
+  permission,
+}: {
+  raw: string;
+  permission?: 'showSalary' | 'showInvestments';
+}) {
+  return (
+    <MaskedValue
+      value={raw}
+      permission={permission}
+      placeholder="₹••••••"
+      className="tabular-nums"
+    />
+  );
+}
+
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { dashboardData, loading } = useDashboardData();
+  const role = useRole();
+  const perms = usePermissions();
+
+  // Build metric value strings (actual values — masking applied inside MetricValue)
+  const balanceStr     = `₹${(245678).toLocaleString('en-IN')}`;
+  const expenseStr     = `₹${dashboardData.monthlyExpenses.toLocaleString('en-IN')}`;
+  const investStr      = `₹${dashboardData.totalInvestments.toLocaleString('en-IN')}`;
+  const ccStr          = `₹${dashboardData.creditCardDebt.toLocaleString('en-IN')}`;
 
   const metrics: MetricCardProps[] = [
     {
       title: 'Total Balance',
-      value: '₹2,45,678',
+      value: perms.showSalary || role === 'ADMIN'
+        ? balanceStr
+        : '🔒 Hidden',
       change: '+12.5%',
       icon: DollarSign,
       changeType: 'positive',
@@ -73,7 +92,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     },
     {
       title: 'Monthly Exp.',
-      value: `₹${dashboardData.monthlyExpenses.toLocaleString('en-IN')}`,
+      value: expenseStr,
       change: '-5.2%',
       icon: TrendingDown,
       changeType: 'negative',
@@ -81,7 +100,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     },
     {
       title: 'Investments',
-      value: `₹${dashboardData.totalInvestments.toLocaleString('en-IN')}`,
+      value: perms.showInvestments || role === 'ADMIN'
+        ? investStr
+        : '🔒 Hidden',
       change: '+8.3%',
       icon: TrendingUp,
       changeType: 'positive',
@@ -89,7 +110,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     },
     {
       title: 'Credit Cards',
-      value: `₹${dashboardData.creditCardDebt.toLocaleString('en-IN')}`,
+      value: ccStr,
       change: '+2.1%',
       icon: CreditCard,
       changeType: 'neutral',
@@ -99,17 +120,13 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
   if (loading) {
     return (
-      <div className="space-y-5 animate-pulse" aria-busy="true" aria-label="Loading dashboard">
+      <div className="space-y-5 animate-pulse" aria-busy="true">
         <div className="h-6 bg-muted rounded-xl w-1/3" />
         <div className="grid grid-cols-4 gap-2.5">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-[72px] bg-muted rounded-2xl" />
-          ))}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-[72px] bg-muted rounded-2xl" />)}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-24 bg-muted rounded-2xl" />
-          ))}
+          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-2xl" />)}
         </div>
       </div>
     );
@@ -117,10 +134,18 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
   return (
     <div className="space-y-5">
-      {/* ── Page title ── */}
-      <div>
-        <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Welcome back, Prasad</p>
+      {/* ── Page title + role badge ── */}
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, Prasad</p>
+        </div>
+        {role === 'GUEST' && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/50 text-xs text-muted-foreground">
+            <Shield className="h-3 w-3" />
+            Values masked
+          </div>
+        )}
       </div>
 
       {/* ── Quick Actions ── */}
