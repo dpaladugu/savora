@@ -756,48 +756,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
 }
 
 
-  const gunturTax   = React.useMemo(() => { try { return JSON.parse(gunturTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gunturTaxSetting]);
-  const gorantlaTax = React.useMemo(() => { try { return JSON.parse(gorantlaTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gorantlaTaxSetting]);
-
-  // What-If slider state
-  const [vacantShops,     setVacantShops]     = React.useState(0);
-  const [vacantMonths,    setVacantMonths]    = React.useState(1);
-
-  const recoveryAccumulated = progress.find(p => p.bucketId === 'recovery')?.accumulated ?? 0;
-
-  // Gross incomes
-  const gunturGross   = shops.reduce((s, sh) => s + sh.rent, 0);
-  const gorantlaGross = rooms.reduce((s, r) => s + r.rent, 0);
-
-  // P0 deductions
-  const gunturP0   = (gunturTax.propertyTax ?? 0) + (gunturTax.waterTax ?? 0);
-  const gorantlaP0 = (gorantlaTax.propertyTax ?? 0) + (gorantlaTax.waterTax ?? 0) + DWACRA_DEDUCTION;
-
-  const gunturNet   = Math.max(0, gunturGross - gunturP0);
-  const gorantlaNet = Math.max(0, gorantlaGross - gorantlaP0);
-  const combinedNet = gunturNet + gorantlaNet;
-
-  // P1 Recovery timeline
-  const p1Remaining     = Math.max(0, INS_RECOVERY_TARGET - recoveryAccumulated);
-  const p1PctDone       = Math.min(100, (recoveryAccumulated / INS_RECOVERY_TARGET) * 100);
-  const p1MonthsLeft    = combinedNet > 0 ? Math.ceil(p1Remaining / Math.min(combinedNet, INS_RECOVERY_MONTHLY)) : 999;
-  const p1MaturityDate  = new Date();
-  p1MaturityDate.setMonth(p1MaturityDate.getMonth() + p1MonthsLeft);
-  const p1Done          = p1Remaining <= 0;
-
-  // P2 2029 Renewal timeline (starts after P1 done)
-  const p2Saving        = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
-  const p2Accumulated   = progress.find(p => p.bucketId === 'sinking')?.accumulated ?? 0;
-  const p2Remaining     = Math.max(0, INS_2029_TARGET - p2Accumulated);
-  const p2PctDone       = Math.min(100, (p2Accumulated / INS_2029_TARGET) * 100);
-  const p2MonthsLeft    = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
-  const p2MaturityDate  = new Date();
-  p2MaturityDate.setMonth(p2MaturityDate.getMonth() + (p1Done ? 0 : p1MonthsLeft) + p2MonthsLeft);
-
-  // Feb 2029 deadline
-  const feb2029 = new Date(2029, 1, 1);
-  const p2SafeByDeadline = p2MaturityDate <= feb2029;
-
   // ── What-If Calculation ──
   const avgShopRent = shops.filter(s => s.status === 'Occupied').length > 0
     ? shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0) / shops.filter(s => s.status === 'Occupied').length
