@@ -252,7 +252,7 @@ export function EnhancedEmergencyFundCalculator() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
+              <TrendingUp className="w-5 h-5 text-success" />
               Smart Recommendations
             </CardTitle>
           </CardHeader>
