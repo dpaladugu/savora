@@ -1,13 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Edit3, Plus } from 'lucide-react';
 import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -16,7 +17,6 @@ export function ExpenseTracker() {
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
-  // Form state
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
@@ -26,286 +26,165 @@ export function ExpenseTracker() {
     paymentMethod: 'Cash',
   });
 
-  useEffect(() => {
-    loadExpenses();
-  }, []);
+  useEffect(() => { loadExpenses(); }, []);
 
   const loadExpenses = async () => {
     try {
       setLoading(true);
       const data = await ExpenseService.getExpenses();
       setExpenses(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    } catch (error) {
-      console.error('Error loading expenses:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load expenses',
-        variant: 'destructive',
-      });
+    } catch {
+      toast({ title: 'Error', description: 'Failed to load expenses', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
+  const resetForm = () => setFormData({ amount: '', description: '', category: '', date: new Date().toISOString().split('T')[0], tags: '', paymentMethod: 'Cash' });
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.amount || !formData.description || !formData.category) {
-      toast({
-        title: 'Error',
-        description: 'Please fill in all required fields',
-        variant: 'destructive',
-      });
-      return;
+      toast({ title: 'Required fields missing', variant: 'destructive' }); return;
     }
-
     try {
-      const expenseData = {
+      const payload = {
         amount: parseFloat(formData.amount),
         description: formData.description,
         category: formData.category,
         date: formData.date,
-        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
+        tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
         payment_method: formData.paymentMethod,
         source: 'manual',
         account: 'default',
       };
-
       if (editingExpense) {
-        await ExpenseService.updateExpense(editingExpense.id, expenseData);
-        toast({
-          title: 'Success',
-          description: 'Expense updated successfully',
-        });
+        await ExpenseService.updateExpense(editingExpense.id, payload);
+        toast({ title: 'Expense updated' });
       } else {
-        await ExpenseService.addExpense(expenseData);
-        toast({
-          title: 'Success',
-          description: 'Expense added successfully',
-        });
+        await ExpenseService.addExpense(payload);
+        toast({ title: 'Expense added' });
       }
-
-      // Reset form
-      setFormData({
-        amount: '',
-        description: '',
-        category: '',
-        date: new Date().toISOString().split('T')[0],
-        tags: '',
-        paymentMethod: 'Cash',
-      });
-      setShowAddForm(false);
-      setEditingExpense(null);
-      loadExpenses();
-    } catch (error) {
-      console.error('Error saving expense:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to save expense',
-        variant: 'destructive',
-      });
+      resetForm(); setShowAddForm(false); setEditingExpense(null); loadExpenses();
+    } catch {
+      toast({ title: 'Failed to save expense', variant: 'destructive' });
     }
   };
 
   const handleEdit = (expense: Expense) => {
     setEditingExpense(expense);
-    setFormData({
-      amount: expense.amount.toString(),
-      description: expense.description,
-      category: expense.category,
-      date: expense.date,
-      tags: expense.tags.join(', '),
-      paymentMethod: expense.payment_method,
-    });
+    setFormData({ amount: expense.amount.toString(), description: expense.description, category: expense.category, date: expense.date, tags: expense.tags.join(', '), paymentMethod: expense.payment_method });
     setShowAddForm(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this expense?')) return;
-
-    try {
-      await ExpenseService.deleteExpense(id);
-      toast({
-        title: 'Success',
-        description: 'Expense deleted successfully',
-      });
-      loadExpenses();
-    } catch (error) {
-      console.error('Error deleting expense:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to delete expense',
-        variant: 'destructive',
-      });
-    }
+    if (!confirm('Delete this expense?')) return;
+    try { await ExpenseService.deleteExpense(id); toast({ title: 'Expense deleted' }); loadExpenses(); }
+    catch { toast({ title: 'Failed to delete expense', variant: 'destructive' }); }
   };
 
-  const totalExpenses = expenses.reduce((sum, expense) => sum + expense.amount, 0);
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading expenses...</div>;
-  }
+  if (loading) return (
+    <div className="space-y-3" aria-busy="true">
+      <div className="h-6 bg-muted rounded w-1/3 animate-pulse" />
+      {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-2xl animate-pulse" />)}
+    </div>
+  );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Expense Tracker</h1>
-          <p className="text-gray-600">Total Expenses: ₹{totalExpenses.toLocaleString('en-IN')}</p>
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Expense Tracker</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Total: <span className="tabular-nums font-semibold text-foreground">₹{totalExpenses.toLocaleString('en-IN')}</span>
+          </p>
         </div>
-        <Button onClick={() => setShowAddForm(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Expense
+        <Button size="sm" onClick={() => setShowAddForm(true)} className="h-9 gap-1.5 shrink-0 rounded-xl text-xs">
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add Expense
         </Button>
       </div>
 
+      {/* ── Add / Edit form ── */}
       {showAddForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>{editingExpense ? 'Edit Expense' : 'Add New Expense'}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Amount (₹)</label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
-                    placeholder="0.00"
-                    required
-                  />
+        <Card className="glass border-primary/20">
+          <CardContent className="p-4 pt-4">
+            <h2 className="text-sm font-semibold mb-3">{editingExpense ? 'Edit Expense' : 'New Expense'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Amount (₹) *</label>
+                  <Input type="number" step="0.01" value={formData.amount} onChange={e => setFormData(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" className="h-9 text-sm" required />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Category</label>
-                  <Input
-                    value={formData.category}
-                    onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                    placeholder="e.g., Food, Transport, Entertainment"
-                    required
-                  />
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Category *</label>
+                  <Input value={formData.category} onChange={e => setFormData(p => ({ ...p, category: e.target.value }))} placeholder="Food, Transport…" className="h-9 text-sm" required />
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Description</label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    placeholder="Brief description of the expense"
-                    required
-                  />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Description *</label>
+                <Input value={formData.description} onChange={e => setFormData(p => ({ ...p, description: e.target.value }))} placeholder="Brief description" className="h-9 text-sm" required />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Date</label>
+                  <Input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} className="h-9 text-sm" required />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Date</label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Payment Method</label>
-                  <Select value={formData.paymentMethod} onValueChange={(value) => setFormData(prev => ({ ...prev, paymentMethod: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Payment</label>
+                  <Select value={formData.paymentMethod} onValueChange={v => setFormData(p => ({ ...p, paymentMethod: v }))}>
+                    <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Cash">Cash</SelectItem>
-                      <SelectItem value="Card">Card</SelectItem>
-                      <SelectItem value="UPI">UPI</SelectItem>
-                      <SelectItem value="Bank">Bank Transfer</SelectItem>
+                      {['Cash', 'Card', 'UPI', 'Bank'].map(m => <SelectItem key={m} value={m} className="text-sm">{m}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Tags (comma-separated)</label>
-                  <Input
-                    value={formData.tags}
-                    onChange={(e) => setFormData(prev => ({ ...prev, tags: e.target.value }))}
-                    placeholder="e.g., work, personal, urgent"
-                  />
-                </div>
               </div>
-              <div className="flex gap-2">
-                <Button type="submit">{editingExpense ? 'Update' : 'Add'} Expense</Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowAddForm(false);
-                    setEditingExpense(null);
-                    setFormData({
-                      amount: '',
-                      description: '',
-                      category: '',
-                      date: new Date().toISOString().split('T')[0],
-                      tags: '',
-                      paymentMethod: 'Cash',
-                    });
-                  }}
-                >
-                  Cancel
-                </Button>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Tags (comma-separated)</label>
+                <Input value={formData.tags} onChange={e => setFormData(p => ({ ...p, tags: e.target.value }))} placeholder="work, personal…" className="h-9 text-sm" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <Button type="submit" size="sm" className="h-9 text-xs flex-1">{editingExpense ? 'Update' : 'Add'}</Button>
+                <Button type="button" size="sm" variant="outline" className="h-9 text-xs flex-1" onClick={() => { setShowAddForm(false); setEditingExpense(null); resetForm(); }}>Cancel</Button>
               </div>
             </form>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-4">
+      {/* ── List ── */}
+      <div className="space-y-2">
         {expenses.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-gray-500">No expenses recorded yet. Add your first expense to get started!</p>
+            <CardContent className="py-10 text-center">
+              <p className="text-sm text-muted-foreground">No expenses recorded yet.</p>
+              <Button size="sm" variant="outline" className="mt-3 h-9 text-xs rounded-xl" onClick={() => setShowAddForm(true)}>Add your first expense</Button>
             </CardContent>
           </Card>
-        ) : (
-          expenses.map((expense) => (
-            <Card key={expense.id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">₹{expense.amount.toLocaleString('en-IN')}</h3>
-                      <Badge variant="outline">{expense.category}</Badge>
-                      <Badge variant="secondary">{expense.payment_method}</Badge>
-                    </div>
-                    <p className="text-gray-700 mb-2">{expense.description}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500">
-                      <span>{new Date(expense.date).toLocaleDateString('en-IN')}</span>
-                      {expense.tags.length > 0 && (
-                        <div className="flex gap-1">
-                          {expense.tags.map((tag, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+        ) : expenses.map(expense => (
+          <Card key={expense.id} className="glass">
+            <CardContent className="p-3.5">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span className="text-sm font-bold tabular-nums text-foreground">₹{expense.amount.toLocaleString('en-IN')}</span>
+                    <Badge variant="outline" className="text-[10px] h-4 px-1.5">{expense.category}</Badge>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1.5">{expense.payment_method}</Badge>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleEdit(expense)}
-                    >
-                      <Edit3 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDelete(expense.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                  <p className="text-xs text-foreground truncate">{expense.description}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{new Date(expense.date).toLocaleDateString('en-IN')}</p>
                 </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+                <div className="flex gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg" onClick={() => handleEdit(expense)} aria-label="Edit expense"><Edit3 className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-8 w-8 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(expense.id)} aria-label="Delete expense"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     </div>
   );

@@ -162,65 +162,47 @@ export function GoldTracker() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Gold Tracker</h1>
-          <p className="text-muted-foreground">Manage your gold investments and track their performance</p>
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Gold Investments</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Holdings, weights & valuations</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Gold
+        <Button size="sm" onClick={() => setShowAddModal(true)} className="h-9 gap-1.5 shrink-0 rounded-xl text-xs">
+          <Plus className="h-3.5 w-3.5" /> Add Gold
         </Button>
       </div>
 
       {/* Gold Holdings List */}
-      <div className="grid gap-4">
+      <div className="space-y-2">
         {goldHoldings.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No gold holdings recorded yet. Add your first holding to get started!</p>
+            <CardContent className="text-center py-10">
+              <p className="text-sm text-muted-foreground">No gold holdings yet. Add your first holding.</p>
             </CardContent>
           </Card>
         ) : (
           goldHoldings.map((gold) => (
-            <Card key={gold.id}>
+            <Card key={gold.id} className="glass">
               <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{gold.form} Gold</h3>
-                      <Badge variant="outline">{gold.purity}</Badge>
-                      <Badge variant="secondary">{gold.netWeight}g</Badge>
-                    </div>
-                    <p className="text-muted-foreground mb-2">{gold.description}</p>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Purchase Price:</span>
-                        <p className="font-medium">{formatCurrency(gold.purchasePrice)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Net Weight:</span>
-                        <p className="font-medium">{gold.netWeight}g</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Family Member:</span>
-                        <p className="font-medium">{gold.familyMember}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Storage:</span>
-                        <p className="font-medium">{gold.storageLocation}</p>
-                      </div>
-                    </div>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <h3 className="text-sm font-semibold text-foreground">{gold.form} Gold</h3>
+                    <Badge variant="outline" className="text-[10px]">{gold.purity}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{gold.netWeight}g</Badge>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(gold)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(gold.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleEdit(gold)} aria-label="Edit"><Edit className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(gold.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
+                </div>
+                {gold.description && <p className="text-xs text-muted-foreground mb-2">{gold.description}</p>}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div><span className="text-muted-foreground">Price: </span><span className="font-medium">{formatCurrency(gold.purchasePrice)}</span></div>
+                  <div><span className="text-muted-foreground">Weight: </span><span className="font-medium">{gold.netWeight}g net</span></div>
+                  <div><span className="text-muted-foreground">Member: </span><span className="font-medium">{gold.familyMember}</span></div>
+                  <div><span className="text-muted-foreground">Storage: </span><span className="font-medium">{gold.storageLocation}</span></div>
                 </div>
               </CardContent>
             </Card>
