@@ -91,10 +91,10 @@ export function EnhancedEmergencyFundCalculator() {
     : 0;
 
   const getStatusColor = (progress: number) => {
-    if (progress >= 100) return 'text-green-600';
-    if (progress >= 75) return 'text-blue-600';
-    if (progress >= 50) return 'text-yellow-600';
-    return 'text-red-600';
+    if (progress >= 100) return 'value-positive';
+    if (progress >= 75) return 'text-primary';
+    if (progress >= 50) return 'text-warning';
+    return 'value-negative';
   };
 
   const getStatusText = (progress: number) => {
