@@ -308,6 +308,10 @@ export interface GunturShopRow {
   paid: boolean;
   advanceAmount?: number;
   advanceDate?: Date;
+  // Tenant profile
+  tenantContact?: string;
+  leaseStart?: Date;
+  tenantIdNote?: string;
   updatedAt: Date;
 }
 
@@ -327,7 +331,22 @@ export interface GorantlaRoomRow {
   paid: boolean;
   advanceAmount?: number;
   advanceDate?: Date;
+  // Tenant profile
+  tenantContact?: string;
+  leaseStart?: Date;
+  tenantIdNote?: string;
   updatedAt: Date;
+}
+
+export interface RentHikeLog {
+  id: string;
+  unitId: string;              // references gunturShops.id or gorantlaRooms.id
+  unitType: 'shop' | 'room';
+  oldRent: number;
+  newRent: number;
+  hikeDate: Date;
+  note?: string;
+  createdAt: Date;
 }
 
 // ─── Database Instance ────────────────────────────────────────────────────────
