@@ -4,125 +4,170 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/layout/page-header";
-import { Trash2, Plus, Edit, CreditCard as CreditCardIcon } from "lucide-react";
+import {
+  Trash2, Plus, Edit, CreditCard as CreditCardIcon,
+  Gift, ShieldAlert, Calendar, Zap, TrendingUp, Star,
+  AlertTriangle, CheckCircle2, Info,
+} from "lucide-react";
 import { toast } from "sonner";
-import { CreditCardService } from "@/services/CreditCardService";
-import { useAuth } from "@/services/auth-service";
+import { db } from "@/lib/db";
+import { useLiveQuery } from "dexie-react-hooks";
 import { formatCurrency } from "@/lib/format-utils";
 import type { CreditCard } from "@/types/financial";
+import { format, differenceInDays, addDays } from "date-fns";
 
-interface CreditCardData {
-  id?: string;
-  name: string;
-  issuer: string;
-  currentBalance: number;
-  limit: number;
-  billCycleDay: number;
-  dueDate?: string;
-  autoDebit?: boolean;
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function nextDueDate(dueDay: number): Date {
+  const now = new Date();
+  let d = new Date(now.getFullYear(), now.getMonth(), dueDay);
+  if (d <= now) d = new Date(now.getFullYear(), now.getMonth() + 1, dueDay);
+  return d;
 }
 
-const emptyForm: Omit<CreditCardData, 'id'> = {
-  name: '',
-  issuer: '',
-  currentBalance: 0,
-  limit: 0,
-  billCycleDay: 1,
+function utilizationColor(pct: number) {
+  if (pct >= 80) return 'text-destructive';
+  if (pct >= 30) return 'text-warning';
+  return 'text-success';
+}
+
+function dueUrgency(daysAway: number) {
+  if (daysAway <= 3)  return { color: 'text-destructive', bg: 'bg-destructive/10 border-destructive/30' };
+  if (daysAway <= 7)  return { color: 'text-warning',     bg: 'bg-warning/10 border-warning/30' };
+  return               { color: 'text-muted-foreground',  bg: 'bg-muted/30 border-border/40' };
+}
+
+// ─── Empty form ───────────────────────────────────────────────────────────────
+const emptyForm = {
+  name: '', bankName: '', last4: '', network: 'Visa',
+  creditLimit: '', currentBalance: '', dueDay: '5', stmtDay: '28',
+  annualFee: '', feeWaiverSpend: '', feeWaiverRule: '',
+  rewardPointsBalance: '', rewardCategory: '',
+  milestone1Spend: '', milestone1Reward: '',
+  milestone2Spend: '', milestone2Reward: '',
+  paymentMethod: 'NACH Auto-Pay',
+  notes: '',
 };
 
+type FormState = typeof emptyForm;
+
+// ─── Component ────────────────────────────────────────────────────────────────
 export function CreditCardManager() {
-  const [creditCards, setCreditCards] = useState<CreditCardData[]>([]);
+  const cards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
+
   const [showModal, setShowModal] = useState(false);
-  const [editingCard, setEditingCard] = useState<CreditCardData | null>(null);
-  const [form, setForm] = useState({ ...emptyForm, currentBalance: '', limit: '', billCycleDay: '1', name: '', issuer: '' });
-  const { user } = useAuth();
+  const [editId,    setEditId]    = useState<string | null>(null);
+  const [form,      setForm]      = useState<FormState>({ ...emptyForm });
+  const [tab,       setTab]       = useState('cards');
 
-  useEffect(() => { if (user) fetchCards(); }, [user]);
+  const set = (k: keyof FormState, v: string) => setForm(f => ({ ...f, [k]: v }));
 
-  const fetchCards = async () => {
-    try {
-      const cards = await CreditCardService.getCreditCards();
-      setCreditCards(cards.map(card => ({
-        id: card.id,
-        name: card.name || `${card.issuer} ${card.bankName}`,
-        issuer: card.issuer || "Unknown",
-        limit: card.creditLimit || 0,
-        currentBalance: card.currentBalance || 0,
-        billCycleDay: card.cycleStart || 1,
-        dueDate: card.dueDate || new Date().toISOString().split('T')[0],
-      })));
-    } catch (e: any) { toast.error(`Failed to load cards: ${e.message}`); }
-  };
-
-  const openAdd = () => { setEditingCard(null); setForm({ name: '', issuer: '', currentBalance: '', limit: '', billCycleDay: '1' }); setShowModal(true); };
-  const openEdit = (card: CreditCardData) => {
-    setEditingCard(card);
-    setForm({ name: card.name, issuer: card.issuer, currentBalance: card.currentBalance.toString(), limit: card.limit.toString(), billCycleDay: card.billCycleDay.toString() });
+  const openAdd = () => { setEditId(null); setForm({ ...emptyForm }); setShowModal(true); };
+  const openEdit = (c: CreditCard) => {
+    setEditId(c.id);
+    setForm({
+      name: c.name ?? '',
+      bankName: c.bankName ?? '',
+      last4: c.last4 ?? c.lastFourDigits ?? '',
+      network: c.network ?? 'Visa',
+      creditLimit: String(c.creditLimit ?? ''),
+      currentBalance: String(c.currentBalance ?? ''),
+      dueDay: String(c.dueDay ?? c.dueDate?.slice(8, 10) ?? '5'),
+      stmtDay: String(c.stmtDay ?? '28'),
+      annualFee: String(c.annualFee ?? ''),
+      feeWaiverSpend: String((c as any).feeWaiverSpend ?? ''),
+      feeWaiverRule: c.feeWaiverRule ?? '',
+      rewardPointsBalance: String(c.rewardPointsBalance ?? ''),
+      rewardCategory: (c as any).rewardCategory ?? '',
+      milestone1Spend: String((c as any).milestone1Spend ?? ''),
+      milestone1Reward: (c as any).milestone1Reward ?? '',
+      milestone2Spend: String((c as any).milestone2Spend ?? ''),
+      milestone2Reward: (c as any).milestone2Reward ?? '',
+      paymentMethod: c.paymentMethod ?? 'NACH Auto-Pay',
+      notes: (c as any).notes ?? '',
+    });
     setShowModal(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) { toast.error("You must be logged in."); return; }
-    const cardData: Omit<CreditCard, 'id'> = {
+    const data: any = {
       name: form.name,
-      issuer: form.issuer || "Unknown",
-      bankName: form.issuer || "Unknown",
-      last4: "0000",
-      network: 'Visa' as const,
-      cardVariant: "Standard",
-      productVariant: "Regular",
-      annualFee: 0,
-      annualFeeGst: 0,
-      creditLimit: parseFloat(form.limit) || 0,
-      creditLimitShared: false,
-      fuelSurchargeWaiver: false,
-      rewardPointsBalance: 0,
-      cycleStart: parseInt(form.billCycleDay) || 1,
-      stmtDay: 1,
-      dueDay: 1,
-      fxTxnFee: 0,
-      emiConversion: false,
+      bankName: form.bankName,
+      issuer: form.bankName,
+      last4: form.last4 || '0000',
+      lastFourDigits: form.last4 || '0000',
+      network: form.network,
+      creditLimit: parseFloat(form.creditLimit) || 0,
+      limit: parseFloat(form.creditLimit) || 0,
       currentBalance: parseFloat(form.currentBalance) || 0,
-      limit: parseFloat(form.limit) || 0,
-      dueDate: new Date().toISOString().split('T')[0],
-      createdAt: new Date(),
+      dueDay: parseInt(form.dueDay) || 5,
+      stmtDay: parseInt(form.stmtDay) || 28,
+      annualFee: parseFloat(form.annualFee) || 0,
+      feeWaiverSpend: parseFloat(form.feeWaiverSpend) || 0,
+      feeWaiverRule: form.feeWaiverRule,
+      rewardPointsBalance: parseFloat(form.rewardPointsBalance) || 0,
+      rewardCategory: form.rewardCategory,
+      milestone1Spend: parseFloat(form.milestone1Spend) || 0,
+      milestone1Reward: form.milestone1Reward,
+      milestone2Spend: parseFloat(form.milestone2Spend) || 0,
+      milestone2Reward: form.milestone2Reward,
+      paymentMethod: form.paymentMethod,
+      notes: form.notes,
+      isActive: true,
       updatedAt: new Date(),
     };
     try {
-      if (editingCard?.id) {
-        await CreditCardService.updateCreditCard(editingCard.id, cardData);
-        toast.success("Card updated!");
+      if (editId) {
+        await db.creditCards.update(editId, data);
+        toast.success('Card updated');
       } else {
-        await CreditCardService.addCreditCard(cardData);
-        toast.success("Card added!");
+        await db.creditCards.add({ ...data, id: crypto.randomUUID(), createdAt: new Date() });
+        toast.success('Card added');
       }
-      await fetchCards();
       setShowModal(false);
-    } catch (e: any) { toast.error(`Failed to save: ${e.message}`); }
+    } catch (e: any) { toast.error(`Failed: ${e.message}`); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this card?")) return;
-    try {
-      await CreditCardService.deleteCreditCard(id);
-      await fetchCards();
-      toast.success("Card deleted.");
-    } catch (e: any) { toast.error(`Failed to delete: ${e.message}`); }
+    if (!confirm('Delete this card?')) return;
+    await db.creditCards.delete(id);
+    toast.success('Card deleted');
   };
 
-  const totalBalance = creditCards.reduce((s, c) => s + c.currentBalance, 0);
-  const totalLimit   = creditCards.reduce((s, c) => s + c.limit, 0);
-  const utilization  = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+  // ── Aggregates ──────────────────────────────────────────────────────────────
+  const totalBalance     = cards.reduce((s, c) => s + (c.currentBalance ?? 0), 0);
+  const totalLimit       = cards.reduce((s, c) => s + (c.creditLimit ?? c.limit ?? 0), 0);
+  const totalAnnualFees  = cards.reduce((s, c) => s + (c.annualFee ?? 0), 0);
+  const overallUtil      = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
+  const totalPoints      = cards.reduce((s, c) => s + (c.rewardPointsBalance ?? 0), 0);
+
+  // Due this week
+  const dueThisWeek = cards.filter(c => {
+    const dd = c.dueDay ?? 5;
+    const due = nextDueDate(dd);
+    return differenceInDays(due, new Date()) <= 7;
+  });
+
+  // Fee waiver at-risk cards
+  const feeWaiverAtRisk = cards.filter(c => {
+    const waiver = (c as any).feeWaiverSpend ?? 0;
+    return c.annualFee > 0 && waiver > 0 && (c.currentBalance ?? 0) < waiver;
+  });
+
+  const activeCards = cards.filter(c => c.isActive !== false);
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Credit Cards"
-        subtitle="Balances, limits & utilization"
+        subtitle={`${activeCards.length} cards · ${formatCurrency(totalLimit)} total limit`}
         icon={CreditCardIcon}
         action={
           <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
@@ -131,17 +176,18 @@ export function CreditCardManager() {
         }
       />
 
-      {/* Summary */}
-      {creditCards.length > 0 && (
-        <div className="grid grid-cols-3 gap-2">
+      {/* ── Summary strip ──────────────────────────────────────────────────── */}
+      {cards.length > 0 && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {[
-            { label: 'Total Balance', value: formatCurrency(totalBalance), cls: 'value-negative' },
-            { label: 'Total Limit',   value: formatCurrency(totalLimit),   cls: 'text-foreground' },
-            { label: 'Utilization',   value: `${utilization}%`,            cls: utilization > 30 ? 'text-warning' : 'value-positive' },
+            { label: 'Total Balance',  value: formatCurrency(totalBalance),  cls: totalBalance > 0 ? 'text-destructive' : 'text-success' },
+            { label: 'Total Limit',    value: formatCurrency(totalLimit),    cls: 'text-foreground' },
+            { label: 'Utilization',    value: `${overallUtil}%`,             cls: utilizationColor(overallUtil) },
+            { label: 'Reward Points',  value: totalPoints.toLocaleString('en-IN'), cls: 'text-primary' },
           ].map(({ label, value, cls }) => (
             <Card key={label} className="glass">
               <CardContent className="p-3 text-center">
-                <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+                <p className="text-[10px] text-muted-foreground mb-0.5">{label}</p>
                 <p className={`text-sm font-bold tabular-nums ${cls}`}>{value}</p>
               </CardContent>
             </Card>
@@ -149,78 +195,338 @@ export function CreditCardManager() {
         </div>
       )}
 
-      {/* Card list */}
-      <div className="space-y-2">
-        {creditCards.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center">
-              <CreditCardIcon className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-sm text-muted-foreground">No credit cards added yet.</p>
-              <Button size="sm" variant="outline" className="mt-3 h-9 text-xs rounded-xl gap-1.5" onClick={openAdd}>
-                <Plus className="h-3.5 w-3.5" /> Add first card
-              </Button>
-            </CardContent>
-          </Card>
-        ) : creditCards.map(card => {
-          const util = card.limit > 0 ? Math.round((card.currentBalance / card.limit) * 100) : 0;
-          return (
-            <Card key={card.id} className="glass">
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <CreditCardIcon className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate">{card.name}</p>
-                      <p className="text-xs text-muted-foreground">{card.issuer}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge variant="outline" className={`text-[10px] ${util > 30 ? 'border-warning/40 text-warning' : 'border-success/40 text-success'}`}>
-                      {util}% used
-                    </Badge>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(card)}><Edit className="h-3.5 w-3.5" /></Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(card.id!)}><Trash2 className="h-3.5 w-3.5" /></Button>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
-                  <div><span className="text-muted-foreground">Balance: </span><span className="font-medium value-negative">{formatCurrency(card.currentBalance)}</span></div>
-                  <div><span className="text-muted-foreground">Limit: </span><span className="font-medium">{formatCurrency(card.limit)}</span></div>
-                  <div><span className="text-muted-foreground">Cycle Day: </span><span className="font-medium">{card.billCycleDay}</span></div>
-                </div>
+      {/* ── Alerts ─────────────────────────────────────────────────────────── */}
+      {dueThisWeek.length > 0 && (
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-destructive/8 border border-destructive/25 text-xs text-destructive">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <p>
+            <strong>{dueThisWeek.length} card{dueThisWeek.length > 1 ? 's' : ''} due within 7 days:</strong>{' '}
+            {dueThisWeek.map(c => c.name).join(', ')}
+          </p>
+        </div>
+      )}
+      {feeWaiverAtRisk.length > 0 && (
+        <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-warning/8 border border-warning/25 text-xs text-warning">
+          <ShieldAlert className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <p>
+            <strong>Fee waiver at risk:</strong>{' '}
+            {feeWaiverAtRisk.map(c => `${c.name} (₹${((c as any).feeWaiverSpend ?? 0).toLocaleString('en-IN')} spend req.)`).join(', ')}
+          </p>
+        </div>
+      )}
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="w-full">
+          <TabsTrigger value="cards"    className="flex-1 text-xs">Cards ({activeCards.length})</TabsTrigger>
+          <TabsTrigger value="rewards"  className="flex-1 text-xs">Rewards & Fees</TabsTrigger>
+          <TabsTrigger value="dues"     className="flex-1 text-xs">Due Dates</TabsTrigger>
+        </TabsList>
+
+        {/* ── Cards tab ────────────────────────────────────────────────────── */}
+        <TabsContent value="cards" className="mt-3 space-y-2">
+          {activeCards.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center">
+                <CreditCardIcon className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                <p className="text-sm text-muted-foreground">No cards added yet.</p>
+                <Button size="sm" variant="outline" className="mt-3 h-9 text-xs rounded-xl gap-1.5" onClick={openAdd}>
+                  <Plus className="h-3.5 w-3.5" /> Add first card
+                </Button>
               </CardContent>
             </Card>
-          );
-        })}
-      </div>
+          ) : activeCards.map(card => {
+            const limit = card.creditLimit ?? card.limit ?? 0;
+            const bal   = card.currentBalance ?? 0;
+            const util  = limit > 0 ? Math.round((bal / limit) * 100) : 0;
+            const dd    = card.dueDay ?? 5;
+            const due   = nextDueDate(dd);
+            const daysAway = differenceInDays(due, new Date());
+            const urgency  = dueUrgency(daysAway);
 
-      {/* Add / Edit Modal */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-sm mx-4">
+            return (
+              <Card key={card.id} className="glass">
+                <CardContent className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                        <CreditCardIcon className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold truncate">{card.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {card.bankName}{card.last4 ? ` ···${card.last4}` : ''} · {card.network}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Badge variant="outline" className={`text-[10px] ${utilizationColor(util)} border-current/40`}>
+                        {util}% used
+                      </Badge>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(card)}>
+                        <Edit className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(card.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Utilization bar */}
+                  <div className="space-y-1">
+                    <Progress value={Math.min(util, 100)} className="h-1.5" />
+                    <div className="flex justify-between text-[10px] text-muted-foreground tabular-nums">
+                      <span>Balance: <span className="font-medium text-foreground">{formatCurrency(bal)}</span></span>
+                      <span>Limit: <span className="font-medium text-foreground">{formatCurrency(limit)}</span></span>
+                    </div>
+                  </div>
+
+                  {/* Due date + reward points + fee */}
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border ${urgency.bg} ${urgency.color}`}>
+                      <Calendar className="h-3 w-3" />
+                      Due {format(due, 'dd MMM')} ({daysAway}d)
+                    </span>
+                    {(card.rewardPointsBalance ?? 0) > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border bg-primary/8 border-primary/25 text-primary">
+                        <Star className="h-3 w-3" />
+                        {(card.rewardPointsBalance ?? 0).toLocaleString('en-IN')} pts
+                      </span>
+                    )}
+                    {card.annualFee > 0 && (
+                      <span className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg border bg-muted/30 border-border/40 text-muted-foreground">
+                        <Zap className="h-3 w-3" />
+                        ₹{card.annualFee.toLocaleString('en-IN')} fee
+                        {card.feeWaiverRule && <span className="text-success font-medium ml-0.5">· Waivable</span>}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Fee waiver progress */}
+                  {card.annualFee > 0 && (card as any).feeWaiverSpend > 0 && (
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>Fee waiver progress</span>
+                        <span>{formatCurrency(bal)} / {formatCurrency((card as any).feeWaiverSpend)} spent</span>
+                      </div>
+                      <Progress
+                        value={Math.min(100, Math.round((bal / (card as any).feeWaiverSpend) * 100))}
+                        className="h-1"
+                      />
+                      <p className="text-[10px] text-muted-foreground">{card.feeWaiverRule}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        {/* ── Rewards & Fees tab ───────────────────────────────────────────── */}
+        <TabsContent value="rewards" className="mt-3 space-y-3">
+          <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-primary/8 border border-primary/20 text-xs text-primary">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <p>Total annual fees: <strong>{formatCurrency(totalAnnualFees)}</strong> · Total reward points: <strong>{totalPoints.toLocaleString('en-IN')}</strong></p>
+          </div>
+          {cards.map(card => {
+            const hasMilestone = (card as any).milestone1Spend > 0 || (card as any).milestone2Spend > 0;
+            return (
+              <Card key={card.id} className="glass">
+                <CardContent className="p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold">{card.name}</p>
+                    {card.annualFee > 0
+                      ? <Badge variant="outline" className="text-[10px] text-warning border-warning/40">₹{card.annualFee.toLocaleString('en-IN')} fee</Badge>
+                      : <Badge className="text-[10px] bg-success/15 text-success border-success/30">No fee</Badge>
+                    }
+                  </div>
+                  {(card as any).rewardCategory && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Gift className="h-3 w-3" /> Best for: <strong className="text-foreground">{(card as any).rewardCategory}</strong>
+                    </p>
+                  )}
+                  {(card.rewardPointsBalance ?? 0) > 0 && (
+                    <p className="text-xs text-primary flex items-center gap-1">
+                      <Star className="h-3 w-3" /> {(card.rewardPointsBalance ?? 0).toLocaleString('en-IN')} reward points
+                    </p>
+                  )}
+                  {card.feeWaiverRule && (
+                    <p className="text-xs text-success flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" /> Waiver: {card.feeWaiverRule}
+                    </p>
+                  )}
+                  {hasMilestone && (
+                    <div className="space-y-1 pt-1 border-t border-border/30">
+                      {(card as any).milestone1Spend > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          🎯 Milestone 1: Spend {formatCurrency((card as any).milestone1Spend)} → {(card as any).milestone1Reward}
+                        </p>
+                      )}
+                      {(card as any).milestone2Spend > 0 && (
+                        <p className="text-[10px] text-muted-foreground">
+                          🎯 Milestone 2: Spend {formatCurrency((card as any).milestone2Spend)} → {(card as any).milestone2Reward}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </TabsContent>
+
+        {/* ── Due Dates tab ────────────────────────────────────────────────── */}
+        <TabsContent value="dues" className="mt-3 space-y-2">
+          {[...cards]
+            .sort((a, b) => {
+              const da = differenceInDays(nextDueDate(a.dueDay ?? 5), new Date());
+              const db_ = differenceInDays(nextDueDate(b.dueDay ?? 5), new Date());
+              return da - db_;
+            })
+            .map(card => {
+              const dd       = card.dueDay ?? 5;
+              const due      = nextDueDate(dd);
+              const daysAway = differenceInDays(due, new Date());
+              const urgency  = dueUrgency(daysAway);
+              const bal      = card.currentBalance ?? 0;
+              return (
+                <Card key={card.id} className={`glass border ${urgency.bg}`}>
+                  <CardContent className="p-3 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold truncate">{card.name}</p>
+                      <p className={`text-xs ${urgency.color}`}>
+                        Due {format(due, 'dd MMM yyyy')} · {daysAway === 0 ? 'Today!' : `${daysAway}d away`}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-sm font-bold tabular-nums ${bal > 0 ? 'text-destructive' : 'text-success'}`}>
+                        {bal > 0 ? formatCurrency(bal) : 'Nil'}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{card.paymentMethod ?? '—'}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          }
+        </TabsContent>
+      </Tabs>
+
+      {/* ── Add / Edit Modal ─────────────────────────────────────────────────── */}
+      <Dialog open={showModal} onOpenChange={v => !v && setShowModal(false)}>
+        <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-base">{editingCard ? 'Edit Credit Card' : 'Add Credit Card'}</DialogTitle>
+            <DialogTitle className="text-base">{editId ? 'Edit Card' : 'Add Credit Card'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            {[
-              { id: 'name',           label: 'Card Name *',       key: 'name',           type: 'text',   required: true  },
-              { id: 'issuer',         label: 'Issuer / Bank *',   key: 'issuer',         type: 'text',   required: true  },
-              { id: 'limit',          label: 'Credit Limit (₹) *',key: 'limit',          type: 'number', required: true  },
-              { id: 'currentBalance', label: 'Current Balance (₹)',key: 'currentBalance', type: 'number', required: false },
-              { id: 'billCycleDay',   label: 'Bill Cycle Day',    key: 'billCycleDay',   type: 'number', required: false },
-            ].map(({ id, label, key, type, required }) => (
-              <div key={id} className="space-y-1">
-                <Label htmlFor={id} className="text-xs">{label}</Label>
-                <Input
-                  id={id} type={type}
-                  value={(form as any)[key]}
-                  onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                  className="h-9 text-sm" required={required}
-                />
+          <form onSubmit={handleSave} className="space-y-3 pt-1">
+            {/* Identity */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Card Name *</Label>
+                <Input value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. HDFC Regalia" required className="h-8 text-sm" />
               </div>
-            ))}
+              <div className="space-y-1">
+                <Label className="text-xs">Bank / Issuer *</Label>
+                <Input value={form.bankName} onChange={e => set('bankName', e.target.value)} placeholder="HDFC" required className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Last 4 Digits</Label>
+                <Input value={form.last4} onChange={e => set('last4', e.target.value)} placeholder="1234" maxLength={4} className="h-8 text-sm" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Network</Label>
+                <Select value={form.network} onValueChange={v => set('network', v)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['Visa', 'Mastercard', 'Rupay', 'Amex', 'Diners'].map(n => (
+                      <SelectItem key={n} value={n}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Payment Method</Label>
+                <Select value={form.paymentMethod} onValueChange={v => set('paymentMethod', v)}>
+                  <SelectTrigger className="h-8 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {['NACH Auto-Pay', 'UPI', 'NEFT', 'In App', 'Cheque'].map(m => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Limits & Dates */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Credit Limit (₹) *</Label>
+                <Input type="number" value={form.creditLimit} onChange={e => set('creditLimit', e.target.value)} required className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Current Balance (₹)</Label>
+                <Input type="number" value={form.currentBalance} onChange={e => set('currentBalance', e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Due Day (1-31)</Label>
+                <Input type="number" min="1" max="31" value={form.dueDay} onChange={e => set('dueDay', e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Statement Day</Label>
+                <Input type="number" min="1" max="31" value={form.stmtDay} onChange={e => set('stmtDay', e.target.value)} className="h-8 text-sm" />
+              </div>
+            </div>
+
+            {/* Fees */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Annual Fee (₹)</Label>
+                <Input type="number" value={form.annualFee} onChange={e => set('annualFee', e.target.value)} placeholder="0 = free" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Fee Waiver Spend (₹)</Label>
+                <Input type="number" value={form.feeWaiverSpend} onChange={e => set('feeWaiverSpend', e.target.value)} placeholder="e.g. 200000" className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Fee Waiver Condition</Label>
+                <Input value={form.feeWaiverRule} onChange={e => set('feeWaiverRule', e.target.value)} placeholder="e.g. Spend ₹2L/yr" className="h-8 text-sm" />
+              </div>
+            </div>
+
+            {/* Rewards */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Reward Points Balance</Label>
+                <Input type="number" value={form.rewardPointsBalance} onChange={e => set('rewardPointsBalance', e.target.value)} className="h-8 text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Best Rewards Category</Label>
+                <Input value={form.rewardCategory} onChange={e => set('rewardCategory', e.target.value)} placeholder="e.g. Travel, Dining" className="h-8 text-sm" />
+              </div>
+            </div>
+
+            {/* Milestones */}
+            <div className="space-y-1 border-t border-border/30 pt-2">
+              <Label className="text-xs text-muted-foreground">Milestone Rewards (optional)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="number" value={form.milestone1Spend} onChange={e => set('milestone1Spend', e.target.value)} placeholder="M1 spend (₹)" className="h-8 text-sm" />
+                <Input value={form.milestone1Reward} onChange={e => set('milestone1Reward', e.target.value)} placeholder="M1 reward" className="h-8 text-sm" />
+                <Input type="number" value={form.milestone2Spend} onChange={e => set('milestone2Spend', e.target.value)} placeholder="M2 spend (₹)" className="h-8 text-sm" />
+                <Input value={form.milestone2Reward} onChange={e => set('milestone2Reward', e.target.value)} placeholder="M2 reward" className="h-8 text-sm" />
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1">
+              <Label className="text-xs">Notes</Label>
+              <Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Any special notes…" className="text-sm resize-none" />
+            </div>
+
             <div className="flex gap-2 pt-1">
-              <Button type="submit" size="sm" className="flex-1 h-9 text-xs">{editingCard ? 'Update' : 'Add'}</Button>
+              <Button type="submit" size="sm" className="flex-1 h-9 text-xs">{editId ? 'Update' : 'Add Card'}</Button>
               <Button type="button" size="sm" variant="outline" className="flex-1 h-9 text-xs" onClick={() => setShowModal(false)}>Cancel</Button>
             </div>
           </form>
