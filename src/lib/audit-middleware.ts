@@ -9,11 +9,11 @@
  * Usage: call installAuditMiddleware(db) once during app bootstrap (in main.tsx or db.ts).
  */
 
-import type Dexie from 'dexie';
+import Dexie from 'dexie';
 
 const EXCLUDED_TABLES = new Set(['auditLogs', 'appSettings', 'globalSettings']);
 
-export function installAuditMiddleware(db: Dexie) {
+export function installAuditMiddleware(db: InstanceType<typeof Dexie>) {
   db.use({
     stack: 'dbcore',
     name: 'AuditMiddleware',
