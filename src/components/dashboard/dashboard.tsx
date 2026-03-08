@@ -426,6 +426,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
       </button>
 
+      {/* ── Net Worth Widget ── */}
+      <NetWorthWidget onNavigate={onMoreNavigation} />
+
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
