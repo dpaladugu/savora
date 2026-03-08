@@ -635,6 +635,69 @@ db.version(16).stores({}).upgrade(async tx => {
   }
 });
 
+// v17 — Seed Guntur shops + Gorantla rooms with real structure if tables are empty
+db.version(17).stores({}).upgrade(async tx => {
+  const shopCount = await tx.table('gunturShops').count();
+  if (shopCount === 0) {
+    const now = new Date();
+    await tx.table('gunturShops').bulkAdd([
+      { id: 'gs-1', shopId: 'shop-1', name: 'Shop 1', tenant: '',        rent: 0,    status: 'Vacant',   paid: false, updatedAt: now },
+      { id: 'gs-2', shopId: 'shop-2', name: 'Shop 2', tenant: 'Milk',    rent: 5500, status: 'Occupied', paid: false, updatedAt: now },
+      { id: 'gs-3', shopId: 'shop-3', name: 'Shop 3', tenant: 'Salon',   rent: 3700, status: 'Occupied', paid: false, updatedAt: now },
+      { id: 'gs-4', shopId: 'shop-4', name: 'Shop 4', tenant: 'Noodles', rent: 3900, status: 'Occupied', paid: false, updatedAt: now },
+      { id: 'gs-5', shopId: 'shop-5', name: 'Shop 5', tenant: 'Tea',     rent: 4000, status: 'Occupied', paid: false, updatedAt: now },
+      { id: 'gs-6', shopId: 'shop-6', name: 'Shop 6', tenant: 'Bags',    rent: 2500, status: 'Occupied', paid: false, updatedAt: now },
+    ]);
+  }
+
+  const roomCount = await tx.table('gorantlaRooms').count();
+  if (roomCount === 0) {
+    const now = new Date();
+    await tx.table('gorantlaRooms').bulkAdd([
+      { id: 'gr-kitchen',  roomId: 'kitchen',    name: 'Kitchen',         tenant: 'Tenant A', rent: 3000, paid: false, updatedAt: now },
+      { id: 'gr-main',     roomId: 'main-house', name: 'Main House',      tenant: 'Tenant B', rent: 4500, paid: false, updatedAt: now },
+      { id: 'gr-damini',   roomId: 'damini',     name: 'Damini/Sudhakar', tenant: 'Damini',   rent: 3500, paid: false, updatedAt: now },
+      { id: 'gr-sudhakar', roomId: 'sudhakar',   name: 'Sudhakar',        tenant: 'Sudhakar', rent: 3000, paid: false, updatedAt: now },
+    ]);
+  }
+});
+
+// v16 — Seed real Feb 17 2026 prepayment: ₹13,00,000 strike against InCred Education Loan
+//        Reduces outstanding from ₹23,21,156 → ₹10,21,156 and logs history entry.
+db.version(16).stores({}).upgrade(async tx => {
+  // Update InCred outstanding to post-strike balance
+  const incred = await tx.table('loans').get('loan-incred-2026');
+  if (incred && (incred.outstanding ?? incred.principal) > 10_21_156) {
+    await tx.table('loans').update('loan-incred-2026', {
+      outstanding: 10_21_156,
+      updatedAt: new Date(),
+    });
+  }
+
+  // Record in prepayment history (appSettings key-value store)
+  const existing = await tx.table('appSettings').get('prepaymentHistory');
+  const prev: any[] = existing?.value ?? [];
+  const alreadyLogged = prev.some(
+    (r: any) => r.loanId === 'loan-incred-2026' && r.amount === 13_00_000
+  );
+  if (!alreadyLogged) {
+    await tx.table('appSettings').put({
+      key: 'prepaymentHistory',
+      value: [
+        {
+          id: 'prepay-incred-feb2026',
+          loanId: 'loan-incred-2026',
+          loanName: 'InCred Education Loan',
+          amount: 13_00_000,
+          date: new Date(2026, 1, 17), // Feb 17 2026
+          note: 'Feb 2026 salary + bonus surplus — P1 strike',
+        },
+        ...prev,
+      ].slice(0, 50),
+    });
+  }
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
