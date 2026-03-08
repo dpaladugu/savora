@@ -240,16 +240,16 @@ export function CFARecommendationsDashboard() {
                 <p className="text-muted-foreground mb-4">{rec.description}</p>
 
                 <div className="mb-4">
-                  <h4 className="font-medium mb-2">Impact:</h4>
-                  <p className="text-sm bg-blue-50 p-3 rounded-lg">{rec.expectedImpact}</p>
+                  <h4 className="font-medium mb-2 text-sm">Impact:</h4>
+                  <p className="text-sm bg-primary/5 border border-primary/15 p-3 rounded-lg text-foreground">{rec.expectedImpact}</p>
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">Action Items:</h4>
+                  <h4 className="font-medium mb-2 text-sm">Action Items:</h4>
                   <ul className="space-y-1">
                     {rec.actionItems.map((item, index) => (
                       <li key={index} className="text-sm flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
                         {item}
                       </li>
                     ))}
