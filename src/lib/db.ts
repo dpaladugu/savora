@@ -83,7 +83,7 @@ export interface SpendingLimit {
   id: string;
   category: string;
   monthlyCap: number;
-  alertAt: number;   // percentage, default 80
+  alertAt: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -221,6 +221,9 @@ export interface GlobalSettings {
   theme: 'light' | 'dark' | 'system';
   deviceThemes: Record<string, string>;
   revealSecret: string;
+  // Phase 2: data-safety
+  lastBackupAt?: number;       // epoch ms
+  lastAutoRunAt?: string;      // ISO date string YYYY-MM-DD
 }
 
 export interface Expense {
@@ -267,6 +270,12 @@ export interface RecurringTransaction {
   updatedAt: Date;
 }
 
+// Legacy AppSettingTable — kept for PinLock / AiChat compatibility
+export interface AppSettingTable {
+  key: string;
+  value: any;
+}
+
 export interface GunturShopRow {
   id: string;
   shopId: string;
@@ -294,6 +303,7 @@ export interface GorantlaRoomRow {
   updatedAt: Date;
 }
 
+// ─── Database Instance ────────────────────────────────────────────────────────
 const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
@@ -323,8 +333,11 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   gunturShops: EntityTable<GunturShopRow, 'id'>;
   waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
   gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
+  // Legacy compatibility — used by PinLock and AiChatService
+  appSettings: EntityTable<AppSettingTable, 'key'>;
 };
 
+// ─── v1 — core tables ─────────────────────────────────────────────────────────
 db.version(1).stores({
   txns: '++id, amount, currency, category, date, note, goalId, cardId, vehicleId, tenantId, propertyId, createdAt, updatedAt',
   rentalProperties: '++id, address, owner, type, squareYards, monthlyRent, dueDay, escalationPercent, createdAt, updatedAt',
@@ -345,27 +358,27 @@ db.version(1).stores({
   auditLogs: '++id, action, timestamp, userId',
   globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, privacyMask, darkMode, timeZone, isTest, theme, revealSecret',
   expenses: '++id, amount, date, category, description, createdAt, updatedAt',
-  incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt'
+  incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt',
 });
 
-// Version 2: add insurancePolicies + spendingLimits
+// v2 — insurancePolicies + spendingLimits
 db.version(2).stores({
   insurancePolicies: '++id, type, provider, familyMember, endDate, createdAt, updatedAt',
   spendingLimits: '++id, category, monthlyCap, alertAt, createdAt, updatedAt',
 });
 
-// Version 3: Will & Estate (WillRow + DigitalAsset)
+// v3 — Will & Estate
 db.version(3).stores({
   willRows:      '++id, assetDescription, assetType, beneficiary, createdAt, updatedAt',
   digitalAssets: '++id, type, name, nominee, createdAt, updatedAt',
 });
 
-// Version 4: Recurring Transactions
+// v4 — Recurring Transactions
 db.version(4).stores({
   recurringTransactions: '++id, description, category, frequency, type, is_active, next_date, createdAt, updatedAt',
 });
 
-// Version 5: Add userName to globalSettings (upgrade existing records)
+// v5 — userName migration
 db.version(5).stores({}).upgrade(tx =>
   tx.table('globalSettings').toCollection().modify((s: any) => {
     if (!s.userName) s.userName = 'Devavratha';
@@ -373,11 +386,17 @@ db.version(5).stores({}).upgrade(tx =>
   })
 );
 
-// Version 6: Guntur waterfall persistence
+// v6 — Guntur waterfall persistence
 db.version(6).stores({
   gunturShops:       '++id, shopId, name, tenant, rent, status',
   waterfallProgress: '++id, bucketId, accumulated',
   gorantlaRooms:     '++id, roomId, name, tenant, rent, paid',
+});
+
+// v7 — Add appSettings table (legacy PinLock / AiChat key-value store)
+//      Also stamps lastAutoRunAt on globalSettings for idempotency guard
+db.version(7).stores({
+  appSettings: '&key',
 });
 
 export { db };
