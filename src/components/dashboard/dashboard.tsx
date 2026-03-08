@@ -5,7 +5,6 @@ import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
-import type { NavigationTab } from '@/types/common';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -14,33 +13,52 @@ interface DashboardProps {
   onMoreNavigation: (moduleId: string) => void;
 }
 
-// ─── Quick Actions ── inline, horizontal scroll on mobile ────────────────────
-function QuickActions({ onTabChange, onMoreNavigation }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void }) {
+// ── Quick Actions ─────────────────────────────────────────────────────────────
+function QuickActions({
+  onTabChange,
+}: {
+  onTabChange: (t: string) => void;
+}) {
   const actions = [
-    { icon: Plus,        label: 'Add Expense',   onClick: () => onTabChange('expenses') },
-    { icon: CreditCard,  label: 'Cards',          onClick: () => onTabChange('credit-cards') },
-    { icon: Target,      label: 'Goals',          onClick: () => onTabChange('goals') },
-    { icon: TrendingUp,  label: 'Invest',         onClick: () => onTabChange('investments') },
+    { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')     },
+    { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards') },
+    { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')        },
+    { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')  },
   ];
 
   return (
-    <div className="flex gap-3 overflow-x-auto scrollbar-hide pb-1 -mx-4 px-4">
+    /*
+      Equal-width grid on all screen sizes.
+      Each button fills its column — no horizontal scroll, no overflow.
+      iPhone SE (320px): 4 × ~68px = fine.
+      S22 Ultra (412px): 4 × ~88px = comfortable.
+    */
+    <div className="grid grid-cols-4 gap-2.5" role="group" aria-label="Quick actions">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
           key={label}
           onClick={onClick}
-          className="flex flex-col items-center justify-center gap-1.5 min-w-[72px] h-16 rounded-2xl
-                     bg-secondary/60 border border-border/50 hover:bg-primary/8 hover:border-primary/30
-                     active:scale-95 transition-all duration-150 focus-ring shrink-0"
+          aria-label={label}
+          className="
+            flex flex-col items-center justify-center gap-1.5
+            h-[72px] rounded-2xl
+            bg-secondary/60 border border-border/50
+            hover:bg-primary/8 hover:border-primary/30
+            active:scale-95 transition-all duration-150
+            focus-ring
+          "
         >
           <Icon className="h-5 w-5 text-primary" strokeWidth={1.8} aria-hidden="true" />
-          <span className="text-[10px] font-medium text-foreground leading-none text-center">{label}</span>
+          <span className="text-[10px] font-medium text-foreground leading-none text-center px-1 break-words w-full text-center">
+            {label}
+          </span>
         </button>
       ))}
     </div>
   );
 }
 
+// ── Dashboard ─────────────────────────────────────────────────────────────────
 export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { dashboardData, loading } = useDashboardData();
 
@@ -51,7 +69,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       change: '+12.5%',
       icon: DollarSign,
       changeType: 'positive',
-      trend: { value: 12.5, isPositive: true }
+      trend: { value: 12.5, isPositive: true },
     },
     {
       title: 'Monthly Exp.',
@@ -59,7 +77,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       change: '-5.2%',
       icon: TrendingDown,
       changeType: 'negative',
-      trend: { value: 5.2, isPositive: false }
+      trend: { value: 5.2, isPositive: false },
     },
     {
       title: 'Investments',
@@ -67,7 +85,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       change: '+8.3%',
       icon: TrendingUp,
       changeType: 'positive',
-      trend: { value: 8.3, isPositive: true }
+      trend: { value: 8.3, isPositive: true },
     },
     {
       title: 'Credit Cards',
@@ -75,19 +93,23 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       change: '+2.1%',
       icon: CreditCard,
       changeType: 'neutral',
-      trend: { value: 2.1, isPositive: false }
-    }
+      trend: { value: 2.1, isPositive: false },
+    },
   ];
 
   if (loading) {
     return (
-      <div className="space-y-5 animate-pulse">
+      <div className="space-y-5 animate-pulse" aria-busy="true" aria-label="Loading dashboard">
         <div className="h-6 bg-muted rounded-xl w-1/3" />
-        <div className="flex gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="min-w-[72px] h-16 bg-muted rounded-2xl" />)}
+        <div className="grid grid-cols-4 gap-2.5">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-[72px] bg-muted rounded-2xl" />
+          ))}
         </div>
         <div className="grid grid-cols-2 gap-3">
-          {[...Array(4)].map((_, i) => <div key={i} className="h-24 bg-muted rounded-2xl" />)}
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="h-24 bg-muted rounded-2xl" />
+          ))}
         </div>
       </div>
     );
@@ -102,13 +124,13 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       </div>
 
       {/* ── Quick Actions ── */}
-      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />
+      <QuickActions onTabChange={onTabChange} />
 
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />
 
       {/* ── Charts + Recent Activity ── */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
         <DashboardCharts data={dashboardData} />
 
         <Card className="glass">
@@ -117,26 +139,29 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
           </CardHeader>
           <CardContent>
             {dashboardData.recentTransactions.length > 0 ? (
-              <div className="space-y-2">
+              <ul className="space-y-2" aria-label="Recent transactions">
                 {dashboardData.recentTransactions.slice(0, 5).map((t) => (
-                  <div key={t.id} className="flex justify-between items-center py-2 border-b border-border/40 last:border-0">
-                    <div className="min-w-0">
+                  <li
+                    key={t.id}
+                    className="flex justify-between items-center py-2 border-b border-border/40 last:border-0"
+                  >
+                    <div className="min-w-0 pr-2">
                       <p className="text-sm font-medium truncate">{t.description}</p>
                       <p className="text-xs text-muted-foreground">{t.category}</p>
                     </div>
-                    <p className="text-sm font-semibold shrink-0 ml-2 value-negative">
+                    <p className="text-sm font-semibold shrink-0 value-negative tabular-nums">
                       ₹{t.amount.toLocaleString('en-IN')}
                     </p>
-                  </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <p className="text-sm text-muted-foreground">No transactions yet</p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="mt-3 h-8 text-xs rounded-xl"
+                  className="mt-3 h-9 text-xs rounded-xl"
                   onClick={() => onTabChange('expenses')}
                 >
                   Add your first expense

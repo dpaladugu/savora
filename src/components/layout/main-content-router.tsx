@@ -22,39 +22,32 @@ export function MainContentRouter({
   onTabChange,
   onMoreNavigation,
 }: MainContentRouterProps) {
-  // If a More sub-module is active, render it full-screen with its own scroll
-  if (activeMoreModule && activeTab !== 'dashboard' && activeTab !== 'expenses' &&
-      activeTab !== 'credit-cards' && activeTab !== 'investments') {
-    return (
-      <div className="min-h-[calc(100vh-7.5rem)] overflow-y-auto">
-        <MoreModuleRouter activeModule={activeMoreModule} />
-      </div>
-    );
+  // Sub-module active → render it
+  if (
+    activeMoreModule &&
+    activeTab !== 'dashboard' &&
+    activeTab !== 'expenses' &&
+    activeTab !== 'credit-cards' &&
+    activeTab !== 'investments'
+  ) {
+    return <MoreModuleRouter activeModule={activeMoreModule} />;
   }
 
-  const renderContent = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
-      case 'expenses':
-        return <ExpenseTracker />;
-      case 'credit-cards':
-        return <CreditCardTracker />;
-      case 'investments':
-        return <InvestmentsTracker />;
-      case 'goals':
-        return <GoalsManager />;
-      case 'settings':
-        return <SettingsScreen />;
-      default:
-        if (activeMoreModule) return <MoreModuleRouter activeModule={activeMoreModule} />;
-        return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
-    }
-  };
-
-  return (
-    <div className="min-h-[calc(100vh-7.5rem)] overflow-y-auto">
-      {renderContent()}
-    </div>
-  );
+  switch (activeTab) {
+    case 'dashboard':
+      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+    case 'expenses':
+      return <ExpenseTracker />;
+    case 'credit-cards':
+      return <CreditCardTracker />;
+    case 'investments':
+      return <InvestmentsTracker />;
+    case 'goals':
+      return <GoalsManager />;
+    case 'settings':
+      return <SettingsScreen />;
+    default:
+      if (activeMoreModule) return <MoreModuleRouter activeModule={activeMoreModule} />;
+      return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
+  }
 }
