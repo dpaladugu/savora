@@ -22,10 +22,10 @@ const getRecommendationIcon = (type: string) => {
 
 const getPriorityColor = (priority: string) => {
   switch (priority) {
-    case 'high': return 'border-red-500 bg-red-50';
-    case 'medium': return 'border-yellow-500 bg-yellow-50';
-    case 'low': return 'border-blue-500 bg-blue-50';
-    default: return 'border-gray-500 bg-gray-50';
+    case 'high':   return 'border-destructive/50 bg-destructive/5';
+    case 'medium': return 'border-warning/50 bg-warning/5';
+    case 'low':    return 'border-primary/40 bg-primary/5';
+    default:       return 'border-border bg-muted/20';
   }
 };
 
