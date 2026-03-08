@@ -9,14 +9,13 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { 
-  Settings, Moon, Sun, Shield, Bell, Download, Trash2, 
+import {
+  Moon, Sun, Shield, Bell, Download, Trash2,
   Clock, Globe, Palette, Lock, AlertTriangle, Info,
   Smartphone, Mail, Key, Database
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserSettingsService, type UserSettings } from '@/services/UserSettingsService';
-import { AuthenticationService } from '@/services/AuthenticationService';
 import { useAuth } from '@/contexts/auth-context';
 
 export function ComprehensiveSettingsScreen() {
@@ -26,17 +25,13 @@ export function ComprehensiveSettingsScreen() {
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
   const { logout } = useAuth();
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
     try {
       setLoading(true);
-      const userSettings = await UserSettingsService.getUserSettings();
-      setSettings(userSettings);
-    } catch (error) {
-      console.error('Error loading settings:', error);
+      setSettings(await UserSettingsService.getUserSettings());
+    } catch {
       toast.error('Failed to load settings');
     } finally {
       setLoading(false);
@@ -45,15 +40,11 @@ export function ComprehensiveSettingsScreen() {
 
   const handleSettingChange = async (key: keyof UserSettings, value: any) => {
     if (!settings) return;
-
     try {
-      const updates = { [key]: value };
-      await UserSettingsService.updateUserSettings(updates);
-      
+      await UserSettingsService.updateUserSettings({ [key]: value });
       setSettings({ ...settings, [key]: value });
-      toast.success('Setting updated successfully');
-    } catch (error) {
-      console.error('Error updating setting:', error);
+      toast.success('Setting updated');
+    } catch {
       toast.error('Failed to update setting');
     }
   };
@@ -63,15 +54,15 @@ export function ComprehensiveSettingsScreen() {
       const data = await UserSettingsService.exportUserData();
       const blob = new Blob([data], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `savora-settings-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `savora-settings-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success('Settings exported successfully');
-    } catch (error) {
+      toast.success('Settings exported');
+    } catch {
       toast.error('Failed to export settings');
     }
   };
@@ -79,10 +70,10 @@ export function ComprehensiveSettingsScreen() {
   const handleResetPIN = async () => {
     try {
       await UserSettingsService.resetPIN();
-      toast.success('PIN reset successfully. You will need to set up a new PIN.');
+      toast.success('PIN reset. Set up a new PIN on next login.');
       logout();
       setShowResetDialog(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to reset PIN');
     }
   };
@@ -90,18 +81,18 @@ export function ComprehensiveSettingsScreen() {
   const handleClearAllData = async () => {
     try {
       await UserSettingsService.clearAllData();
-      toast.success('All data cleared successfully');
+      toast.success('All data cleared');
       logout();
       setShowClearDataDialog(false);
-    } catch (error) {
+    } catch {
       toast.error('Failed to clear data');
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-7 w-7 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       </div>
     );
   }
@@ -109,349 +100,285 @@ export function ComprehensiveSettingsScreen() {
   if (!settings) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <p className="text-center text-muted-foreground">Failed to load settings</p>
+        <CardContent className="p-6 text-center text-muted-foreground text-sm">
+          Failed to load settings
         </CardContent>
       </Card>
     );
   }
 
-  return (
-    <div className="container mx-auto p-6 max-w-4xl space-y-6">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Settings className="h-8 w-8" />
-          Settings
-        </h1>
-        <p className="text-muted-foreground mt-2">
-          Manage your app preferences, security, and personal settings
-        </p>
+  /* ── Reusable row layout ── */
+  const Row = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-center justify-between gap-4 py-0.5">{children}</div>
+  );
+  const RowLabel = ({ icon: Icon, title, sub }: { icon: React.ElementType; title: string; sub?: string }) => (
+    <div className="flex items-start gap-3 min-w-0">
+      <Icon className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" aria-hidden="true" />
+      <div className="min-w-0">
+        <p className="text-sm font-medium text-foreground leading-tight">{title}</p>
+        {sub && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{sub}</p>}
       </div>
+    </div>
+  );
 
-      {/* Appearance Settings */}
+  return (
+    <div className="space-y-4">
+      {/* Appearance */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Palette className="h-5 w-5" />
-            Appearance
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Palette className="h-4 w-4 text-primary" aria-hidden="true" /> Appearance
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {settings.darkMode ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-              <div>
-                <Label className="text-base font-medium">Dark Mode</Label>
-                <p className="text-sm text-muted-foreground">Switch between light and dark themes</p>
-              </div>
-            </div>
+          <Row>
+            <RowLabel
+              icon={settings.darkMode ? Moon : Sun}
+              title="Dark Mode"
+              sub="Switch between light and dark themes"
+            />
             <Switch
               checked={settings.darkMode}
-              onCheckedChange={(checked) => handleSettingChange('darkMode', checked)}
+              onCheckedChange={(v) => handleSettingChange('darkMode', v)}
+              aria-label="Toggle dark mode"
             />
-          </div>
+          </Row>
         </CardContent>
       </Card>
 
-      {/* Security Settings */}
+      {/* Security */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5" />
-            Security & Privacy
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Shield className="h-4 w-4 text-primary" aria-hidden="true" /> Security & Privacy
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Clock className="h-4 w-4" />
-              <div>
-                <Label className="text-base font-medium">Auto-lock Timer</Label>
-                <p className="text-sm text-muted-foreground">Automatically lock app after inactivity</p>
-              </div>
-            </div>
+        <CardContent className="space-y-4">
+          <Row>
+            <RowLabel icon={Lock} title="Privacy Mask" sub="Hide sensitive amounts by default" />
+            <Switch
+              checked={settings.privacyMask}
+              onCheckedChange={(v) => handleSettingChange('privacyMask', v)}
+              aria-label="Toggle privacy mask"
+            />
+          </Row>
+
+          <Separator />
+
+          <Row>
+            <RowLabel icon={Clock} title="Auto-lock" sub="Lock after inactivity" />
             <Select
               value={settings.autoLockMinutes.toString()}
-              onValueChange={(value) => handleSettingChange('autoLockMinutes', parseInt(value))}
+              onValueChange={(v) => handleSettingChange('autoLockMinutes', parseInt(v))}
             >
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-28 h-9 text-xs" aria-label="Auto-lock duration">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="1">1 minute</SelectItem>
-                <SelectItem value="2">2 minutes</SelectItem>
-                <SelectItem value="5">5 minutes</SelectItem>
-                <SelectItem value="10">10 minutes</SelectItem>
+                {[1, 2, 5, 10].map((m) => (
+                  <SelectItem key={m} value={m.toString()} className="text-xs">
+                    {m} {m === 1 ? 'min' : 'mins'}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
-          </div>
+          </Row>
 
           <Separator />
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Lock className="h-4 w-4" />
-              <div>
-                <Label className="text-base font-medium">Privacy Mask</Label>
-                <p className="text-sm text-muted-foreground">Hide sensitive amounts with masks</p>
-              </div>
-            </div>
-            <Switch
-              checked={settings.privacyMask}
-              onCheckedChange={(checked) => handleSettingChange('privacyMask', checked)}
-            />
-          </div>
-
-          <Separator />
-
-          <div className="space-y-3">
-            <Label className="text-base font-medium">PIN Management</Label>
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={() => setShowResetDialog(true)}
-                className="flex items-center gap-2"
-              >
-                <Key className="h-4 w-4" />
-                Reset PIN
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Resetting your PIN will log you out and require setting up a new PIN
-            </p>
+          <div className="space-y-2">
+            <RowLabel icon={Key} title="PIN Management" sub="Reset will log you out" />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowResetDialog(true)}
+              className="h-9 text-xs gap-1.5"
+            >
+              <Key className="h-3.5 w-3.5" aria-hidden="true" /> Reset PIN
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Notification Settings */}
+      {/* Notifications */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notifications
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Bell className="h-4 w-4 text-primary" aria-hidden="true" /> Notifications
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Bell className="h-4 w-4" />
-              <div>
-                <Label className="text-base font-medium">Enable Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive alerts and reminders</p>
-              </div>
-            </div>
+          <Row>
+            <RowLabel icon={Bell} title="Enable Notifications" sub="Alerts and reminders" />
             <Switch
               checked={settings.notificationsEnabled}
-              onCheckedChange={(checked) => handleSettingChange('notificationsEnabled', checked)}
+              onCheckedChange={(v) => handleSettingChange('notificationsEnabled', v)}
+              aria-label="Toggle notifications"
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4" />
-              <div>
-                <Label className="text-base font-medium">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-              </div>
-            </div>
+          </Row>
+          <Separator />
+          <Row>
+            <RowLabel icon={Mail} title="Email" sub="Via email" />
             <Switch
               checked={settings.emailNotifications}
-              onCheckedChange={(checked) => handleSettingChange('emailNotifications', checked)}
+              onCheckedChange={(v) => handleSettingChange('emailNotifications', v)}
               disabled={!settings.notificationsEnabled}
+              aria-label="Toggle email notifications"
             />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone className="h-4 w-4" />
-              <div>
-                <Label className="text-base font-medium">Push Notifications</Label>
-                <p className="text-sm text-muted-foreground">Receive push notifications on device</p>
-              </div>
-            </div>
+          </Row>
+          <Separator />
+          <Row>
+            <RowLabel icon={Smartphone} title="Push" sub="On this device" />
             <Switch
               checked={settings.pushNotifications}
-              onCheckedChange={(checked) => handleSettingChange('pushNotifications', checked)}
+              onCheckedChange={(v) => handleSettingChange('pushNotifications', v)}
               disabled={!settings.notificationsEnabled}
+              aria-label="Toggle push notifications"
             />
-          </div>
+          </Row>
         </CardContent>
       </Card>
 
-      {/* Localization Settings */}
+      {/* Localization */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5" />
-            Localization
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Time Zone</Label>
-              <Select
-                value={settings.timeZone}
-                onValueChange={(value) => handleSettingChange('timeZone', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Asia/Kolkata">India (IST)</SelectItem>
-                  <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                  <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                  <SelectItem value="Europe/London">London (GMT)</SelectItem>
-                  <SelectItem value="Asia/Dubai">Dubai (GST)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Currency</Label>
-              <Select
-                value={settings.currency}
-                onValueChange={(value) => handleSettingChange('currency', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="INR">₹ Indian Rupee</SelectItem>
-                  <SelectItem value="USD">$ US Dollar</SelectItem>
-                  <SelectItem value="EUR">€ Euro</SelectItem>
-                  <SelectItem value="GBP">£ British Pound</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Data Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-base font-medium">Export Settings</Label>
-              <p className="text-sm text-muted-foreground">Download your settings and preferences</p>
-            </div>
-            <Button onClick={handleExportData} variant="outline" className="flex items-center gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          </div>
-
-          <Separator />
-
-          <Alert className="border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>
-              <strong>Danger Zone:</strong> The following actions cannot be undone.
-            </AlertDescription>
-          </Alert>
-
-          <div className="space-y-3">
-            <Button
-              variant="destructive"
-              onClick={() => setShowClearDataDialog(true)}
-              className="flex items-center gap-2"
-            >
-              <Trash2 className="h-4 w-4" />
-              Clear All Data
-            </Button>
-            <p className="text-xs text-muted-foreground">
-              This will permanently delete all your data including transactions, goals, and settings
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* App Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Info className="h-5 w-5" />
-            About
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Globe className="h-4 w-4 text-primary" aria-hidden="true" /> Localization
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Version</span>
-              <Badge variant="outline">1.0.0</Badge>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Time Zone</Label>
+              <Select value={settings.timeZone} onValueChange={(v) => handleSettingChange('timeZone', v)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Asia/Kolkata" className="text-xs">India (IST)</SelectItem>
+                  <SelectItem value="America/New_York" className="text-xs">Eastern (ET)</SelectItem>
+                  <SelectItem value="America/Los_Angeles" className="text-xs">Pacific (PT)</SelectItem>
+                  <SelectItem value="Europe/London" className="text-xs">London (GMT)</SelectItem>
+                  <SelectItem value="Asia/Dubai" className="text-xs">Dubai (GST)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Build</span>
-              <span className="text-sm">2024.1.0</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-sm text-muted-foreground">Platform</span>
-              <span className="text-sm">Web</span>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Currency</Label>
+              <Select value={settings.currency} onValueChange={(v) => handleSettingChange('currency', v)}>
+                <SelectTrigger className="h-9 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="INR" className="text-xs">₹ Indian Rupee</SelectItem>
+                  <SelectItem value="USD" className="text-xs">$ US Dollar</SelectItem>
+                  <SelectItem value="EUR" className="text-xs">€ Euro</SelectItem>
+                  <SelectItem value="GBP" className="text-xs">£ British Pound</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Data */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Database className="h-4 w-4 text-primary" aria-hidden="true" /> Data Management
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Row>
+            <RowLabel icon={Download} title="Export Settings" sub="Download your preferences as JSON" />
+            <Button variant="outline" size="sm" onClick={handleExportData} className="h-9 text-xs gap-1.5 shrink-0">
+              <Download className="h-3.5 w-3.5" aria-hidden="true" /> Export
+            </Button>
+          </Row>
+
+          <Separator />
+
+          <Alert className="border-destructive/30 bg-destructive/5">
+            <AlertTriangle className="h-4 w-4 text-destructive" aria-hidden="true" />
+            <AlertDescription className="text-xs text-destructive">
+              <strong>Danger Zone:</strong> Actions below cannot be undone.
+            </AlertDescription>
+          </Alert>
+
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => setShowClearDataDialog(true)}
+            className="h-9 text-xs gap-1.5"
+          >
+            <Trash2 className="h-3.5 w-3.5" aria-hidden="true" /> Clear All Data
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* About */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <Info className="h-4 w-4 text-primary" aria-hidden="true" /> About
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <dl className="space-y-2">
+            {[
+              { label: 'Version', value: <Badge variant="outline" className="text-xs">1.0.0</Badge> },
+              { label: 'Build',   value: <span className="text-xs text-foreground">2024.1.0</span> },
+              { label: 'Platform', value: <span className="text-xs text-foreground">Web (PWA)</span> },
+            ].map(({ label, value }) => (
+              <div key={label} className="flex justify-between items-center">
+                <dt className="text-xs text-muted-foreground">{label}</dt>
+                <dd>{value}</dd>
+              </div>
+            ))}
+          </dl>
         </CardContent>
       </Card>
 
       {/* Reset PIN Dialog */}
       <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>Reset PIN</DialogTitle>
+            <DialogTitle className="text-base">Reset PIN</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Alert>
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                This will log you out and you'll need to set up a new PIN. Are you sure you want to continue?
-              </AlertDescription>
-            </Alert>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleResetPIN}>
-              Reset PIN
-            </Button>
+          <Alert className="border-warning/30 bg-warning/5 my-2">
+            <AlertTriangle className="h-4 w-4 text-warning" />
+            <AlertDescription className="text-xs">
+              This will log you out. You'll need to set up a new PIN.
+            </AlertDescription>
+          </Alert>
+          <DialogFooter className="flex-row gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowResetDialog(false)}>Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={handleResetPIN}>Reset PIN</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Clear Data Dialog */}
       <Dialog open={showClearDataDialog} onOpenChange={setShowClearDataDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>Clear All Data</DialogTitle>
+            <DialogTitle className="text-base">Clear All Data</DialogTitle>
           </DialogHeader>
-          <div className="py-4">
-            <Alert className="border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive">
-              <AlertTriangle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Warning:</strong> This action will permanently delete all your data including:
-                <ul className="mt-2 list-disc list-inside text-sm">
-                  <li>All transactions and expenses</li>
-                  <li>Investment records</li>
-                  <li>Goals and targets</li>
-                  <li>Settings and preferences</li>
-                </ul>
-                This action cannot be undone.
-              </AlertDescription>
-            </Alert>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowClearDataDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleClearAllData}>
-              Clear All Data
-            </Button>
+          <Alert className="border-destructive/30 bg-destructive/5 my-2">
+            <AlertTriangle className="h-4 w-4 text-destructive" />
+            <AlertDescription className="text-xs text-destructive">
+              <strong>This permanently deletes:</strong>
+              <ul className="mt-1.5 list-disc list-inside space-y-0.5">
+                <li>All transactions & expenses</li>
+                <li>Investment records</li>
+                <li>Goals & targets</li>
+                <li>Settings & preferences</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
+          <DialogFooter className="flex-row gap-2 justify-end">
+            <Button variant="outline" size="sm" onClick={() => setShowClearDataDialog(false)}>Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={handleClearAllData}>Clear All</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
