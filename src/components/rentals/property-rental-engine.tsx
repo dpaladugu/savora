@@ -444,6 +444,322 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   const gorantlaTax = React.useMemo(() => { try { return JSON.parse(gorantlaTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gorantlaTaxSetting]);
 
   // What-If slider state
+  const [vacantShops,  setVacantShops]  = React.useState(0);
+  const [vacantMonths, setVacantMonths] = React.useState(1);
+
+  const recoveryAccumulated = progress.find(p => p.bucketId === 'recovery')?.accumulated ?? 0;
+
+  // ── Expected (full rent roll) vs Collected (paid flags) ──
+  const gunturP0   = (gunturTax.propertyTax ?? 0) + (gunturTax.waterTax ?? 0);
+  const gorantlaP0 = (gorantlaTax.propertyTax ?? 0) + (gorantlaTax.waterTax ?? 0) + DWACRA_DEDUCTION;
+
+  const gunturExpectedNet   = Math.max(0, gunturExpected  - gunturP0);
+  const gorantlaExpectedNet = Math.max(0, gorantlaExpected - gorantlaP0);
+  const combinedExpectedNet = gunturExpectedNet + gorantlaExpectedNet;
+
+  const gunturCollectedNet   = Math.max(0, gunturCollected  - gunturP0);
+  const gorantlaCollectedNet = Math.max(0, gorantlaCollected - gorantlaP0);
+  const combinedCollectedNet = gunturCollectedNet + gorantlaCollectedNet;
+
+  const unallocated = Math.max(0, combinedCollectedNet - WATERFALL_BUCKETS.filter(b => b.id !== 'debt').reduce((s, b) => s + (b.monthly ?? b.target), 0));
+
+  // Bucket fills from actual collected
+  const actualFills   = cascadeActual(combinedCollectedNet);
+  const expectedFills = cascadeActual(combinedExpectedNet);
+
+  // P1 / P2 timeline (based on expected net)
+  const p1Remaining    = Math.max(0, INS_RECOVERY_TARGET - recoveryAccumulated);
+  const p1PctDone      = Math.min(100, (recoveryAccumulated / INS_RECOVERY_TARGET) * 100);
+  const p1MonthsLeft   = combinedExpectedNet > 0 ? Math.ceil(p1Remaining / Math.min(combinedExpectedNet, INS_RECOVERY_MONTHLY)) : 999;
+  const p1MaturityDate = (() => { const d = new Date(); d.setMonth(d.getMonth() + p1MonthsLeft); return d; })();
+  const p1Done         = p1Remaining <= 0;
+
+  const p2Saving       = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
+  const p2Accumulated  = progress.find(p => p.bucketId === 'sinking')?.accumulated ?? 0;
+  const p2Remaining    = Math.max(0, INS_2029_TARGET - p2Accumulated);
+  const p2PctDone      = Math.min(100, (p2Accumulated / INS_2029_TARGET) * 100);
+  const p2MonthsLeft   = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
+  const p2MaturityDate = (() => { const d = new Date(); d.setMonth(d.getMonth() + (p1Done ? 0 : p1MonthsLeft) + p2MonthsLeft); return d; })();
+
+  const feb2029          = new Date(2029, 1, 1);
+  const p2SafeByDeadline = p2MaturityDate <= feb2029;
+
+  // What-If
+  const avgShopRent    = shops.filter(s => s.status === 'Occupied').length > 0
+    ? shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0) / shops.filter(s => s.status === 'Occupied').length : 0;
+  const vacancyLoss    = vacantShops * avgShopRent * vacantMonths;
+  const whatIfNet      = Math.max(0, combinedExpectedNet - vacantShops * avgShopRent);
+  const whatIfP1Mo     = whatIfNet > 0 ? Math.ceil(p1Remaining / Math.min(whatIfNet, INS_RECOVERY_MONTHLY)) : 999;
+  const whatIfP1Date   = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo); return d; })();
+  const p1Slip         = Math.max(0, whatIfP1Mo - p1MonthsLeft);
+  const whatIfP2Mo     = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
+  const whatIfP2Date   = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo + whatIfP2Mo); return d; })();
+  const p2SlipSafe     = whatIfP2Date <= feb2029;
+
+  const fmt = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  const collectionPct  = combinedExpectedNet > 0 ? Math.round((combinedCollectedNet / combinedExpectedNet) * 100) : 0;
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── Collection Status: per shop/room ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            This Month's Collection
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Progress bar */}
+          <div className="space-y-1">
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>Collected {formatCurrency(gunturCollected + gorantlaCollected)} of {formatCurrency(gunturExpected + gorantlaExpected)} gross</span>
+              <span className={`font-semibold ${collectionPct === 100 ? 'text-success' : collectionPct >= 70 ? 'text-warning' : 'text-destructive'}`}>{collectionPct}%</span>
+            </div>
+            <Progress value={collectionPct} className="h-2" />
+          </div>
+
+          {/* Guntur shops */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guntur — {shops.filter(s=>s.status==='Occupied' && s.paid).length}/{shops.filter(s=>s.status==='Occupied').length} shops paid</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {shops.filter(s => s.status === 'Occupied').map(shop => (
+                <div key={shop.id} className={`flex flex-col items-center p-2 rounded-lg border text-xs ${shop.paid ? 'bg-success/10 border-success/30 text-success' : 'bg-destructive/5 border-destructive/20 text-destructive'}`}>
+                  <span className="font-medium truncate w-full text-center">{shop.name}</span>
+                  <span>{shop.paid ? '✓' : '✗'} {formatCurrency(shop.rent)}</span>
+                </div>
+              ))}
+            </div>
+            {gunturUnpaid.length > 0 && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {gunturUnpaid.map(s => s.name).join(', ')} unpaid — missing {formatCurrency(gunturUnpaid.reduce((s,sh)=>s+sh.rent,0))}
+              </p>
+            )}
+          </div>
+
+          {/* Gorantla rooms */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Gorantla — {rooms.filter(r=>r.paid).length}/{rooms.length} rooms paid</p>
+            <div className="grid grid-cols-2 gap-1.5">
+              {rooms.map(room => (
+                <div key={room.id} className={`flex justify-between items-center p-2 rounded-lg border text-xs ${room.paid ? 'bg-success/10 border-success/30 text-success' : 'bg-destructive/5 border-destructive/20 text-destructive'}`}>
+                  <span className="font-medium truncate">{room.name}</span>
+                  <span>{room.paid ? '✓' : '✗'} {formatCurrency(room.rent)}</span>
+                </div>
+              ))}
+            </div>
+            {gorantlaUnpaid.length > 0 && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {gorantlaUnpaid.map(r => r.name).join(', ')} unpaid — missing {formatCurrency(gorantlaUnpaid.reduce((s,r)=>s+r.rent,0))}
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Income → Bucket Mapping ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ArrowDown className="w-4 h-4 text-primary" />
+            Income → Priority Mapping (Actual vs Expected)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {/* NOI row */}
+          <div className="grid grid-cols-3 gap-2 text-xs pb-2 border-b">
+            <div />
+            <div className="text-center font-semibold text-muted-foreground">Collected</div>
+            <div className="text-center font-semibold text-muted-foreground">Expected</div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-xs items-center py-1 border-b border-dashed">
+            <span className="text-muted-foreground">Net after P0</span>
+            <span className="text-center font-semibold text-primary">{formatCurrency(combinedCollectedNet)}</span>
+            <span className="text-center font-semibold text-muted-foreground">{formatCurrency(combinedExpectedNet)}</span>
+          </div>
+          {WATERFALL_BUCKETS.map(bucket => {
+            const actual   = actualFills[bucket.id] ?? 0;
+            const expected = expectedFills[bucket.id] ?? 0;
+            const shortfall = expected - actual;
+            return (
+              <div key={bucket.id} className="grid grid-cols-3 gap-2 text-xs items-center py-1">
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <ArrowRight className="w-3 h-3 shrink-0" />{bucket.label}
+                </span>
+                <span className={`text-center font-semibold ${actual >= expected ? 'text-success' : actual > 0 ? 'text-warning' : 'text-destructive'}`}>
+                  {formatCurrency(actual)}
+                </span>
+                <span className="text-center text-muted-foreground">
+                  {formatCurrency(expected)}
+                  {shortfall > 0 && <span className="text-destructive ml-1">−{formatCurrency(shortfall)}</span>}
+                </span>
+              </div>
+            );
+          })}
+
+          {/* Recommendation */}
+          {gunturUnpaid.length > 0 || gorantlaUnpaid.length > 0 ? (
+            <div className="mt-2 p-2 rounded-lg bg-warning/10 border border-warning/20 text-xs space-y-1">
+              <p className="font-semibold text-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Action Required</p>
+              {gunturUnpaid.length > 0 && <p>Chase {gunturUnpaid.map(s=>s.name).join(', ')} in Guntur — {formatCurrency(gunturUnpaid.reduce((s,sh)=>s+sh.rent,0))} pending</p>}
+              {gorantlaUnpaid.length > 0 && <p>Chase {gorantlaUnpaid.map(r=>r.name).join(', ')} in Gorantla — {formatCurrency(gorantlaUnpaid.reduce((s,r)=>s+r.rent,0))} pending</p>}
+              {actualFills['recovery'] < (expectedFills['recovery'] ?? 0) && <p>P1 Recovery shortfall this month: {formatCurrency((expectedFills['recovery'] ?? 0) - (actualFills['recovery'] ?? 0))}</p>}
+            </div>
+          ) : (
+            <div className="mt-2 p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success flex items-center gap-2">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              All units paid — full {formatCurrency(combinedCollectedNet)} NOI flowing to waterfall ✓
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── P1 Insurance Recovery ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            P1 — Insurance Recovery (₹1.7L paid Feb 2026)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Progress value={p1PctDone} className="h-3" />
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{formatCurrency(recoveryAccumulated)} recovered</span>
+            <span className="font-medium">{formatCurrency(INS_RECOVERY_TARGET)} target</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 rounded-lg bg-card border space-y-1">
+              <p className="text-muted-foreground">Monthly Allocation</p>
+              <p className="font-semibold text-primary">{formatCurrency(INS_RECOVERY_MONTHLY)}/mo</p>
+            </div>
+            <div className={`p-2 rounded-lg border space-y-1 ${p1Done ? 'bg-success/10 border-success/30' : 'bg-card'}`}>
+              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Completion</p>
+              <p className={`font-semibold ${p1Done ? 'text-success' : 'text-foreground'}`}>{p1Done ? '✓ Complete' : fmt(p1MaturityDate)}</p>
+            </div>
+          </div>
+          {p1Done && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              P1 complete — auto-upshifts to <strong>{formatCurrency(INS_2029_MONTHLY_UPSHIFT)}/mo</strong> for P2.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── P2 2029 Renewal Reserve ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-accent" />
+            P2 — Mother's Health Ins. Reserve (Feb 2029)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex justify-between text-xs mb-1">
+            <span className="text-muted-foreground">14% medical inflation × 3 yrs → target</span>
+            <span className="font-semibold text-accent">{formatCurrency(INS_2029_TARGET)}</span>
+          </div>
+          <Progress value={p2PctDone} className="h-3" />
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{formatCurrency(p2Accumulated)} saved</span>
+            <span className="font-medium">{formatCurrency(INS_2029_TARGET)} target</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 rounded-lg bg-card border space-y-1">
+              <p className="text-muted-foreground">Saving Rate</p>
+              <p className="font-semibold text-accent">
+                {p1Done ? formatCurrency(INS_2029_MONTHLY_UPSHIFT) : formatCurrency(INS_RECOVERY_MONTHLY)}/mo
+                {!p1Done && <span className="text-muted-foreground"> (upshifts after P1)</span>}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg border space-y-1 ${p2SafeByDeadline ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}>
+              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Ready</p>
+              <p className={`font-semibold ${p2SafeByDeadline ? 'text-success' : 'text-destructive'}`}>{fmt(p2MaturityDate)}</p>
+            </div>
+          </div>
+          {!p2SafeByDeadline && (
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>⚠ Current saving rate <strong>won't meet Feb 2029</strong>. Increase P2 or reduce P4 prepayment temporarily.</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── What-If Vacancy Simulator ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            What-If: Vacancy Simulator
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <label className="text-muted-foreground">Vacant Guntur Shops</label>
+                <span className="font-semibold">{vacantShops} shop{vacantShops !== 1 ? 's' : ''}</span>
+              </div>
+              <Slider min={0} max={5} step={1} value={[vacantShops]} onValueChange={([v]) => setVacantShops(v)} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <label className="text-muted-foreground">Duration</label>
+                <span className="font-semibold">{vacantMonths} month{vacantMonths !== 1 ? 's' : ''}</span>
+              </div>
+              <Slider min={1} max={12} step={1} value={[vacantMonths]} onValueChange={([v]) => setVacantMonths(v)} />
+            </div>
+          </div>
+
+          {vacantShops > 0 ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20 space-y-1">
+                  <p className="text-muted-foreground">Income Loss</p>
+                  <p className="font-bold text-destructive">−{formatCurrency(vacancyLoss)}</p>
+                  <p className="text-muted-foreground">over {vacantMonths} mo</p>
+                </div>
+                <div className="p-2 rounded-lg bg-card border space-y-1">
+                  <p className="text-muted-foreground">Monthly NOI drops to</p>
+                  <p className="font-bold text-warning">{formatCurrency(whatIfNet)}</p>
+                  <p className="text-muted-foreground">from {formatCurrency(combinedExpectedNet)}</p>
+                </div>
+              </div>
+              <div className="space-y-1.5 p-3 rounded-lg bg-card border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Timeline Impact</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">P1 Maturity</span>
+                  <span className={`font-semibold ${p1Slip > 0 ? 'text-warning' : 'text-success'}`}>
+                    {fmt(whatIfP1Date)} {p1Slip > 0 ? `(+${p1Slip} mo slip)` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">P2 Ready by</span>
+                  <span className={`font-semibold ${p2SlipSafe ? 'text-success' : 'text-destructive'}`}>
+                    {fmt(whatIfP2Date)} {!p2SlipSafe ? '⚠ Misses Feb 2029' : '✓ Safe'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">Move the sliders to simulate vacancy impact on insurance timelines.</p>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+
+  const gunturTax   = React.useMemo(() => { try { return JSON.parse(gunturTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gunturTaxSetting]);
+  const gorantlaTax = React.useMemo(() => { try { return JSON.parse(gorantlaTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gorantlaTaxSetting]);
+
+  // What-If slider state
   const [vacantShops,     setVacantShops]     = React.useState(0);
   const [vacantMonths,    setVacantMonths]    = React.useState(1);
 
