@@ -246,6 +246,17 @@ export interface LLMPrompt {
   usedDate?: Date;
 }
 
+export interface PendingTxn {
+  id: string;
+  rawText: string;
+  amount: number;
+  category: string;
+  note: string;
+  source: 'telegram' | 'manual';
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+}
+
 // Extended Database class
 export class ExtendedSavoraDB extends Dexie {
   // Existing tables
