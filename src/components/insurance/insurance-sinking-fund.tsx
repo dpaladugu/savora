@@ -81,9 +81,13 @@ export function InsuranceSinkingFund() {
     goals.some(g => g.notes?.includes(`insurance-sf:${policyId}`));
 
   const createGoal = async (p: typeof policies[0]) => {
-    const months   = monthsUntilRenewal(p.endDate);
-    const monthly  = Math.ceil((p.premium ?? 0) / Math.max(1, months));
-    const goalName = `💳 Insurance: ${p.provider} ${p.type}`;
+    const termYears = (p as any).premiumTermYears ?? 1;
+    const totalMonths = monthsUntilRenewal(p.endDate);
+    // For multi-year policies the sinking fund spreads over the full policy term
+    const effectiveMonths = termYears > 1 ? termYears * 12 : totalMonths;
+    const monthly  = Math.ceil((p.premium ?? 0) / Math.max(1, effectiveMonths));
+    const goalName = `🛡️ Insurance: ${p.provider} ${p.type}`;
+    const termLabel = termYears > 1 ? ` (${termYears}-yr policy → ₹${monthly.toLocaleString('en-IN')}/mo × ${effectiveMonths}mo)` : '';
 
     // Avoid duplicates
     if (hasGoal(p.id)) {
@@ -99,12 +103,12 @@ export function InsuranceSinkingFund() {
         currentAmount: 0,
         deadline:      p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : undefined,
         category:      'Insurance',
-        type:          'Short',
-        notes:         `insurance-sf:${p.id} | Monthly save: ₹${monthly.toLocaleString('en-IN')} for ${months} months. Renewal: ${renewalLabel(p.endDate)}`,
+        type:          termYears >= 3 ? 'Long' : termYears >= 2 ? 'Medium' : 'Short',
+        notes:         `insurance-sf:${p.id} | Monthly save: ₹${monthly.toLocaleString('en-IN')} for ${effectiveMonths} months${termLabel}. Renewal: ${renewalLabel(p.endDate)}`,
         createdAt:     new Date(),
         updatedAt:     new Date(),
       } as any);
-      toast.success(`Sinking fund goal created — save ₹${monthly.toLocaleString('en-IN')}/mo`);
+      toast.success(`Sinking fund goal created — save ₹${monthly.toLocaleString('en-IN')}/mo for ${effectiveMonths} months`);
     } catch {
       toast.error('Failed to create goal');
     }

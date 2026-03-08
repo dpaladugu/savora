@@ -202,15 +202,62 @@ export function TaxEngine() {
   const [taxRegime, setTaxRegime] = useState<'Old' | 'New'>('New');
   const [grossIncome, setGrossIncome] = useState(1200000);
   const [deductions80C, setDeductions80C] = useState(150000);
+  const [deductions80D, setDeductions80D] = useState(0);
   const [npsInvested, setNpsInvested] = useState(0);
   const [standardDeduction] = useState(75000); // FY 2025-26
   const [loading, setLoading] = useState(true);
+  const [autoLoaded, setAutoLoaded] = useState(false);
 
   useEffect(() => {
-    GlobalSettingsService.getGlobalSettings().then(s => {
-      if (s?.taxRegime) setTaxRegime(s.taxRegime);
+    async function loadData() {
+      try {
+        // Regime preference
+        const s = await GlobalSettingsService.getGlobalSettings();
+        if (s?.taxRegime) setTaxRegime(s.taxRegime);
+
+        // Auto-pull gross income from last 12 months of income records
+        const cutoff = new Date();
+        cutoff.setFullYear(cutoff.getFullYear() - 1);
+        const incomes = await db.incomes.toArray();
+        const annualIncome = incomes
+          .filter((i: any) => new Date(i.date) >= cutoff)
+          .reduce((s: number, i: any) => s + (i.amount ?? 0), 0);
+        if (annualIncome > 0) setGrossIncome(Math.round(annualIncome));
+
+        // Auto-pull 80C: EPF + PPF + ELSS investments this FY
+        const fyStart = new Date(new Date().getMonth() >= 3
+          ? new Date().getFullYear() : new Date().getFullYear() - 1, 3, 1);
+        const investments = await db.investments.toArray();
+        const c80 = investments
+          .filter((inv: any) => {
+            const d = inv.startDate ?? inv.purchaseDate ?? inv.createdAt;
+            return d && new Date(d) >= fyStart &&
+              ['EPF', 'PPF', 'MF-Growth', 'SIP'].includes(inv.type ?? '');
+          })
+          .reduce((s: number, inv: any) => s + (inv.investedValue ?? inv.amount ?? 0), 0);
+        if (c80 > 0) setDeductions80C(Math.min(150000, Math.round(c80)));
+
+        // Auto-pull 80D: personal insurance premiums (personal-pay only)
+        const policies = await db.insurancePolicies?.toArray() ?? [];
+        const d80 = policies
+          .filter((p: any) => {
+            const src = p.policySource ?? '';
+            return src === 'Personal' || (!p.isCorporate && src !== 'Corporate / Employer' && src !== 'Government Scheme');
+          })
+          .reduce((s: number, p: any) => s + (p.premium ?? 0), 0);
+        if (d80 > 0) setDeductions80D(Math.min(100000, Math.round(d80)));
+
+        // Auto-pull NPS from investments
+        const nps = investments
+          .filter((inv: any) => (inv.type ?? '').startsWith('NPS') && inv.startDate && new Date(inv.startDate) >= fyStart)
+          .reduce((s: number, inv: any) => s + (inv.investedValue ?? 0), 0);
+        if (nps > 0) setNpsInvested(Math.min(50000, Math.round(nps)));
+
+        setAutoLoaded(true);
+      } catch {}
       setLoading(false);
-    });
+    }
+    loadData();
   }, []);
 
   const handleRegimeChange = async (v: 'Old' | 'New') => {
@@ -219,11 +266,12 @@ export function TaxEngine() {
     toast.success(`Tax regime updated to ${v}`);
   };
 
-  // Old regime calculations
-  const oldTaxableIncome = Math.max(0, grossIncome - standardDeduction - deductions80C - Math.min(npsInvested, 50000));
+  // Note: user is on New Regime, so 80C/80D not applicable for final tax
+  // but we still compute Old regime for comparison
+  const oldTaxableIncome = Math.max(0, grossIncome - standardDeduction - deductions80C - Math.min(npsInvested, 50000) - deductions80D);
   const oldTax           = addSurchargeAndCess(calcTax(oldTaxableIncome, OLD_SLABS));
 
-  // New regime calculations
+  // New regime: only standard deduction applies
   const newTaxableIncome = Math.max(0, grossIncome - standardDeduction);
   const newTax           = addSurchargeAndCess(calcTax(newTaxableIncome, NEW_SLABS));
 
