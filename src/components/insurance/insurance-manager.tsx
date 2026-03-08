@@ -54,7 +54,13 @@ const FAMILY_MEMBERS = [
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   'Health': Heart,
+  'Super Top-Up Health': Heart,
+  'Critical Illness': Activity,
   'Term Life': Shield,
+  'Corporate Group Health': Briefcase,
+  'Corporate Group Term': Briefcase,
+  'Corporate Parental Health': Users,
+  'Maternity Rider': Heart,
   'Vehicle': Car,
   'Personal Accident': Users,
   'Home': Briefcase,
@@ -64,6 +70,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 
 const emptyForm = {
   type: 'Health' as string,
+  policySource: 'Personal' as string,
   provider: '',
   policyNo: '',
   familyMember: 'Me',
@@ -73,6 +80,7 @@ const emptyForm = {
   endDate: '',
   nomineeName: '',
   nomineeRelation: '',
+  hasMaternity: false,
   notes: '',
 };
 
