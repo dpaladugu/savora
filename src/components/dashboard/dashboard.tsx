@@ -175,14 +175,14 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
-  const settings = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
-  const userName = settings?.userName || 'Devavratha';
-
-  const ef = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
-
-  useEffect(() => {
-    db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
-  }, []);
+  const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
+  const userName    = settings?.userName || 'Devavratha';
+  const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
+  const incomeCount = useLiveQuery(() => (db as any).incomes?.count().catch(() => 0) ?? Promise.resolve(0), []) ?? 0;
+  const pendingCount = useLiveQuery(
+    () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
+    [role]
+  ) ?? 0;
 
   const efPct = ef && ef.targetAmount > 0
     ? Math.min(100, Math.round((ef.currentAmount / ef.targetAmount) * 100))
