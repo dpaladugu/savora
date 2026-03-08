@@ -145,7 +145,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
               aria-expanded={isMoreSheetOpen}
               aria-controls="more-sheet"
               className={`
-                flex flex-col items-center justify-center gap-0.5
+                relative flex flex-col items-center justify-center gap-0.5
                 min-w-[60px] min-h-[56px] px-3 py-2 rounded-2xl
                 transition-all duration-200 ease-out focus-ring
                 ${isMoreActive
