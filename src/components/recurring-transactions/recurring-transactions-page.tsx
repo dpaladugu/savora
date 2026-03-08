@@ -50,7 +50,7 @@ export function RecurringTransactionsPage() {
   const totalIn  = active.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
   const totalOut = active.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
 
-  const handleSubmit = async (data: Omit<RecurringTransaction, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmit = async (data: any) => {
     try {
       if (editing) {
         await RecurringTransactionService.update(editing.id, data);
