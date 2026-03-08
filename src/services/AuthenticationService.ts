@@ -207,7 +207,7 @@ export class AuthenticationService {
         db.auditLogs.clear(),
         db.expenses.clear(),
         db.incomes.clear(),
-        db.appSettings.clear(),
+        db.globalSettings.clear(),
       ]);
     } catch (error) {
       console.error('Error clearing database:', error);
