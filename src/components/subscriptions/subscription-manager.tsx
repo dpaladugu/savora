@@ -213,7 +213,7 @@ export function SubscriptionManager() {
             <CardTitle className="text-sm font-medium">Upcoming Renewals</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{upcomingSubscriptions.length}</div>
+            <div className="text-2xl font-bold text-warning">{upcomingSubscriptions.length}</div>
           </CardContent>
         </Card>
       </div>
