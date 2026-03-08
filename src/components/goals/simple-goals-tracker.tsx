@@ -108,7 +108,7 @@ export function SimpleGoalsTracker() {
 
           <Card className="metric-card border-border/50">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{progress.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-primary">{progress.toFixed(1)}%</div>
               <div className="text-sm text-muted-foreground">Progress</div>
             </CardContent>
           </Card>
