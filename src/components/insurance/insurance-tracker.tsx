@@ -94,10 +94,10 @@ export function InsuranceTracker() {
       };
 
       if (editingPolicy) {
-        await InsuranceService.updatePolicy(editingPolicy.id, policyData);
+        await InsuranceService.updatePolicy(editingPolicy.id, policyData as any);
         toast.success('Insurance policy updated successfully');
       } else {
-        await InsuranceService.addPolicy(policyData);
+        await InsuranceService.addPolicy(policyData as any);
         toast.success('Insurance policy added successfully');
       }
 
