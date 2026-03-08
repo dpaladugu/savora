@@ -215,13 +215,14 @@ export function UpcomingPayments() {
                       )}
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          reminder.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                          'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          reminder.status === 'overdue'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-warning/10 text-warning'
                         }`}>
                           {getStatusLabel(reminder.status)}
                         </span>
                         {reminder.autoDebit && (
-                          <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                          <span className="text-xs text-success bg-success/10 px-2 py-1 rounded">
                             Auto-debit
                           </span>
                         )}
