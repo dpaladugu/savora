@@ -20,7 +20,7 @@ const mainTabs = [
   { id: "dashboard",   label: "Dashboard",    icon: Home,         ariaLabel: "Navigate to dashboard" },
   { id: "expenses",    label: "Expenses",      icon: Receipt,      ariaLabel: "Navigate to expenses" },
   { id: "credit-cards", label: "Cards",        icon: CreditCard,   ariaLabel: "Navigate to credit cards" },
-  { id: "investments", label: "Invest",        icon: TrendingUp,   ariaLabel: "Navigate to investments" },
+  { id: "income",      label: "Income",        icon: Banknote,     ariaLabel: "Navigate to income tracker" },
 ];
 
 export const PersistentNavigation = React.memo(function PersistentNavigation({
