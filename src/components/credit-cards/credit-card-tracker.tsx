@@ -340,7 +340,7 @@ export function CreditCardTracker() {
                         <span className="text-xs text-muted-foreground">****{card.lastFourDigits}</span>
                         {card.network && <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5">{card.network}</Badge>}
                       </div>
-                      {card.dueDate ? dueBadge(card.dueDate) : null}
+                      {card.dueDay ? dueBadge(card.dueDay) : null}
                     </div>
                     <div className="flex gap-0.5 shrink-0">
                       <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(card)} aria-label="Edit"><Edit3 className="h-3 w-3" /></Button>
