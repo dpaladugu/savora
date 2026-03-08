@@ -40,7 +40,7 @@ const GOVT_SOURCES  = ['Government Scheme'];
 
 function sourceTag(source?: string, isCorporate?: boolean) {
   if (GOVT_SOURCES.includes(source ?? '') || source?.toLowerCase().includes('govt') || source?.toLowerCase().includes('government')) {
-    return <Badge className="text-[9px] px-1.5 bg-blue-500/15 text-blue-600 border-blue-500/30 border">Govt</Badge>;
+    return <Badge className="text-[9px] px-1.5 bg-info/15 text-info border-info/30 border">Govt</Badge>;
   }
   if (CORP_SOURCES.includes(source ?? '') || isCorporate) {
     return <Badge className="text-[9px] px-1.5 bg-warning/15 text-warning border-warning/30 border">Corp</Badge>;
