@@ -36,16 +36,8 @@ export function useNavigationRouter() {
       Logger.debug('More navigation:', { moduleId });
       
       // Validate moduleId is a valid MoreModule
-      const validModules: MoreModule[] = [
-        'emergency-fund', 'rentals', 'recommendations', 'cfa-recommendations', 'cashflow',
-        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions',
-        'vehicles', 'insurance', 'health-tracker', 'subscriptions', 'family-banking',
-        'loans', 'gold', 'smart-goals', 'enhanced-rentals', 'property-engine',
-        'family-dashboard', 'brother-global', 'vehicle-manager', 'settings',
-        'recommendations',
-      ];
-
-      const validModuleId = validModules.includes(moduleId as MoreModule) ? moduleId as MoreModule : null;
+      // Accept any non-empty string — the MoreModuleRouter handles unknown IDs gracefully
+      const validModuleId = moduleId && moduleId.length > 0 ? moduleId as MoreModule : null;
       
       setNavigationState({
         activeTab: 'more',
