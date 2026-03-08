@@ -560,10 +560,10 @@ db.version(13).stores({}).upgrade(async tx => {
       outstanding: 33_00_000,
       roi: 9.99,
       interestRate: 9.99,
-      emi: 55000,
+      emi: 61424,
       tenureMonths: 72,
       isActive: true,
-      startDate: new Date(2026, 1, 17),  // Feb 17 2026
+      startDate: new Date(2026, 3, 5),  // April 5, 2026 — first EMI date
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -576,6 +576,19 @@ db.version(14).stores({}).upgrade(async tx => {
   if (incred && (incred.emi ?? 0) !== 32641) {
     await tx.table('loans').update('loan-incred-2026', {
       emi: 32641,
+      updatedAt: new Date(),
+    });
+  }
+});
+
+// v15 — Correct ICICI Master Loan EMI to ₹61,424 + set first EMI date April 5 2026
+db.version(15).stores({}).upgrade(async tx => {
+  const icici = await tx.table('loans').get('loan-icici-master-2026');
+  if (icici) {
+    await tx.table('loans').update('loan-icici-master-2026', {
+      emi: 61424,
+      startDate: new Date(2026, 3, 5), // April 5, 2026 — first EMI date
+      tenureMonths: 72,
       updatedAt: new Date(),
     });
   }
