@@ -33,6 +33,8 @@ async function seedDatabase(): Promise<void> {
     // Seed Global Settings with proper Contact[] and Dependent[] types
     await db.globalSettings.add({
       id: 'global-settings-1',
+      userName: 'Devavratha',
+      userMission: 'Antifragile Debt-Freedom by 2029',
       taxRegime: 'New',
       autoLockMinutes: 5,
       birthdayBudget: 10000,

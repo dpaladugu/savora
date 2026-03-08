@@ -7,6 +7,8 @@ export const seedGlobalSettings = async () => {
 
   const settings: GlobalSettings = {
     id: 'singleton',
+    userName: 'Devavratha',
+    userMission: 'Antifragile Debt-Freedom by 2029',
     taxRegime: 'New',
     autoLockMinutes: 5,
     birthdayBudget: 5000,
