@@ -436,6 +436,7 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-2">
             {shops.map(shop => (
               <div key={shop.id} className={`p-3 rounded-lg border text-sm ${shop.status === 'Vacant' ? 'border-destructive/30 bg-destructive/5' : shop.paid ? 'border-success/40 bg-success/5' : 'border-border bg-card'}`}>
                 <div className="flex items-center justify-between mb-1">
