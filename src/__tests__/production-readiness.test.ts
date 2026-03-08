@@ -165,6 +165,7 @@ describe('Production Readiness Tests', () => {
     it('should handle PIN-based authentication', async () => {
       const mockGlobalSettings = {
         id: 'global-settings-singleton',
+        userName: 'Devavratha',
         failedPinAttempts: 0,
         maxFailedAttempts: 10,
         autoLockMinutes: 5,
