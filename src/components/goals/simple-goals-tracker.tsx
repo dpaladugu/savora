@@ -101,7 +101,7 @@ export function SimpleGoalsTracker() {
 
           <Card className="metric-card border-border/50">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">₹{totalSaved.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-success">₹{totalSaved.toLocaleString()}</div>
               <div className="text-sm text-muted-foreground">Saved</div>
             </CardContent>
           </Card>
