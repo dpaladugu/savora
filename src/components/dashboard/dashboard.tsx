@@ -457,6 +457,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Goal Progress Row ── */}
       <GoalProgressRow onNavigate={onTabChange} />
 
+      {/* ── Smart Nudges — proactive SIP / debt / EF alerts ── */}
+      <SmartNudgeEngine onMoreNavigation={onMoreNavigation} onTabChange={onTabChange} />
+
       {/* ── Upcoming Recurring Transactions ── */}
       <UpcomingRecurringStrip onNavigate={onMoreNavigation} />
 
