@@ -145,7 +145,7 @@ export function TelegramPendingTxns() {
         note: p.note || p.rawText,
         tags: ['telegram'],
         isPartialRent: false,
-        paymentMix: [{ mode: p.paymentMode || 'UPI', amount: Math.abs(p.amount) }],
+        paymentMix: [{ mode: (p.paymentMode === 'Cash' || p.paymentMode === 'Card' || p.paymentMode === 'UPI' || p.paymentMode === 'Bank' ? p.paymentMode : 'UPI') as 'Cash' | 'Card' | 'UPI' | 'Bank', amount: Math.abs(p.amount) }],
         isSplit: false,
         splitWith: [],
         createdAt: new Date(),
