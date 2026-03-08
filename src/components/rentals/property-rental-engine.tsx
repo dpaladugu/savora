@@ -755,11 +755,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   );
 }
 
-
-  return (
-    <div className="space-y-4">
-
-      {/* ── NOI Summary ── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
