@@ -77,8 +77,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
 
     // Calculate investment metrics
     const totalInvestments = allInvestments.reduce((sum, inv) => {
-      const currentValue = Number(inv.current_value || inv.currentValue) || 0;
-      const investedValue = Number(inv.invested_value || inv.investedValue) || 0;
+      const currentValue = Number(inv.currentValue) || 0;
+      const investedValue = Number(inv.investedValue) || 0;
       return sum + Math.max(currentValue, investedValue);
     }, 0);
 
