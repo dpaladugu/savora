@@ -221,8 +221,17 @@ export function SequentialStrikeEngine() {
       <div className="flex items-center gap-2">
         <Zap className="h-5 w-5 text-warning" />
         <h2 className="text-xl font-bold tracking-tight">Sequential Strike Engine</h2>
-        <Badge variant={sim.onTrack ? 'default' : 'destructive'} className="ml-auto text-xs">
-          {sim.onTrack ? `✓ +${monthsBuffer}mo buffer` : `⚠ ${Math.abs(monthsBuffer)}mo slip`}
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm" variant="outline"
+            className="h-7 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+            onClick={() => setShowPrepayment(true)}
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            Log Prepayment
+          </Button>
+          <Badge variant={sim.onTrack ? 'default' : 'destructive'} className="text-xs">
+            {sim.onTrack ? `✓ +${monthsBuffer}mo buffer` : `⚠ ${Math.abs(monthsBuffer)}mo slip`}
         </Badge>
       </div>
 
