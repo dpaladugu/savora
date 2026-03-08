@@ -414,6 +414,28 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   const shops = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
   const rooms = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
 
+  // ── Per-unit collection status ──
+  const gunturCollected   = shops.filter(s => s.paid && s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0);
+  const gunturExpected    = shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0);
+  const gorantlaCollected = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
+  const gorantlaExpected  = rooms.reduce((s, r) => s + r.rent, 0);
+  const gunturUnpaid      = shops.filter(s => s.status === 'Occupied' && !s.paid);
+  const gorantlaUnpaid    = rooms.filter(r => !r.paid);
+
+  // ── Cascade actual collected through buckets ──
+  function cascadeActual(netCollected: number) {
+    let rem = netCollected;
+    const result: Record<string, number> = {};
+    for (const b of WATERFALL_BUCKETS) {
+      if (rem <= 0) { result[b.id] = 0; continue; }
+      const cap = b.monthly ?? (b.target === Infinity ? rem : b.target);
+      const fill = Math.min(rem, cap);
+      result[b.id] = fill;
+      rem -= fill;
+    }
+    return result;
+  }
+
   const gunturTaxSetting    = useLiveQuery(() => db.appSettings.get('gunturTaxSettings'), []);
   const gorantlaTaxSetting  = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
   const progress            = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
