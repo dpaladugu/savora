@@ -149,16 +149,17 @@ export class AuditEngineService {
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     const oneYearAgo    = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-    const [allTxns, allIncomes] = await Promise.all([
+    const [allTxns, allIncomes, allExpenses] = await Promise.all([
       db.txns.toArray(),
       db.incomes ? db.incomes.toArray().catch(() => [] as any[]) : Promise.resolve([] as any[]),
+      db.expenses ? db.expenses.toArray().catch(() => [] as any[]) : Promise.resolve([] as any[]),
     ]);
 
     // ── 1. DSCR ──────────────────────────────────────────────────────────────
     const dscr = AuditEngineService._calcDSCR(loans, gunturShops);
 
     // ── 2. DIR ───────────────────────────────────────────────────────────────
-    const dir = AuditEngineService._calcDIR(allTxns, ninetyDaysAgo, investments, emergencyFunds, creditCards);
+    const dir = AuditEngineService._calcDIR(allTxns, allExpenses, ninetyDaysAgo, investments, emergencyFunds, creditCards);
 
     // ── 3. Debt-to-Freedom Velocity ──────────────────────────────────────────
     const debtFreedom = AuditEngineService._calcDebtFreedom(loans, creditCards);
