@@ -247,7 +247,7 @@ export function UpcomingPayments() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5 text-gray-600" />
+                      <Icon className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <h3 className="font-semibold text-foreground">{reminder.title}</h3>
                         <p className="text-sm text-muted-foreground">
