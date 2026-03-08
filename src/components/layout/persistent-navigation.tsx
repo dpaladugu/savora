@@ -30,8 +30,17 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
   onMoreNavigation,
 }: PersistentNavigationProps) {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = React.useState(false);
-  // Track when we're closing the sheet due to a module selection (not user dismiss)
   const closingForModuleRef = React.useRef(false);
+  const role = useRole();
+
+  // Live pending-txn count — only ADMIN sees the badge
+  const pendingCount = useLiveQuery(async () => {
+    if (role !== 'ADMIN') return 0;
+    try {
+      return await (db as any).pendingTxns?.where('status').equals('pending').count() ?? 0;
+    } catch { return 0; }
+  }, [role]) ?? 0;
+
 
   React.useEffect(() => {
     if (activeTab !== "more") setIsMoreSheetOpen(false);
