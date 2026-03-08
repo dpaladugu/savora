@@ -26,7 +26,7 @@ const modules: MoreModule[] = [
   { id: 'credit-cards',    title: 'Credit Cards',           description: 'Cards, balances, due dates',                         icon: CreditCard,  status: 'available',    category: 'financial', priority: 'high' },
   { id: 'loans',           title: 'Loans & EMIs',           description: 'Balances, EMI schedule, prepayment scenarios',        icon: Banknote,    status: 'available',    category: 'financial', priority: 'high' },
   { id: 'subscriptions',   title: 'Subscriptions',          description: 'Recurring charges & cancellations',                  icon: Repeat,      status: 'beta',         category: 'financial', priority: 'high' },
-  { id: 'emergency-fund',  title: 'Emergency Fund',         description: 'Build & track your 6-month buffer',                  icon: AlertCircle, status: 'available',    category: 'financial', priority: 'high' },
+  { id: 'emergency-fund',  title: 'Emergency Fund',         description: 'Build & track your 12-month buffer + Medical bucket', icon: AlertCircle, status: 'available',    category: 'financial', priority: 'high' },
   { id: 'brother-global',  title: "Brother's US Liability", description: 'InCred loan, USD hand loans, USD↔INR converter',    icon: Globe,       status: 'available',    category: 'financial', priority: 'high', roleRequired: 'BROTHER' },
   { id: 'family-banking',  title: 'Family Banking',         description: 'Shared accounts, family financial planning',         icon: Users2,      status: 'coming-soon',  category: 'financial', priority: 'low' },
 
