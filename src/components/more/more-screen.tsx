@@ -206,12 +206,15 @@ const modules: MoreModule[] = [
 ];
 
 export function MoreScreen() {
+  const role = useRole();
+
+  const visibleModules = modules.filter(m => {
+    if (m.roleRequired && role !== m.roleRequired && role !== 'ADMIN') return false;
+    return true;
+  });
+
   const handleModuleClick = (moduleId: string, status: string) => {
-    if (status === 'coming-soon') {
-      return; // Do nothing for coming soon modules
-    }
-    
-    // Navigate to module
+    if (status === 'coming-soon') return;
     window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
   };
 
