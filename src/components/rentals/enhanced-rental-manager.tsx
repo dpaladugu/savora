@@ -150,7 +150,7 @@ export function EnhancedRentalManager() {
             const occupancyRate = propertyTenants.length > 0 ? 100 : 0;
 
             return (
-              <Card key={property.id} className={isOverdue ? 'border-red-200' : ''}>
+              <Card key={property.id} className={isOverdue ? 'border-destructive/40' : ''}>
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">

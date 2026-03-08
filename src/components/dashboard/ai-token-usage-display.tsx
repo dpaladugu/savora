@@ -32,9 +32,9 @@ export function AiTokenUsageDisplay() {
 
   const getProgressColor = (current: number, limit: number) => {
     const percentage = limit > 0 ? (current / limit) * 100 : 0;
-    if (percentage > 90) return 'bg-red-500';
-    if (percentage > 70) return 'bg-yellow-500';
-    return 'bg-green-500';
+    if (percentage > 90) return 'bg-destructive';
+    if (percentage > 70) return 'bg-warning';
+    return 'bg-success';
   };
 
   const handleResetUsage = () => {
@@ -63,7 +63,7 @@ export function AiTokenUsageDisplay() {
             <span>Today's Usage:</span>
             <span className="font-semibold">{dailyUsage.toLocaleString()} / {DAILY_TOKEN_LIMIT_ESTIMATE.toLocaleString()}</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+          <div className="w-full bg-muted rounded-full h-2.5">
             <div
               className={`h-2.5 rounded-full ${getProgressColor(dailyUsage, DAILY_TOKEN_LIMIT_ESTIMATE)}`}
               style={{ width: `${Math.min((dailyUsage / DAILY_TOKEN_LIMIT_ESTIMATE) * 100, 100)}%` }}
@@ -75,7 +75,7 @@ export function AiTokenUsageDisplay() {
             <span>This Month's Usage:</span>
             <span className="font-semibold">{monthlyUsage.toLocaleString()} / {MONTHLY_TOKEN_LIMIT_ESTIMATE.toLocaleString()}</span>
           </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
+          <div className="w-full bg-muted rounded-full h-2.5">
             <div
               className={`h-2.5 rounded-full ${getProgressColor(monthlyUsage, MONTHLY_TOKEN_LIMIT_ESTIMATE)}`}
               style={{ width: `${Math.min((monthlyUsage / MONTHLY_TOKEN_LIMIT_ESTIMATE) * 100, 100)}%` }}

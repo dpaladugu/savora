@@ -104,21 +104,21 @@ export function RentalTracker() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      'occupied': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'vacant': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'notice-period': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'occupied': 'bg-success/10 text-success border border-success/20',
+      'vacant': 'bg-destructive/10 text-destructive border border-destructive/20',
+      'notice-period': 'bg-warning/10 text-warning border border-warning/20',
     };
     return colors[status] || colors['vacant'];
   };
 
   const getTypeColor = (type: string) => {
     const colors: Record<string, string> = {
-      'room': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'shop': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'apartment': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'house': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
-      'office': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
-      'other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      'room': 'bg-primary/10 text-primary border border-primary/20',
+      'shop': 'bg-accent/10 text-accent border border-accent/20',
+      'apartment': 'bg-success/10 text-success border border-success/20',
+      'house': 'bg-warning/10 text-warning border border-warning/20',
+      'office': 'bg-muted text-muted-foreground border border-border',
+      'other': 'bg-muted text-muted-foreground border border-border',
     };
     return colors[type] || colors['other'];
   };

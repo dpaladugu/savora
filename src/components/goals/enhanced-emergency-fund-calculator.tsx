@@ -282,9 +282,9 @@ export function EnhancedEmergencyFundCalculator() {
 
               <Card className="p-4">
                 <div className="text-center">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                  <AlertCircle className="w-6 h-6 text-warning mx-auto mb-2" />
                   <div className="text-sm font-medium">Gap Amount</div>
-                  <div className="text-lg font-semibold text-yellow-600">
+                  <div className="text-lg font-semibold text-warning">
                     {formatCurrency(Math.max(0, efSettings.targetAmount - efSettings.currentAmount))}
                   </div>
                   <div className="text-xs text-muted-foreground">remaining to target</div>

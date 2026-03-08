@@ -82,53 +82,22 @@ export function CreditCardStatements() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="metric-card p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingDown className="w-4 h-4 text-red-500" />
+                  <TrendingDown className="w-4 h-4 text-destructive" />
                   <span className="text-sm text-muted-foreground">Total Spent</span>
                 </div>
-                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalSpent)}</div>
-              </div>
+...
               <div className="metric-card p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <TrendingUp className="w-4 h-4 text-success" />
                   <span className="text-sm text-muted-foreground">Credits/Refunds</span>
                 </div>
-                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalCredits)}</div>
-              </div>
-              <div className="metric-card p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CreditCard className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm text-muted-foreground">Transactions</span>
-                </div>
-                <div className="text-2xl font-bold text-foreground">{statements.length}</div>
-              </div>
-            </div>
-
-            {statements.length === 0 ? (
-              <div className="text-center py-12">
-                <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">No Statements Uploaded</h3>
-                <p className="text-muted-foreground mb-4">Upload your credit card CSV statements to track expenses</p>
-                <Button onClick={triggerFileInput}>
-                  <Upload className="w-4 h-4 mr-2" />
-                  Upload First Statement
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {statements.map((statement, index) => (
-                  <Card key={index} className="metric-card border-border/50">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`w-2 h-2 rounded-full ${statement.type === 'debit' ? 'bg-red-500' : 'bg-green-500'}`}></div>
-                            <h4 className="font-semibold text-foreground">
-                              {statement.merchant}
-                            </h4>
+...
+                            <div className={`w-2 h-2 rounded-full ${statement.type === 'debit' ? 'bg-destructive' : 'bg-success'}`}></div>
+...
                             <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                               statement.type === 'debit' 
-                                ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                ? 'bg-destructive/10 text-destructive border border-destructive/20'
+                                : 'bg-success/10 text-success border border-success/20'
                             }`}>
                               {statement.category}
                             </span>

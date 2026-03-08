@@ -488,7 +488,7 @@ export function CreditCardModule() {
                       <p className="text-sm text-muted-foreground">Available</p>
                       <PrivacyMask 
                         amount={card.availableCredit}
-                        className="text-lg font-semibold text-green-600"
+                        className="text-lg font-semibold value-positive"
                       />
                     </div>
                     

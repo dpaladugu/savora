@@ -126,7 +126,7 @@ export function ExpenseItemization({ totalAmount, onItemsChange, initialItems = 
             <span className="font-bold">₹{totalAmount.toFixed(2)}</span>
           </div>
           {hasDiscrepancy && (
-            <div className="flex items-center gap-2 text-sm text-orange-600 dark:text-orange-400">
+            <div className="flex items-center gap-2 text-sm text-warning">
               <AlertTriangle className="w-4 h-4" />
               <span>Discrepancy: ₹{Math.abs(itemsTotal - totalAmount).toFixed(2)}</span>
             </div>

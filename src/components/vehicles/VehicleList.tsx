@@ -152,20 +152,20 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
                 </CollapsibleTrigger>
                 <CollapsibleContent className="mt-2 space-y-2 text-xs pl-2">
                   {(mockInsurancePolicies[vehicle.id!] && mockInsurancePolicies[vehicle.id!].length > 0) ? (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-md p-2">
+                    <div className="bg-primary/5 rounded-md p-2">
                       <div className="flex items-center gap-2 mb-1">
-                        <Shield aria-hidden="true" className="w-3 h-3 text-blue-600" />
-                        <span className="text-xs font-medium text-blue-800 dark:text-blue-200">Linked Insurance Policies (Mock)</span>
+                        <Shield aria-hidden="true" className="w-3 h-3 text-primary" />
+                        <span className="text-xs font-medium text-primary">Linked Insurance Policies (Mock)</span>
                       </div>
                        <p className="text-muted-foreground italic text-xs">Mock policy display needs review.</p>
                     </div>
                   ) : <p className="text-muted-foreground italic text-xs">No linked insurance policies (mock).</p>}
 
                   {(mockRelatedExpenses[vehicle.id!] && mockRelatedExpenses[vehicle.id!].length > 0) ? (
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-md p-2">
+                    <div className="bg-success/5 rounded-md p-2">
                       <div className="flex items-center gap-2 mb-1">
-                        <Receipt aria-hidden="true" className="w-3 h-3 text-green-600" />
-                        <span className="text-xs font-medium text-green-800 dark:text-green-200">Linked Expenses (Mock)</span>
+                        <Receipt aria-hidden="true" className="w-3 h-3 text-success" />
+                        <span className="text-xs font-medium text-success">Linked Expenses (Mock)</span>
                       </div>
                         <p className="text-muted-foreground italic text-xs">Mock expense display needs review.</p>
                       </div>

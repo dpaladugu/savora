@@ -148,7 +148,7 @@ export function DataImport() {
           Ensure your JSON file is correctly formatted. Download a sample template if unsure (feature coming soon).
         </p>
         {importSummaryMessage && (
-          <div className={`mt-4 p-3 rounded-md text-sm ${importSummaryMessage.startsWith("Import failed") ? 'bg-destructive/10 text-destructive border border-destructive/30' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-500/30'}`}>
+          <div className={`mt-4 p-3 rounded-md text-sm ${importSummaryMessage.startsWith("Import failed") ? 'bg-destructive/10 text-destructive border border-destructive/30' : 'bg-success/10 text-success border border-success/30'}`}>
             <p className="font-semibold mb-1">Import Status:</p>
             <pre className="whitespace-pre-wrap">{importSummaryMessage}</pre>
           </div>
