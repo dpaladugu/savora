@@ -234,8 +234,8 @@ export interface Expense {
   description: string;
   paymentMethod?: string;
   tags?: string[];
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Income {
@@ -246,8 +246,8 @@ export interface Income {
   sourceName?: string;
   description?: string;
   frequency?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface RecurringTransaction {

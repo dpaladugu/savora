@@ -18,7 +18,7 @@ export interface EmergencyFund {
 export interface Investment {
   id: string;
   name: string;
-  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB' | 'Others';
+  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB' | 'Others' | 'SIP' | 'NPS-T2' | 'Gold-ETF' | 'Gift-Card-Float';
   currentValue: number;
   purchasePrice?: number;
   quantity?: number;
