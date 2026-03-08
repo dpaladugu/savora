@@ -94,7 +94,7 @@ export interface DexieClass {
   name: string;
   tables: Table[];
   verno: number;
-  open(): Promise<DexieClass>;
+  open(): Promise<this>;
   close(): void;
   delete(): Promise<void>;
   isOpen(): boolean;
