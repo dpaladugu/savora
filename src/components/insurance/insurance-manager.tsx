@@ -18,7 +18,7 @@ import { InsuranceGapAnalysis } from './insurance-gap-analysis';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
-  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp
+  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
