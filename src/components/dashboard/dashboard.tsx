@@ -74,6 +74,12 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { dashboardData, loading } = useDashboardData();
   const role = useRole();
   const perms = usePermissions();
+  const [hasWill, setHasWill] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
+  }, []);
+
 
   // Build metric value strings (actual values — masking applied inside MetricValue)
   const balanceStr     = `₹${(245678).toLocaleString('en-IN')}`;
