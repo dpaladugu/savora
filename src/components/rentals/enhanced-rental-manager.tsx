@@ -187,7 +187,7 @@ export function EnhancedRentalManager() {
 
                   {/* Tenants */}
                   {propertyTenants.length > 0 && (
-                    <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                    <div className="mt-4 p-4 bg-muted/40 rounded-lg">
                       <h4 className="font-medium mb-2">Current Tenants:</h4>
                       {propertyTenants.map(tenant => (
                         <div key={tenant.id} className="flex justify-between items-center py-2">

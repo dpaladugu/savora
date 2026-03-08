@@ -76,7 +76,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.date)}
                         {'source_recurring_transaction_id' in item && item.source_recurring_transaction_id && (
-                          <Repeat className="w-3 h-3 ml-1 text-blue-500" />
+                          <Repeat className="w-3 h-3 ml-1 text-primary" />
                         )}
                       </span>
                       {subLine && (

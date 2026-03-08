@@ -165,21 +165,21 @@ export function RecommendationsEngine() {
                           <h4 className="font-semibold text-sm">{rec.title}</h4>
                           <p className="text-sm text-muted-foreground mt-1">{rec.description}</p>
                           {rec.action && (
-                            <p className="text-sm font-medium mt-2 text-blue-700">
+                            <p className="text-sm font-medium mt-2 text-primary">
                               Action: {rec.action}
                               {rec.amount && ` (₹${rec.amount.toLocaleString()})`}
                             </p>
                           )}
                           {rec.dueDate && (
-                            <p className="text-xs text-orange-600 mt-1">
+                            <p className="text-xs text-warning mt-1">
                               Due: {rec.dueDate.toLocaleDateString()}
                             </p>
                           )}
                         </div>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          rec.priority === 'high' ? 'bg-red-100 text-red-700' :
-                          rec.priority === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-blue-100 text-blue-700'
+                          rec.priority === 'high'   ? 'bg-destructive/10 text-destructive' :
+                          rec.priority === 'medium' ? 'bg-warning/10 text-warning' :
+                          'bg-primary/10 text-primary'
                         }`}>
                           {rec.priority}
                         </span>

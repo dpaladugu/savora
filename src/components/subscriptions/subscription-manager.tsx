@@ -230,7 +230,7 @@ export function SubscriptionManager() {
           subscriptions.map((subscription) => {
             const isUpcoming = upcomingSubscriptions.some(s => s.id === subscription.id);
             return (
-              <Card key={subscription.id} className={isUpcoming ? 'border-orange-200' : ''}>
+              <Card key={subscription.id} className={isUpcoming ? 'border-warning/40' : ''}>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
