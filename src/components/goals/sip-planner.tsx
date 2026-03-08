@@ -7,11 +7,12 @@
  * • Per-goal comparison table for all active goals
  * • One-tap "Start SIP" → creates recurring transaction
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import { RecurringTransactionService } from '@/services/RecurringTransactionService';
+import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
