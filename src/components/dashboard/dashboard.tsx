@@ -3,13 +3,14 @@ import React, { useEffect, useState } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target, Shield, Scale, AlertTriangle } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useRole, usePermissions } from '@/store/rbacStore';
 import { MaskedValue } from '@/components/ui/masked-value';
 import { db } from '@/lib/db';
+
 
 
 interface DashboardProps {
@@ -81,50 +82,48 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   }, []);
 
 
+
   // Build metric value strings (actual values — masking applied inside MetricValue)
-  const balanceStr     = `₹${(245678).toLocaleString('en-IN')}`;
-  const expenseStr     = `₹${dashboardData.monthlyExpenses.toLocaleString('en-IN')}`;
-  const investStr      = `₹${dashboardData.totalInvestments.toLocaleString('en-IN')}`;
-  const ccStr          = `₹${dashboardData.creditCardDebt.toLocaleString('en-IN')}`;
+  const balanceStr = `₹${Math.max(0, dashboardData.monthlyIncome - dashboardData.monthlyExpenses).toLocaleString('en-IN')}`;
+  const expenseStr = `₹${dashboardData.monthlyExpenses.toLocaleString('en-IN')}`;
+  const investStr  = `₹${dashboardData.totalInvestments.toLocaleString('en-IN')}`;
+  const ccStr      = `₹${dashboardData.creditCardDebt.toLocaleString('en-IN')}`;
 
   const metrics: MetricCardProps[] = [
     {
-      title: 'Total Balance',
-      value: perms.showSalary || role === 'ADMIN'
-        ? balanceStr
-        : '🔒 Hidden',
-      change: '+12.5%',
-      icon: DollarSign,
+      title: 'Monthly Surplus',
+      value: perms.showSalary || role === 'ADMIN' ? balanceStr : '🔒 Hidden',
+      change: dashboardData.savingsRate > 0 ? `${dashboardData.savingsRate.toFixed(1)}% saved` : '—',
+      icon: Wallet,
       changeType: 'positive',
-      trend: { value: 12.5, isPositive: true },
+      trend: { value: dashboardData.savingsRate, isPositive: true },
     },
     {
       title: 'Monthly Exp.',
       value: expenseStr,
-      change: '-5.2%',
+      change: '—',
       icon: TrendingDown,
       changeType: 'negative',
-      trend: { value: 5.2, isPositive: false },
+      trend: { value: 0, isPositive: false },
     },
     {
       title: 'Investments',
-      value: perms.showInvestments || role === 'ADMIN'
-        ? investStr
-        : '🔒 Hidden',
-      change: '+8.3%',
+      value: perms.showInvestments || role === 'ADMIN' ? investStr : '🔒 Hidden',
+      change: '—',
       icon: TrendingUp,
       changeType: 'positive',
-      trend: { value: 8.3, isPositive: true },
+      trend: { value: 0, isPositive: true },
     },
     {
       title: 'Credit Cards',
       value: ccStr,
-      change: '+2.1%',
+      change: '—',
       icon: CreditCard,
       changeType: 'neutral',
-      trend: { value: 2.1, isPositive: false },
+      trend: { value: 0, isPositive: false },
     },
   ];
+
 
   if (loading) {
     return (

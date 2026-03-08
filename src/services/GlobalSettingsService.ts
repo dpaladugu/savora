@@ -1,3 +1,4 @@
+
 import { db } from '@/lib/db';
 import type { GlobalSettings, Contact } from '@/lib/db';
 
@@ -5,11 +6,8 @@ export class GlobalSettingsService {
   static async getGlobalSettings(): Promise<GlobalSettings> {
     try {
       const settings = await db.globalSettings.get('global-settings-singleton');
-      if (settings) {
-        return settings;
-      }
+      if (settings) return settings;
 
-      // Create default settings if none exist
       const defaultSettings: GlobalSettings = {
         id: 'global-settings-singleton',
         taxRegime: 'New',
@@ -25,6 +23,7 @@ export class GlobalSettingsService {
         vehicleInflation: 6.0,
         maintenanceInflation: 7.0,
         privacyMask: false,
+        // removed: failedPinAttempts, maxFailedAttempts (self-destruct removed from spec)
         failedPinAttempts: 0,
         maxFailedAttempts: 10,
         darkMode: false,
@@ -46,10 +45,7 @@ export class GlobalSettingsService {
   static async updateGlobalSettings(updates: Partial<GlobalSettings>): Promise<void> {
     try {
       const existing = await this.getGlobalSettings();
-      await db.globalSettings.put({
-        ...existing,
-        ...updates
-      });
+      await db.globalSettings.put({ ...existing, ...updates });
     } catch (error) {
       console.error('Error updating global settings:', error);
       throw error;
@@ -59,10 +55,9 @@ export class GlobalSettingsService {
   static async addEmergencyContact(contact: Contact): Promise<void> {
     try {
       const settings = await this.getGlobalSettings();
-      const updatedContacts = [...settings.emergencyContacts, contact];
       await db.globalSettings.put({
         ...settings,
-        emergencyContacts: updatedContacts
+        emergencyContacts: [...settings.emergencyContacts, contact],
       });
     } catch (error) {
       console.error('Error adding emergency contact:', error);
@@ -71,69 +66,23 @@ export class GlobalSettingsService {
   }
 
   static async updateAutoLockMinutes(minutes: number): Promise<void> {
-    try {
-      if (minutes < 1 || minutes > 10) {
-        throw new Error('Auto lock minutes must be between 1 and 10');
-      }
-      await this.updateGlobalSettings({ autoLockMinutes: minutes });
-    } catch (error) {
-      console.error('Error updating auto lock minutes:', error);
-      throw error;
-    }
+    if (minutes < 1 || minutes > 10) throw new Error('Auto lock minutes must be between 1 and 10');
+    await this.updateGlobalSettings({ autoLockMinutes: minutes });
   }
 
   static async updateTaxRegime(regime: 'Old' | 'New'): Promise<void> {
-    try {
-      await this.updateGlobalSettings({ taxRegime: regime });
-    } catch (error) {
-      console.error('Error updating tax regime:', error);
-      throw error;
-    }
+    await this.updateGlobalSettings({ taxRegime: regime });
   }
 
-  static async incrementFailedPinAttempts(): Promise<number> {
-    try {
-      const settings = await this.getGlobalSettings();
-      const newAttempts = settings.failedPinAttempts + 1;
-      
-      await this.updateGlobalSettings({ 
-        failedPinAttempts: newAttempts 
-      });
-      
-      return newAttempts;
-    } catch (error) {
-      console.error('Error incrementing failed PIN attempts:', error);
-      throw error;
-    }
-  }
-
-  static async resetFailedPinAttempts(): Promise<void> {
-    try {
-      await this.updateGlobalSettings({ 
-        failedPinAttempts: 0 
-      });
-    } catch (error) {
-      console.error('Error resetting failed PIN attempts:', error);
-      throw error;
-    }
-  }
-
-  static async shouldTriggerSelfDestruct(): Promise<boolean> {
-    try {
-      const settings = await this.getGlobalSettings();
-      return settings.failedPinAttempts >= settings.maxFailedAttempts;
-    } catch (error) {
-      console.error('Error checking self-destruct status:', error);
-      return false;
-    }
-  }
+  /** @deprecated Self-destruct removed from spec v1.3 — kept as no-ops for backward compat */
+  static async incrementFailedPinAttempts(): Promise<number> { return 0; }
+  static async resetFailedPinAttempts(): Promise<void> {}
+  static async shouldTriggerSelfDestruct(): Promise<boolean> { return false; }
 
   static async getSettings(): Promise<GlobalSettings | null> {
     try {
-      const settings = await db.globalSettings.limit(1).first();
-      return settings || null;
-    } catch (error) {
-      console.error('Error getting settings:', error);
+      return (await db.globalSettings.limit(1).first()) ?? null;
+    } catch {
       return null;
     }
   }

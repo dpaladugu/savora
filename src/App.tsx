@@ -12,7 +12,7 @@ import NotFound from '@/pages/NotFound';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 60 * 1000,
     },
   },
 });
@@ -23,7 +23,7 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
           <AuthProvider>
-            <Router>
+            <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
               <div className="min-h-screen bg-background text-foreground">
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -41,3 +41,4 @@ function App() {
 }
 
 export default App;
+
