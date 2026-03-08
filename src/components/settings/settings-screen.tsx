@@ -76,6 +76,7 @@ export function SettingsScreen() {
         </TabsContent>
 
         <TabsContent value="data">
+          <BackupNudge onGoToBackup={() => setActiveTab('data')} />
           <BackupRestore />
         </TabsContent>
       </Tabs>
