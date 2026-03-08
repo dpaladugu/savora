@@ -19,7 +19,7 @@ import { InsuranceSinkingFund } from './insurance-sinking-fund';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
-  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity
+  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity, PiggyBank
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
