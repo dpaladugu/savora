@@ -171,7 +171,37 @@ const modules: MoreModule[] = [
     status: 'available',
     category: 'settings',
     priority: 'high'
-  }
+  },
+
+  // New March 2026 Modules
+  {
+    id: 'vehicles',
+    title: 'Vehicle Fleet & Watchdog',
+    description: 'FZS oil alerts, Fuelio CSV sync, insurance reminders',
+    icon: Bike,
+    status: 'available',
+    category: 'tracking',
+    priority: 'high',
+  },
+  {
+    id: 'property-engine',
+    title: 'Guntur / Gorantla Rentals',
+    description: 'Waterfall allocation, Dwacra deduction, Grandma Care Fund',
+    icon: Building,
+    status: 'available',
+    category: 'tracking',
+    priority: 'high',
+  },
+  {
+    id: 'brother-global',
+    title: "Brother's Global Liability",
+    description: 'InCred loan, US Hand Loans, USD↔INR converter',
+    icon: Globe,
+    status: 'available',
+    category: 'financial',
+    priority: 'high',
+    roleRequired: 'BROTHER' as const,
+  },
 ];
 
 export function MoreScreen() {
