@@ -1,15 +1,12 @@
 /**
  * BackupRestore — §26
- * • Export: AES-256 encrypted JSON blob of ALL Dexie tables
- * • QR code generated from encrypted blob (small backups)
- * • Restore via:
- *     1. .savbak file upload
- *     2. Camera QR scan (BarcodeDetector API — Chrome/Edge Android)
- *     3. QR image file scan (works everywhere, no camera permission needed)
+ * • Export: AES-256 encrypted .savbak file (all Dexie tables)
+ * • Transfer to new device via file share (WhatsApp, AirDrop, USB, email)
+ * • Restore: upload .savbak + password
  * • CSV export per table
  * • Stamps lastBackupAt to globalSettings after every successful export
  */
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -20,10 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Download, Upload, QrCode, ShieldCheck, FileText,
-  AlertTriangle, CheckCircle2, Camera, X, Image, RefreshCw,
+  Download, Upload, ShieldCheck, FileText,
+  AlertTriangle, CheckCircle2, RefreshCw, Smartphone,
+  Share2, ArrowRight,
 } from 'lucide-react';
-import QRCodeLib from 'qrcode';
 
 // ─── AES-256 helpers ──────────────────────────────────────────────────────────
 async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
