@@ -41,15 +41,15 @@ function IncomeQuickAdd({ open, onClose }: { open: boolean; onClose: () => void 
     if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
     setSaving(true);
     try {
-      await (db as any).incomes.add({
+      const now = new Date();
+      await db.incomes.add({
         id: crypto.randomUUID(),
         amount: amt,
         category,
         description: description || category,
-        date: new Date().toISOString().slice(0, 10),
-        frequency: 'monthly',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        date: now,
+        createdAt: now,
+        updatedAt: now,
       });
       toast.success(`₹${amt.toLocaleString('en-IN')} income recorded`);
       setAmount(''); setDescription(''); setCategory('Salary');
