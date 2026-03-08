@@ -37,11 +37,11 @@ export function InvestmentsTracker() {
       {/* ── Summary metrics — 1 col stacked on mobile ── */}
       <div className="grid grid-cols-1 gap-3">
         {([
-          { label: 'Portfolio Value', amount: totalValue,    color: 'text-foreground'                                         },
-          { label: 'Total Invested',  amount: totalInvested, color: 'text-foreground'                                         },
+          { label: 'Portfolio Value', amount: totalValue,    color: 'text-foreground',   sub: undefined as string | undefined },
+          { label: 'Total Invested',  amount: totalInvested, color: 'text-foreground',   sub: undefined as string | undefined },
           { label: 'Total Returns',   amount: totalReturns,  color: totalReturns >= 0 ? 'value-positive' : 'value-negative',
-            sub: `${returnsPercent >= 0 ? '+' : ''}${returnsPercent.toFixed(2)}%` },
-        ] as const).map(({ label, amount, color, sub }) => (
+            sub: `${returnsPercent >= 0 ? '+' : ''}${returnsPercent.toFixed(2)}%` as string | undefined },
+        ]).map(({ label, amount, color, sub }) => (
           <Card key={label} className="glass">
             <CardContent className="flex items-center justify-between p-4">
               <p className="text-xs text-muted-foreground">{label}</p>
