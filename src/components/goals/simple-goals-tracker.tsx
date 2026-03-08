@@ -153,14 +153,7 @@ export function SimpleGoalsTracker() {
                       </div>
                     </div>
                     
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${Math.min(goalProgress, 100)}%` }}
-                      />
-                    </div>
+                    <Progress value={Math.min(goalProgress, 100)} className={`h-2 mb-2 ${isCompleted ? '[&>div]:bg-success' : '[&>div]:bg-primary'}`} />
                     
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Deadline: {new Date(goal.deadline).toLocaleDateString()}</span>
