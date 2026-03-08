@@ -76,7 +76,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
     <nav
       role="navigation"
       aria-label="Main navigation"
-      className="fixed bottom-0 left-0 right-0 z-50 enhanced-nav-glass border-t border-border/30 nav-safe-bottom"
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden enhanced-nav-glass border-t border-border/30 nav-safe-bottom"
     >
       <div className="flex items-center justify-around px-2 py-1.5 max-w-lg mx-auto">
         {mainTabs.map((tab) => {
