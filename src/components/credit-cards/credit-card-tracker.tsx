@@ -277,7 +277,7 @@ export function CreditCardTracker() {
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
           <span>
             <strong>Payment due soon:</strong>{' '}
-            {dueSoon.map(c => `${c.bankName} ${c.cardName} (${daysUntilDue(c.dueDate!)}d)`).join(', ')}
+            {dueSoon.map(c => `${c.bankName} ${c.cardName} (${daysUntilDue(c.dueDay!)}d)`).join(', ')}
           </span>
         </div>
       )}
