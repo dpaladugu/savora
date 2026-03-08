@@ -166,38 +166,43 @@ export function InsuranceTracker() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Insurance Tracker</h1>
-          <p className="text-muted-foreground">Manage your insurance policies and track renewals</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Insurance</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Policies, premiums & renewals</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Policy
+        <Button size="sm" onClick={() => setShowAddModal(true)} className="h-9 gap-1.5 rounded-xl text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5" /> Add Policy
         </Button>
       </div>
 
-      {/* Notice about implementation status */}
-      <Alert className="border-yellow-200 bg-yellow-50">
-        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-800">
-          Insurance service is not yet fully implemented. This is a preview of the interface.
+      <Alert className="border-warning/30 bg-warning/8">
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        <AlertDescription className="text-xs">
+          Insurance service is in beta. UI preview only — data saved locally.
         </AlertDescription>
       </Alert>
 
-      {/* Summary Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Total Coverage
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(totalCoverage)}</div>
-          <p className="text-sm text-muted-foreground">
-            {policies.length} policies • Annual premium: {formatCurrency(totalPremium)}
-          </p>
+      {/* Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="glass">
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Total Coverage</p>
+            <p className="text-base font-bold text-foreground tabular-nums">{formatCurrency(totalCoverage)}</p>
+            <p className="text-[10px] text-muted-foreground">{policies.length} policies</p>
+          </CardContent>
+        </Card>
+        <Card className="glass">
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Annual Premium</p>
+            <p className="text-base font-bold value-negative tabular-nums">{formatCurrency(totalPremium)}</p>
+            <p className="text-[10px] text-muted-foreground">per year</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* dummy closing div to match original structure */}
+      <div className="hidden">
         </CardContent>
       </Card>
 

@@ -85,46 +85,41 @@ export function CreditCardTracker() {
 
   // Main view of CreditCardTracker
   return (
-    <div className="space-y-6">
-      {/* Header section removed. Title/subtitle ("Credit Cards", "Manage your credit cards and limits")
-          would come from ModuleHeader via router config.
-          The "Add Card" button is also a candidate for a header action.
-          For now, placing it at the top of the content.
-      */}
-      <div className="flex justify-end">
-        <Button onClick={() => setShowAddForm(true)}>
-          <Plus className="w-4 h-4 mr-2" />
-          Add Card
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Credit Cards</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Limits, due dates & fee waivers</p>
+        </div>
+        <Button size="sm" onClick={() => setShowAddForm(true)} className="h-9 gap-1.5 rounded-xl text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5" /> Add Card
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <CreditCard className="w-5 h-5 text-blue-600" />
+      {/* Summary — 2 equal cols, no text overflow */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="glass">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                <CreditCard className="w-3.5 h-3.5 text-primary" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-foreground">{formatCurrency(totalCreditLimit)}</div>
-                <div className="text-sm text-muted-foreground">Total Limit</div>
-              </div>
+              <p className="text-xs text-muted-foreground">Total Limit</p>
             </div>
+            <p className="text-base font-bold text-foreground tabular-nums">{formatCurrency(totalCreditLimit)}</p>
           </CardContent>
         </Card>
 
-        <Card className="metric-card border-border/50">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 dark:bg-green-900/20 rounded-lg">
-                <Percent className="w-5 h-5 text-green-600" />
+        <Card className="glass">
+          <CardContent className="p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-success/10 shrink-0">
+                <Percent className="w-3.5 h-3.5 text-success" />
               </div>
-              <div>
-                <div className="text-2xl font-bold text-foreground">{activeCards.length}</div>
-                <div className="text-sm text-muted-foreground">Active Cards</div>
-              </div>
+              <p className="text-xs text-muted-foreground">Active Cards</p>
             </div>
+            <p className="text-base font-bold text-foreground tabular-nums">{activeCards.length}</p>
           </CardContent>
         </Card>
       </div>
