@@ -7,11 +7,11 @@ interface EnhancedBasicExpenseFieldsProps {
   formData: {
     amount: string;
     date: string;
-    description: string; // Changed from tag
+    description: string;
   };
   onFormDataChange: (updates: Partial<EnhancedBasicExpenseFieldsProps['formData']>) => void;
-  onFieldBlur: (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData'], value: string) => void; // fieldName is now typed
-  errors: Pick<ValidationErrors, 'amount' | 'date' | 'description'>; // Errors specific to these fields
+  onFieldBlur: (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData'], value: string) => void;
+  errors: Pick<ValidationErrors, 'amount' | 'date' | 'description'>;
 }
 
 export function EnhancedBasicExpenseFields({ 
@@ -24,21 +24,13 @@ export function EnhancedBasicExpenseFields({
     const hasError = !!errors[fieldName];
     const hasValue = !!formData[fieldName];
     const isValid = hasValue && !hasError;
-    
     return { hasError, hasValue, isValid };
   };
 
   const renderFieldIcon = (fieldName: keyof EnhancedBasicExpenseFieldsProps['formData']) => {
     const { hasError, isValid } = getFieldStatus(fieldName);
-    
-    if (hasError) {
-      return <AlertCircle className="w-4 h-4 text-red-500" />;
-    }
-    
-    if (isValid) {
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
-    }
-    
+    if (hasError) return <AlertCircle className="w-4 h-4 text-destructive" />;
+    if (isValid)  return <CheckCircle  className="w-4 h-4 text-success"     />;
     return null;
   };
 
@@ -59,20 +51,20 @@ export function EnhancedBasicExpenseFields({
             onBlur={(e) => onFieldBlur('amount', e.target.value)}
             placeholder="0.00"
             required
-            className={`pr-10 ${errors.amount ? "border-red-500 focus:ring-red-500" : getFieldStatus('amount').isValid ? "border-green-500" : ""}`}
+            className={`pr-10 ${errors.amount ? "border-destructive focus:ring-destructive" : getFieldStatus('amount').isValid ? "border-success" : ""}`}
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
             {renderFieldIcon('amount')}
           </div>
         </div>
         {errors.amount && (
-          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <p className="text-destructive text-xs mt-1 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {errors.amount}
           </p>
         )}
-        {!errors.amount && getFieldStatus('amount').isValid && ( // Show valid message only if validated and no error
-          <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
+        {!errors.amount && getFieldStatus('amount').isValid && (
+          <p className="text-success text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             Valid amount
           </p>
@@ -92,27 +84,27 @@ export function EnhancedBasicExpenseFields({
             onChange={(e) => onFormDataChange({ date: e.target.value })}
             onBlur={(e) => onFieldBlur('date', e.target.value)}
             required
-            className={`pr-10 ${errors.date ? "border-red-500 focus:ring-red-500" : getFieldStatus('date').isValid ? "border-green-500" : ""}`}
+            className={`pr-10 ${errors.date ? "border-destructive focus:ring-destructive" : getFieldStatus('date').isValid ? "border-success" : ""}`}
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
             {renderFieldIcon('date')}
           </div>
         </div>
         {errors.date && (
-          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <p className="text-destructive text-xs mt-1 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {errors.date}
           </p>
         )}
         {!errors.date && getFieldStatus('date').isValid && (
-          <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
+          <p className="text-success text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             Valid date
           </p>
         )}
       </div>
       
-      {/* Description Field (formerly Tag/Merchant) */}
+      {/* Description Field */}
       <div className="md:col-span-2">
         <label htmlFor="expenseDescription" className="text-sm font-medium text-foreground mb-2 block">
           Description *
@@ -120,25 +112,25 @@ export function EnhancedBasicExpenseFields({
         <div className="relative">
           <Input
             id="expenseDescription"
-            value={formData.description} // Changed from formData.tag
-            onChange={(e) => onFormDataChange({ description: e.target.value })} // Changed from tag
-            onBlur={(e) => onFieldBlur('description', e.target.value)} // Changed from tag
+            value={formData.description}
+            onChange={(e) => onFormDataChange({ description: e.target.value })}
+            onBlur={(e) => onFieldBlur('description', e.target.value)}
             placeholder="e.g., Lunch with client, Groceries"
             required
-            className={`pr-10 ${errors.description ? "border-red-500 focus:ring-red-500" : getFieldStatus('description').isValid ? "border-green-500" : ""}`}
+            className={`pr-10 ${errors.description ? "border-destructive focus:ring-destructive" : getFieldStatus('description').isValid ? "border-success" : ""}`}
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3">
             {renderFieldIcon('description')}
           </div>
         </div>
         {errors.description && (
-          <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+          <p className="text-destructive text-xs mt-1 flex items-center gap-1">
             <AlertCircle className="w-3 h-3" />
             {errors.description}
           </p>
         )}
         {!errors.description && getFieldStatus('description').isValid && (
-          <p className="text-green-600 text-xs mt-1 flex items-center gap-1">
+          <p className="text-success text-xs mt-1 flex items-center gap-1">
             <CheckCircle className="w-3 h-3" />
             Valid description
           </p>

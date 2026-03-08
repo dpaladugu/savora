@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
+import { MonthlySummaryCard } from './monthly-summary-card';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, MessageCircle, ListChecks, ChevronDown, CheckCircle2 } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
@@ -435,6 +436,8 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
 
+      {/* ── Monthly Summary ── */}
+      <MonthlySummaryCard />
 
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />
