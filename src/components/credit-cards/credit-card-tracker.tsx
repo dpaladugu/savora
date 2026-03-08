@@ -178,7 +178,7 @@ export function CreditCardTracker() {
   const totalBalance = cards.reduce((s, c) => s + (c.currentBalance ?? 0), 0);
   const activeCards  = cards.filter(c => c.isActive !== false);
   const utilPct      = totalLimit > 0 ? Math.round((totalBalance / totalLimit) * 100) : 0;
-  const dueSoon      = cards.filter(c => c.dueDate && daysUntilDue(c.dueDate) <= 7);
+  const dueSoon      = cards.filter(c => c.dueDay && daysUntilDue(c.dueDay) <= 7);
 
   const handleAdd = async (form: typeof emptyForm) => {
     try {
