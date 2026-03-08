@@ -10,6 +10,8 @@ export class GlobalSettingsService {
 
       const defaultSettings: GlobalSettings = {
         id: 'global-settings-singleton',
+        userName: 'Devavratha',
+        userMission: 'Antifragile Debt-Freedom by 2029',
         taxRegime: 'New',
         autoLockMinutes: 5,
         birthdayBudget: 0,

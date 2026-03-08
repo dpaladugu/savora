@@ -198,6 +198,8 @@ export interface AuditLog {
 
 export interface GlobalSettings {
   id: string;
+  userName: string;
+  userMission?: string;
   failedPinAttempts: number;
   maxFailedAttempts: number;
   autoLockMinutes: number;
@@ -332,5 +334,13 @@ db.version(3).stores({
 db.version(4).stores({
   recurringTransactions: '++id, description, category, frequency, type, is_active, next_date, createdAt, updatedAt',
 });
+
+// Version 5: Add userName to globalSettings (upgrade existing records)
+db.version(5).stores({}).upgrade(tx =>
+  tx.table('globalSettings').toCollection().modify((s: any) => {
+    if (!s.userName) s.userName = 'Devavratha';
+    if (!s.userMission) s.userMission = 'Antifragile Debt-Freedom by 2029';
+  })
+);
 
 export { db };

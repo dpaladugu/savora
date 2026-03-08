@@ -16,6 +16,7 @@ vi.mock('@/hooks/use-toast', () => ({
 
 const mockSettings = {
   id: 'global-settings-singleton',
+  userName: 'Devavratha',
   taxRegime: 'New' as const,
   autoLockMinutes: 5,
   birthdayBudget: 0,
