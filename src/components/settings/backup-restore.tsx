@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 
 // ─── AES-256 helpers ──────────────────────────────────────────────────────────
-async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+async function deriveKey(password: string, salt: ArrayBuffer): Promise<CryptoKey> {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
