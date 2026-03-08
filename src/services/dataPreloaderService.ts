@@ -230,6 +230,7 @@ const sampleFamilyBankAccounts: Omit<FamilyBankAccount, 'id'>[] = [
     owner: 'Mother',
     bankName: 'SBI',
     type: 'Savings',
+    currentBalance: 50000,
     createdAt: now,
     updatedAt: now,
   }
@@ -240,6 +241,9 @@ const sampleFamilyTransfers: Omit<FamilyTransfer, 'id'>[] = [
     amount: 5000,
     from: 'My Account',
     to: 'Family Account',
+    toPerson: 'Mother',
+    purpose: 'Monthly allowance',
+    mode: 'NEFT',
     date: new Date('2023-02-20'),
     createdAt: now,
     updatedAt: now,
