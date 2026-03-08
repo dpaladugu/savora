@@ -312,6 +312,24 @@ export function InsuranceManager() {
                 </Select>
               </div>
             </div>
+
+            {/* Policy Source — critical for antifragility scoring */}
+            <div className="space-y-1">
+              <Label className="text-xs">Policy Source</Label>
+              <Select value={form.policySource} onValueChange={v => setForm(f => ({ ...f, policySource: v }))}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {POLICY_SOURCE.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {form.policySource === 'Corporate / Employer' && (
+                <p className="text-[10px] text-warning flex items-center gap-1 mt-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Corporate cover lapses if you change jobs — antifragility risk.
+                </p>
+              )}
+            </div>
+
             {[
               { id: 'provider',   label: 'Provider *',         key: 'provider',   required: true             },
               { id: 'policyNo',   label: 'Policy Number',      key: 'policyNo',   required: false            },
@@ -343,6 +361,18 @@ export function InsuranceManager() {
                 <Input value={form.nomineeRelation} onChange={e => setForm(f => ({ ...f, nomineeRelation: e.target.value }))} className="h-9 text-sm" placeholder="Spouse / Child" />
               </div>
             </div>
+
+            {/* Maternity flag */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.hasMaternity}
+                onChange={e => setForm(f => ({ ...f, hasMaternity: e.target.checked }))}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-xs text-foreground">Policy includes maternity cover</span>
+            </label>
+
             <div className="space-y-1">
               <Label className="text-xs">Notes</Label>
               <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="h-9 text-sm" placeholder="Optional" />
