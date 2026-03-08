@@ -26,13 +26,99 @@ interface DashboardProps {
   onMoreNavigation: (moduleId: string) => void;
 }
 
+// ── Income Quick-Add Dialog ────────────────────────────────────────────────────
+function IncomeQuickAdd({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState('Salary');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) { toast.error('Enter a valid amount'); return; }
+    setSaving(true);
+    try {
+      await (db as any).incomes.add({
+        id: crypto.randomUUID(),
+        amount: amt,
+        category,
+        description: description || category,
+        date: new Date().toISOString().slice(0, 10),
+        frequency: 'monthly',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      toast.success(`₹${amt.toLocaleString('en-IN')} income recorded`);
+      setAmount(''); setDescription(''); setCategory('Salary');
+      onClose();
+    } catch (e) {
+      toast.error('Failed to save income');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Banknote className="h-4 w-4 text-success" />
+            Quick Add Income
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Amount (₹)</Label>
+            <Input
+              type="number"
+              placeholder="e.g. 85000"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              autoFocus
+              className="text-base font-semibold"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger className="h-9 text-sm">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {['Salary', 'Freelance', 'Rental', 'Investment Returns', 'Business', 'Other'].map((c) => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Note (optional)</Label>
+            <Input
+              placeholder="e.g. March salary"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 h-9" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1 h-9" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving…' : 'Save Income'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-function QuickActions({ onTabChange, onMoreNavigation }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void }) {
+function QuickActions({ onTabChange, onMoreNavigation, onAddIncome }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void; onAddIncome: () => void }) {
   const actions = [
     { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')                },
+    { icon: Banknote,   label: 'Add Income',  onClick: onAddIncome                                  },
     { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards')            },
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
-    { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')             },
     { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
     { icon: Crosshair,  label: 'Debt Strike',  onClick: () => onMoreNavigation('debt-strike')        },
   ];
