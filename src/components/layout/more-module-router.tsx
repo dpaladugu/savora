@@ -32,10 +32,23 @@ import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analy
 import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
 import { CSVImports } from '@/components/imports/csv-imports';
 import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
+import { DebtStrikeCalculator } from '@/components/debt/debt-strike-calculator';
 import { useRole } from '@/store/rbacStore';
+import { Shield } from 'lucide-react';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
+}
+
+// ── Access-denied placeholder ────────────────────────────────────────────────
+function AccessDenied({ reason }: { reason: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-64 gap-3 text-center p-6">
+      <Shield className="h-10 w-10 text-muted-foreground/40" />
+      <p className="font-semibold text-foreground">Access Restricted</p>
+      <p className="text-sm text-muted-foreground">{reason}</p>
+    </div>
+  );
 }
 
 export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
@@ -48,6 +61,18 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
   }, [activeModule]);
 
   const renderModule = () => {
+    // ── BROTHER restrictions: only sees Guntur waterfall, Family funds, InCred loan, US Sandbox ──
+    const brotherAllowed = ['property-engine', 'family-dashboard', 'family-banking', 'family-banking-v2', 'brother-global', 'brother-repayment', 'loans'];
+    if (role === 'BROTHER' && !brotherAllowed.includes(activeModule)) {
+      return <AccessDenied reason="This module is not accessible to your role. You can view: Guntur Rentals, Family Funds, Loans & Repayments." />;
+    }
+
+    // ── SPOUSE restrictions: rentals + health + goals + budget — masks salary/investments ──
+    const spouseBlocked = ['audit-log', 'brother-global', 'ai-advisor'];
+    if (role === 'SPOUSE' && spouseBlocked.includes(activeModule)) {
+      return <AccessDenied reason="This module is restricted for your role." />;
+    }
+
     switch (activeModule) {
       case 'gold':
         return <GoldTracker />;
@@ -66,7 +91,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'family-dashboard':
         return <FamilyFinancialDashboard />;
       case 'brother-global':
-        if (role !== 'BROTHER' && role !== 'ADMIN') return <div className="p-4 text-muted-foreground">Access restricted</div>;
+        if (role !== 'BROTHER' && role !== 'ADMIN') return <AccessDenied reason="Only ADMIN and BROTHER can view this module." />;
         return <BrotherGlobalLiability />;
       case 'smart-goals':
         return <EnhancedAutoGoalDashboard />;
@@ -97,13 +122,14 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'credit-cards':
         return <CreditCardModule />;
       case 'will-estate':
+        if (role !== 'ADMIN') return <AccessDenied reason="Will & Estate is restricted to ADMIN only." />;
         return <WillEstateManager />;
       case 'tax-engine':
         return <TaxEngine />;
       case 'ai-advisor':
         return <LLMAdvisor />;
       case 'audit-log':
-        if (role !== 'ADMIN') return <div className="p-4 text-muted-foreground">Access restricted to ADMIN</div>;
+        if (role !== 'ADMIN') return <AccessDenied reason="Audit Log is restricted to ADMIN only." />;
         return <AuditLogViewer />;
       case 'insurance-gap':
         return <InsuranceGapAnalysis />;
@@ -113,6 +139,9 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <CSVImports />;
       case 'recurring-transactions':
         return <RecurringTransactionsPage />;
+      case 'debt-strike':
+        if (role === 'GUEST') return <AccessDenied reason="Sign in to view Debt Strike calculator." />;
+        return <DebtStrikeCalculator />;
       default:
         return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
@@ -124,4 +153,5 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
     </div>
   );
 }
+
 

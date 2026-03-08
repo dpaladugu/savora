@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,9 +28,10 @@ function QuickActions({ onTabChange, onMoreNavigation }: { onTabChange: (t: stri
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
     { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')             },
     { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
+    { icon: Crosshair,  label: 'Debt Strike',  onClick: () => onMoreNavigation('debt-strike')        },
   ];
   return (
-    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Quick actions">
+    <div className="grid grid-cols-6 gap-2" role="group" aria-label="Quick actions">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
           key={label}
@@ -105,8 +106,8 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const metrics: MetricCardProps[] = [
     {
       title: 'Monthly Surplus',
-      value: perms.showSalary || role === 'ADMIN' ? balanceStr : '🔒 Hidden',
-      change: dashboardData.savingsRate > 0 ? `${dashboardData.savingsRate.toFixed(1)}% saved` : '—',
+      value: (role === 'BROTHER') ? '🔒 Hidden' : balanceStr,
+      change: dashboardData.savingsRate > 0 ? `${dashboardData.savingsRate.toFixed(1)}% saved` : (dashboardData.monthlyIncome === 0 ? 'Add income →' : '—'),
       icon: Wallet,
       changeType: 'positive',
       trend: { value: dashboardData.savingsRate, isPositive: true },
@@ -114,15 +115,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     {
       title: 'Monthly Exp.',
       value: expenseStr,
-      change: '—',
+      change: dashboardData.monthlyExpenses === 0 ? 'No expenses yet' : '—',
       icon: TrendingDown,
       changeType: 'negative',
       trend: { value: 0, isPositive: false },
     },
     {
       title: 'Investments',
-      value: perms.showInvestments || role === 'ADMIN' ? investStr : '🔒 Hidden',
-      change: '—',
+      value: (role === 'BROTHER' || role === 'GUEST') ? '🔒 Hidden' : investStr,
+      change: dashboardData.totalInvestments === 0 ? 'Add investments →' : '—',
       icon: TrendingUp,
       changeType: 'positive',
       trend: { value: 0, isPositive: true },
@@ -130,7 +131,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     {
       title: 'Credit Cards',
       value: ccStr,
-      change: '—',
+      change: dashboardData.creditCardDebt === 0 ? 'No balance' : '—',
       icon: CreditCard,
       changeType: 'neutral',
       trend: { value: 0, isPositive: false },
