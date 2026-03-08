@@ -10,6 +10,7 @@ import { PropertyRentalEngine } from '@/components/rentals/property-rental-engin
 import { FamilyFinancialDashboard } from '@/components/family/family-financial-dashboard';
 import { BrotherGlobalLiability } from '@/components/family/brother-global-liability';
 import { EnhancedAutoGoalDashboard } from '@/components/goals/enhanced-auto-goal-dashboard';
+import { AutoGoalEngine } from '@/components/goals/auto-goal-engine';
 import { HealthTracker } from '@/components/health/health-tracker';
 import { SubscriptionManager } from '@/components/subscriptions/subscription-manager';
 import { SubscriptionTracker } from '@/components/subscriptions/subscription-tracker';
@@ -23,6 +24,8 @@ import { CFARecommendationsDashboard } from '@/components/recommendations/cfa-re
 import { RecommendationsEngine } from '@/components/recommendations/recommendations-engine';
 import { ComprehensiveSettingsScreen } from '@/components/settings/comprehensive-settings-screen';
 import { CreditCardModule } from '@/components/credit-cards/credit-card-module';
+import { WillEstateManager } from '@/components/estate/will-estate-manager';
+import { TaxEngine } from '@/components/tax/tax-engine';
 import { useRole } from '@/store/rbacStore';
 
 export interface MoreModuleRouterProps {
@@ -51,11 +54,12 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'family-dashboard':
         return <FamilyFinancialDashboard />;
       case 'brother-global':
-        // Only BROTHER or ADMIN can see this
         if (role !== 'BROTHER' && role !== 'ADMIN') return <div className="p-4 text-muted-foreground">Access restricted</div>;
         return <BrotherGlobalLiability />;
       case 'smart-goals':
         return <EnhancedAutoGoalDashboard />;
+      case 'auto-goals':
+        return <AutoGoalEngine />;
       case 'health-tracker':
         return <HealthTracker />;
       case 'subscriptions':
@@ -80,6 +84,10 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <ComprehensiveSettingsScreen />;
       case 'credit-cards':
         return <CreditCardModule />;
+      case 'will-estate':
+        return <WillEstateManager />;
+      case 'tax-engine':
+        return <TaxEngine />;
       default:
         return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
@@ -91,3 +99,4 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
     </div>
   );
 }
+

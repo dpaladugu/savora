@@ -4,8 +4,10 @@ import {
   CreditCard, FileText, Repeat, Car, Shield, Heart, Coins,
   Users2, Target, TrendingUp, Brain, Settings, Sparkles,
   Home, Banknote, AlertCircle, Globe, Bike, Building,
+  Scale, Calculator, Zap,
 } from 'lucide-react';
 import { useRole } from '@/store/rbacStore';
+
 
 interface MoreModule {
   id: string;
