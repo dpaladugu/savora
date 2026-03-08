@@ -121,12 +121,12 @@ export function VehicleFleetWatchdog() {
         return (
           <Card
             key={vehicle.id}
-            className={`border-2 ${
+          className={`border-2 ${
               oil.status === 'overdue'
                 ? 'border-destructive bg-destructive/5'
                 : oil.status === 'warning'
-                ? 'border-yellow-500 bg-yellow-500/5'
-                : 'border-green-500 bg-green-500/5'
+                ? 'border-warning bg-warning/5'
+                : 'border-success bg-success/5'
             }`}
           >
             <CardHeader className="pb-2">
