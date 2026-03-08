@@ -132,7 +132,7 @@ export function FamilyFinancialDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(familyData.totalLoans)}</div>
+            <div className="text-2xl font-bold text-destructive">{formatCurrency(familyData.totalLoans)}</div>
             <p className="text-sm text-muted-foreground">Outstanding amount</p>
           </CardContent>
         </Card>
