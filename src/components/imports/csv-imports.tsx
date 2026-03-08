@@ -272,10 +272,10 @@ export function CSVImports() {
                     <p className="text-sm text-muted-foreground font-normal">{importType.description}</p>
                   </div>
                   {uploadStatus[importType.id] === 'success' && (
-                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <CheckCircle className="w-5 h-5 text-success" />
                   )}
                   {uploadStatus[importType.id] === 'error' && (
-                    <AlertCircle className="w-5 h-5 text-red-500" />
+                    <AlertCircle className="w-5 h-5 text-destructive" />
                   )}
                 </CardTitle>
               </CardHeader>
