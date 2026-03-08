@@ -190,7 +190,7 @@ export function FamilyFinancialDashboard() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Loan Burden:</span>
-                        <p className="font-medium text-red-600">{formatCurrency(member.loanBurden)}</p>
+                        <p className="font-medium text-destructive">{formatCurrency(member.loanBurden)}</p>
                       </div>
                     </div>
                   </div>
