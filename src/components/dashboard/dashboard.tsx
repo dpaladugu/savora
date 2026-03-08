@@ -435,6 +435,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Guntur Waterfall Card ── */}
       <GunturWaterfallCard onNavigate={onMoreNavigation} />
 
+      {/* ── Debt-Free Countdown ── */}
+      <DebtFreedomCountdown onNavigate={onMoreNavigation} />
+
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
