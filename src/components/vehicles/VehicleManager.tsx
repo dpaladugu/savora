@@ -65,6 +65,8 @@ export function VehicleManager() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...emptyForm });
+  const [fuelioTarget, setFuelioTarget] = useState<Vehicle | null>(null);
+  const [activeTab, setActiveTab] = useState<'fleet' | 'import'>('fleet');
 
   useEffect(() => { load(); }, []);
 
