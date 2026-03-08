@@ -28,6 +28,7 @@ import { WillEstateManager } from '@/components/estate/will-estate-manager';
 import { TaxEngine } from '@/components/tax/tax-engine';
 import { LLMAdvisor } from '@/components/ai/llm-advisor';
 import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
+import { FinancialHealthAudit } from '@/components/audit/financial-health-audit';
 import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
 import { CSVImportFlow } from '@/components/imports/csv-import-flow';
