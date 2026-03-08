@@ -267,6 +267,33 @@ export interface RecurringTransaction {
   updatedAt: Date;
 }
 
+export interface GunturShopRow {
+  id: string;
+  shopId: string;
+  name: string;
+  tenant: string;
+  rent: number;
+  status: 'Vacant' | 'Occupied';
+  updatedAt: Date;
+}
+
+export interface WaterfallProgressRow {
+  id: string;
+  bucketId: string;
+  accumulated: number;
+  updatedAt: Date;
+}
+
+export interface GorantlaRoomRow {
+  id: string;
+  roomId: string;
+  name: string;
+  tenant: string;
+  rent: number;
+  paid: boolean;
+  updatedAt: Date;
+}
+
 const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
