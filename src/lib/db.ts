@@ -241,6 +241,8 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   globalSettings: EntityTable<GlobalSettings, 'id'>;
   expenses: EntityTable<Expense, 'id'>;
   incomes: EntityTable<Income, 'id'>;
+  insurancePolicies: EntityTable<Insurance, 'id'>;
+  spendingLimits: EntityTable<SpendingLimit, 'id'>;
 };
 
 db.version(1).stores({
