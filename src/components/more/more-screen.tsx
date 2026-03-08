@@ -205,179 +205,119 @@ const modules: MoreModule[] = [
   },
 ];
 
-export function MoreScreen() {
+export function MoreScreen({ onNavigate, onClose }: { onNavigate?: (id: string) => void; onClose?: () => void }) {
   const role = useRole();
-
-  const visibleModules = modules.filter(m => {
-    if (m.roleRequired && role !== m.roleRequired && role !== 'ADMIN') return false;
-    return true;
-  });
 
   const handleModuleClick = (moduleId: string, status: string) => {
     if (status === 'coming-soon') return;
-    window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
+    if (onNavigate) {
+      onNavigate(moduleId);
+    } else {
+      window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
+    }
+    onClose?.();
   };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'available':
-        return <Badge variant="default" className="bg-green-500">Available</Badge>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-success/15 text-success border border-success/30">Live</span>;
       case 'beta':
-        return <Badge variant="secondary">Beta</Badge>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30">Beta</span>;
       case 'coming-soon':
-        return <Badge variant="outline">Coming Soon</Badge>;
+        return <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted text-muted-foreground border border-border">Soon</span>;
       default:
         return null;
     }
   };
 
-  const getStatusStyle = (status: string) => {
-    return status === 'coming-soon' ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:shadow-md';
+  const categoryIconColors: Record<string, string> = {
+    financial: 'bg-primary/10 text-primary',
+    tracking:  'bg-accent/10 text-accent',
+    analysis:  'bg-warning/10 text-warning',
+    settings:  'bg-muted text-muted-foreground',
   };
 
   const categorizedModules = {
-    financial: modules.filter(m => m.category === 'financial'),
-    tracking: modules.filter(m => m.category === 'tracking'),
-    analysis: modules.filter(m => m.category === 'analysis'),
-    settings: modules.filter(m => m.category === 'settings')
+    financial: modules.filter(m => m.category === 'financial' && (role === 'ADMIN' || !m.roleRequired || m.roleRequired === role)),
+    tracking:  modules.filter(m => m.category === 'tracking'  && (role === 'ADMIN' || !m.roleRequired || m.roleRequired === role)),
+    analysis:  modules.filter(m => m.category === 'analysis'  && (role === 'ADMIN' || !m.roleRequired || m.roleRequired === role)),
+    settings:  modules.filter(m => m.category === 'settings'  && (role === 'ADMIN' || !m.roleRequired || m.roleRequired === role)),
+  };
+
+  const Section = ({
+    label,
+    icon: Icon,
+    items,
+  }: {
+    label: string;
+    icon: React.ComponentType<any>;
+    items: MoreModule[];
+  }) => {
+    if (items.length === 0) return null;
+    return (
+      <div className="space-y-2">
+        <h2 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground px-1 py-2">
+          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
+          {label}
+        </h2>
+        <div className="grid grid-cols-1 gap-2">
+          {items.map((mod) => {
+            const colorClass = categoryIconColors[mod.category] ?? 'bg-muted text-muted-foreground';
+            const disabled = mod.status === 'coming-soon';
+            return (
+              <button
+                key={mod.id}
+                onClick={() => handleModuleClick(mod.id, mod.status)}
+                disabled={disabled}
+                aria-label={`${mod.title}: ${mod.description}`}
+                className={`
+                  group flex items-center gap-3 p-3.5 rounded-2xl border text-left w-full
+                  transition-all duration-200 focus-ring
+                  ${disabled
+                    ? 'opacity-50 cursor-not-allowed border-border bg-muted/30'
+                    : 'border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 hover:shadow-card cursor-pointer active:scale-[0.98]'
+                  }
+                `}
+              >
+                {/* Icon */}
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${colorClass}`}>
+                  <mod.icon className="h-5 w-5" aria-hidden="true" />
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground leading-tight truncate">
+                    {mod.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug line-clamp-1">
+                    {mod.description}
+                  </p>
+                </div>
+
+                {/* Status + chevron */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {getStatusBadge(mod.status)}
+                  {!disabled && (
+                    <svg className="h-4 w-4 text-muted-foreground/50 group-hover:text-muted-foreground transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold mb-2">More Features</h1>
-        <p className="text-muted-foreground">
-          Discover powerful tools to manage your complete financial life
-        </p>
-      </div>
-
-      {/* Financial Management */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <TrendingUp className="h-5 w-5" />
-          Financial Management
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categorizedModules.financial.map((module) => (
-            <Card 
-              key={module.id}
-              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
-              onClick={() => handleModuleClick(module.id, module.status)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <module.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <CardTitle className="text-lg">{module.title}</CardTitle>
-                  </div>
-                  {getStatusBadge(module.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{module.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Asset Tracking */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Asset & Expense Tracking
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categorizedModules.tracking.map((module) => (
-            <Card 
-              key={module.id}
-              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
-              onClick={() => handleModuleClick(module.id, module.status)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-500/10 rounded-lg flex items-center justify-center">
-                      <module.icon className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <CardTitle className="text-lg">{module.title}</CardTitle>
-                  </div>
-                  {getStatusBadge(module.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{module.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Analysis & Intelligence */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Brain className="h-5 w-5" />
-          Analysis & Intelligence
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categorizedModules.analysis.map((module) => (
-            <Card 
-              key={module.id}
-              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
-              onClick={() => handleModuleClick(module.id, module.status)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-purple-500/10 rounded-lg flex items-center justify-center">
-                      <module.icon className="h-5 w-5 text-purple-500" />
-                    </div>
-                    <CardTitle className="text-lg">{module.title}</CardTitle>
-                  </div>
-                  {getStatusBadge(module.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{module.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* Settings */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <Settings className="h-5 w-5" />
-          Configuration
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {categorizedModules.settings.map((module) => (
-            <Card 
-              key={module.id}
-              className={`transition-all duration-200 ${getStatusStyle(module.status)}`}
-              onClick={() => handleModuleClick(module.id, module.status)}
-            >
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-500/10 rounded-lg flex items-center justify-center">
-                      <module.icon className="h-5 w-5 text-gray-500" />
-                    </div>
-                    <CardTitle className="text-lg">{module.title}</CardTitle>
-                  </div>
-                  {getStatusBadge(module.status)}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">{module.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
+    <div className="px-4 pb-6 space-y-5 animate-fade-in">
+      <Section label="Financial Management" icon={TrendingUp} items={categorizedModules.financial} />
+      <Section label="Asset & Expense Tracking" icon={FileText}    items={categorizedModules.tracking} />
+      <Section label="Analysis & Intelligence"  icon={Brain}        items={categorizedModules.analysis} />
+      <Section label="Configuration"            icon={Settings}     items={categorizedModules.settings} />
     </div>
   );
 }

@@ -1,7 +1,6 @@
 
 import { ArrowLeft, Moon, Sun, Shield, Eye, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { useTheme } from "@/contexts/theme-context";
 import { useState } from "react";
 import { useRBACStore, useRole, ROLE_NAMES } from "@/store/rbacStore";
@@ -20,73 +19,112 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
   const role = useRole();
   const { clearSession } = useRBACStore();
 
-  const roleBadgeVariant = role === 'GUEST' ? 'outline' : role === 'ADMIN' ? 'default' : 'secondary';
-
   const handleLogout = () => {
     clearSession();
-    toast.info('Session cleared. Values are masked.');
+    toast.info("Session cleared. Values are masked.");
   };
+
+  const roleBadgeClass =
+    role === "ADMIN"
+      ? "badge-admin"
+      : role === "SPOUSE"
+      ? "badge-spouse"
+      : role === "BROTHER"
+      ? "badge-brother"
+      : "";
 
   return (
     <>
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-sm border-b border-border">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-2">
+      {/* ── Fixed header bar ─────────────────────────────────── */}
+      <header
+        role="banner"
+        className="fixed top-0 left-0 right-0 z-50 nav-glass border-b border-border/30"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
+          {/* Left: back button + wordmark */}
+          <div className="flex items-center gap-2.5 min-w-0">
             {showBackButton && onBack && (
-              <Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8">
-                <ArrowLeft className="h-4 w-4" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onBack}
+                aria-label="Go back"
+                className="h-9 w-9 rounded-xl hover:bg-secondary/60 focus-ring"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
-            <img src="/placeholder.svg" alt="Savora Logo" className="h-7 w-7" />
-            <h1 className="text-lg font-bold text-foreground tracking-tight">{title || "Savora"}</h1>
+            {/* Logo mark */}
+            <div
+              className="flex h-7 w-7 items-center justify-center rounded-lg"
+              style={{
+                background:
+                  "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))",
+              }}
+              aria-hidden="true"
+            >
+              <span className="text-xs font-bold text-white select-none">S</span>
+            </div>
+            <h1 className="text-base font-semibold text-foreground tracking-tight truncate">
+              {title || "Savora"}
+            </h1>
           </div>
 
-          <div className="flex items-center gap-2">
-            {/* Role Badge */}
-            {role !== 'GUEST' ? (
+          {/* Right: role + actions */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {role !== "GUEST" ? (
+              /* ── Authenticated role badge + lock ── */
               <div className="flex items-center gap-1">
-                <Badge variant={roleBadgeVariant as any} className="text-xs h-6 flex items-center gap-1">
-                  <Shield className="w-3 h-3" />
-                  {ROLE_NAMES[role].split(' ')[0]}
-                </Badge>
+                <span
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadgeClass}`}
+                  aria-label={`Signed in as ${ROLE_NAMES[role]}`}
+                >
+                  <Shield className="w-3 h-3" aria-hidden="true" />
+                  {ROLE_NAMES[role].split(" ")[0]}
+                </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleLogout}
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                  aria-label="Lock session and mask values"
                   title="Lock session"
+                  className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-destructive/10 focus-ring"
                 >
-                  <LogOut className="h-3 w-3" />
+                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </div>
             ) : (
+              /* ── Guest: Reveal Values CTA ── */
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setRevealOpen(true)}
-                className="h-7 text-xs gap-1"
+                aria-label="Enter passphrase to reveal financial values"
+                className="h-8 px-3 rounded-xl text-xs font-medium gap-1.5 border-primary/30 text-primary hover:bg-primary/8 hover:border-primary/50 focus-ring"
               >
-                <Eye className="h-3 w-3" />
+                <Eye className="h-3.5 w-3.5" aria-hidden="true" />
                 Reveal Values
               </Button>
             )}
 
-            {/* Theme toggle */}
+            {/* ── Theme toggle ── */}
             <Button
-              variant="outline"
+              variant="ghost"
               size="icon"
               onClick={toggleTheme}
-              className="h-8 w-8 bg-background/95 backdrop-blur-sm border-border hover:bg-accent"
+              aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
+              className="h-9 w-9 rounded-xl hover:bg-secondary/60 focus-ring"
             >
               {isDark ? (
-                <Sun className="h-4 w-4 text-foreground" />
+                <Sun className="h-4 w-4 text-warning" aria-hidden="true" />
               ) : (
-                <Moon className="h-4 w-4 text-foreground" />
+                <Moon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               )}
             </Button>
           </div>
         </div>
-      </div>
+      </header>
 
       <RevealValuesDialog open={revealOpen} onOpenChange={setRevealOpen} />
     </>
