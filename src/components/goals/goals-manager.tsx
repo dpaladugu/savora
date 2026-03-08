@@ -148,10 +148,10 @@ export function GoalsManager({
     }
   }, [onNavigateToSip]);
 
-  const active    = goals.filter((g) => g.status === 'active');
+  const active    = goals.filter((g) => pct(g.currentAmount ?? 0, g.targetAmount ?? 1) < 100);
   const longTerm  = active.filter((g) => g.category === 'long-term');
-  const shortTerm = active.filter((g) => g.category === 'short-term');
-  const completed = goals.filter((g) => g.status === 'completed' || pct(g.currentAmount ?? 0, g.targetAmount ?? 1) >= 100);
+  const shortTerm = active.filter((g) => g.category !== 'long-term');
+  const completed = goals.filter((g) => pct(g.currentAmount ?? 0, g.targetAmount ?? 1) >= 100);
 
   const Section = ({
     title,
