@@ -174,7 +174,7 @@ export function InsuranceSinkingFund() {
       <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-warning/8 border border-warning/20 text-xs text-warning">
         <TrendingUp className="h-3.5 w-3.5 shrink-0 mt-0.5" />
         <p>
-          Premiums inflated at <strong>14% p.a.</strong> (IRDAI medical inflation benchmark).
+          Premiums inflated at <strong>{Math.round(medicalInflation * 100)}% p.a.</strong> (IRDAI medical inflation benchmark — adjustable in Settings).
           Sinking fund target = <em>projected next premium</em>, not the last amount paid.
         </p>
       </div>
