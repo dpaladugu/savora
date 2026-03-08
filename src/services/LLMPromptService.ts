@@ -124,18 +124,13 @@ export class LLMPromptService {
     }
   ];
 
+  private static readonly CONFIG_KEY = 'llmConfig_v1';
+
   static async getLLMConfig(): Promise<LLMConfig | null> {
     try {
-      const settings = await GlobalSettingsService.getGlobalSettings();
-      
-      // In a real implementation, this would be stored securely
-      return {
-        provider: 'openai',
-        model: 'gpt-4',
-        temperature: 0.7,
-        maxTokens: 1000,
-        baseUrl: 'https://api.openai.com/v1'
-      };
+      const raw = localStorage.getItem(this.CONFIG_KEY);
+      if (raw) return JSON.parse(raw) as LLMConfig;
+      return null;
     } catch (error) {
       console.error('Error getting LLM config:', error);
       return null;
@@ -144,10 +139,17 @@ export class LLMPromptService {
 
   static async updateLLMConfig(config: Partial<LLMConfig>): Promise<void> {
     try {
-      // In a real implementation, this would securely store the configuration
-      await GlobalSettingsService.updateGlobalSettings({
-        // Store encrypted config
-      });
+      const existing = await this.getLLMConfig();
+      const merged: LLMConfig = {
+        provider: 'openai',
+        model: 'gpt-4',
+        temperature: 0.7,
+        maxTokens: 1000,
+        baseUrl: 'https://api.openai.com/v1',
+        ...(existing ?? {}),
+        ...config,
+      };
+      localStorage.setItem(this.CONFIG_KEY, JSON.stringify(merged));
     } catch (error) {
       console.error('Error updating LLM config:', error);
       throw error;

@@ -32,19 +32,29 @@ export function GoalsManager() {
   const [newGoal, setNewGoal] = useState({ name: '', targetAmount: '', endDate: '', category: 'short-term' as const });
   const { toast } = useToast();
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!newGoal.name || !newGoal.targetAmount || !newGoal.endDate) {
       toast({ title: 'Please fill all fields', variant: 'destructive' }); return;
     }
-    setGoals(prev => [...prev, { id: Date.now().toString(), name: newGoal.name, targetAmount: parseInt(newGoal.targetAmount), currentAmount: 0, startDate: new Date().toISOString().split('T')[0], endDate: newGoal.endDate, category: newGoal.category, status: 'active' }]);
+    const goal = { id: Date.now().toString(), name: newGoal.name, targetAmount: parseInt(newGoal.targetAmount), currentAmount: 0, startDate: new Date().toISOString().split('T')[0], endDate: newGoal.endDate, category: newGoal.category, status: 'active' as const };
+    setGoals(prev => [...prev, goal]);
     setNewGoal({ name: '', targetAmount: '', endDate: '', category: 'short-term' });
     setIsAdding(false);
     toast({ title: 'Goal added' });
+    try {
+      const { db } = await import('@/lib/db');
+      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'goal', entityId: goal.id, newValues: goal, timestamp: new Date() });
+    } catch { /* non-blocking */ }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
+    const old = goals.find(g => g.id === id);
     setGoals(prev => prev.filter(g => g.id !== id));
     toast({ title: 'Goal removed' });
+    try {
+      const { db } = await import('@/lib/db');
+      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'delete', entity: 'goal', entityId: id, oldValues: old, timestamp: new Date() });
+    } catch { /* non-blocking */ }
   };
 
   const longTerm  = goals.filter(g => g.category === 'long-term'  && g.status === 'active');

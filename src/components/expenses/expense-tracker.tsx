@@ -48,11 +48,14 @@ export function ExpenseTracker() {
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         payment_method: form.paymentMethod, source: 'manual', account: 'default',
       };
+      const { db } = await import('@/lib/db');
       if (editingExpense) {
         await ExpenseService.updateExpense(editingExpense.id, payload);
+        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'expense', entityId: editingExpense.id, oldValues: editingExpense, newValues: payload, timestamp: new Date() });
         toast({ title: 'Expense updated' });
       } else {
         await ExpenseService.addExpense(payload);
+        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'expense', entityId: crypto.randomUUID(), newValues: payload, timestamp: new Date() });
         toast({ title: 'Expense added' });
       }
       setForm(emptyForm); setShowForm(false); setEditingExpense(null); load();
@@ -67,7 +70,13 @@ export function ExpenseTracker() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
-    try { await ExpenseService.deleteExpense(id); toast({ title: 'Deleted' }); load(); }
+    try {
+      const old = expenses.find(e => e.id === id);
+      await ExpenseService.deleteExpense(id);
+      const { db } = await import('@/lib/db');
+      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'delete', entity: 'expense', entityId: id, oldValues: old, timestamp: new Date() });
+      toast({ title: 'Deleted' }); load();
+    }
     catch { toast({ title: 'Failed to delete', variant: 'destructive' }); }
   };
 
