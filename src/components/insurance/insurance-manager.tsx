@@ -77,6 +77,7 @@ const emptyForm = {
   familyMember: 'Me',
   sumInsured: '',
   premium: '',
+  premiumTermYears: '1',
   startDate: new Date().toISOString().split('T')[0],
   endDate: '',
   nomineeName: '',
