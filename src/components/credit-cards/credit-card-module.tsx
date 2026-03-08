@@ -198,9 +198,9 @@ export function CreditCardModule() {
   };
 
   const getUtilizationColor = (utilization: number) => {
-    if (utilization < 30) return 'text-green-600';
-    if (utilization < 70) return 'text-yellow-600';
-    return 'text-red-600';
+    if (utilization < 30) return 'value-positive';
+    if (utilization < 70) return 'text-warning';
+    return 'value-negative';
   };
 
   const getDaysUntilDue = (dueDate: string) => {
