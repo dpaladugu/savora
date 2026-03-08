@@ -37,11 +37,14 @@ export function useNavigationRouter() {
       
       // Validate moduleId is a valid MoreModule
       const validModules: MoreModule[] = [
-        'emergency-fund', 'rentals', 'recommendations', 'cfa-recommendations', 'cashflow', 
-        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions', 
-        'vehicles', 'insurance', 'health-tracker', 'subscriptions', 'family-banking'
+        'emergency-fund', 'rentals', 'recommendations', 'cfa-recommendations', 'cashflow',
+        'telegram', 'credit-cards', 'credit-card-statements', 'recurring-transactions',
+        'vehicles', 'insurance', 'health-tracker', 'subscriptions', 'family-banking',
+        'loans', 'gold', 'smart-goals', 'enhanced-rentals', 'property-engine',
+        'family-dashboard', 'brother-global', 'vehicle-manager', 'settings',
+        'recommendations',
       ];
-      
+
       const validModuleId = validModules.includes(moduleId as MoreModule) ? moduleId as MoreModule : null;
       
       setNavigationState({

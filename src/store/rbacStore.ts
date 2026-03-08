@@ -72,9 +72,9 @@ export const ROLE_PERMISSIONS = {
     showUSDSandbox: false,
   },
   SPOUSE: {
-    showSalary: false,
-    showInvestments: false,
-    showBrotherUS: false,
+    showSalary: true,        // can see household finances & loans
+    showInvestments: true,   // can see portfolio
+    showBrotherUS: false,    // brother's US liabilities hidden
     showHyderabadHealth: true,
     showGorantlaRentals: true,
     showGunturWaterfall: true,
