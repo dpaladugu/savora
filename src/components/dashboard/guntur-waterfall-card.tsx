@@ -45,6 +45,19 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
   const rooms    = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
   const progress = useLiveQuery(() => db.waterfallProgress.toArray().catch(() => []), []) ?? [];
 
+  // Live collection status
+  const paidShops   = shops.filter(s => s.status === 'Occupied' && s.paid).length;
+  const totalShops  = shops.filter(s => s.status === 'Occupied').length;
+  const paidRooms   = rooms.filter(r => r.paid).length;
+  const totalRooms  = rooms.length;
+  const paidUnits   = paidShops + paidRooms;
+  const totalUnits  = totalShops + totalRooms;
+  const collectedAmt = shops.filter(s => s.status === 'Occupied' && s.paid).reduce((s, sh) => s + (sh.rent ?? 0), 0)
+                     + rooms.filter(r => r.paid).reduce((s, r) => s + (r.rent ?? 0), 0);
+  const expectedAmt  = shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + (sh.rent ?? 0), 0)
+                     + rooms.reduce((s, r) => s + (r.rent ?? 0), 0);
+  const collectionPct = expectedAmt > 0 ? Math.round((collectedAmt / expectedAmt) * 100) : 0;
+
   // Combined income from both properties
   const shopRent = shops
     .filter(s => s.status === 'Occupied')
@@ -124,6 +137,21 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
             <span className="text-[10px] text-success font-medium ml-auto">
               {fullyFunded}/{BUCKETS.length - 1} funded
             </span>
+          </div>
+          {/* Live collection status bar */}
+          <div className="mt-1.5 flex items-center justify-between text-[10px]">
+            <span className={`font-semibold ${collectionPct === 100 ? 'text-success' : collectionPct >= 70 ? 'text-warning' : 'text-destructive'}`}>
+              {paidUnits}/{totalUnits} paid this month
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {formatCurrency(collectedAmt)} / {formatCurrency(expectedAmt)}
+            </span>
+          </div>
+          <div className="mt-1 relative h-1 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${collectionPct === 100 ? 'bg-success' : collectionPct >= 70 ? 'bg-warning' : 'bg-destructive'}`}
+              style={{ width: `${collectionPct}%` }}
+            />
           </div>
         </CardHeader>
 
