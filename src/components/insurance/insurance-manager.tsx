@@ -135,7 +135,7 @@ export function InsuranceManager() {
     <div className="space-y-4">
       <PageHeader
         title="Insurance"
-        subtitle="Policies, renewals & coverage gaps"
+        subtitle="Policies, renewals & gap analysis"
         icon={Shield}
         action={
           <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
@@ -143,6 +143,20 @@ export function InsuranceManager() {
           </Button>
         }
       />
+
+      <Tabs defaultValue="policies">
+        <TabsList className="w-full h-9 rounded-xl">
+          <TabsTrigger value="policies"  className="flex-1 text-xs rounded-lg">Policies ({policies.length})</TabsTrigger>
+          <TabsTrigger value="gap"       className="flex-1 text-xs rounded-lg flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> Gap Analysis
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="gap" className="mt-3">
+          <InsuranceGapAnalysis />
+        </TabsContent>
+
+        <TabsContent value="policies" className="space-y-4 mt-3">
 
       {/* Alerts — expired, expiring soon, and missing nominee */}
       {(() => {
