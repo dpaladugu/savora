@@ -44,15 +44,20 @@ const modules: MoreModule[] = [
 
   // ── Analysis & Intelligence ────────────────────────────────────
   { id: 'cfa-recommendations', title: 'CFA Recommendations', description: 'Professional-grade financial analysis',            icon: Brain,       status: 'available',    category: 'analysis',  priority: 'high' },
-  { id: 'recommendations',    title: 'Smart Insights',       description: 'AI-powered insights & suggestions',                icon: Sparkles,    status: 'beta',         category: 'analysis',  priority: 'medium' },
-  { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',           icon: Target,      status: 'beta',         category: 'analysis',  priority: 'medium' },
-  { id: 'auto-goals',         title: 'Auto-Goal Engine',     description: '14 CFA rules · nudges · priority stack',           icon: Zap,         status: 'available',    category: 'analysis',  priority: 'high' },
-  { id: 'tax-engine',         title: 'Tax Engine',           description: 'Advance tax reminders, regime compare, NPS 80CCD', icon: Calculator,  status: 'available',    category: 'analysis',  priority: 'high' },
-  { id: 'will-estate',        title: 'Will & Estate',        description: 'Asset distribution, digital legacy & nominees',    icon: Scale,       status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
+  { id: 'ai-advisor',          title: 'AI Financial Advisor', description: 'Anonymised snapshot → LLM insights (zero PII)',  icon: Sparkles,    status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'recommendations',    title: 'Smart Insights',       description: 'Rule-based insights & suggestions',               icon: Brain,       status: 'beta',         category: 'analysis',  priority: 'medium' },
+  { id: 'auto-goals',         title: 'Auto-Goal Engine',     description: '14 CFA rules · nudges · priority stack',          icon: Zap,         status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'tax-engine',         title: 'Tax Engine',           description: 'Advance tax reminders, regime compare, NPS 80CCD',icon: Calculator,  status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'insurance-gap',      title: 'Insurance Gap',        description: 'Term ≥ 10× income · Health ≥ 5× income',         icon: Shield,      status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'will-estate',        title: 'Will & Estate',        description: 'Asset distribution, digital legacy & nominees',   icon: Scale,       status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
+  { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',          icon: Target,      status: 'beta',         category: 'analysis',  priority: 'low' },
+  { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,    status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
 
   // ── Configuration ──────────────────────────────────────────────
   { id: 'settings', title: 'Settings', description: 'Preferences, security & account', icon: Settings, status: 'available', category: 'settings', priority: 'high' },
 ];
+
+
 
 
 // ── helpers ───────────────────────────────────────────────────────────────────

@@ -26,6 +26,9 @@ import { ComprehensiveSettingsScreen } from '@/components/settings/comprehensive
 import { CreditCardModule } from '@/components/credit-cards/credit-card-module';
 import { WillEstateManager } from '@/components/estate/will-estate-manager';
 import { TaxEngine } from '@/components/tax/tax-engine';
+import { LLMAdvisor } from '@/components/ai/llm-advisor';
+import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
+import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { useRole } from '@/store/rbacStore';
 
 export interface MoreModuleRouterProps {
@@ -88,6 +91,13 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <WillEstateManager />;
       case 'tax-engine':
         return <TaxEngine />;
+      case 'ai-advisor':
+        return <LLMAdvisor />;
+      case 'audit-log':
+        if (role !== 'ADMIN') return <div className="p-4 text-muted-foreground">Access restricted to ADMIN</div>;
+        return <AuditLogViewer />;
+      case 'insurance-gap':
+        return <InsuranceGapAnalysis />;
       default:
         return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
