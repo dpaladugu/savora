@@ -200,6 +200,8 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
+  const [advanceRoom, setAdvanceRoom] = useState<GorantlaRoomRow | null>(null);
+
   const totalTaxDeduction = propertyTax + waterTax;
   const grossRent     = rooms.reduce((s, r) => s + r.rent, 0);
   const collectedRent = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
@@ -230,6 +232,18 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
+      {advanceRoom && (
+        <AdvanceDialog
+          open={!!advanceRoom}
+          onClose={() => setAdvanceRoom(null)}
+          unitName={advanceRoom.name}
+          currentAmount={advanceRoom.advanceAmount ?? 0}
+          currentDate={advanceRoom.advanceDate ? new Date(advanceRoom.advanceDate) : null}
+          onSave={async (amount, date) => {
+            await db.gorantlaRooms.update(advanceRoom.id, { advanceAmount: amount, advanceDate: date, updatedAt: new Date() });
+          }}
+        />
+      )}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
@@ -239,17 +253,36 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {rooms.map(room => (
-            <div key={room.id} className={`flex items-center justify-between p-3 rounded-lg border ${room.paid ? 'bg-success/5 border-success/30' : 'bg-card border-border'}`}>
-              <div>
-                <p className="font-medium text-sm">{room.name}</p>
-                <p className="text-xs text-muted-foreground">{room.tenant}</p>
+            <div key={room.id} className={`p-3 rounded-lg border space-y-2 ${room.paid ? 'bg-success/5 border-success/30' : 'bg-card border-border'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{room.name}</p>
+                  <p className="text-xs text-muted-foreground">{room.tenant}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
+                  {readOnly
+                    ? <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">{room.paid ? '✓ Paid' : 'Unpaid'}</Badge>
+                    : <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">{room.paid ? '✓ Paid' : 'Mark Paid'}</Button>
+                  }
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
-                {readOnly
-                  ? <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">{room.paid ? '✓ Paid' : 'Unpaid'}</Badge>
-                  : <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">{room.paid ? '✓ Paid' : 'Mark Paid'}</Button>
-                }
+              {/* Advance row */}
+              <div className="flex items-center justify-between text-xs">
+                {room.advanceAmount && room.advanceAmount > 0 ? (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <IndianRupee className="w-3 h-3 text-primary" />
+                    Advance: <span className="font-semibold text-foreground">{formatCurrency(room.advanceAmount)}</span>
+                    {room.advanceDate && <span className="text-muted-foreground ml-1">· {format(new Date(room.advanceDate), 'dd MMM yyyy')}</span>}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground italic">No advance recorded</span>
+                )}
+                {!readOnly && (
+                  <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setAdvanceRoom(room)}>
+                    {room.advanceAmount ? 'Edit' : '+ Add'} Advance
+                  </Button>
+                )}
               </div>
             </div>
           ))}
