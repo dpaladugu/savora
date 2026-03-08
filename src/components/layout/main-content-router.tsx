@@ -44,6 +44,8 @@ export function MainContentRouter({
       return <CreditCardTracker />;
     case 'investments':
       return <InvestmentsTracker />;
+    case 'income':
+      return <IncomeTracker />;
     case 'goals':
       return <GoalsManager />;
     case 'settings':
