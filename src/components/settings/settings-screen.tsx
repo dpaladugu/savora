@@ -28,14 +28,24 @@ export function SettingsScreen() {
   return (
     <div className="w-full">
       {/* ── Page title ── */}
-      <div className="mb-4">
-        <h1 className="text-xl font-bold flex items-center gap-2 text-foreground">
-          <Settings className="h-5 w-5 text-primary" aria-hidden="true" />
-          Settings
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Preferences, security and AI configuration
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2 text-foreground">
+            <Settings className="h-5 w-5 text-primary" aria-hidden="true" />
+            Settings
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Preferences, security and AI configuration
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1.5 rounded-xl shrink-0"
+          onClick={() => setShowWizard(true)}
+        >
+          <Wand2 className="h-3.5 w-3.5" /> Setup Wizard
+        </Button>
       </div>
 
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
