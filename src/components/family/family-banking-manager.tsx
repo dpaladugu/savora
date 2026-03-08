@@ -47,7 +47,8 @@ export function FamilyBankingManager() {
 
   const saveAcct = async (e: React.FormEvent) => {
     e.preventDefault();
-    const data = { owner: acctForm.owner, bankName: acctForm.bankName, accountNo: acctForm.accountNo, type: acctForm.type, currentBalance: parseFloat(acctForm.currentBalance) || 0, updatedAt: new Date() };
+    const owner = acctForm.owner as 'Mother' | 'Grandmother';
+    const data = { owner, bankName: acctForm.bankName, accountNo: acctForm.accountNo, type: acctForm.type, currentBalance: parseFloat(acctForm.currentBalance) || 0, updatedAt: new Date() };
     try {
       if (editId) { await db.familyBankAccounts?.update(editId, data); toast.success('Account updated'); }
       else { await db.familyBankAccounts?.add({ id: crypto.randomUUID(), ...data, createdAt: new Date() }); toast.success('Account added'); }
@@ -67,7 +68,8 @@ export function FamilyBankingManager() {
     try {
       await db.familyTransfers?.add({
         id: crypto.randomUUID(),
-        toPerson: txnForm.toPerson, amount: parseFloat(txnForm.amount) || 0,
+        toPerson: txnForm.toPerson as 'Mother' | 'Grandmother' | 'Brother',
+        amount: parseFloat(txnForm.amount) || 0,
         purpose: txnForm.purpose, mode: txnForm.mode,
         date: new Date(txnForm.date), createdAt: new Date(),
       });

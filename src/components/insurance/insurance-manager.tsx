@@ -92,6 +92,7 @@ export function InsuranceManager() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const data: Omit<Insurance, 'id'> = {
+      name: `${form.provider} ${form.type}`,
       type: form.type, provider: form.provider, policyNo: form.policyNo,
       familyMember: form.familyMember,
       sumInsured: parseFloat(form.sumInsured) || 0,
