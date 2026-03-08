@@ -33,6 +33,7 @@ import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
 import { CSVImports } from '@/components/imports/csv-imports';
 import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
 import { DebtStrikeCalculator } from '@/components/debt/debt-strike-calculator';
+import { TelegramPendingTxns } from '@/components/telegram/telegram-pending-txns';
 import { useRole } from '@/store/rbacStore';
 import { Shield } from 'lucide-react';
 
