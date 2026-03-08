@@ -147,7 +147,7 @@ export function SimpleGoalsTracker() {
                         <div className="text-lg font-semibold text-foreground">
                           ₹{goal.currentAmount.toLocaleString()} / ₹{goal.targetAmount.toLocaleString()}
                         </div>
-                        <div className={`text-sm ${isCompleted ? 'text-green-600' : 'text-blue-600'}`}>
+                        <div className={`text-sm ${isCompleted ? 'text-success' : 'text-primary'}`}>
                           {goalProgress.toFixed(1)}% {isCompleted ? 'Complete!' : 'Progress'}
                         </div>
                       </div>
