@@ -43,7 +43,7 @@ export function MainContentRouter({
     case 'credit-cards':
       return <CreditCardTracker />;
     case 'investments':
-      return <InvestmentsTracker />;
+      return <InvestmentHub />;
     case 'income':
       return <IncomeTracker />;
     case 'goals':
