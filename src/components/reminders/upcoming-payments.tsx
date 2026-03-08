@@ -190,7 +190,7 @@ export function UpcomingPayments() {
       {todayReminders.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Clock className="w-5 h-5 text-red-600" />
+            <Clock className="w-5 h-5 text-destructive" />
             Action Required
           </h2>
           {todayReminders.map((reminder) => {
