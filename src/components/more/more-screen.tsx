@@ -30,16 +30,15 @@ const modules: MoreModule[] = [
   { id: 'subscriptions',   title: 'Subscriptions',          description: 'Recurring charges & cancellations',                  icon: Repeat,      status: 'beta',         category: 'financial', priority: 'high' },
   { id: 'emergency-fund',  title: 'Emergency Fund',         description: 'Build & track your 12-month buffer + Medical bucket', icon: AlertCircle, status: 'available',    category: 'financial', priority: 'high' },
   { id: 'brother-global',  title: "Brother's US Liability", description: 'InCred loan, USD hand loans, USD↔INR converter',    icon: Globe,       status: 'available',    category: 'financial', priority: 'high', roleRequired: 'BROTHER' },
-  { id: 'family-banking',  title: 'Family Banking',         description: 'Shared accounts, family financial planning',         icon: Users2,      status: 'coming-soon',  category: 'financial', priority: 'low' },
+  { id: 'spending-limits', title: 'Spending Limits',        description: 'Per-category caps with 80% alerts',                  icon: Shield,      status: 'available',    category: 'financial', priority: 'high' },
+  { id: 'brother-repayment',title: 'Brother Repayment',     description: 'InCred education loan repayment ledger',             icon: Globe,       status: 'available',    category: 'financial', priority: 'high', roleRequired: 'BROTHER' },
+  { id: 'family-banking-v2',title: 'Family Banking',        description: 'Mother & Grandma accounts + transfers',              icon: Users2,      status: 'available',    category: 'financial', priority: 'high' },
 
   // ── Asset & Expense Tracking ───────────────────────────────────
   { id: 'vehicles',        title: 'Vehicle Watchdog',       description: 'FZS oil alerts, Fuelio CSV sync, insurance',         icon: Bike,        status: 'available',    category: 'tracking',  priority: 'high' },
   { id: 'property-engine', title: 'Guntur / Gorantla',      description: 'Waterfall allocation, Dwacra deduction, Care Fund',  icon: Building,    status: 'available',    category: 'tracking',  priority: 'high', roleBlocked: 'BROTHER' },
   { id: 'enhanced-rentals',title: 'Rental Properties',      description: 'Rental income, expenses & tenant info',              icon: Home,        status: 'beta',         category: 'tracking',  priority: 'medium' },
-  { id: 'insurance-manager', title: 'Insurance',            description: 'Policies, renewals, gap alerts',                     icon: Shield,      status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
-  { id: 'spending-limits',  title: 'Spending Limits',       description: 'Per-category caps with 80% alerts',                  icon: Shield,      status: 'available',    category: 'financial', priority: 'high' },
-  { id: 'brother-repayment',title: 'Brother Repayment',     description: 'InCred education loan repayment ledger',             icon: Globe,       status: 'available',    category: 'financial', priority: 'high', roleRequired: 'BROTHER' },
-  { id: 'family-banking-v2',title: 'Family Banking',        description: 'Mother & Grandma accounts + transfers',              icon: Users2,      status: 'available',    category: 'financial', priority: 'high' },
+  { id: 'insurance-manager',title: 'Insurance',             description: 'Policies, renewals, gap alerts',                     icon: Shield,      status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'health-tracker',  title: 'Health Tracker',         description: 'Mother & Grandma — prescriptions, vitals, records',  icon: Heart,       status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'gold',            title: 'Gold Investments',       description: 'Gold holdings & price movements',                    icon: Coins,       status: 'beta',         category: 'tracking',  priority: 'low',   roleBlocked: 'BROTHER' },
 
@@ -47,10 +46,14 @@ const modules: MoreModule[] = [
   { id: 'cfa-recommendations', title: 'CFA Recommendations', description: 'Professional-grade financial analysis',            icon: Brain,       status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'recommendations',    title: 'Smart Insights',       description: 'AI-powered insights & suggestions',                icon: Sparkles,    status: 'beta',         category: 'analysis',  priority: 'medium' },
   { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',           icon: Target,      status: 'beta',         category: 'analysis',  priority: 'medium' },
+  { id: 'auto-goals',         title: 'Auto-Goal Engine',     description: '14 CFA rules · nudges · priority stack',           icon: Zap,         status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'tax-engine',         title: 'Tax Engine',           description: 'Advance tax reminders, regime compare, NPS 80CCD', icon: Calculator,  status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'will-estate',        title: 'Will & Estate',        description: 'Asset distribution, digital legacy & nominees',    icon: Scale,       status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
 
   // ── Configuration ──────────────────────────────────────────────
   { id: 'settings', title: 'Settings', description: 'Preferences, security & account', icon: Settings, status: 'available', category: 'settings', priority: 'high' },
 ];
+
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 function isVisible(mod: MoreModule, role: string): boolean {
