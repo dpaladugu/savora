@@ -234,6 +234,23 @@ export function RecurringGoals() {
               transition={{ delay: index * 0.05 }}
             >
               <Card className={`metric-card border-border/50 ${daysUntilDue <= 30 ? 'border-warning/40' : ''}`}>
+                <CardContent className="p-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <h4 className="font-semibold text-foreground text-lg">{goal.name}</h4>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(goal.category)}`}>
+                          {goal.category}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-foreground">{formatCurrency(goal.amount)}</p>
+                        <p className="text-xs text-muted-foreground">{goal.frequency}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-4">
+                        <span className="text-muted-foreground">Due:</span>
 ...
                         <span className={`font-medium ${daysUntilDue <= 30 ? 'text-warning' : 'text-foreground'}`}>
                           {new Date(goal.nextDueDate).toLocaleDateString('en-IN')}
