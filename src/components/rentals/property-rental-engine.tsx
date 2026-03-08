@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Home, PiggyBank, ShieldCheck,
   ChefHat, Droplets, ShoppingBag, Coffee, Scissors,
-  ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar,
+  ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar, IndianRupee,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRole } from '@/store/rbacStore';
 import { db } from '@/lib/db';
