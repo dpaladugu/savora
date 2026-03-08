@@ -66,7 +66,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${itemIsExpense ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-300'}`}>
+                  <div className={`p-2 rounded-full ${itemIsExpense ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'}`}>
                     {itemIsExpense ? <TrendingDown className="w-4 h-4"/> : <TrendingUp className="w-4 h-4"/>}
                   </div>
                   <div className="flex-1">
