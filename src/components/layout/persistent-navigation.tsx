@@ -26,6 +26,8 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
   onMoreNavigation,
 }: PersistentNavigationProps) {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = React.useState(false);
+  // Track when we're closing the sheet due to a module selection (not user dismiss)
+  const closingForModuleRef = React.useRef(false);
 
   React.useEffect(() => {
     if (activeTab !== "more") setIsMoreSheetOpen(false);
@@ -47,6 +49,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
 
   const handleMoreModuleClick = (moduleId: string) => {
     Logger.info("More module clicked", { moduleId });
+    closingForModuleRef.current = true;
     if (["upload", "goals", "settings"].includes(moduleId)) {
       onTabChange(moduleId);
     } else {
@@ -60,16 +63,22 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
     onTabChange("more");
   };
 
-  const handleMoreSheetClose = () => {
-    setIsMoreSheetOpen(false);
-    // Only return to dashboard if no module was selected (user dismissed the sheet)
-    setTimeout(() => {
-      const { activeTab, activeMoreModule, onTabChange } = propsRef.current;
-      if (activeTab === "more" && !activeMoreModule) {
-        onTabChange("dashboard");
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) {
+      // If we're closing because a module was selected, don't reset to dashboard
+      if (closingForModuleRef.current) {
+        closingForModuleRef.current = false;
+        setIsMoreSheetOpen(false);
+        return;
       }
-      // If a module was selected, stay on 'more' with that module — do nothing
-    }, 50);
+      // User dismissed the sheet without selecting a module
+      setIsMoreSheetOpen(false);
+      if (propsRef.current.activeTab === "more" && !propsRef.current.activeMoreModule) {
+        propsRef.current.onTabChange("dashboard");
+      }
+    } else {
+      setIsMoreSheetOpen(true);
+    }
   };
 
   const isActive = (id: string) => activeTab === id;
