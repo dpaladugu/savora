@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
@@ -12,11 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import {
   Moon, Sun, Shield, Bell, Download, Trash2,
   Clock, Globe, Palette, Lock, AlertTriangle, Info,
-  Smartphone, Mail, Key, Database
+  Smartphone, Mail, Key, Database, User, Target
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { UserSettingsService, type UserSettings } from '@/services/UserSettingsService';
 import { useAuth } from '@/contexts/auth-context';
+import { db } from '@/lib/db';
 
 export function ComprehensiveSettingsScreen() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
