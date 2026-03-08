@@ -398,6 +398,8 @@ export class AuditEngineService {
     yieldCostSpread: YieldCostSpreadResult;
     debtFreedom: DebtFreedomResult;
     annualIncome: number;
+    gunturShops?: any[];
+    waterfallProgress?: any[];
   }): AuditRisk[] {
     const risks: AuditRisk[] = [];
 
