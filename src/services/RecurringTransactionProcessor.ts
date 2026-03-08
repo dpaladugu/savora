@@ -49,6 +49,8 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
           .count();
 
         if (existing === 0) {
+          const now = new Date();
+          // Always write to txns for activity feed
           await db.txns.add({
             id: crypto.randomUUID(),
             amount: item.type === 'income' ? Math.abs(item.amount) : -Math.abs(item.amount),
@@ -61,9 +63,21 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
             paymentMix: [],
             isSplit: false,
             splitWith: [],
-            createdAt: new Date(),
-            updatedAt: new Date(),
+            createdAt: now,
+            updatedAt: now,
           });
+          // Additionally write income entries to db.incomes so Monthly Surplus is accurate
+          if (item.type === 'income') {
+            await db.incomes.add({
+              id: crypto.randomUUID(),
+              amount: Math.abs(item.amount),
+              category: item.category,
+              description: noteStr,
+              date: targetDate,
+              createdAt: now,
+              updatedAt: now,
+            });
+          }
         }
 
         nextDate = RecurringTransactionService.calcNextDate(
