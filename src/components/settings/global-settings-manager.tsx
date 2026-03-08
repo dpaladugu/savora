@@ -19,7 +19,6 @@ import { useAppStore } from '@/store/appStore';
 import { useToast } from '@/hooks/use-toast';
 import type { GlobalSettings, Contact, Dependent } from '@/lib/db';
 
-// Extended Dependent interface with additional fields
 interface ExtendedDependent extends Dependent {
   id?: string;
   gender?: 'M' | 'F';
@@ -28,42 +27,32 @@ interface ExtendedDependent extends Dependent {
   isNominee?: boolean;
 }
 
+const subTabs = [
+  { value: 'security',  icon: Shield,    label: 'Sec',      fullLabel: 'Security'  },
+  { value: 'financial', icon: CreditCard, label: 'Fin',      fullLabel: 'Financial' },
+  { value: 'alerts',    icon: Bell,       label: 'Alert',    fullLabel: 'Alerts'    },
+  { value: 'personal',  icon: User,       label: 'People',   fullLabel: 'Personal'  },
+  { value: 'app',       icon: Settings,   label: 'App',      fullLabel: 'App'       },
+  { value: 'advanced',  icon: Zap,        label: 'Adv',      fullLabel: 'Advanced'  },
+] as const;
+
 export function GlobalSettingsManager() {
   const { toast } = useToast();
   const { setPrivacyMask } = useAppStore();
   const [settings, setSettings] = useState<GlobalSettings | null>(null);
   const [loading, setLoading] = useState(true);
-  const [newContact, setNewContact] = useState<Partial<Contact>>({
-    name: '',
-    phone: '',
-    relation: ''
-  });
-  const [newDependent, setNewDependent] = useState<Partial<ExtendedDependent>>({
-    name: '',
-    dob: new Date(),
-    relation: '',
-    gender: 'M',
-    chronic: false,
-    isNominee: false
-  });
+  const [newContact, setNewContact] = useState<Partial<Contact>>({ name: '', phone: '', relation: '' });
+  const [newDependent, setNewDependent] = useState<Partial<ExtendedDependent>>({ name: '', dob: new Date(), relation: '', gender: 'M', chronic: false, isNominee: false });
   const [showContactDialog, setShowContactDialog] = useState(false);
   const [showDependentDialog, setShowDependentDialog] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
     try {
-      const globalSettings = await GlobalSettingsService.getGlobalSettings();
-      setSettings(globalSettings);
-    } catch (error) {
-      console.error('Error loading settings:', error);
-      toast({
-        title: "Error Loading Settings",
-        description: "Failed to load global settings. Please try again.",
-        variant: "destructive",
-      });
+      setSettings(await GlobalSettingsService.getGlobalSettings());
+    } catch {
+      toast({ title: 'Error Loading Settings', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -72,421 +61,227 @@ export function GlobalSettingsManager() {
   const updateSetting = async (updates: Partial<GlobalSettings>) => {
     try {
       await GlobalSettingsService.updateGlobalSettings(updates);
-      if (settings) {
-        setSettings({ ...settings, ...updates });
-      }
-      
-      // Update app store if privacy mask changed
-      if ('privacyMask' in updates) {
-        setPrivacyMask(updates.privacyMask!);
-      }
-      
-      toast({
-        title: "Settings Updated",
-        description: "Your settings have been saved successfully.",
-      });
-    } catch (error) {
-      console.error('Error updating settings:', error);
-      toast({
-        title: "Update Failed",
-        description: "Failed to update settings. Please try again.",
-        variant: "destructive",
-      });
+      if (settings) setSettings({ ...settings, ...updates });
+      if ('privacyMask' in updates) setPrivacyMask(updates.privacyMask!);
+      toast({ title: 'Settings Updated' });
+    } catch {
+      toast({ title: 'Update Failed', variant: 'destructive' });
     }
   };
 
   const addEmergencyContact = async () => {
     if (!newContact.name || !newContact.phone || !newContact.relation) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all contact fields.",
-        variant: "destructive",
-      });
-      return;
+      toast({ title: 'Fill all fields', variant: 'destructive' }); return;
     }
-
     try {
-      const contact: Contact = {
-        name: newContact.name,
-        phone: newContact.phone,
-        relation: newContact.relation
-      };
-      
-      await GlobalSettingsService.addEmergencyContact(contact);
+      await GlobalSettingsService.addEmergencyContact({ name: newContact.name, phone: newContact.phone, relation: newContact.relation });
       await loadSettings();
       setNewContact({ name: '', phone: '', relation: '' });
       setShowContactDialog(false);
-      
-      toast({
-        title: "Contact Added",
-        description: "Emergency contact has been added successfully.",
-      });
-    } catch (error) {
-      console.error('Error adding contact:', error);
-      toast({
-        title: "Add Failed",
-        description: "Failed to add emergency contact. Please try again.",
-        variant: "destructive",
-      });
+      toast({ title: 'Contact Added' });
+    } catch {
+      toast({ title: 'Add Failed', variant: 'destructive' });
     }
   };
 
   const addDependent = async () => {
     if (!newDependent.name || !newDependent.relation) {
-      toast({
-        title: "Validation Error",
-        description: "Please fill in all required dependent fields.",
-        variant: "destructive",
-      });
-      return;
+      toast({ title: 'Fill required fields', variant: 'destructive' }); return;
     }
-
     try {
-      const dependent: Dependent = {
-        name: newDependent.name!,
-        dob: newDependent.dob || new Date(),
-        relation: newDependent.relation!
-      };
-      
-      const updatedDependents = [...(settings?.dependents || []), dependent];
-      await updateSetting({ dependents: updatedDependents });
-      setNewDependent({
-        name: '',
-        dob: new Date(),
-        relation: '',
-        gender: 'M',
-        chronic: false,
-        isNominee: false
-      });
+      const dep: Dependent = { name: newDependent.name!, dob: newDependent.dob || new Date(), relation: newDependent.relation! };
+      await updateSetting({ dependents: [...(settings?.dependents || []), dep] });
+      setNewDependent({ name: '', dob: new Date(), relation: '', gender: 'M', chronic: false, isNominee: false });
       setShowDependentDialog(false);
-      
-      toast({
-        title: "Dependent Added",
-        description: "Dependent has been added successfully.",
-      });
-    } catch (error) {
-      console.error('Error adding dependent:', error);
-      toast({
-        title: "Add Failed",
-        description: "Failed to add dependent. Please try again.",
-        variant: "destructive",
-      });
+    } catch {
+      toast({ title: 'Add Failed', variant: 'destructive' });
     }
   };
 
-  const removeEmergencyContact = async (index: number) => {
+  const removeEmergencyContact = async (i: number) => {
     if (!settings) return;
-    
-    const updatedContacts = settings.emergencyContacts.filter((_, i) => i !== index);
-    await updateSetting({ emergencyContacts: updatedContacts });
+    await updateSetting({ emergencyContacts: settings.emergencyContacts.filter((_, idx) => idx !== i) });
   };
 
-  const removeDependent = async (index: number) => {
+  const removeDependent = async (i: number) => {
     if (!settings) return;
-    
-    const updatedDependents = settings.dependents.filter((_, i) => i !== index);
-    await updateSetting({ dependents: updatedDependents });
+    await updateSetting({ dependents: settings.dependents.filter((_, idx) => idx !== i) });
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Progress value={33} className="w-64" />
-      </div>
-    );
-  }
-
-  if (!settings) {
-    return (
-      <div className="text-center p-8">
-        <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
-        <p className="text-muted-foreground">Failed to load settings. Please refresh the page.</p>
-      </div>
-    );
-  }
+  if (loading) return <div className="flex items-center justify-center p-8"><Progress value={33} className="w-48" /></div>;
+  if (!settings) return <div className="text-center p-8"><AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" /><p className="text-muted-foreground">Failed to load. Refresh page.</p></div>;
 
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Global Settings</h2>
-        <p className="text-xs text-muted-foreground mt-0.5">App preferences and security settings</p>
+        <h2 className="text-base font-semibold text-foreground">Global Settings</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">App preferences and security</p>
       </div>
 
       <Tabs defaultValue="security" className="space-y-4">
         {/*
-          6-column tab on mobile → overflow/overlap.
-          Fix: scrollable flex row, icon + short label, min-w to prevent squishing.
+          6 sub-tabs inside GlobalSettingsManager.
+          Strategy: icon-only on ≤360px, icon+short label on ≥360px.
+          Use a scrollable flex row — NOT grid (too narrow per cell at 6 cols).
+          Each trigger has min-w so it never collapses below readable size.
         */}
-        <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 rounded-2xl p-1 bg-muted/60 border border-border/40 h-auto">
-          {[
-            { value: 'security',  icon: Shield,    label: 'Security'  },
-            { value: 'financial', icon: CreditCard, label: 'Financial' },
-            { value: 'alerts',    icon: Bell,       label: 'Alerts'    },
-            { value: 'personal',  icon: User,       label: 'Personal'  },
-            { value: 'app',       icon: Settings,   label: 'App'       },
-            { value: 'advanced',  icon: Zap,        label: 'Advanced'  },
-          ].map(({ value, icon: Icon, label }) => (
-            <TabsTrigger
-              key={value}
-              value={value}
-              className="
-                flex flex-1 min-w-[64px] items-center justify-center gap-1
-                py-2 px-2 rounded-xl text-[11px] font-semibold
-                whitespace-nowrap shrink-0
-                data-[state=active]:bg-background data-[state=active]:shadow-sm
-                data-[state=active]:text-primary text-muted-foreground
-                transition-all duration-150
-              "
-            >
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              <span>{label}</span>
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
+          <TabsList className="flex w-max min-w-full gap-0.5 rounded-2xl p-1 bg-muted/60 border border-border/40 h-auto">
+            {subTabs.map(({ value, icon: Icon, label, fullLabel }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                role="tab"
+                className="
+                  tab-trigger flex items-center justify-center gap-1
+                  py-2 px-2.5 rounded-xl font-semibold
+                  whitespace-nowrap shrink-0 min-w-[52px]
+                  text-[11px]
+                  data-[state=active]:bg-background data-[state=active]:shadow-sm
+                  data-[state=active]:text-primary text-muted-foreground
+                  transition-all duration-150
+                "
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {/* Show full label on wider, short on narrow */}
+                <span className="hidden sm:inline">{fullLabel}</span>
+                <span className="sm:hidden">{label}</span>
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
+        {/* ── Security ── */}
         <TabsContent value="security" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Security & Privacy</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Security & Privacy</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
                   <Label htmlFor="privacy-mask">Privacy Mask</Label>
-                  <p className="text-sm text-muted-foreground">Hide sensitive amounts by default</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Hide sensitive amounts by default</p>
                 </div>
-                <Switch
-                  id="privacy-mask"
-                  checked={settings.privacyMask}
-                  onCheckedChange={(checked) => updateSetting({ privacyMask: checked })}
-                />
+                <Switch id="privacy-mask" checked={settings.privacyMask} onCheckedChange={(v) => updateSetting({ privacyMask: v })} />
               </div>
-              
               <Separator />
-              
               <div className="space-y-2">
-                <Label htmlFor="auto-lock">Auto Lock (minutes)</Label>
-                <div className="px-3">
-                  <Slider
-                    id="auto-lock"
-                    min={1}
-                    max={10}
-                    step={1}
-                    value={[settings.autoLockMinutes]}
-                    onValueChange={(value) => updateSetting({ autoLockMinutes: value[0] })}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                <Label>Auto Lock (minutes)</Label>
+                <div className="px-2">
+                  <Slider min={1} max={10} step={1} value={[settings.autoLockMinutes]} onValueChange={(v) => updateSetting({ autoLockMinutes: v[0] })} />
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
                     <span>1 min</span>
                     <span className="font-medium">{settings.autoLockMinutes} min</span>
                     <span>10 min</span>
                   </div>
                 </div>
               </div>
-
               <Separator />
-
               <div className="space-y-2">
                 <Label>Failed PIN Attempts</Label>
                 <div className="flex items-center gap-2">
-                  <Progress 
-                    value={(settings.failedPinAttempts / settings.maxFailedAttempts) * 100} 
-                    className="flex-1"
-                  />
-                  <Badge variant={settings.failedPinAttempts > 5 ? "destructive" : "secondary"}>
+                  <Progress value={(settings.failedPinAttempts / settings.maxFailedAttempts) * 100} className="flex-1" />
+                  <Badge variant={settings.failedPinAttempts > 5 ? 'destructive' : 'secondary'}>
                     {settings.failedPinAttempts}/{settings.maxFailedAttempts}
                   </Badge>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  App will self-destruct after {settings.maxFailedAttempts} failed attempts
-                </p>
+                <p className="text-xs text-muted-foreground">Self-destruct after {settings.maxFailedAttempts} failures</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Financial ── */}
         <TabsContent value="financial" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Financial Configuration</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Financial Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="tax-regime">Tax Regime</Label>
-                  <Select 
-                    value={settings.taxRegime} 
-                    onValueChange={(value: 'Old' | 'New') => updateSetting({ taxRegime: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label>Tax Regime</Label>
+                  <Select value={settings.taxRegime} onValueChange={(v: 'Old' | 'New') => updateSetting({ taxRegime: v })}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="New">New Tax Regime</SelectItem>
-                      <SelectItem value="Old">Old Tax Regime</SelectItem>
+                      <SelectItem value="New">New Regime</SelectItem>
+                      <SelectItem value="Old">Old Regime</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="salary-credit-day">Salary Credit Day</Label>
-                  <Input
-                    id="salary-credit-day"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={settings.salaryCreditDay}
-                    onChange={(e) => updateSetting({ salaryCreditDay: parseInt(e.target.value) })}
-                  />
+                  <Label>Salary Day</Label>
+                  <Input type="number" min="1" max="31" value={settings.salaryCreditDay} onChange={(e) => updateSetting({ salaryCreditDay: parseInt(e.target.value) })} />
                 </div>
               </div>
-
               <Separator />
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="annual-bonus">Annual Bonus (₹)</Label>
-                  <Input
-                    id="annual-bonus"
-                    type="number"
-                    value={settings.annualBonus}
-                    onChange={(e) => updateSetting({ annualBonus: parseInt(e.target.value) })}
-                  />
+                  <Label>Annual Bonus (₹)</Label>
+                  <Input type="number" value={settings.annualBonus} onChange={(e) => updateSetting({ annualBonus: parseInt(e.target.value) })} />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="birthday-budget">Birthday Budget (₹)</Label>
-                  <Input
-                    id="birthday-budget"
-                    type="number"
-                    value={settings.birthdayBudget}
-                    onChange={(e) => updateSetting({ birthdayBudget: parseInt(e.target.value) })}
-                  />
+                  <Label>Birthday Budget (₹)</Label>
+                  <Input type="number" value={settings.birthdayBudget} onChange={(e) => updateSetting({ birthdayBudget: parseInt(e.target.value) })} />
                 </div>
               </div>
-
               <Separator />
-
-              <div className="space-y-4">
-                <h4 className="font-medium">Inflation Rates (%)</h4>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="medical-inflation">Medical Inflation</Label>
-                    <Input
-                      id="medical-inflation"
-                      type="number"
-                      step="0.1"
-                      value={settings.medicalInflationRate}
-                      onChange={(e) => updateSetting({ medicalInflationRate: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="education-inflation">Education Inflation</Label>
-                    <Input
-                      id="education-inflation"
-                      type="number"
-                      step="0.1"
-                      value={settings.educationInflation}
-                      onChange={(e) => updateSetting({ educationInflation: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="vehicle-inflation">Vehicle Inflation</Label>
-                    <Input
-                      id="vehicle-inflation"
-                      type="number"
-                      step="0.1"
-                      value={settings.vehicleInflation}
-                      onChange={(e) => updateSetting({ vehicleInflation: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="maintenance-inflation">Maintenance Inflation</Label>
-                    <Input
-                      id="maintenance-inflation"
-                      type="number"
-                      step="0.1"
-                      value={settings.maintenanceInflation}
-                      onChange={(e) => updateSetting({ maintenanceInflation: parseFloat(e.target.value) })}
-                    />
-                  </div>
+              <div>
+                <h4 className="text-sm font-medium mb-3">Inflation Rates (%)</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { key: 'medicalInflationRate',  label: 'Medical' },
+                    { key: 'educationInflation',    label: 'Education' },
+                    { key: 'vehicleInflation',      label: 'Vehicle' },
+                    { key: 'maintenanceInflation',  label: 'Maintenance' },
+                  ].map(({ key, label }) => (
+                    <div key={key} className="space-y-2">
+                      <Label>{label}</Label>
+                      <Input type="number" step="0.1" value={(settings as any)[key]} onChange={(e) => updateSetting({ [key]: parseFloat(e.target.value) } as any)} />
+                    </div>
+                  ))}
                 </div>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Alerts ── */}
         <TabsContent value="alerts" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Alert Configuration</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Alert Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="birthday-alert-days">Birthday Alert Days</Label>
-                <Input
-                  id="birthday-alert-days"
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={settings.birthdayAlertDays}
-                  onChange={(e) => updateSetting({ birthdayAlertDays: parseInt(e.target.value) })}
-                />
-                <p className="text-sm text-muted-foreground">
-                  Days before birthday to show reminder
-                </p>
+                <Label>Birthday Alert Days</Label>
+                <Input type="number" min="1" max="30" value={settings.birthdayAlertDays} onChange={(e) => updateSetting({ birthdayAlertDays: parseInt(e.target.value) })} />
+                <p className="text-xs text-muted-foreground">Days before birthday to show reminder</p>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Personal ── */}
         <TabsContent value="personal" className="space-y-4">
+          {/* Emergency Contacts */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Emergency Contacts
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>Emergency Contacts</span>
                 <Dialog open={showContactDialog} onOpenChange={setShowContactDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Contact
-                    </Button>
+                    <Button size="sm" className="h-8 text-xs gap-1"><Plus className="h-3.5 w-3.5" />Add</Button>
                   </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Emergency Contact</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-name">Name</Label>
-                        <Input
-                          id="contact-name"
-                          value={newContact.name || ''}
-                          onChange={(e) => setNewContact({ ...newContact, name: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-phone">Phone</Label>
-                        <Input
-                          id="contact-phone"
-                          value={newContact.phone || ''}
-                          onChange={(e) => setNewContact({ ...newContact, phone: e.target.value })}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="contact-relation">Relation</Label>
-                        <Input
-                          id="contact-relation"
-                          value={newContact.relation || ''}
-                          onChange={(e) => setNewContact({ ...newContact, relation: e.target.value })}
-                        />
-                      </div>
-                      <Button onClick={addEmergencyContact} className="w-full">
-                        Add Contact
-                      </Button>
+                  <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>Add Emergency Contact</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      {[
+                        { id: 'cn', label: 'Name', key: 'name', placeholder: 'Full name' },
+                        { id: 'cp', label: 'Phone', key: 'phone', placeholder: '+91 XXXXX XXXXX' },
+                        { id: 'cr', label: 'Relation', key: 'relation', placeholder: 'Parent / Sibling' },
+                      ].map(({ id, label, key, placeholder }) => (
+                        <div key={id} className="space-y-1.5">
+                          <Label htmlFor={id}>{label}</Label>
+                          <Input id={id} value={(newContact as any)[key] || ''} onChange={(e) => setNewContact({ ...newContact, [key]: e.target.value })} placeholder={placeholder} />
+                        </div>
+                      ))}
+                      <Button onClick={addEmergencyContact} className="w-full">Add Contact</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -494,22 +289,16 @@ export function GlobalSettingsManager() {
             </CardHeader>
             <CardContent>
               {settings.emergencyContacts.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No emergency contacts added</p>
+                <p className="text-xs text-muted-foreground text-center py-4">No contacts yet</p>
               ) : (
                 <div className="space-y-2">
-                  {settings.emergencyContacts.map((contact, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{contact.name}</p>
-                        <p className="text-sm text-muted-foreground">{contact.phone} • {contact.relation}</p>
+                  {settings.emergencyContacts.map((c, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/40">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">{c.relation} · {c.phone}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeEmergencyContact(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => removeEmergencyContact(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   ))}
                 </div>
@@ -517,64 +306,27 @@ export function GlobalSettingsManager() {
             </CardContent>
           </Card>
 
+          {/* Dependents */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <span className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Dependents
-                </span>
+              <CardTitle className="flex items-center justify-between text-base">
+                <span>Dependents</span>
                 <Dialog open={showDependentDialog} onOpenChange={setShowDependentDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-1" />
-                      Add Dependent
-                    </Button>
+                    <Button size="sm" className="h-8 text-xs gap-1"><Plus className="h-3.5 w-3.5" />Add</Button>
                   </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Dependent</DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="dependent-name">Name</Label>
-                        <Input
-                          id="dependent-name"
-                          value={newDependent.name || ''}
-                          onChange={(e) => setNewDependent({ ...newDependent, name: e.target.value })}
-                        />
+                  <DialogContent className="sm:max-w-sm">
+                    <DialogHeader><DialogTitle>Add Dependent</DialogTitle></DialogHeader>
+                    <div className="space-y-3">
+                      <div className="space-y-1.5">
+                        <Label>Name</Label>
+                        <Input value={newDependent.name || ''} onChange={(e) => setNewDependent({ ...newDependent, name: e.target.value })} placeholder="Full name" />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dependent-relation">Relation</Label>
-                        <Select
-                          value={newDependent.relation || ''}
-                          onValueChange={(value) => setNewDependent({ ...newDependent, relation: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select relation" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Spouse">Spouse</SelectItem>
-                            <SelectItem value="Child">Child</SelectItem>
-                            <SelectItem value="Mother">Mother</SelectItem>
-                            <SelectItem value="Father">Father</SelectItem>
-                            <SelectItem value="Grandmother">Grandmother</SelectItem>
-                            <SelectItem value="Brother">Brother</SelectItem>
-                          </SelectContent>
-                        </Select>
+                      <div className="space-y-1.5">
+                        <Label>Relation</Label>
+                        <Input value={newDependent.relation || ''} onChange={(e) => setNewDependent({ ...newDependent, relation: e.target.value })} placeholder="Child / Parent" />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="dependent-dob">Date of Birth</Label>
-                        <Input
-                          id="dependent-dob"
-                          type="date"
-                          value={newDependent.dob?.toISOString().split('T')[0] || ''}
-                          onChange={(e) => setNewDependent({ ...newDependent, dob: new Date(e.target.value) })}
-                        />
-                      </div>
-                      <Button onClick={addDependent} className="w-full">
-                        Add Dependent
-                      </Button>
+                      <Button onClick={addDependent} className="w-full">Add Dependent</Button>
                     </div>
                   </DialogContent>
                 </Dialog>
@@ -582,24 +334,16 @@ export function GlobalSettingsManager() {
             </CardHeader>
             <CardContent>
               {settings.dependents.length === 0 ? (
-                <p className="text-muted-foreground text-center py-4">No dependents added</p>
+                <p className="text-xs text-muted-foreground text-center py-4">No dependents yet</p>
               ) : (
                 <div className="space-y-2">
-                  {settings.dependents.map((dependent, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div>
-                        <p className="font-medium">{dependent.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {dependent.relation} • Born: {dependent.dob.toLocaleDateString()}
-                        </p>
+                  {settings.dependents.map((d, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-muted/40 border border-border/40">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{d.name}</p>
+                        <p className="text-xs text-muted-foreground">{d.relation}</p>
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeDependent(index)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10" onClick={() => removeDependent(i)}><Trash2 className="h-3.5 w-3.5" /></Button>
                     </div>
                   ))}
                 </div>
@@ -608,93 +352,39 @@ export function GlobalSettingsManager() {
           </Card>
         </TabsContent>
 
+        {/* ── App ── */}
         <TabsContent value="app" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>App Configuration</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>App Configuration</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="dark-mode">Dark Mode</Label>
-                  <p className="text-sm text-muted-foreground">Enable dark theme</p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <Label>Dark Mode</Label>
+                  <p className="text-xs text-muted-foreground">Use system preference</p>
                 </div>
-                <Switch
-                  id="dark-mode"
-                  checked={settings.darkMode}
-                  onCheckedChange={(checked) => updateSetting({ darkMode: checked })}
-                />
+                <Switch checked={settings.darkMode} onCheckedChange={(v) => updateSetting({ darkMode: v })} />
               </div>
-
               <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="theme">Theme Preference</Label>
-                <Select 
-                  value={settings.theme} 
-                  onValueChange={(value: 'light' | 'dark' | 'system') => updateSetting({ theme: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="light">Light</SelectItem>
-                    <SelectItem value="dark">Dark</SelectItem>
-                    <SelectItem value="system">System</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Time Zone</Label>
-                <Input
-                  id="timezone"
-                  value={settings.timeZone}
-                  onChange={(e) => updateSetting({ timeZone: e.target.value })}
-                  readOnly
-                />
-                <p className="text-sm text-muted-foreground">
-                  Time zone is set automatically based on your location
-                </p>
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <Label>Notifications</Label>
+                  <p className="text-xs text-muted-foreground">Enable in-app alerts</p>
+                </div>
+                <Switch checked={settings.notificationsEnabled} onCheckedChange={(v) => updateSetting({ notificationsEnabled: v })} />
               </div>
             </CardContent>
           </Card>
         </TabsContent>
 
+        {/* ── Advanced ── */}
         <TabsContent value="advanced" className="space-y-4">
           <Card>
-            <CardHeader>
-              <CardTitle>Advanced Settings</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle>Advanced Settings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label htmlFor="test-mode">Test Mode</Label>
-                  <p className="text-sm text-muted-foreground">Disable real notifications and nudges</p>
-                </div>
-                <Switch
-                  id="test-mode"
-                  checked={settings.isTest}
-                  onCheckedChange={(checked) => updateSetting({ isTest: checked })}
-                />
-              </div>
-
-              <Separator />
-
               <div className="space-y-2">
-                <Label htmlFor="reveal-secret">Reveal Secret</Label>
-                <Input
-                  id="reveal-secret"
-                  type="password"
-                  value={settings.revealSecret}
-                  onChange={(e) => updateSetting({ revealSecret: e.target.value })}
-                  placeholder="Set a secret to reveal masked data"
-                />
-                <p className="text-sm text-muted-foreground">
-                  Used to temporarily reveal masked financial data
-                </p>
+                <Label>Reveal Secret Passphrase</Label>
+                <Input type="password" placeholder="Set custom passphrase..." />
+                <p className="text-xs text-muted-foreground">Used in the Reveal Values dialog. Leave blank to use default.</p>
               </div>
             </CardContent>
           </Card>
