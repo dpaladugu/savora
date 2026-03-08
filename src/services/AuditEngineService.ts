@@ -206,8 +206,9 @@ export class AuditEngineService {
       .filter((s: any) => s.status === 'Occupied')
       .reduce((sum: number, s: any) => sum + (s.rent || 0), 0);
 
-    // Fallback if gunturShops is empty: use constant from waterfall definition
-    const netGunturRent = occupiedShopRent > 0 ? occupiedShopRent : 19_600; // sum of defaults
+    // Only use real data — no hardcoded fallback. If shops haven't been added yet,
+    // the DSCR will be 0 (critical) which is the correct "unknown" posture.
+    const netGunturRent = occupiedShopRent;
 
     const totalMonthlyEMI = loans
       .filter((l: any) => l.isActive !== false)
@@ -216,7 +217,7 @@ export class AuditEngineService {
     const numerator = netGunturRent - SINKING_FUND_MONTHLY;
     const value = totalMonthlyEMI > 0
       ? +(numerator / totalMonthlyEMI).toFixed(3)
-      : 999; // no debt = infinite coverage
+      : netGunturRent > 0 ? 999 : 0; // no debt = infinite; no data = 0
 
     return {
       netGunturRent,
@@ -230,15 +231,28 @@ export class AuditEngineService {
   // ── DIR: Liquid Assets / Average Daily Expenses ────────────────────────────
   private static _calcDIR(
     allTxns: any[],
+    allExpenses: any[],
     since: Date,
     investments: any[],
     emergencyFunds: any[],
     creditCards: any[],
   ): DIRResult {
-    // Expenses in last 90 days
-    const recentExpenses = allTxns
+    // Pull trailing 90-day expenses from BOTH sources:
+    // 1. db.expenses (dedicated expenses table — positive amounts)
+    const recentFromExpenseTable = allExpenses
+      .filter((e: any) => new Date(e.date) >= since)
+      .reduce((s: number, e: any) => s + Math.abs(e.amount || 0), 0);
+
+    // 2. db.txns where amount < 0 (legacy expense txns recorded as negative)
+    const recentFromTxns = allTxns
       .filter((t: any) => t.amount < 0 && new Date(t.date) >= since)
       .reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
+
+    // Use whichever source has data; if both have data sum them only if
+    // the amounts don't overlap (heuristic: prefer expenses table when non-zero)
+    const recentExpenses = recentFromExpenseTable > 0
+      ? recentFromExpenseTable
+      : recentFromTxns;
 
     const daysInWindow = 90;
     const avgDailyExpenses = recentExpenses / daysInWindow || 1; // avoid divide-by-zero
