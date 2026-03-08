@@ -15,10 +15,11 @@ import { PageHeader } from '@/components/layout/page-header';
 import { MaskedAmount } from '@/components/ui/masked-value';
 import { formatCurrency } from '@/lib/format-utils';
 import { InsuranceGapAnalysis } from './insurance-gap-analysis';
+import { InsuranceSinkingFund } from './insurance-sinking-fund';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
-  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity
+  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity, PiggyBank
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -187,11 +188,19 @@ export function InsuranceManager() {
           <TabsTrigger value="gap" className="flex-1 text-xs rounded-lg flex items-center gap-1">
             <TrendingUp className="h-3 w-3" /> Gap Analysis
           </TabsTrigger>
+          <TabsTrigger value="sinking" className="flex-1 text-xs rounded-lg flex items-center gap-1">
+            <PiggyBank className="h-3 w-3" /> Sinking Fund
+          </TabsTrigger>
         </TabsList>
 
         {/* ── Gap Analysis Tab ─────────────────────────────────────────────── */}
         <TabsContent value="gap" className="mt-3">
           <InsuranceGapAnalysis />
+        </TabsContent>
+
+        {/* ── Sinking Fund Tab ─────────────────────────────────────────────── */}
+        <TabsContent value="sinking" className="mt-3">
+          <InsuranceSinkingFund />
         </TabsContent>
 
         {/* ── Policies Tab ────────────────────────────────────────────────── */}
