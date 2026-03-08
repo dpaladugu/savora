@@ -1,9 +1,11 @@
 
+
 import React from 'react';
 import { Dashboard } from '@/components/dashboard/dashboard';
 import { ExpenseTracker } from '@/components/expenses/expense-tracker';
 import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker';
 import { InvestmentsTracker } from '@/components/investments/investments-tracker';
+import { IncomeTracker } from '@/components/income/income-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
 import { SettingsScreen } from '@/components/settings/settings-screen';
 import { MoreModuleRouter } from '@/components/layout/more-module-router';
@@ -42,6 +44,8 @@ export function MainContentRouter({
       return <CreditCardTracker />;
     case 'investments':
       return <InvestmentsTracker />;
+    case 'income':
+      return <IncomeTracker />;
     case 'goals':
       return <GoalsManager />;
     case 'settings':

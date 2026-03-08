@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
+import { Home, Receipt, CreditCard, Banknote, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
@@ -20,7 +20,7 @@ const mainTabs = [
   { id: "dashboard",   label: "Dashboard",    icon: Home,         ariaLabel: "Navigate to dashboard" },
   { id: "expenses",    label: "Expenses",      icon: Receipt,      ariaLabel: "Navigate to expenses" },
   { id: "credit-cards", label: "Cards",        icon: CreditCard,   ariaLabel: "Navigate to credit cards" },
-  { id: "investments", label: "Invest",        icon: TrendingUp,   ariaLabel: "Navigate to investments" },
+  { id: "income",      label: "Income",        icon: Banknote,     ariaLabel: "Navigate to income tracker" },
 ];
 
 export const PersistentNavigation = React.memo(function PersistentNavigation({

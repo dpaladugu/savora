@@ -23,7 +23,7 @@ export interface CacheEntry<T> {
   expiresAt: number;
 }
 
-export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investments' | 'goals' | 'upload' | 'settings' | 'more';
+export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investments' | 'income' | 'goals' | 'upload' | 'settings' | 'more';
 
 export type MoreModule = 
   | 'emergency-fund' 
