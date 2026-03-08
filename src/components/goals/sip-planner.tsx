@@ -226,6 +226,11 @@ function ProgressRing({
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SIPPlanner() {
+  const { goalIdForPlanner, clearGoalIdForPlanner } = useSIPPrefillStore(s => ({
+    goalIdForPlanner: s.goalIdForPlanner,
+    clearGoalIdForPlanner: s.clearGoalIdForPlanner,
+  }));
+
   const goals = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
   const activeGoals = useMemo(
     () => goals.filter((g) => (g.targetAmount ?? 0) > (g.currentAmount ?? 0)),
