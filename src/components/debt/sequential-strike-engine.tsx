@@ -126,6 +126,7 @@ export function SequentialStrikeEngine() {
   // Stress-test vacancy overrides (unit id → vacant)
   const [vacantOverrides, setVacantOverrides] = useState<Record<string, boolean>>({});
   const [manualP5Override, setManualP5Override] = useState<number | null>(null);
+  const [showPrepayment, setShowPrepayment] = useState(false);
 
   const toggleVacant = (id: string) =>
     setVacantOverrides(prev => ({ ...prev, [id]: !prev[id] }));
