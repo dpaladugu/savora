@@ -433,6 +433,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Net Worth Widget ── */}
       <NetWorthWidget onNavigate={onMoreNavigation} />
 
+      {/* ── Data Health Widget (disappears once all buckets filled) ── */}
+      <DataHealthWidget onNavigate={onMoreNavigation} />
+
       {/* ── Guntur Waterfall Card ── */}
       <GunturWaterfallCard onNavigate={onMoreNavigation} />
 
