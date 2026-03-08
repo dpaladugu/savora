@@ -62,6 +62,14 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <SubscriptionTracker />;
       case 'family-banking':
         return <FamilyBankManager />;
+      case 'family-banking-v2':
+        return <FamilyBankingManager />;
+      case 'brother-repayment':
+        return <BrotherRepaymentTracker />;
+      case 'insurance-manager':
+        return <InsuranceManager />;
+      case 'spending-limits':
+        return <SpendingLimits />;
       case 'emergency-fund':
         return <EmergencyFundDashboard />;
       case 'cfa-recommendations':
