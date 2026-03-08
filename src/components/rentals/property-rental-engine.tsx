@@ -591,7 +591,7 @@ type Tab = 'collection' | 'waterfall' | 'history';
 
 export function PropertyRentalEngine() {
   const role = useRole();
-  const readOnly = role === 'viewer';
+  const readOnly = role === 'GUEST';
 
   const [activeTab, setActiveTab] = React.useState<Tab>('collection');
 
