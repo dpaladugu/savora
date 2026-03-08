@@ -245,6 +245,26 @@ export interface Income {
   updatedAt: Date;
 }
 
+export interface RecurringTransaction {
+  id: string;
+  amount: number;
+  description: string;
+  category: string;
+  frequency: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  start_date: string;
+  end_date?: string;
+  day_of_week?: number;
+  day_of_month?: number;
+  next_date: string;
+  is_active: boolean;
+  type: 'income' | 'expense';
+  payment_method?: string;
+  account?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
@@ -270,6 +290,7 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   spendingLimits: EntityTable<SpendingLimit, 'id'>;
   willRows: EntityTable<WillRow, 'id'>;
   digitalAssets: EntityTable<DigitalAsset, 'id'>;
+  recurringTransactions: EntityTable<RecurringTransaction, 'id'>;
 };
 
 db.version(1).stores({
@@ -305,6 +326,11 @@ db.version(2).stores({
 db.version(3).stores({
   willRows:      '++id, assetDescription, assetType, beneficiary, createdAt, updatedAt',
   digitalAssets: '++id, type, name, nominee, createdAt, updatedAt',
+});
+
+// Version 4: Recurring Transactions
+db.version(4).stores({
+  recurringTransactions: '++id, description, category, frequency, type, is_active, next_date, createdAt, updatedAt',
 });
 
 export { db };

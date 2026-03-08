@@ -1,57 +1,63 @@
 
 /**
  * src/services/RecurringTransactionService.ts
- *
- * A service for handling recurring transaction operations. Currently provides stub implementations
- * since the recurringTransactions table is not available in the current schema.
+ * Real Dexie-backed implementation for recurring transactions.
  */
 
-import { db } from "@/db";
-import type { RecurringTransactionRecord } from "@/types/recurring-transaction";
+import { db } from '@/lib/db';
+import type { RecurringTransaction } from '@/lib/db';
+const uuidv4 = () => crypto.randomUUID();
+
+// Re-export the DB type so components can import from one place
+export type { RecurringTransaction };
+
+// Shape expected by the page (snake_case from the original type)
+export type RecurringTransactionRecord = RecurringTransaction;
 
 export class RecurringTransactionService {
 
-  static async addRecurringTransaction(): Promise<string> {
-    console.warn('Recurring transaction service not yet implemented - recurringTransactions table not available in current schema');
-    throw new Error('Recurring transaction functionality not yet implemented');
+  static async getAll(): Promise<RecurringTransaction[]> {
+    return db.recurringTransactions.orderBy('createdAt').reverse().toArray();
   }
 
-  static async updateRecurringTransaction(): Promise<number> {
-    console.warn('Recurring transaction service not yet implemented - recurringTransactions table not available in current schema');
-    return 0;
+  static async create(
+    data: Omit<RecurringTransaction, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<string> {
+    const now = new Date();
+    const id = uuidv4();
+    await db.recurringTransactions.add({
+      ...data,
+      id,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return id;
   }
 
-  static async deleteRecurringTransaction(): Promise<void> {
-    console.warn('Recurring transaction service not yet implemented - recurringTransactions table not available in current schema');
-  }
-
-  static async getRecurringTransactions(): Promise<any[]> {
-    console.warn('Recurring transaction service not yet implemented - recurringTransactions table not available in current schema');
-    return [];
-  }
-
-  static async processRecurringTransactions(): Promise<void> {
-    console.warn('Recurring transaction processing not yet implemented');
-  }
-
-  // Add the missing methods that components are trying to call
-  static async getAll(userId: string): Promise<RecurringTransactionRecord[]> {
-    console.warn('getAll method not yet implemented - recurringTransactions table not available in current schema');
-    return [];
-  }
-
-  static async create(data: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>): Promise<string> {
-    console.warn('create method not yet implemented - recurringTransactions table not available in current schema');
-    throw new Error('Recurring transaction functionality not yet implemented');
-  }
-
-  static async update(id: string, updates: Partial<RecurringTransactionRecord>): Promise<void> {
-    console.warn('update method not yet implemented - recurringTransactions table not available in current schema');
-    throw new Error('Recurring transaction functionality not yet implemented');
+  static async update(
+    id: string,
+    updates: Partial<Omit<RecurringTransaction, 'id' | 'createdAt'>>
+  ): Promise<void> {
+    await db.recurringTransactions.update(id, { ...updates, updatedAt: new Date() });
   }
 
   static async delete(id: string): Promise<void> {
-    console.warn('delete method not yet implemented - recurringTransactions table not available in current schema');
-    throw new Error('Recurring transaction functionality not yet implemented');
+    await db.recurringTransactions.delete(id);
+  }
+
+  /** Calculate next occurrence date string based on frequency */
+  static calcNextDate(
+    fromDate: string,
+    frequency: RecurringTransaction['frequency'],
+    interval: number
+  ): string {
+    const d = new Date(fromDate);
+    switch (frequency) {
+      case 'daily':   d.setDate(d.getDate() + interval); break;
+      case 'weekly':  d.setDate(d.getDate() + 7 * interval); break;
+      case 'monthly': d.setMonth(d.getMonth() + interval); break;
+      case 'yearly':  d.setFullYear(d.getFullYear() + interval); break;
+    }
+    return d.toISOString().split('T')[0];
   }
 }
