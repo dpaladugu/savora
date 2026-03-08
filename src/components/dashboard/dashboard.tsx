@@ -21,15 +21,16 @@ interface DashboardProps {
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-function QuickActions({ onTabChange }: { onTabChange: (t: string) => void }) {
+function QuickActions({ onTabChange, onMoreNavigation }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void }) {
   const actions = [
-    { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')     },
-    { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards') },
-    { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')        },
-    { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')  },
+    { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')                },
+    { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards')            },
+    { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
+    { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')             },
+    { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
   ];
   return (
-    <div className="grid grid-cols-4 gap-2.5" role="group" aria-label="Quick actions">
+    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Quick actions">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
           key={label}

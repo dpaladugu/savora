@@ -34,7 +34,7 @@ export const seedGlobalSettings = async () => {
     revealSecret: ''
   };
 
-  await db.globalSettings.add(settings);
+  await db.globalSettings.put(settings);
 };
 
 const seedInsurance = async () => {
