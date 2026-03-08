@@ -21,6 +21,7 @@ import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import type { EmergencyFund } from '@/types/financial';
+import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
 
 
 
