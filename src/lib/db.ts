@@ -268,7 +268,46 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   incomes: EntityTable<Income, 'id'>;
   insurancePolicies: EntityTable<Insurance, 'id'>;
   spendingLimits: EntityTable<SpendingLimit, 'id'>;
+  willRows: EntityTable<WillRow, 'id'>;
+  digitalAssets: EntityTable<DigitalAsset, 'id'>;
 };
+
+db.version(1).stores({
+  txns: '++id, amount, currency, category, date, note, goalId, cardId, vehicleId, tenantId, propertyId, createdAt, updatedAt',
+  rentalProperties: '++id, address, owner, type, squareYards, monthlyRent, dueDay, escalationPercent, createdAt, updatedAt',
+  goals: '++id, name, title, targetAmount, currentAmount, deadline, category, createdAt, updatedAt',
+  vehicles: '++id, name, model, year, createdAt, updatedAt',
+  creditCards: '++id, name, issuer, bankName, last4, network, creditLimit, currentBalance, dueDate, createdAt, updatedAt',
+  loans: '++id, name, principal, interestRate, createdAt, updatedAt',
+  insurance: '++id, name, type, premium, createdAt, updatedAt',
+  tenants: '++id, name, email, phone, propertyId, leaseStart, leaseEnd, depositAmount, isActive, createdAt, updatedAt',
+  investments: '++id, name, type, currentValue, purchasePrice, quantity, purchaseDate, currentNav, units, investedValue, startDate, maturityDate, expectedReturn, createdAt, updatedAt',
+  gold: '++id, type, weight, purity, createdAt, updatedAt',
+  subscriptions: '++id, name, cost, billingCycle, nextBilling, createdAt, updatedAt',
+  emergencyFunds: '++id, name, targetAmount, currentAmount, targetMonths, lastReviewDate, status, medicalSubBucket, medicalSubBucketUsed, monthlyExpenses, createdAt, updatedAt',
+  health: '++id, refillAlertDays, allergySeverity, emergencyContact, nextCheckupDate, familyHistory, vaccinations, vitals, prescriptions, weightKg, heightCm, createdAt, updatedAt',
+  brotherRepayments: '++id, amount, date, createdAt, updatedAt',
+  familyBankAccounts: '++id, name, balance, createdAt, updatedAt',
+  familyTransfers: '++id, amount, from, to, date, createdAt, updatedAt',
+  auditLogs: '++id, action, timestamp, userId',
+  globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, privacyMask, darkMode, timeZone, isTest, theme, revealSecret',
+  expenses: '++id, amount, date, category, description, createdAt, updatedAt',
+  incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt'
+});
+
+// Version 2: add insurancePolicies + spendingLimits
+db.version(2).stores({
+  insurancePolicies: '++id, type, provider, familyMember, endDate, createdAt, updatedAt',
+  spendingLimits: '++id, category, monthlyCap, alertAt, createdAt, updatedAt',
+});
+
+// Version 3: Will & Estate (WillRow + DigitalAsset)
+db.version(3).stores({
+  willRows:      '++id, assetDescription, assetType, beneficiary, createdAt, updatedAt',
+  digitalAssets: '++id, type, name, nominee, createdAt, updatedAt',
+});
+
+export { db };
 
 db.version(1).stores({
   txns: '++id, amount, currency, category, date, note, goalId, cardId, vehicleId, tenantId, propertyId, createdAt, updatedAt',
