@@ -1,6 +1,6 @@
 
 import * as React from "react";
-import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-react";
+import { Home, Receipt, CreditCard, Banknote, MoreHorizontal } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
