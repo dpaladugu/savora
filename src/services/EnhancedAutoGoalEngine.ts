@@ -2,6 +2,7 @@ import { extendedDb } from '@/lib/db-schema-extended';
 import { db } from '@/lib/db';
 import type { Goal, Txn, Investment, Insurance, Dependent } from '@/lib/db';
 import { addYears, addDays, addMonths } from 'date-fns';
+import { createGoal } from '@/lib/goal-factory';
 
 interface AutoGoalRule {
   trigger: string;
