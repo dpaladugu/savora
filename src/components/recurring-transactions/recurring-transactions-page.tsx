@@ -123,6 +123,23 @@ export function RecurringTransactionsPage() {
         </div>
       </div>
 
+      {/* ── Smart Nudge pre-fill banner ── */}
+      {prefill && (
+        <div className="flex items-start gap-3 p-3.5 rounded-2xl border border-primary/25 bg-primary/5">
+          <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-foreground">SIP pre-filled from nudge</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {prefill.goalName && <span className="font-medium text-foreground">"{prefill.goalName}" — </span>}
+              {formatCurrency(prefill.amount)}/month · {prefill.category} · Monthly
+            </p>
+          </div>
+          <button onClick={() => { clearPrefill(); setShowForm(false); }} className="text-muted-foreground/50 hover:text-muted-foreground transition-colors" aria-label="Dismiss">
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* ── Monthly net summary ── */}
       {items.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
