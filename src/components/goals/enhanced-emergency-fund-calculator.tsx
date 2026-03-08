@@ -233,7 +233,7 @@ export function EnhancedEmergencyFundCalculator() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Medical Reserve Available</span>
-                <span className="text-sm font-semibold text-green-600">
+              <span className="text-sm font-semibold value-positive">
                   {medicalProgress.toFixed(1)}%
                 </span>
               </div>
