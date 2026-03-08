@@ -380,6 +380,8 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const updateShopRent = async (id: string, rent: number) => {
     if (readOnly) return;
     await db.gunturShops.update(id, { rent, updatedAt: new Date() });
+  };
+
   const runWaterfall = async () => {
     if (readOnly) { toast.error('Read-only access'); return; }
     let remaining = netRent;
