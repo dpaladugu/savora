@@ -203,7 +203,17 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           title: `Prepay "${loan.name}" faster`,
           body: `${loan.interestRate}% interest loan — even ₹1k/month extra prepayment saves years of interest`,
           ctaLabel: 'Add prepayment →',
-          ctaAction: () => onMoreNavigation('recurring-transactions'),
+          ctaAction: () => {
+            setPrefill({
+              description: `Extra EMI – ${loan.name}`,
+              amount: 1000,
+              category: 'Loan Repayment',
+              frequency: 'monthly',
+              type: 'expense',
+              goalName: loan.name,
+            });
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 3,
           color: 'warning',
         });
