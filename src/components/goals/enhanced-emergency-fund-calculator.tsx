@@ -91,10 +91,10 @@ export function EnhancedEmergencyFundCalculator() {
     : 0;
 
   const getStatusColor = (progress: number) => {
-    if (progress >= 100) return 'text-green-600';
-    if (progress >= 75) return 'text-blue-600';
-    if (progress >= 50) return 'text-yellow-600';
-    return 'text-red-600';
+    if (progress >= 100) return 'value-positive';
+    if (progress >= 75) return 'text-primary';
+    if (progress >= 50) return 'text-warning';
+    return 'value-negative';
   };
 
   const getStatusText = (progress: number) => {
@@ -127,7 +127,7 @@ export function EnhancedEmergencyFundCalculator() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-blue-600" />
+              <Shield className="w-5 h-5 text-primary" />
               Emergency Fund Calculator
             </CardTitle>
           </CardHeader>
@@ -195,7 +195,7 @@ export function EnhancedEmergencyFundCalculator() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
+              <AlertCircle className="w-5 h-5 text-destructive" />
               Medical Emergency Sub-Bucket
             </CardTitle>
           </CardHeader>
@@ -233,7 +233,7 @@ export function EnhancedEmergencyFundCalculator() {
             <div className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Medical Reserve Available</span>
-                <span className="text-sm font-semibold text-green-600">
+              <span className="text-sm font-semibold value-positive">
                   {medicalProgress.toFixed(1)}%
                 </span>
               </div>
@@ -252,7 +252,7 @@ export function EnhancedEmergencyFundCalculator() {
         <Card className="border-border/50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
+              <TrendingUp className="w-5 h-5 text-success" />
               Smart Recommendations
             </CardTitle>
           </CardHeader>
@@ -260,9 +260,9 @@ export function EnhancedEmergencyFundCalculator() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="p-4">
                 <div className="text-center">
-                  <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                  <Target className="w-6 h-6 text-primary mx-auto mb-2" />
                   <div className="text-sm font-medium">Monthly Target</div>
-                  <div className="text-lg font-semibold text-blue-600">
+                  <div className="text-lg font-semibold text-primary">
                     {formatCurrency((efSettings.targetAmount - efSettings.currentAmount) / 12)}
                   </div>
                   <div className="text-xs text-muted-foreground">to reach goal in 12 months</div>
@@ -271,9 +271,9 @@ export function EnhancedEmergencyFundCalculator() {
 
               <Card className="p-4">
                 <div className="text-center">
-                  <Shield className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                  <Shield className="w-6 h-6 text-success mx-auto mb-2" />
                   <div className="text-sm font-medium">Safety Score</div>
-                  <div className="text-lg font-semibold text-green-600">
+                  <div className="text-lg font-semibold text-success">
                     {progressPercentage >= 75 ? 'High' : progressPercentage >= 50 ? 'Medium' : 'Low'}
                   </div>
                   <div className="text-xs text-muted-foreground">financial security level</div>
@@ -282,9 +282,9 @@ export function EnhancedEmergencyFundCalculator() {
 
               <Card className="p-4">
                 <div className="text-center">
-                  <AlertCircle className="w-6 h-6 text-yellow-600 mx-auto mb-2" />
+                  <AlertCircle className="w-6 h-6 text-warning mx-auto mb-2" />
                   <div className="text-sm font-medium">Gap Amount</div>
-                  <div className="text-lg font-semibold text-yellow-600">
+                  <div className="text-lg font-semibold text-warning">
                     {formatCurrency(Math.max(0, efSettings.targetAmount - efSettings.currentAmount))}
                   </div>
                   <div className="text-xs text-muted-foreground">remaining to target</div>

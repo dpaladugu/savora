@@ -198,9 +198,9 @@ export function CreditCardModule() {
   };
 
   const getUtilizationColor = (utilization: number) => {
-    if (utilization < 30) return 'text-green-600';
-    if (utilization < 70) return 'text-yellow-600';
-    return 'text-red-600';
+    if (utilization < 30) return 'value-positive';
+    if (utilization < 70) return 'text-warning';
+    return 'value-negative';
   };
 
   const getDaysUntilDue = (dueDate: string) => {
@@ -366,7 +366,7 @@ export function CreditCardModule() {
                   className="text-2xl font-bold"
                 />
               </div>
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
+              <AlertTriangle className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
@@ -381,7 +381,7 @@ export function CreditCardModule() {
                   className="text-2xl font-bold"
                 />
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <TrendingUp className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
@@ -393,7 +393,7 @@ export function CreditCardModule() {
                 <p className="text-sm text-muted-foreground">Cards</p>
                 <p className="text-2xl font-bold">{creditCards.length}</p>
               </div>
-              <CreditCard className="h-8 w-8 text-blue-500" />
+              <CreditCard className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -488,7 +488,7 @@ export function CreditCardModule() {
                       <p className="text-sm text-muted-foreground">Available</p>
                       <PrivacyMask 
                         amount={card.availableCredit}
-                        className="text-lg font-semibold text-green-600"
+                        className="text-lg font-semibold value-positive"
                       />
                     </div>
                     

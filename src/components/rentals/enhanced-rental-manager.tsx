@@ -75,9 +75,9 @@ export function EnhancedRentalManager() {
 
       {/* Overdue Rent Alert */}
       {overdueProperties.length > 0 && (
-        <Alert className="border-red-200 bg-red-50">
-          <AlertTriangle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="text-red-800">
+        <Alert className="border-destructive/30 bg-destructive/5">
+          <AlertTriangle className="h-4 w-4 text-destructive" />
+          <AlertDescription className="text-destructive">
             {overdueProperties.length} property(ies) have overdue rent. Please follow up with tenants.
           </AlertDescription>
         </Alert>
@@ -150,7 +150,7 @@ export function EnhancedRentalManager() {
             const occupancyRate = propertyTenants.length > 0 ? 100 : 0;
 
             return (
-              <Card key={property.id} className={isOverdue ? 'border-red-200' : ''}>
+              <Card key={property.id} className={isOverdue ? 'border-destructive/40' : ''}>
                 <CardContent className="p-6">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex-1">

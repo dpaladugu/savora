@@ -147,7 +147,7 @@ export function ProgressiveLoading({ steps, currentStep, className = '' }: Progr
                   key={index}
                   className={`flex items-center text-sm ${
                     index < currentStep 
-                      ? 'text-green-600' 
+                      ? 'value-positive' 
                       : index === currentStep 
                         ? 'text-primary font-medium' 
                         : 'text-muted-foreground'

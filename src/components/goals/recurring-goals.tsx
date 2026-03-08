@@ -116,23 +116,23 @@ export function RecurringGoals() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      'Insurance': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      'Tax': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      'EMI': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      'Investment': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      'Other': 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
+      'Insurance': 'bg-primary/10 text-primary border border-primary/20',
+      'Tax': 'bg-destructive/10 text-destructive border border-destructive/20',
+      'EMI': 'bg-accent/10 text-accent border border-accent/20',
+      'Investment': 'bg-success/10 text-success border border-success/20',
+      'Other': 'bg-muted text-muted-foreground border border-border',
     };
     return colors[category] || colors['Other'];
   };
 
   const getSIPTypeColor = (sipType: string) => {
     const colors: Record<string, string> = {
-      'Liquid': 'bg-blue-500',
-      'Arbitrage': 'bg-green-500',
-      'Flexi Cap': 'bg-purple-500',
-      'Gold': 'bg-yellow-500',
+      'Liquid': 'bg-primary',
+      'Arbitrage': 'bg-success',
+      'Flexi Cap': 'bg-accent',
+      'Gold': 'bg-warning',
     };
-    return colors[sipType] || 'bg-gray-500';
+    return colors[sipType] || 'bg-muted-foreground';
   };
 
   const urgentGoals = goals.filter(goal => getDaysUntilDue(goal.nextDueDate) <= 90);
@@ -192,15 +192,15 @@ export function RecurringGoals() {
 
       {/* Urgent Goals Alert */}
       {urgentGoals.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
+        <Card className="border-warning/30 bg-warning/5">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <AlertCircle className="w-5 h-5 text-warning" />
               <div>
-                <h3 className="font-semibold text-orange-800 dark:text-orange-200">
+                <h3 className="font-semibold text-warning">
                   {urgentGoals.length} goal(s) due within 3 months
                 </h3>
-                <p className="text-sm text-orange-700 dark:text-orange-300">
+                <p className="text-sm text-warning/80">
                   Consider consolidating these into a group for better SIP planning
                 </p>
               </div>
@@ -233,14 +233,12 @@ export function RecurringGoals() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
             >
-              <Card className={`metric-card border-border/50 ${daysUntilDue <= 30 ? 'border-orange-300' : ''}`}>
+              <Card className={`metric-card border-border/50 ${daysUntilDue <= 30 ? 'border-warning/40' : ''}`}>
                 <CardContent className="p-4">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <h4 className="font-semibold text-foreground text-lg">
-                          {goal.name}
-                        </h4>
+                        <h4 className="font-semibold text-foreground text-lg">{goal.name}</h4>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(goal.category)}`}>
                           {goal.category}
                         </span>
@@ -250,11 +248,12 @@ export function RecurringGoals() {
                         <p className="text-xs text-muted-foreground">{goal.frequency}</p>
                       </div>
                     </div>
-                    
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-4">
                         <span className="text-muted-foreground">Due:</span>
-                        <span className={`font-medium ${daysUntilDue <= 30 ? 'text-orange-600' : 'text-foreground'}`}>
+                        <span className="text-muted-foreground">Due:</span>
+...
+                        <span className={`font-medium ${daysUntilDue <= 30 ? 'text-warning' : 'text-foreground'}`}>
                           {new Date(goal.nextDueDate).toLocaleDateString('en-IN')}
                         </span>
                         <span className="text-muted-foreground">

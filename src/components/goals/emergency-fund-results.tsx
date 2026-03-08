@@ -21,8 +21,8 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
       <Card className="metric-card border-border/50">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900">
-              <Calculator className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Calculator className="w-5 h-5 text-primary" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Monthly Requirement</h3>
@@ -38,8 +38,8 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
       <Card className="metric-card border-border/50">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900">
-              <Shield className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="p-2 rounded-lg bg-success/10">
+              <Shield className="w-5 h-5 text-success" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Emergency Fund Target</h3>
@@ -55,8 +55,8 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
       <Card className="metric-card border-border/50">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900">
-              <Users className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 rounded-lg bg-accent/10">
+              <Users className="w-5 h-5 text-accent" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Current Coverage</h3>
@@ -68,11 +68,11 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
           </div>
           {calculation.currentCoverage > 0 && (
             <div className="mt-3">
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div 
+              <div className="w-full bg-muted rounded-full h-2">
+                <div
                   className={`h-2 rounded-full transition-all duration-300 ${
-                    calculation.currentCoverage >= emergencyMonths ? 'bg-green-500' : 
-                    calculation.currentCoverage >= emergencyMonths * 0.7 ? 'bg-yellow-500' : 'bg-red-500'
+                    calculation.currentCoverage >= emergencyMonths ? 'bg-success' :
+                    calculation.currentCoverage >= emergencyMonths * 0.7 ? 'bg-warning' : 'bg-destructive'
                   }`}
                   style={{ width: `${Math.min((calculation.currentCoverage / emergencyMonths) * 100, 100)}%` }}
                 />
@@ -85,8 +85,8 @@ export function EmergencyFundResults({ calculation, emergencyMonths }: Emergency
       <Card className="metric-card border-border/50">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900">
-              <TrendingUp className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+            <div className="p-2 rounded-lg bg-warning/10">
+              <TrendingUp className="w-5 h-5 text-warning" />
             </div>
             <div>
               <h3 className="font-semibold text-foreground">Shortfall</h3>
