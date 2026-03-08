@@ -15,6 +15,8 @@ import { seedInitialData } from "@/lib/seed-data";
 import { performStartupVerification, logStartupResults } from "@/utils/startup-verification";
 import { GlobalHeader } from "@/components/layout/global-header";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
+import { useAutoLock } from "@/hooks/use-auto-lock";
+import { useLiveQuery } from "dexie-react-hooks";
 
 const MainApp = () => {
   let isUnlocked = false;
