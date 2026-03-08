@@ -137,7 +137,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'budget-vs-actual':
         return <BudgetVsActual />;
       case 'csv-import':
-        return <CSVImports />;
+        return <CSVImportFlow />;
       case 'recurring-transactions':
         return <RecurringTransactionsPage />;
       case 'debt-strike':
