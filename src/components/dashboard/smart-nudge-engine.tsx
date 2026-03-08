@@ -86,6 +86,8 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
   const creditCards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first().catch(() => undefined), []);
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first().catch(() => undefined), []);
+  const shops       = useLiveQuery(() => db.gunturShops.toArray().catch(() => []), []) ?? [];
+  const rooms       = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
 
   const activeGoals = goals.filter(g => (g.targetAmount ?? 0) > (g.currentAmount ?? 0));
 
@@ -132,7 +134,7 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           priority: 1,
           color: 'primary',
         });
-        if (list.filter(n => n.id.startsWith('no-sip')).length >= 2) break; // max 2 SIP nudges
+        if (list.filter(n => n.id.startsWith('no-sip')).length >= 2) break;
       }
     }
 
@@ -142,7 +144,7 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       const expected = expectedByNow(goal);
       const current  = goal.currentAmount ?? 0;
       const behindBy = expected - current;
-      if (behindBy > 0 && behindBy > goal.targetAmount * 0.1) { // >10% behind
+      if (behindBy > 0 && behindBy > goal.targetAmount * 0.1) {
         list.push({
           id: `behind-${goal.id}`,
           icon: <AlertTriangle className="h-4 w-4" />,
@@ -190,42 +192,64 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       });
     }
 
-    // High-interest loan with no accelerated repayment SIP
-    const highInterestLoans = loans.filter(l => (l.interestRate ?? 0) > 10 && ((l as any).outstanding ?? l.principal ?? 0) > 0);
-    if (highInterestLoans.length > 0) {
-      const loan = highInterestLoans[0];
-      const hasRepaymentSip = recurring.some(
-        r => r.is_active && (r.description.toLowerCase().includes('loan') || r.description.toLowerCase().includes('emi') || r.category.toLowerCase().includes('loan'))
-      );
-      if (!hasRepaymentSip) {
+    // High-interest loan with no accelerated repayment
+    const activeLoans = loans.filter(l => l.isActive !== false);
+    const incred = activeLoans.find(l => l.id === 'loan-incred-2026' || (l.name ?? '').toLowerCase().includes('incred'));
+    if (incred) {
+      const out = (incred as any).outstanding ?? incred.principal ?? 0;
+      const emi = (incred as any).emi ?? 32641;
+      const roi = (incred as any).roi ?? 14.2;
+      // Nudge: InCred close to being cleared (< ₹5L remaining)
+      if (out > 0 && out < 5_00_000) {
         list.push({
-          id: `loan-sip-${loan.id}`,
+          id: 'incred-nearly-done',
           icon: <ArrowUpRight className="h-4 w-4" />,
-          title: `Prepay "${loan.name}" faster`,
-          body: `${loan.interestRate}% interest loan — even ₹1k/month extra prepayment saves years of interest`,
-          ctaLabel: 'Add prepayment →',
-          ctaAction: () => {
-            setPrefill({
-              description: `Extra EMI – ${loan.name}`,
-              amount: 1000,
-              category: 'Loan Repayment',
-              frequency: 'monthly',
-              type: 'expense',
-              goalName: loan.name,
-            });
-            onMoreNavigation('recurring-transactions');
-          },
-          priority: 3,
-          color: 'warning',
+          title: `InCred almost cleared — ₹${(out / 1_00_000).toFixed(2)}L left!`,
+          body: `You're within striking distance. One more ₹${formatCurrency(Math.min(out, 25000))} part-payment closes Phase 1 — then redirect full ${formatCurrency(emi)}/mo EMI to ICICI.`,
+          ctaLabel: 'Log prepayment →',
+          ctaAction: () => onMoreNavigation('debt-strike'),
+          priority: 1,
+          color: 'success',
         });
       }
     }
 
-    // ── 4. Emergency fund low ────────────────────────────────────────────────
+    // ── 4. Rental income risk nudge ─────────────────────────────────────────
+    const vacantShops  = shops.filter(s => s.status === 'Vacant');
+    const unpaidShops  = shops.filter(s => s.status === 'Occupied' && !s.paid);
+    const unpaidRooms  = rooms.filter(r => !r.paid);
+    const totalUnpaid  = unpaidShops.length + unpaidRooms.length;
+    const unpaidAmount = unpaidShops.reduce((s, sh) => s + (sh.rent ?? 0), 0)
+                       + unpaidRooms.reduce((s, r) => s + (r.rent ?? 0), 0);
+
+    if (vacantShops.length > 0) {
+      list.push({
+        id: 'rental-vacancy',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: `${vacantShops.length} Guntur shop${vacantShops.length > 1 ? 's' : ''} vacant — P5 debt strike at risk`,
+        body: `Vacancy reduces P5 surplus by ~₹${(vacantShops.length * 3500).toLocaleString('en-IN')}/mo, slowing InCred payoff.`,
+        ctaLabel: 'View rentals →',
+        ctaAction: () => onMoreNavigation('property-rental'),
+        priority: 2,
+        color: 'warning',
+      });
+    } else if (totalUnpaid >= 3) {
+      list.push({
+        id: 'rental-collection',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: `${totalUnpaid} units not yet paid this month`,
+        body: `${formatCurrency(unpaidAmount)} uncollected. Chase tenants to keep P5 debt-strike waterfall flowing.`,
+        ctaLabel: 'Mark as paid →',
+        ctaAction: () => onMoreNavigation('property-rental'),
+        priority: 2,
+        color: 'warning',
+      });
+    }
+
+    // ── 5. Emergency fund low ────────────────────────────────────────────────
     if (ef && ef.targetAmount > 0) {
       const efPct = ef.currentAmount / ef.targetAmount;
       if (efPct < 0.5) {
-        const monthly = settings?.salaryCreditDay ? ef.monthlyExpenses ?? 0 : 0;
         list.push({
           id: 'ef-low',
           icon: <PiggyBank className="h-4 w-4" />,
@@ -239,7 +263,7 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       }
     }
 
-    // ── 5. Backup overdue ────────────────────────────────────────────────────
+    // ── 6. Backup overdue ────────────────────────────────────────────────────
     const lastBackupMs = DataSafetyService.getLastBackupMs();
     if (lastBackupMs !== null && DataSafetyService.shouldNudgeBackup()) {
       const days = Math.floor(lastBackupMs / (1000 * 60 * 60 * 24));
@@ -257,7 +281,7 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
 
     // Sort by priority, cap at 3
     return list.sort((a, b) => a.priority - b.priority).slice(0, 3);
-  }, [activeGoals, recurring, loans, investments, creditCards, ef, settings]);
+  }, [activeGoals, recurring, loans, investments, creditCards, ef, settings, shops, rooms]);
 
   const visible = nudges.filter(n => !dismissed.has(n.id));
   if (visible.length === 0) return null;
