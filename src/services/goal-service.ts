@@ -154,10 +154,10 @@ export class GoalService {
   static async updateGoalProgress(goalId: string, amount: number): Promise<void> {
     const goal = await db.goals.get(goalId);
     if (goal) {
-      await db.goals.update(goalId, {
-        currentAmount: goal.currentAmount + amount
-      });
-      Logger.info('Goal progress updated', { goalId, newAmount: goal.currentAmount + amount });
+      const newAmount = goal.currentAmount + amount;
+      await db.goals.update(goalId, { currentAmount: newAmount });
+      await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'goal', entityId: goalId, oldValues: { currentAmount: goal.currentAmount }, newValues: { currentAmount: newAmount }, timestamp: new Date() });
+      Logger.info('Goal progress updated', { goalId, newAmount });
     }
   }
 
