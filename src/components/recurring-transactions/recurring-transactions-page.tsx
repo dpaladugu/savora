@@ -164,9 +164,20 @@ export function RecurringTransactionsPage() {
       {showForm && (
         <RecurringTransactionForm
           isOpen={showForm}
-          onClose={() => { setShowForm(false); setEditing(null); }}
+          onClose={() => { setShowForm(false); setEditing(null); clearPrefill(); }}
           onSubmit={handleSubmit}
-          initialData={editing}
+          initialData={editing ?? (prefill ? {
+            description: prefill.description,
+            amount: prefill.amount,
+            category: prefill.category,
+            frequency: prefill.frequency,
+            type: prefill.type,
+            account: prefill.account ?? '',
+            interval: 1,
+            start_date: new Date().toISOString().split('T')[0],
+            next_date: new Date().toISOString().split('T')[0],
+            is_active: true,
+          } : null)}
         />
       )}
 
