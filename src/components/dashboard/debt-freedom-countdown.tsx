@@ -122,7 +122,7 @@ export function DebtFreedomCountdown({ onNavigate }: Props) {
     const cl = active.find(l => l.id === 'loan-icici-master-2026')
       ?? active.find(l => { const n = (l.name ?? '').toLowerCase(); return n.includes('master') || (n.includes('icici') && (l.principal ?? 0) >= 20_00_000); });
     return {
-      incred: il ? { outstanding: il.outstanding ?? il.principal, roi: il.roi ?? 14.2, emi: il.emi ?? 12000 } : { outstanding: 10_21_156, roi: 14.2, emi: 12000 },
+      incred: il ? { outstanding: il.outstanding ?? il.principal, roi: il.roi ?? 14.2, emi: il.emi ?? 32641 } : { outstanding: 10_21_156, roi: 14.2, emi: 32641 },
       icici:  cl ? { outstanding: cl.outstanding ?? cl.principal, roi: cl.roi ?? 9.99,  emi: cl.emi ?? 55000 } : { outstanding: 33_00_000,  roi: 9.99,  emi: 55000 },
     };
   }, [loans]);

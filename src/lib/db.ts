@@ -540,7 +540,7 @@ db.version(13).stores({}).upgrade(async tx => {
       outstanding: 10_21_156,      // residual after ₹13L strike on Feb 17 2026
       roi: 14.2,
       interestRate: 14.2,
-      emi: 12000,
+      emi: 32641,       // corrected — was wrong at 12000
       tenureMonths: 120,
       isActive: true,
       startDate: new Date(2022, 5, 1),
