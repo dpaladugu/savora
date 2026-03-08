@@ -174,8 +174,8 @@ function GorantlaPage() {
           </div>
 
           {surplus > 0 && (
-            <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20 space-y-2">
-              <p className="text-sm font-medium text-green-700 dark:text-green-400">
+            <div className="p-3 rounded-lg bg-success/10 border border-success/20 space-y-2">
+              <p className="text-sm font-medium text-success">
                 💚 Surplus: {formatCurrency(surplus)} → Grandma Care Fund
               </p>
               <Button size="sm" onClick={handleCollectSurplus} className="w-full">
