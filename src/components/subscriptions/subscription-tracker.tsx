@@ -13,20 +13,6 @@ import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import { SubscriptionService, type Subscription } from '@/services/SubscriptionService';
 
-interface Subscription {
-  id: string;
-  name: string;
-  cost: number;
-  category: string;
-  billingCycle: 'Monthly' | 'Quarterly' | 'Yearly';
-  nextRenewal: Date;
-  autoRenew: boolean;
-  reminderEnabled: boolean;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 const categories = [
   'Entertainment', 'Software', 'Utilities', 'Health', 'Education', 
   'Food', 'Transportation', 'Other'
