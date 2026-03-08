@@ -166,84 +166,79 @@ export function InsuranceTracker() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Insurance Tracker</h1>
-          <p className="text-muted-foreground">Manage your insurance policies and track renewals</p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Insurance</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Policies, premiums & renewals</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Policy
+        <Button size="sm" onClick={() => setShowAddModal(true)} className="h-9 gap-1.5 rounded-xl text-xs shrink-0">
+          <Plus className="h-3.5 w-3.5" /> Add Policy
         </Button>
       </div>
 
-      {/* Notice about implementation status */}
-      <Alert className="border-yellow-200 bg-yellow-50">
-        <AlertTriangle className="h-4 w-4 text-yellow-600" />
-        <AlertDescription className="text-yellow-800">
-          Insurance service is not yet fully implemented. This is a preview of the interface.
+      <Alert className="border-warning/30 bg-warning/8">
+        <AlertTriangle className="h-4 w-4 text-warning" />
+        <AlertDescription className="text-xs">
+          Insurance service is in beta. UI preview only — data saved locally.
         </AlertDescription>
       </Alert>
 
-      {/* Summary Card */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Shield className="w-4 h-4" />
-            Total Coverage
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{formatCurrency(totalCoverage)}</div>
-          <p className="text-sm text-muted-foreground">
-            {policies.length} policies • Annual premium: {formatCurrency(totalPremium)}
-          </p>
-        </CardContent>
-      </Card>
+      {/* Summary */}
+      <div className="grid grid-cols-2 gap-3">
+        <Card className="glass">
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Total Coverage</p>
+            <p className="text-base font-bold text-foreground tabular-nums">{formatCurrency(totalCoverage)}</p>
+            <p className="text-[10px] text-muted-foreground">{policies.length} policies</p>
+          </CardContent>
+        </Card>
+        <Card className="glass">
+          <CardContent className="p-3">
+            <p className="text-xs text-muted-foreground">Annual Premium</p>
+            <p className="text-base font-bold value-negative tabular-nums">{formatCurrency(totalPremium)}</p>
+            <p className="text-[10px] text-muted-foreground">per year</p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Insurance Policies List */}
-      <div className="grid gap-4">
+      <div className="space-y-3">
         {policies.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No insurance policies recorded yet. Add your first policy to get started!</p>
+            <CardContent className="text-center py-10">
+              <Shield className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+              <p className="text-sm text-muted-foreground">No policies yet. Add your first.</p>
             </CardContent>
           </Card>
         ) : (
           policies.map((policy) => (
-            <Card key={policy.id}>
+            <Card key={policy.id} className="glass">
               <CardContent className="p-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{policy.type} Insurance</h3>
-                      <Badge variant="outline">{policy.provider}</Badge>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                      <h3 className="text-sm font-semibold text-foreground">{policy.type} Insurance</h3>
+                      <Badge variant="outline" className="text-[10px]">{policy.provider}</Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-2">Policy: {policy.policyNo}</p>
-                    <p className="text-sm text-muted-foreground mb-2">Family Member: {policy.familyMember}</p>
+                    <p className="text-xs text-muted-foreground">{policy.policyNo} · {policy.familyMember}</p>
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(policy)}>
-                      <Edit className="w-4 h-4" />
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl" onClick={() => handleEdit(policy)}>
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(policy.id)}>
-                      <Trash2 className="w-4 h-4" />
+                    <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/10" onClick={() => handleDelete(policy.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Sum Insured:</span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 rounded-lg bg-muted/40">
+                    <p className="text-muted-foreground">Sum Insured</p>
                     <p className="font-medium">{formatCurrency(policy.sumInsured)}</p>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Premium:</span>
-                    <p className="font-medium">{formatCurrency(policy.premium)}</p>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">End Date:</span>
-                    <p className="font-medium">{policy.endDate.toLocaleDateString()}</p>
+                  <div className="p-2 rounded-lg bg-muted/40">
+                    <p className="text-muted-foreground">Premium</p>
+                    <p className="font-medium value-negative">{formatCurrency(policy.premium)}</p>
                   </div>
                 </div>
               </CardContent>
