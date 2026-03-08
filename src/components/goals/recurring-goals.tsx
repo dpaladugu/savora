@@ -192,15 +192,15 @@ export function RecurringGoals() {
 
       {/* Urgent Goals Alert */}
       {urgentGoals.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50 dark:bg-orange-950 dark:border-orange-800">
+        <Card className="border-warning/30 bg-warning/5">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-600" />
+              <AlertCircle className="w-5 h-5 text-warning" />
               <div>
-                <h3 className="font-semibold text-orange-800 dark:text-orange-200">
+                <h3 className="font-semibold text-warning">
                   {urgentGoals.length} goal(s) due within 3 months
                 </h3>
-                <p className="text-sm text-orange-700 dark:text-orange-300">
+                <p className="text-sm text-warning/80">
                   Consider consolidating these into a group for better SIP planning
                 </p>
               </div>
