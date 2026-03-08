@@ -5,26 +5,32 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { Slider } from '@/components/ui/slider';
 import {
-  Home, PiggyBank,
+  Home, PiggyBank, ShieldCheck,
   ChefHat, Droplets, ShoppingBag, Coffee, Scissors,
-  ArrowDown, ArrowRight, CheckCircle,
+  ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
 import { useRole } from '@/store/rbacStore';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { GunturShopRow, WaterfallProgressRow, GorantlaRoomRow } from '@/lib/db';
+import type { GunturShopRow, GorantlaRoomRow } from '@/lib/db';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const DWACRA_DEDUCTION = 5000;
+const DWACRA_DEDUCTION        = 5000;
+const INS_RECOVERY_TARGET     = 170000;   // ₹1.70L already paid Feb 2026
+const INS_RECOVERY_MONTHLY    = 5400;     // current P1 allocation
+const INS_2029_MONTHLY_UPSHIFT = 8000;   // auto-upshift once P1 done
+const MEDICAL_INFLATION_RATE  = 0.14;    // 14% IRDAI medical CPI
+const INS_2029_TARGET         = Math.round(INS_RECOVERY_TARGET * Math.pow(1 + MEDICAL_INFLATION_RATE, 3)); // ≈₹2,48,000
 
 const DEFAULT_GORANTLA: Omit<GorantlaRoomRow, 'updatedAt'>[] = [
-  { id: 'gr-kitchen',   roomId: 'kitchen',   name: 'Kitchen',          tenant: 'Tenant A',    rent: 3000, paid: false },
-  { id: 'gr-main',      roomId: 'main-house', name: 'Main House',       tenant: 'Tenant B',    rent: 4500, paid: false },
-  { id: 'gr-damini',    roomId: 'damini',     name: 'Damini/Sudhakar',  tenant: 'Damini',      rent: 3500, paid: false },
-  { id: 'gr-sudhakar',  roomId: 'sudhakar',   name: 'Sudhakar',         tenant: 'Sudhakar',    rent: 3000, paid: false },
+  { id: 'gr-kitchen',  roomId: 'kitchen',    name: 'Kitchen',         tenant: 'Tenant A', rent: 3000, paid: false },
+  { id: 'gr-main',     roomId: 'main-house', name: 'Main House',      tenant: 'Tenant B', rent: 4500, paid: false },
+  { id: 'gr-damini',   roomId: 'damini',     name: 'Damini/Sudhakar', tenant: 'Damini',   rent: 3500, paid: false },
+  { id: 'gr-sudhakar', roomId: 'sudhakar',   name: 'Sudhakar',        tenant: 'Sudhakar', rent: 3000, paid: false },
 ];
 
 const DEFAULT_SHOPS: Omit<GunturShopRow, 'updatedAt'>[] = [
@@ -46,34 +52,35 @@ interface WaterfallBucket {
 }
 
 const WATERFALL_BUCKETS: WaterfallBucket[] = [
-  { id: 'premium',   label: 'Premium Recovery',            target: 167943,              icon: <ShoppingBag className="w-4 h-4" />, colorClass: 'bg-primary'     },
-  { id: 'sinking',   label: '2029 Sinking Fund',           monthly: 5400, target: 5400 * 36, icon: <PiggyBank className="w-4 h-4" />,   colorClass: 'bg-accent'      },
-  { id: 'household', label: 'Household Expenses',          monthly: 45000, target: 45000, icon: <Home className="w-4 h-4" />,       colorClass: 'bg-success'     },
-  { id: 'grandma',   label: "Grandma's Safety Net",        target: 500000,              icon: <CheckCircle className="w-4 h-4" />, colorClass: 'bg-warning'     },
-  { id: 'debt',      label: 'ICICI Loan Prepayment',       target: Infinity,            icon: <ArrowDown className="w-4 h-4" />,   colorClass: 'bg-destructive' },
+  { id: 'recovery', label: 'Ins. Recovery (₹1.7L Paid)',    target: INS_RECOVERY_TARGET,  monthly: INS_RECOVERY_MONTHLY,  icon: <ShieldCheck className="w-4 h-4" />, colorClass: 'bg-primary'     },
+  { id: 'sinking',  label: "Mother's Health Ins. (2029)",   target: INS_2029_TARGET,      monthly: INS_RECOVERY_MONTHLY,  icon: <PiggyBank className="w-4 h-4" />,   colorClass: 'bg-accent'      },
+  { id: 'household',label: 'Household Expenses',            target: 45000, monthly: 45000, icon: <Home className="w-4 h-4" />,                                         colorClass: 'bg-success'     },
+  { id: 'grandma',  label: "Grandma's Safety Net",          target: 500000,                icon: <CheckCircle className="w-4 h-4" />,                                   colorClass: 'bg-warning'     },
+  { id: 'debt',     label: 'ICICI Loan Prepayment',         target: Infinity,              icon: <ArrowDown className="w-4 h-4" />,                                     colorClass: 'bg-destructive' },
 ];
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
-type ActivePage = 'gorantla' | 'guntur';
+type ActivePage = 'guntur' | 'gorantla' | 'planner';
 
 export function PropertyRentalEngine() {
   const role = useRole();
   const isBrother = role === 'BROTHER';
   const [activePage, setActivePage] = React.useState<ActivePage>('guntur');
 
-  // Seed default data on first load
   useEffect(() => {
     (async () => {
       const shopCount = await db.gunturShops.count().catch(() => 0);
-      if (shopCount === 0) {
-        await db.gunturShops.bulkAdd(DEFAULT_SHOPS.map(s => ({ ...s, updatedAt: new Date() }))).catch(() => {});
-      }
+      if (shopCount === 0) await db.gunturShops.bulkAdd(DEFAULT_SHOPS.map(s => ({ ...s, updatedAt: new Date() }))).catch(() => {});
       const roomCount = await db.gorantlaRooms.count().catch(() => 0);
-      if (roomCount === 0) {
-        await db.gorantlaRooms.bulkAdd(DEFAULT_GORANTLA.map(r => ({ ...r, updatedAt: new Date() }))).catch(() => {});
-      }
+      if (roomCount === 0) await db.gorantlaRooms.bulkAdd(DEFAULT_GORANTLA.map(r => ({ ...r, updatedAt: new Date() }))).catch(() => {});
     })();
   }, []);
+
+  const tabs: { id: ActivePage; label: string }[] = [
+    { id: 'guntur',   label: 'Guntur Waterfall' },
+    { id: 'gorantla', label: 'Gorantla' },
+    { id: 'planner',  label: '📊 Allocation Planner' },
+  ];
 
   return (
     <div className="p-4 space-y-4">
@@ -84,17 +91,17 @@ export function PropertyRentalEngine() {
         </div>
       )}
 
-      <div className="flex gap-2">
-        <Button variant={activePage === 'guntur' ? 'default' : 'outline'} size="sm" onClick={() => setActivePage('guntur')}>
-          Guntur Waterfall
-        </Button>
-        <Button variant={activePage === 'gorantla' ? 'default' : 'outline'} size="sm" onClick={() => setActivePage('gorantla')}>
-          Gorantla (Nagaralu)
-        </Button>
+      <div className="flex gap-2 flex-wrap">
+        {tabs.map(t => (
+          <Button key={t.id} variant={activePage === t.id ? 'default' : 'outline'} size="sm" onClick={() => setActivePage(t.id)}>
+            {t.label}
+          </Button>
+        ))}
       </div>
 
       {activePage === 'guntur'   && <GunturWaterfallPage readOnly={isBrother} />}
       {activePage === 'gorantla' && <GorantlaPage readOnly={isBrother} />}
+      {activePage === 'planner'  && <AllocationPlannerPage readOnly={isBrother} />}
     </div>
   );
 }
@@ -103,29 +110,19 @@ export function PropertyRentalEngine() {
 function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const rooms = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
 
-  // Persistent tax settings
   const taxSetting = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
-  const taxValues  = React.useMemo(() => {
-    try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; }
-  }, [taxSetting]);
+  const taxValues  = React.useMemo(() => { try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; } }, [taxSetting]);
   const [propertyTax, setPropertyTax] = React.useState(0);
   const [waterTax, setWaterTax]       = React.useState(0);
-  React.useEffect(() => {
-    if (taxSetting) {
-      setPropertyTax(taxValues.propertyTax ?? 0);
-      setWaterTax(taxValues.waterTax ?? 0);
-    }
-  }, [taxSetting, taxValues]);
-  const saveTaxSettings = async (pt: number, wt: number) => {
-    await db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
-  };
+  useEffect(() => { if (taxSetting) { setPropertyTax(taxValues.propertyTax ?? 0); setWaterTax(taxValues.waterTax ?? 0); } }, [taxSetting, taxValues]);
+  const saveTaxSettings = async (pt: number, wt: number) =>
+    db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
   const totalTaxDeduction = propertyTax + waterTax;
-  const grossRent      = rooms.reduce((s, r) => s + r.rent, 0);
-  const collectedRent  = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
-  // All three deductions applied in order: P0 taxes → Dwacra → surplus
-  const netAfterAll    = Math.max(0, grossRent - totalTaxDeduction - DWACRA_DEDUCTION);
-  const surplus        = Math.max(0, collectedRent - totalTaxDeduction - DWACRA_DEDUCTION);
+  const grossRent     = rooms.reduce((s, r) => s + r.rent, 0);
+  const collectedRent = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
+  const netAfterAll   = Math.max(0, grossRent - totalTaxDeduction - DWACRA_DEDUCTION);
+  const surplus       = Math.max(0, collectedRent - totalTaxDeduction - DWACRA_DEDUCTION);
 
   const togglePaid = async (id: string, current: boolean) => {
     if (readOnly) return;
@@ -133,21 +130,18 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   };
 
   const handleCollectSurplus = async () => {
-    if (surplus > 0) {
-      const existing = await db.waterfallProgress.where('bucketId').equals('grandma').first();
-      if (existing) {
-        await db.waterfallProgress.update(existing.id, { accumulated: existing.accumulated + surplus, updatedAt: new Date() });
-      } else {
-        await db.waterfallProgress.add({ id: crypto.randomUUID(), bucketId: 'grandma', accumulated: surplus, updatedAt: new Date() });
-      }
-      await db.gorantlaRooms.toCollection().modify({ paid: false, updatedAt: new Date() });
-      toast.success(`₹${surplus.toLocaleString()} transferred to Grandma Care Fund`);
+    if (surplus <= 0) return;
+    const existing = await db.waterfallProgress.where('bucketId').equals('grandma').first();
+    if (existing) {
+      await db.waterfallProgress.update(existing.id, { accumulated: existing.accumulated + surplus, updatedAt: new Date() });
+    } else {
+      await db.waterfallProgress.add({ id: crypto.randomUUID(), bucketId: 'grandma', accumulated: surplus, updatedAt: new Date() });
     }
+    await db.gorantlaRooms.toCollection().modify({ paid: false, updatedAt: new Date() });
+    toast.success(`₹${surplus.toLocaleString()} transferred to Grandma Care Fund`);
   };
 
-  const grandmaProgress = useLiveQuery(
-    () => db.waterfallProgress.where('bucketId').equals('grandma').first(), []
-  );
+  const grandmaProgress = useLiveQuery(() => db.waterfallProgress.where('bucketId').equals('grandma').first(), []);
   const grandmaFund = grandmaProgress?.accumulated ?? 0;
 
   if (rooms.length === 0) return <div className="text-center text-muted-foreground py-10 text-sm">Loading rooms…</div>;
@@ -157,10 +151,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
-            <span className="flex items-center gap-2">
-              <Home className="w-4 h-4 text-primary" />
-              Gorantla (Nagaralu) — 4 Rooms
-            </span>
+            <span className="flex items-center gap-2"><Home className="w-4 h-4 text-primary" />Gorantla (Nagaralu) — 4 Rooms</span>
             <Badge variant="outline">Gross: {formatCurrency(grossRent)}/mo</Badge>
           </CardTitle>
         </CardHeader>
@@ -173,46 +164,36 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
-                {readOnly ? (
-                  <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">
-                    {room.paid ? '✓ Paid' : 'Unpaid'}
-                  </Badge>
-                ) : (
-                  <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">
-                    {room.paid ? '✓ Paid' : 'Mark Paid'}
-                  </Button>
-                )}
+                {readOnly
+                  ? <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">{room.paid ? '✓ Paid' : 'Unpaid'}</Badge>
+                  : <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">{room.paid ? '✓ Paid' : 'Mark Paid'}</Button>
+                }
               </div>
             </div>
           ))}
 
           <Separator />
 
-          {/* ── P0: Systemic Tax Deductions ── */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <ArrowDown className="w-3 h-3 text-destructive" />
-              P0 — Systemic Deductions (Tax at Source)
+              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions (Tax at Source)
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Property Tax /mo</label>
                 <Input type="number" disabled={readOnly} value={propertyTax}
                   onChange={e => setPropertyTax(parseFloat(e.target.value) || 0)}
-                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
-                  className="h-7 text-xs" placeholder="₹0" />
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)} className="h-7 text-xs" placeholder="₹0" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Water Tax /mo</label>
                 <Input type="number" disabled={readOnly} value={waterTax}
                   onChange={e => setWaterTax(parseFloat(e.target.value) || 0)}
-                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
-                  className="h-7 text-xs" placeholder="₹0" />
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)} className="h-7 text-xs" placeholder="₹0" />
               </div>
             </div>
           </div>
 
-          {/* ── Summary breakdown ── */}
           <div className="space-y-2 text-sm">
             {totalTaxDeduction > 0 && (
               <div className="flex justify-between text-destructive">
@@ -232,12 +213,8 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
           {surplus > 0 && !readOnly && (
             <div className="p-3 rounded-lg bg-success/10 border border-success/20 space-y-2">
-              <p className="text-sm font-medium text-success">
-                Surplus: {formatCurrency(surplus)} → Grandma Care Fund
-              </p>
-              <Button size="sm" onClick={handleCollectSurplus} className="w-full">
-                Transfer to Grandma Care Fund
-              </Button>
+              <p className="text-sm font-medium text-success">Surplus: {formatCurrency(surplus)} → Grandma Care Fund</p>
+              <Button size="sm" onClick={handleCollectSurplus} className="w-full">Transfer to Grandma Care Fund</Button>
             </div>
           )}
         </CardContent>
@@ -245,18 +222,13 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <PiggyBank className="w-4 h-4 text-primary" />
-            Grandma Care Fund
-          </CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><PiggyBank className="w-4 h-4 text-primary" />Grandma Care Fund</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="text-3xl font-bold text-primary">{formatCurrency(grandmaFund)}</div>
           <p className="text-xs text-muted-foreground mt-1">Accumulated from rent surplus</p>
           <Progress value={Math.min(100, (grandmaFund / 500000) * 100)} className="mt-3" />
-          <p className="text-xs text-muted-foreground mt-1">
-            Target: {formatCurrency(500000)} ({Math.round((grandmaFund / 500000) * 100)}%)
-          </p>
+          <p className="text-xs text-muted-foreground mt-1">Target: {formatCurrency(500000)} ({Math.round((grandmaFund / 500000) * 100)}%)</p>
         </CardContent>
       </Card>
     </div>
@@ -268,41 +240,21 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const shops    = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
   const progress = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
 
-  // Persistent tax settings via appSettings
-  const taxSetting = useLiveQuery(
-    () => db.appSettings.get('gunturTaxSettings'),
-    []
-  );
-  const taxValues = React.useMemo(() => {
-    try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; }
-  }, [taxSetting]);
-
+  const taxSetting = useLiveQuery(() => db.appSettings.get('gunturTaxSettings'), []);
+  const taxValues  = React.useMemo(() => { try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; } }, [taxSetting]);
   const [propertyTax, setPropertyTax] = React.useState(0);
   const [waterTax, setWaterTax]       = React.useState(0);
-
-  // Sync from DB once loaded
-  React.useEffect(() => {
-    if (taxSetting) {
-      setPropertyTax(taxValues.propertyTax ?? 0);
-      setWaterTax(taxValues.waterTax ?? 0);
-    }
-  }, [taxSetting, taxValues]);
-
-  const saveTaxSettings = async (pt: number, wt: number) => {
-    await db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
-  };
+  useEffect(() => { if (taxSetting) { setPropertyTax(taxValues.propertyTax ?? 0); setWaterTax(taxValues.waterTax ?? 0); } }, [taxSetting, taxValues]);
+  const saveTaxSettings = async (pt: number, wt: number) =>
+    db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
   const totalTaxDeduction = propertyTax + waterTax;
-
   const bucketProgress: Record<string, number> = {};
   progress.forEach(p => { bucketProgress[p.bucketId] = p.accumulated; });
 
   const shopIcons: Record<string, React.ReactNode> = {
-    Milk:    <Droplets className="w-3 h-3" />,
-    Salon:   <Scissors className="w-3 h-3" />,
-    Tea:     <Coffee className="w-3 h-3" />,
-    Noodles: <ChefHat className="w-3 h-3" />,
-    Bags:    <ShoppingBag className="w-3 h-3" />,
+    Milk: <Droplets className="w-3 h-3" />, Salon: <Scissors className="w-3 h-3" />,
+    Tea: <Coffee className="w-3 h-3" />, Noodles: <ChefHat className="w-3 h-3" />, Bags: <ShoppingBag className="w-3 h-3" />,
   };
 
   const grossRent = shops.reduce((s, sh) => s + sh.rent, 0);
@@ -347,14 +299,10 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
-      {/* Shop Grid */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
-            <span className="flex items-center gap-2">
-              <Home className="w-4 h-4 text-primary" />
-              Guntur — 6 Shops
-            </span>
+            <span className="flex items-center gap-2"><Home className="w-4 h-4 text-primary" />Guntur — 6 Shops</span>
             <Badge variant="outline">Gross: {formatCurrency(grossRent)}/mo</Badge>
           </CardTitle>
         </CardHeader>
@@ -369,53 +317,32 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                     : <Badge variant="secondary" className="text-xs flex items-center gap-1">{shopIcons[shop.tenant]}{shop.tenant}</Badge>
                   }
                 </div>
-                {!readOnly && shop.status === 'Occupied' ? (
-                  <Input
-                    type="number"
-                    defaultValue={shop.rent}
-                    className="h-7 text-xs font-semibold text-primary"
-                    onBlur={e => updateShopRent(shop.id, parseFloat(e.target.value) || 0)}
-                  />
-                ) : (
-                  <div className="text-primary font-semibold">
-                    {shop.status === 'Vacant' ? '—' : formatCurrency(shop.rent)}
-                  </div>
-                )}
+                {!readOnly && shop.status === 'Occupied'
+                  ? <Input type="number" defaultValue={shop.rent} className="h-7 text-xs font-semibold text-primary" onBlur={e => updateShopRent(shop.id, parseFloat(e.target.value) || 0)} />
+                  : <div className="text-primary font-semibold">{shop.status === 'Vacant' ? '—' : formatCurrency(shop.rent)}</div>
+                }
               </div>
             ))}
           </div>
 
-          {/* ── Systemic Tax Deductions (P0) ── */}
           <Separator />
+
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <ArrowDown className="w-3 h-3 text-destructive" />
-              P0 — Systemic Deductions (Tax at Source)
+              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions (Tax at Source)
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Property Tax /mo</label>
-                <Input
-                  type="number"
-                  disabled={readOnly}
-                  value={propertyTax}
+                <Input type="number" disabled={readOnly} value={propertyTax}
                   onChange={e => setPropertyTax(parseFloat(e.target.value) || 0)}
-                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
-                  className="h-7 text-xs"
-                  placeholder="₹0"
-                />
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)} className="h-7 text-xs" placeholder="₹0" />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Water Tax /mo</label>
-                <Input
-                  type="number"
-                  disabled={readOnly}
-                  value={waterTax}
+                <Input type="number" disabled={readOnly} value={waterTax}
                   onChange={e => setWaterTax(parseFloat(e.target.value) || 0)}
-                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
-                  className="h-7 text-xs"
-                  placeholder="₹0"
-                />
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)} className="h-7 text-xs" placeholder="₹0" />
               </div>
             </div>
             {totalTaxDeduction > 0 && (
@@ -432,55 +359,284 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
         </CardContent>
       </Card>
 
-      {/* Waterfall Allocation */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
-            <span className="flex items-center gap-2">
-              <ArrowDown className="w-4 h-4 text-primary" />
-              Waterfall Allocation
-            </span>
+            <span className="flex items-center gap-2"><ArrowDown className="w-4 h-4 text-primary" />Waterfall Allocation</span>
             {!readOnly && <Button size="sm" onClick={runWaterfall}>Run Waterfall</Button>}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Visual waterfall bar */}
           <div className="flex h-6 rounded-full overflow-hidden gap-0.5">
             {bars.map(bar => (
               <div key={bar.id} className={`${bar.colorClass} transition-all`} style={{ width: `${bar.pct}%` }} title={`${bar.label}: ${formatCurrency(bar.fill)}`} />
             ))}
           </div>
-
-          {/* Bucket list */}
           <div className="space-y-2">
             {WATERFALL_BUCKETS.map((bucket, i) => {
               const fill        = bars[i].fill;
               const accumulated = bucketProgress[bucket.id] ?? 0;
-              const targetDisplay = bucket.id === 'debt' ? 'Remaining' : formatCurrency(bucket.target);
+              const targetDisplay = bucket.id === 'debt' ? 'Overflow' : formatCurrency(bucket.target);
               const progressPct   = bucket.id === 'debt' ? 100 : Math.min(100, (accumulated / bucket.target) * 100);
-
               return (
                 <div key={bucket.id} className="space-y-1">
                   <div className="flex items-center justify-between text-sm">
                     <span className="flex items-center gap-2 text-muted-foreground">
-                      <ArrowRight className="w-3 h-3" />
-                      {bucket.icon}
-                      {bucket.label}
+                      <ArrowRight className="w-3 h-3" />{bucket.icon}{bucket.label}
                     </span>
                     <span className="font-medium text-xs">{formatCurrency(fill)} this month</span>
                   </div>
                   {bucket.id !== 'debt' && (
                     <div className="ml-6">
                       <Progress value={progressPct} className="h-1.5" />
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {formatCurrency(accumulated)} / {targetDisplay}
-                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(accumulated)} / {targetDisplay}</p>
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ─── ALLOCATION PLANNER PAGE ──────────────────────────────────────────────────
+function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
+  const shops = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
+  const rooms = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
+
+  const gunturTaxSetting    = useLiveQuery(() => db.appSettings.get('gunturTaxSettings'), []);
+  const gorantlaTaxSetting  = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
+  const progress            = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
+
+  const gunturTax   = React.useMemo(() => { try { return JSON.parse(gunturTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gunturTaxSetting]);
+  const gorantlaTax = React.useMemo(() => { try { return JSON.parse(gorantlaTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gorantlaTaxSetting]);
+
+  // What-If slider state
+  const [vacantShops,     setVacantShops]     = React.useState(0);
+  const [vacantMonths,    setVacantMonths]    = React.useState(1);
+
+  const recoveryAccumulated = progress.find(p => p.bucketId === 'recovery')?.accumulated ?? 0;
+
+  // Gross incomes
+  const gunturGross   = shops.reduce((s, sh) => s + sh.rent, 0);
+  const gorantlaGross = rooms.reduce((s, r) => s + r.rent, 0);
+
+  // P0 deductions
+  const gunturP0   = (gunturTax.propertyTax ?? 0) + (gunturTax.waterTax ?? 0);
+  const gorantlaP0 = (gorantlaTax.propertyTax ?? 0) + (gorantlaTax.waterTax ?? 0) + DWACRA_DEDUCTION;
+
+  const gunturNet   = Math.max(0, gunturGross - gunturP0);
+  const gorantlaNet = Math.max(0, gorantlaGross - gorantlaP0);
+  const combinedNet = gunturNet + gorantlaNet;
+
+  // P1 Recovery timeline
+  const p1Remaining     = Math.max(0, INS_RECOVERY_TARGET - recoveryAccumulated);
+  const p1PctDone       = Math.min(100, (recoveryAccumulated / INS_RECOVERY_TARGET) * 100);
+  const p1MonthsLeft    = combinedNet > 0 ? Math.ceil(p1Remaining / Math.min(combinedNet, INS_RECOVERY_MONTHLY)) : 999;
+  const p1MaturityDate  = new Date();
+  p1MaturityDate.setMonth(p1MaturityDate.getMonth() + p1MonthsLeft);
+  const p1Done          = p1Remaining <= 0;
+
+  // P2 2029 Renewal timeline (starts after P1 done)
+  const p2Saving        = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
+  const p2Accumulated   = progress.find(p => p.bucketId === 'sinking')?.accumulated ?? 0;
+  const p2Remaining     = Math.max(0, INS_2029_TARGET - p2Accumulated);
+  const p2PctDone       = Math.min(100, (p2Accumulated / INS_2029_TARGET) * 100);
+  const p2MonthsLeft    = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
+  const p2MaturityDate  = new Date();
+  p2MaturityDate.setMonth(p2MaturityDate.getMonth() + (p1Done ? 0 : p1MonthsLeft) + p2MonthsLeft);
+
+  // Feb 2029 deadline
+  const feb2029 = new Date(2029, 1, 1);
+  const p2SafeByDeadline = p2MaturityDate <= feb2029;
+
+  // ── What-If Calculation ──
+  const avgShopRent = shops.filter(s => s.status === 'Occupied').length > 0
+    ? shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0) / shops.filter(s => s.status === 'Occupied').length
+    : 0;
+  const vacancyLoss        = vacantShops * avgShopRent * vacantMonths;
+  const whatIfNet          = Math.max(0, combinedNet - (vacantShops * avgShopRent));
+  const whatIfP1Months     = whatIfNet > 0 ? Math.ceil(p1Remaining / Math.min(whatIfNet, INS_RECOVERY_MONTHLY)) : 999;
+  const whatIfP1Date       = new Date();
+  whatIfP1Date.setMonth(whatIfP1Date.getMonth() + whatIfP1Months);
+  const p1Slip             = Math.max(0, whatIfP1Months - p1MonthsLeft);
+  const whatIfP2Saving     = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
+  const whatIfP2Months     = whatIfP2Saving > 0 ? Math.ceil(p2Remaining / whatIfP2Saving) : 999;
+  const whatIfP2Date       = new Date();
+  whatIfP2Date.setMonth(whatIfP2Date.getMonth() + whatIfP1Months + whatIfP2Months);
+  const p2SlipSafe         = whatIfP2Date <= feb2029;
+
+  const formatMonthYear = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+
+  return (
+    <div className="space-y-4">
+
+      {/* ── NOI Summary ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            Net Operating Income (NOI) — This Month
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 rounded-lg border bg-card space-y-1">
+              <p className="text-xs text-muted-foreground">Guntur (after P0)</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(gunturNet)}</p>
+              {gunturP0 > 0 && <p className="text-xs text-destructive">−{formatCurrency(gunturP0)} taxes</p>}
+            </div>
+            <div className="p-3 rounded-lg border bg-card space-y-1">
+              <p className="text-xs text-muted-foreground">Gorantla (after P0 + Dwacra)</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(gorantlaNet)}</p>
+              {gorantlaP0 > 0 && <p className="text-xs text-destructive">−{formatCurrency(gorantlaP0)} deductions</p>}
+            </div>
+          </div>
+          <div className="flex justify-between items-center p-2 rounded-lg bg-primary/5 border border-primary/20">
+            <span className="text-sm font-semibold">Combined NOI to Waterfall</span>
+            <span className="text-lg font-bold text-primary">{formatCurrency(combinedNet)}</span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* ── P1 Insurance Recovery ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" />
+            P1 — Insurance Recovery (₹1.7L paid Feb 2026)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Progress value={p1PctDone} className="h-3" />
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{formatCurrency(recoveryAccumulated)} recovered</span>
+            <span className="font-medium">{formatCurrency(INS_RECOVERY_TARGET)} target</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 rounded-lg bg-card border space-y-1">
+              <p className="text-muted-foreground">Monthly Allocation</p>
+              <p className="font-semibold text-primary">{formatCurrency(INS_RECOVERY_MONTHLY)}/mo</p>
+            </div>
+            <div className={`p-2 rounded-lg border space-y-1 ${p1Done ? 'bg-success/10 border-success/30' : 'bg-card'}`}>
+              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Completion</p>
+              <p className={`font-semibold ${p1Done ? 'text-success' : 'text-foreground'}`}>
+                {p1Done ? '✓ Complete' : formatMonthYear(p1MaturityDate)}
+              </p>
+            </div>
+          </div>
+          {p1Done && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success">
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              P1 complete! Monthly allocation auto-upshifts to <strong>{formatCurrency(INS_2029_MONTHLY_UPSHIFT)}/mo</strong> for P2.
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── P2 2029 Renewal Reserve ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <PiggyBank className="w-4 h-4 text-accent" />
+            P2 — Mother's Health Ins. Reserve (Feb 2029)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex items-center justify-between text-xs mb-1">
+            <span className="text-muted-foreground">14% medical inflation × 3 yrs → target</span>
+            <span className="font-semibold text-accent">{formatCurrency(INS_2029_TARGET)}</span>
+          </div>
+          <Progress value={p2PctDone} className="h-3" />
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">{formatCurrency(p2Accumulated)} saved</span>
+            <span className="font-medium">{formatCurrency(INS_2029_TARGET)} target</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="p-2 rounded-lg bg-card border space-y-1">
+              <p className="text-muted-foreground">Saving Rate</p>
+              <p className="font-semibold text-accent">
+                {p1Done ? formatCurrency(INS_2029_MONTHLY_UPSHIFT) : formatCurrency(INS_RECOVERY_MONTHLY)}/mo
+                {!p1Done && <span className="text-muted-foreground"> (upshifts after P1)</span>}
+              </p>
+            </div>
+            <div className={`p-2 rounded-lg border space-y-1 ${p2SafeByDeadline ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}>
+              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Ready</p>
+              <p className={`font-semibold ${p2SafeByDeadline ? 'text-success' : 'text-destructive'}`}>{formatMonthYear(p2MaturityDate)}</p>
+            </div>
+          </div>
+          {!p2SafeByDeadline && (
+            <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>⚠ Current saving rate <strong>won't meet Feb 2029</strong> deadline. Increase P2 allocation or reduce P4 debt prepayment temporarily.</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── What-If Vacancy Simulator ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-warning" />
+            What-If: Guntur Vacancy Simulator
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <label className="text-muted-foreground">Vacant Shops</label>
+                <span className="font-semibold text-foreground">{vacantShops} shop{vacantShops !== 1 ? 's' : ''}</span>
+              </div>
+              <Slider min={0} max={5} step={1} value={[vacantShops]} onValueChange={([v]) => setVacantShops(v)} />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <label className="text-muted-foreground">Duration</label>
+                <span className="font-semibold text-foreground">{vacantMonths} month{vacantMonths !== 1 ? 's' : ''}</span>
+              </div>
+              <Slider min={1} max={12} step={1} value={[vacantMonths]} onValueChange={([v]) => setVacantMonths(v)} />
+            </div>
+          </div>
+
+          {vacantShops > 0 ? (
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20 space-y-1">
+                  <p className="text-muted-foreground">Income Loss</p>
+                  <p className="font-bold text-destructive">−{formatCurrency(vacancyLoss)}</p>
+                  <p className="text-muted-foreground">over {vacantMonths} mo</p>
+                </div>
+                <div className="p-2 rounded-lg bg-card border space-y-1">
+                  <p className="text-muted-foreground">Monthly NOI drops to</p>
+                  <p className="font-bold text-warning">{formatCurrency(whatIfNet)}</p>
+                  <p className="text-muted-foreground">from {formatCurrency(combinedNet)}</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 p-3 rounded-lg bg-card border">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Impact on Recovery Timeline</p>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">P1 Maturity</span>
+                  <span className={`font-semibold ${p1Slip > 0 ? 'text-warning' : 'text-success'}`}>
+                    {formatMonthYear(whatIfP1Date)} {p1Slip > 0 ? `(+${p1Slip} mo slip)` : ''}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">P2 Ready by</span>
+                  <span className={`font-semibold ${p2SlipSafe ? 'text-success' : 'text-destructive'}`}>
+                    {formatMonthYear(whatIfP2Date)} {!p2SlipSafe ? '⚠ Misses Feb 2029' : '✓ Safe'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground text-center py-2">Move the sliders to simulate vacancy impact on your insurance timelines.</p>
+          )}
         </CardContent>
       </Card>
     </div>
