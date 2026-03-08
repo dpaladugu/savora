@@ -380,6 +380,7 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
   gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
   pendingTxns: EntityTable<PendingTxn, 'id'>;
+  rentHikeLogs: EntityTable<RentHikeLog, 'id'>;
   // Legacy compatibility — used by PinLock and AiChatService
   appSettings: EntityTable<AppSettingTable, 'key'>;
 };
