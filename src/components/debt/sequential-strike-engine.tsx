@@ -150,8 +150,8 @@ export function SequentialStrikeEngine() {
       });
     return {
       incred: incredLoan
-        ? { outstanding: incredLoan.outstanding ?? incredLoan.principal, roi: incredLoan.roi ?? 14.2, emi: incredLoan.emi ?? 12000 }
-        : { outstanding: 10_21_156, roi: 14.2, emi: 12000 },
+        ? { outstanding: incredLoan.outstanding ?? incredLoan.principal, roi: incredLoan.roi ?? 14.2, emi: incredLoan.emi ?? 32641 }
+        : { outstanding: 10_21_156, roi: 14.2, emi: 32641 },
       icici: iciciLoan
         ? { outstanding: iciciLoan.outstanding ?? iciciLoan.principal, roi: iciciLoan.roi ?? 9.99, emi: iciciLoan.emi ?? 55000 }
         : { outstanding: 33_00_000, roi: 9.99, emi: 55000 },

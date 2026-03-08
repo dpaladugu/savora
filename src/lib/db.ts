@@ -540,7 +540,7 @@ db.version(13).stores({}).upgrade(async tx => {
       outstanding: 10_21_156,      // residual after ₹13L strike on Feb 17 2026
       roi: 14.2,
       interestRate: 14.2,
-      emi: 12000,
+      emi: 32641,       // corrected — was wrong at 12000
       tenureMonths: 120,
       isActive: true,
       startDate: new Date(2022, 5, 1),
@@ -565,6 +565,17 @@ db.version(13).stores({}).upgrade(async tx => {
       isActive: true,
       startDate: new Date(2026, 1, 17),  // Feb 17 2026
       createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+});
+
+// v14 — Correct InCred EMI to ₹32,641 (was incorrectly seeded as ₹12,000)
+db.version(14).stores({}).upgrade(async tx => {
+  const incred = await tx.table('loans').get('loan-incred-2026');
+  if (incred && (incred.emi ?? 0) !== 32641) {
+    await tx.table('loans').update('loan-incred-2026', {
+      emi: 32641,
       updatedAt: new Date(),
     });
   }
