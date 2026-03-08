@@ -308,6 +308,10 @@ export interface GunturShopRow {
   paid: boolean;
   advanceAmount?: number;
   advanceDate?: Date;
+  // Tenant profile
+  tenantContact?: string;
+  leaseStart?: Date;
+  tenantIdNote?: string;
   updatedAt: Date;
 }
 
@@ -327,7 +331,22 @@ export interface GorantlaRoomRow {
   paid: boolean;
   advanceAmount?: number;
   advanceDate?: Date;
+  // Tenant profile
+  tenantContact?: string;
+  leaseStart?: Date;
+  tenantIdNote?: string;
   updatedAt: Date;
+}
+
+export interface RentHikeLog {
+  id: string;
+  unitId: string;              // references gunturShops.id or gorantlaRooms.id
+  unitType: 'shop' | 'room';
+  oldRent: number;
+  newRent: number;
+  hikeDate: Date;
+  note?: string;
+  createdAt: Date;
 }
 
 // ─── Database Instance ────────────────────────────────────────────────────────
@@ -361,6 +380,7 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
   gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
   pendingTxns: EntityTable<PendingTxn, 'id'>;
+  rentHikeLogs: EntityTable<RentHikeLog, 'id'>;
   // Legacy compatibility — used by PinLock and AiChatService
   appSettings: EntityTable<AppSettingTable, 'key'>;
 };
@@ -454,6 +474,24 @@ db.version(11).stores({}).upgrade(tx =>
     tx.table('gorantlaRooms').toCollection().modify((row: any) => {
       if (row.advanceAmount === undefined) row.advanceAmount = 0;
       if (row.advanceDate   === undefined) row.advanceDate   = null;
+    }),
+  ])
+);
+
+// v12 — Tenant profiles (contact, leaseStart, idNote) + RentHikeLog table
+db.version(12).stores({
+  rentHikeLogs: '++id, unitId, unitType, hikeDate, createdAt',
+}).upgrade(tx =>
+  Promise.all([
+    tx.table('gunturShops').toCollection().modify((row: any) => {
+      if (row.tenantContact === undefined) row.tenantContact = '';
+      if (row.leaseStart    === undefined) row.leaseStart    = null;
+      if (row.tenantIdNote  === undefined) row.tenantIdNote  = '';
+    }),
+    tx.table('gorantlaRooms').toCollection().modify((row: any) => {
+      if (row.tenantContact === undefined) row.tenantContact = '';
+      if (row.leaseStart    === undefined) row.leaseStart    = null;
+      if (row.tenantIdNote  === undefined) row.tenantIdNote  = '';
     }),
   ])
 );

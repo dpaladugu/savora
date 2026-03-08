@@ -34,6 +34,7 @@ export type {
   GunturShopRow,
   WaterfallProgressRow,
   GorantlaRoomRow,
+  RentHikeLog,
 } from '@/lib/db';
 
 export type {

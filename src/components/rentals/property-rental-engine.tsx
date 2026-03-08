@@ -8,10 +8,12 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Home, PiggyBank, ShieldCheck,
   ChefHat, Droplets, ShoppingBag, Coffee, Scissors,
   ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar, IndianRupee,
+  Phone, FileText, TrendingDown, ChevronDown, ChevronUp, User, PlusCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { format } from 'date-fns';
@@ -19,7 +21,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/store/rbacStore';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { GunturShopRow, GorantlaRoomRow } from '@/lib/db';
+import type { GunturShopRow, GorantlaRoomRow, RentHikeLog } from '@/lib/db';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const DWACRA_DEDUCTION         = 5000;
@@ -140,6 +142,317 @@ function AdvanceDialog({ open, onClose, unitName, currentAmount, currentDate, on
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── TENANT PROFILE DIALOG ───────────────────────────────────────────────────
+interface TenantProfileDialogProps {
+  open: boolean;
+  onClose: () => void;
+  unitName: string;
+  tenantName: string;
+  currentContact: string;
+  currentLeaseStart: Date | null;
+  currentIdNote: string;
+  onSave: (contact: string, leaseStart: Date | null, idNote: string) => Promise<void>;
+}
+
+function TenantProfileDialog({ open, onClose, unitName, tenantName, currentContact, currentLeaseStart, currentIdNote, onSave }: TenantProfileDialogProps) {
+  const [contact,    setContact]    = useState(currentContact || '');
+  const [leaseStart, setLeaseStart] = useState(currentLeaseStart ? format(new Date(currentLeaseStart), 'yyyy-MM-dd') : '');
+  const [idNote,     setIdNote]     = useState(currentIdNote || '');
+  const [saving,     setSaving]     = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setContact(currentContact || '');
+      setLeaseStart(currentLeaseStart ? format(new Date(currentLeaseStart), 'yyyy-MM-dd') : '');
+      setIdNote(currentIdNote || '');
+    }
+  }, [open, currentContact, currentLeaseStart, currentIdNote]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(contact, leaseStart ? new Date(leaseStart) : null, idNote);
+      toast.success(`Profile saved for ${unitName}`);
+      onClose();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            Tenant Profile — {unitName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="p-2 rounded-lg bg-muted text-xs text-muted-foreground">
+            Tenant: <span className="font-semibold text-foreground">{tenantName || '(Vacant)'}</span>
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1"><Phone className="w-3 h-3" />Contact Number</Label>
+            <Input value={contact} onChange={e => setContact(e.target.value)} placeholder="e.g. 9876543210" />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1"><Calendar className="w-3 h-3" />Lease Start Date</Label>
+            <Input type="date" value={leaseStart} onChange={e => setLeaseStart(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1"><FileText className="w-3 h-3" />ID / Notes</Label>
+            <Textarea value={idNote} onChange={e => setIdNote(e.target.value)} placeholder="Aadhaar last 4 digits, guarantor name, notes…" rows={2} className="text-sm" />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Save Profile'}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── RENT HIKE DIALOG ────────────────────────────────────────────────────────
+interface RentHikeDialogProps {
+  open: boolean;
+  onClose: () => void;
+  unitName: string;
+  unitId: string;
+  unitType: 'shop' | 'room';
+  currentRent: number;
+  hikeHistory: RentHikeLog[];
+  onHikeAdded: () => void;
+}
+
+function RentHikeDialog({ open, onClose, unitName, unitId, unitType, currentRent, hikeHistory, onHikeAdded }: RentHikeDialogProps) {
+  const [newRent,   setNewRent]   = useState(currentRent);
+  const [hikeDate,  setHikeDate]  = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [note,      setNote]      = useState('');
+  const [saving,    setSaving]    = useState(false);
+
+  useEffect(() => { if (open) { setNewRent(currentRent); setHikeDate(format(new Date(), 'yyyy-MM-dd')); setNote(''); } }, [open, currentRent]);
+
+  const handleSave = async () => {
+    if (newRent <= 0 || newRent === currentRent) { toast.error('Enter a different rent amount'); return; }
+    setSaving(true);
+    try {
+      const logEntry: RentHikeLog = {
+        id: crypto.randomUUID(),
+        unitId,
+        unitType,
+        oldRent: currentRent,
+        newRent,
+        hikeDate: new Date(hikeDate),
+        note: note || undefined,
+        createdAt: new Date(),
+      };
+      await db.rentHikeLogs.add(logEntry);
+      // Update the unit's current rent
+      if (unitType === 'shop') {
+        await db.gunturShops.update(unitId, { rent: newRent, updatedAt: new Date() });
+      } else {
+        await db.gorantlaRooms.update(unitId, { rent: newRent, updatedAt: new Date() });
+      }
+      toast.success(`Rent updated to ${formatCurrency(newRent)} for ${unitName}`);
+      onHikeAdded();
+      onClose();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  const pctChange = currentRent > 0 ? Math.round(((newRent - currentRent) / currentRent) * 100) : 0;
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <TrendingDown className="w-4 h-4 text-primary" />
+            Rent Hike — {unitName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-3 p-3 rounded-lg bg-muted text-sm">
+            <div><p className="text-xs text-muted-foreground">Current Rent</p><p className="font-bold text-foreground">{formatCurrency(currentRent)}</p></div>
+            <div><p className="text-xs text-muted-foreground">Change</p><p className={`font-bold ${pctChange > 0 ? 'text-success' : pctChange < 0 ? 'text-destructive' : 'text-muted-foreground'}`}>{pctChange > 0 ? '+' : ''}{pctChange}%</p></div>
+          </div>
+          <div className="space-y-2">
+            <Label>New Rent (₹)</Label>
+            <Input type="number" value={newRent} onChange={e => setNewRent(parseFloat(e.target.value) || 0)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Effective Date</Label>
+            <Input type="date" value={hikeDate} onChange={e => setHikeDate(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Note (optional)</Label>
+            <Input value={note} onChange={e => setNote(e.target.value)} placeholder="e.g. Annual hike, tenant agreed" />
+          </div>
+
+          {hikeHistory.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hike History</p>
+              <div className="space-y-1 max-h-40 overflow-y-auto">
+                {[...hikeHistory].sort((a, b) => new Date(b.hikeDate).getTime() - new Date(a.hikeDate).getTime()).map(h => (
+                  <div key={h.id} className="flex items-center justify-between text-xs p-2 rounded-lg bg-card border">
+                    <span className="text-muted-foreground">{format(new Date(h.hikeDate), 'MMM yyyy')}</span>
+                    <span className="font-medium">{formatCurrency(h.oldRent)} → <span className="text-success font-semibold">{formatCurrency(h.newRent)}</span></span>
+                    {h.note && <span className="text-muted-foreground italic truncate ml-2">{h.note}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Log Hike'}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── UNIT DETAIL STRIP ───────────────────────────────────────────────────────
+// Reusable expandable row shown under each shop/room card
+interface UnitDetailStripProps {
+  unitId: string;
+  unitType: 'shop' | 'room';
+  unitName: string;
+  tenantName: string;
+  currentRent: number;
+  tenantContact?: string;
+  leaseStart?: Date | null;
+  tenantIdNote?: string;
+  advanceAmount?: number;
+  advanceDate?: Date | null;
+  readOnly: boolean;
+  onProfileSave: (contact: string, leaseStart: Date | null, idNote: string) => Promise<void>;
+  onAdvanceEdit: () => void;
+}
+
+function UnitDetailStrip({ unitId, unitType, unitName, tenantName, currentRent, tenantContact, leaseStart, tenantIdNote, advanceAmount, advanceDate, readOnly, onProfileSave, onAdvanceEdit }: UnitDetailStripProps) {
+  const [expanded,        setExpanded]        = useState(false);
+  const [profileOpen,     setProfileOpen]     = useState(false);
+  const [hikeOpen,        setHikeOpen]        = useState(false);
+  const [hikeCount,       setHikeCount]       = useState(0);
+
+  const hikeHistory = useLiveQuery(
+    () => db.rentHikeLogs.where('unitId').equals(unitId).toArray(),
+    [unitId]
+  ) ?? [];
+
+  const advanceShortfall = advanceAmount && advanceAmount > 0 ? Math.max(0, currentRent - advanceAmount) : 0;
+
+  return (
+    <>
+      <TenantProfileDialog
+        open={profileOpen}
+        onClose={() => setProfileOpen(false)}
+        unitName={unitName}
+        tenantName={tenantName}
+        currentContact={tenantContact ?? ''}
+        currentLeaseStart={leaseStart ?? null}
+        currentIdNote={tenantIdNote ?? ''}
+        onSave={onProfileSave}
+      />
+      <RentHikeDialog
+        open={hikeOpen}
+        onClose={() => setHikeOpen(false)}
+        unitName={unitName}
+        unitId={unitId}
+        unitType={unitType}
+        currentRent={currentRent}
+        hikeHistory={hikeHistory}
+        onHikeAdded={() => setHikeCount(c => c + 1)}
+      />
+
+      {/* Expand toggle */}
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-foreground transition-colors pt-1"
+      >
+        <span className="flex items-center gap-1">
+          {tenantContact ? <Phone className="w-3 h-3 text-success" /> : <Phone className="w-3 h-3 opacity-40" />}
+          {hikeHistory.length > 0 ? <span className="text-primary font-medium">{hikeHistory.length} hike{hikeHistory.length > 1 ? 's' : ''}</span> : <span className="opacity-60">No hikes logged</span>}
+          {advanceShortfall > 0 && <Badge variant="outline" className="text-xs h-4 border-warning/50 text-warning">−{formatCurrency(advanceShortfall)} gap</Badge>}
+        </span>
+        {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+      </button>
+
+      {expanded && (
+        <div className="mt-2 space-y-2 pl-1 border-l-2 border-border">
+          {/* Profile section */}
+          <div className="space-y-1">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Tenant Profile</p>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Phone className="w-3 h-3" />
+                <span>{tenantContact || <em>No contact</em>}</span>
+              </div>
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Calendar className="w-3 h-3" />
+                <span>{leaseStart ? format(new Date(leaseStart), 'MMM yyyy') : <em>Lease start unknown</em>}</span>
+              </div>
+              {tenantIdNote && (
+                <div className="col-span-2 flex items-start gap-1 text-muted-foreground">
+                  <FileText className="w-3 h-3 mt-0.5 shrink-0" />
+                  <span className="line-clamp-2">{tenantIdNote}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Advance liability */}
+          {(advanceAmount ?? 0) > 0 && (
+            <div className="text-xs space-y-0.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Advance Liability</p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Held: <span className="font-semibold text-foreground">{formatCurrency(advanceAmount ?? 0)}</span>{advanceDate ? ` · ${format(new Date(advanceDate), 'MMM yyyy')}` : ''}</span>
+                {advanceShortfall > 0
+                  ? <span className="text-warning font-medium">−{formatCurrency(advanceShortfall)} shortfall at vacating</span>
+                  : <Badge variant="secondary" className="text-xs h-4">Covers full month</Badge>
+                }
+              </div>
+            </div>
+          )}
+
+          {/* Hike history */}
+          {hikeHistory.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rent History</p>
+              <div className="space-y-0.5">
+                {[...hikeHistory].sort((a, b) => new Date(a.hikeDate).getTime() - new Date(b.hikeDate).getTime()).map(h => (
+                  <div key={h.id} className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span className="w-16 shrink-0">{format(new Date(h.hikeDate), 'MMM yyyy')}</span>
+                    <ArrowRight className="w-3 h-3 shrink-0" />
+                    <span>{formatCurrency(h.oldRent)} → <span className="text-success font-semibold">{formatCurrency(h.newRent)}</span></span>
+                    {h.note && <span className="italic truncate">· {h.note}</span>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          {!readOnly && (
+            <div className="flex gap-1.5 pt-1">
+              <Button size="sm" variant="outline" className="h-6 text-xs flex-1 gap-1" onClick={() => setProfileOpen(true)}>
+                <User className="w-3 h-3" />{tenantContact ? 'Edit Profile' : 'Add Profile'}
+              </Button>
+              <Button size="sm" variant="outline" className="h-6 text-xs flex-1 gap-1" onClick={() => setHikeOpen(true)}>
+                <PlusCircle className="w-3 h-3" />Log Rent Hike
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   );
 }
 
@@ -267,23 +580,23 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
                   }
                 </div>
               </div>
-              {/* Advance row */}
-              <div className="flex items-center justify-between text-xs">
-                {room.advanceAmount && room.advanceAmount > 0 ? (
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <IndianRupee className="w-3 h-3 text-primary" />
-                    Advance: <span className="font-semibold text-foreground">{formatCurrency(room.advanceAmount)}</span>
-                    {room.advanceDate && <span className="text-muted-foreground ml-1">· {format(new Date(room.advanceDate), 'dd MMM yyyy')}</span>}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground italic">No advance recorded</span>
-                )}
-                {!readOnly && (
-                  <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setAdvanceRoom(room)}>
-                    {room.advanceAmount ? 'Edit' : '+ Add'} Advance
-                  </Button>
-                )}
-              </div>
+              <UnitDetailStrip
+                unitId={room.id}
+                unitType="room"
+                unitName={room.name}
+                tenantName={room.tenant}
+                currentRent={room.rent}
+                tenantContact={room.tenantContact}
+                leaseStart={room.leaseStart ?? null}
+                tenantIdNote={room.tenantIdNote}
+                advanceAmount={room.advanceAmount}
+                advanceDate={room.advanceDate ?? null}
+                readOnly={readOnly}
+                onProfileSave={async (contact, ls, idNote) => {
+                  await db.gorantlaRooms.update(room.id, { tenantContact: contact, leaseStart: ls ?? undefined, tenantIdNote: idNote, updatedAt: new Date() });
+                }}
+                onAdvanceEdit={() => setAdvanceRoom(room)}
+              />
             </div>
           ))}
 
@@ -459,24 +772,24 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                         {shop.paid ? '✓ Paid' : 'Mark Paid'}
                       </Button>
                 )}
-                {/* Advance info */}
                 {shop.status === 'Occupied' && (
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
-                    {shop.advanceAmount && shop.advanceAmount > 0 ? (
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <IndianRupee className="w-2.5 h-2.5 text-primary" />
-                        <span className="font-medium text-foreground">{formatCurrency(shop.advanceAmount)}</span>
-                        {shop.advanceDate && <span>· {format(new Date(shop.advanceDate), 'MMM yy')}</span>}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground italic">No advance</span>
-                    )}
-                    {!readOnly && (
-                      <Button size="sm" variant="ghost" className="h-5 text-xs px-1.5" onClick={() => setAdvanceShop(shop)}>
-                        {shop.advanceAmount ? 'Edit' : '+Adv'}
-                      </Button>
-                    )}
-                  </div>
+                  <UnitDetailStrip
+                    unitId={shop.id}
+                    unitType="shop"
+                    unitName={shop.name}
+                    tenantName={shop.tenant}
+                    currentRent={shop.rent}
+                    tenantContact={shop.tenantContact}
+                    leaseStart={shop.leaseStart ?? null}
+                    tenantIdNote={shop.tenantIdNote}
+                    advanceAmount={shop.advanceAmount}
+                    advanceDate={shop.advanceDate ?? null}
+                    readOnly={readOnly}
+                    onProfileSave={async (contact, ls, idNote) => {
+                      await db.gunturShops.update(shop.id, { tenantContact: contact, leaseStart: ls ?? undefined, tenantIdNote: idNote, updatedAt: new Date() });
+                    }}
+                    onAdvanceEdit={() => setAdvanceShop(shop)}
+                  />
                 )}
               </div>
             ))}
