@@ -155,14 +155,21 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
-                <Button
-                  size="sm"
-                  variant={room.paid ? 'default' : 'outline'}
-                  onClick={() => togglePaid(room.id)}
-                  className="h-7 text-xs"
-                >
-                  {room.paid ? '✓ Paid' : 'Mark Paid'}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    size="sm"
+                    variant={room.paid ? 'default' : 'outline'}
+                    onClick={() => togglePaid(room.id)}
+                    className="h-7 text-xs"
+                  >
+                    {room.paid ? '✓ Paid' : 'Mark Paid'}
+                  </Button>
+                )}
+                {readOnly && (
+                  <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">
+                    {room.paid ? '✓ Paid' : 'Unpaid'}
+                  </Badge>
+                )}
               </div>
             </div>
           ))}

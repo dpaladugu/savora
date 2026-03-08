@@ -38,7 +38,7 @@ const moreModules = [
   { id: "emergency-fund",     label: "Emergency Fund",      icon: AlertCircle,roleBlocked: undefined,     roleRequired: undefined   },
   { id: "brother-global",     label: "Brother's US",        icon: Globe,      roleBlocked: undefined,     roleRequired: "BROTHER" as const },
   { id: "vehicles",           label: "Vehicle Watchdog",    icon: Bike,       roleBlocked: undefined,     roleRequired: undefined   },
-  { id: "property-engine",    label: "Guntur / Gorantla",   icon: Building,   roleBlocked: "BROTHER" as const, roleRequired: undefined },
+  { id: "property-engine",    label: "Guntur / Gorantla",   icon: Building,   roleBlocked: undefined,     roleRequired: undefined   },
   { id: "enhanced-rentals",   label: "Rentals",             icon: Home,       roleBlocked: undefined,     roleRequired: undefined   },
   { id: "insurance",          label: "Insurance",           icon: Shield,     roleBlocked: "BROTHER" as const, roleRequired: undefined },
   { id: "gold",               label: "Gold",                icon: Coins,      roleBlocked: "BROTHER" as const, roleRequired: undefined },
