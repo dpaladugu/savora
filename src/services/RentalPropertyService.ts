@@ -43,8 +43,8 @@ export class RentalPropertyService {
   }
 
   static async getTotalRentalIncome(): Promise<number> {
-    const props = await db.rentalProperties.toArray().catch(() => []);
-    return props.reduce((sum, p) => sum + (p.monthlyRent ?? 0), 0);
+    const props = await db.rentalProperties.toArray().catch(() => [] as any[]);
+    return (props as any[]).reduce((sum: number, p: any) => sum + (p.monthlyRent ?? 0), 0);
   }
 
   static async getRentalAnalytics(): Promise<{
@@ -54,13 +54,15 @@ export class RentalPropertyService {
     avgRentPerProperty: number;
     propertiesWithOverdueRent: number;
   }> {
-    const [properties, overdue] = await Promise.all([
-      db.rentalProperties.toArray().catch(() => []),
+    const [props, overdue] = await Promise.all([
+      db.rentalProperties.toArray().catch(() => [] as any[]),
       this.getPropertiesWithDueRent(),
     ]);
-    const totalMonthlyIncome = properties.reduce((sum, p) => sum + (p.monthlyRent ?? 0), 0);
-    // totalAnnualTax: sum from RentalProperty schema if present
-    const totalAnnualTax = 0; // db.rentalProperties schema in lib/db.ts doesn't store tax fields
+    const properties = props as any[];
+    const totalMonthlyIncome = properties.reduce((sum: number, p: any) => sum + (p.monthlyRent ?? 0), 0);
+    const totalAnnualTax = properties.reduce(
+      (sum: number, p: any) => sum + (p.propertyTaxAnnual ?? 0) + (p.waterTaxAnnual ?? 0), 0
+    );
     return {
       totalProperties: properties.length,
       totalMonthlyIncome,
