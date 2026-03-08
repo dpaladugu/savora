@@ -16,7 +16,7 @@ function getMonthBounds(monthsAgo = 0) {
   return { start, end };
 }
 
-export function MonthlySummaryCard() {
+export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }) {
   const thisBounds = getMonthBounds(0);
   const prevBounds = getMonthBounds(1);
 
