@@ -148,7 +148,21 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           title: `"${name}" is behind schedule`,
           body: `Expected ${formatCurrency(Math.round(expected))} by now, but at ${formatCurrency(current)}. Gap: ${formatCurrency(Math.round(behindBy))}`,
           ctaLabel: 'Catch up →',
-          ctaAction: () => onMoreNavigation('sip-planner'),
+          ctaAction: () => {
+            const months = monthsUntil((goal as any).deadline ?? (goal as any).targetDate);
+            const remaining = goal.targetAmount - current;
+            if (months && months > 0) {
+              setPrefill({
+                description: `Catch-up SIP – ${name}`,
+                amount: sipNeeded(remaining, months),
+                category: 'Investment',
+                frequency: 'monthly',
+                type: 'expense',
+                goalName: name,
+              });
+            }
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 2,
           color: 'warning',
         });
