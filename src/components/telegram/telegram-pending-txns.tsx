@@ -259,7 +259,7 @@ export function TelegramPendingTxns() {
                 <Select value={parsedCategory} onValueChange={setParsedCategory}>
                   <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.slice(0, 15).map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
+                    {EXPENSE_CATEGORIES.slice(0, 15).map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
