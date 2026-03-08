@@ -38,7 +38,7 @@ async function deriveKey(password: string, salt: ArrayBuffer): Promise<CryptoKey
 async function encryptJSON(data: object, password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const iv   = crypto.getRandomValues(new Uint8Array(12));
-  const key  = await deriveKey(password, salt);
+  const key  = await deriveKey(password, salt.buffer);
   const ct   = await crypto.subtle.encrypt(
     { name: 'AES-GCM', iv },
     key,
@@ -56,7 +56,7 @@ async function decryptJSON(base64: string, password: string): Promise<any> {
   const salt = raw.slice(0, 16);
   const iv   = raw.slice(16, 28);
   const ct   = raw.slice(28);
-  const key  = await deriveKey(password, salt);
+  const key  = await deriveKey(password, salt.buffer);
   const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
   return JSON.parse(new TextDecoder().decode(pt));
 }
