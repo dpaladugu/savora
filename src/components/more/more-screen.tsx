@@ -34,6 +34,7 @@ interface MoreModule {
   status: 'available' | 'coming-soon' | 'beta';
   category: 'financial' | 'tracking' | 'analysis' | 'settings';
   priority: 'high' | 'medium' | 'low';
+  roleRequired?: 'ADMIN' | 'SPOUSE' | 'BROTHER';
 }
 
 const modules: MoreModule[] = [
