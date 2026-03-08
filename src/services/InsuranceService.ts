@@ -1,72 +1,84 @@
-
 /**
- * src/services/InsuranceService.ts
- *
- * A service for handling insurance operations. Currently provides stub implementations
- * since the insurance table is not available in the current schema.
+ * InsuranceService — wired to canonical `db` from '@/lib/db'.
+ * Writes to db.insurance (and mirrors to db.insurancePolicies for the
+ * AuditEngine's combined-policy read in _buildRisks).
+ * 
+ * Audit Middleware (§19) fires automatically on all mutations.
  */
 
-import { db } from "@/db";
-
-// Define Insurance interface locally since it's not available in db
-interface Insurance {
-  id: string;
-  type: 'Term' | 'Health' | 'Motor' | 'Home' | 'Travel' | 'Personal-Accident';
-  provider: string;
-  policyNo: string;
-  sumInsured: number;
-  premium: number;
-  dueDay: number;
-  startDate: Date;
-  endDate: Date;
-  nomineeName: string;
-  nomineeDOB: string;
-  nomineeRelation: string;
-  familyMember: string;
-  personalTermCover?: number;
-  personalHealthCover?: number;
-  employerTermCover?: number;
-  employerHealthCover?: number;
-  notes: string;
-}
+import { db } from '@/lib/db';
+import type { Insurance } from '@/lib/db';
 
 export class InsuranceService {
 
-  /**
-   * Adds a new insurance policy record to the database.
-   * @param policyData The policy data to add. 'id' should be omitted.
-   * @returns The id of the newly added policy.
-   */
   static async addPolicy(policyData: Omit<Insurance, 'id'>): Promise<string> {
-    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
-    throw new Error('Insurance functionality not yet implemented');
+    const id = crypto.randomUUID();
+    const record: Insurance = {
+      ...policyData,
+      id,
+      createdAt: policyData.createdAt ?? new Date(),
+      updatedAt: new Date(),
+    };
+    await db.insurance.add(record);
+
+    // Mirror to insurancePolicies so both AuditEngine and InsuranceGapAnalysis
+    // (which reads insurancePolicies) see the data.
+    try {
+      await db.insurancePolicies.add({ ...record });
+    } catch {
+      // Ignore if already exists (primary-key conflict)
+    }
+    return id;
   }
 
-  /**
-   * Updates an existing insurance policy record.
-   * @param id The id of the policy to update.
-   * @param updates A partial object of the policy data to update.
-   * @returns The number of updated records.
-   */
   static async updatePolicy(id: string, updates: Partial<Insurance>): Promise<number> {
-    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
-    return 0;
+    const patched = { ...updates, updatedAt: new Date() };
+    const count = await db.insurance.update(id, patched);
+    // Best-effort mirror update
+    await db.insurancePolicies.update(id, patched).catch(() => {});
+    return count;
   }
 
-  /**
-   * Deletes an insurance policy record from the database.
-   * @param id The id of the policy to delete.
-   */
   static async deletePolicy(id: string): Promise<void> {
-    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
+    await Promise.all([
+      db.insurance.delete(id),
+      db.insurancePolicies.delete(id).catch(() => {}),
+    ]);
+  }
+
+  static async getPolicies(): Promise<Insurance[]> {
+    // Merge both tables; deduplicate by id so legacy insurancePolicies entries
+    // that were added before this service was wired are also visible.
+    const [a, b] = await Promise.all([
+      db.insurance.toArray().catch(() => [] as Insurance[]),
+      db.insurancePolicies.toArray().catch(() => [] as Insurance[]),
+    ]);
+    const map = new Map<string, Insurance>();
+    [...a, ...b].forEach(p => map.set(p.id, p));
+    return Array.from(map.values());
+  }
+
+  static async getPolicyById(id: string): Promise<Insurance | undefined> {
+    return db.insurance.get(id).catch(() => undefined);
   }
 
   /**
-   * Retrieves all insurance policies.
-   * @returns A promise that resolves to an array of insurance policies.
+   * Policies expiring within the next `withinDays` days.
    */
-  static async getPolicies(): Promise<Insurance[]> {
-    console.warn('Insurance service not yet implemented - insurance table not available in current schema');
-    return [];
+  static async getExpiringPolicies(withinDays = 30): Promise<Insurance[]> {
+    const policies = await this.getPolicies();
+    const cutoff = new Date(Date.now() + withinDays * 24 * 60 * 60 * 1000);
+    return policies.filter(p => {
+      const end = p.endDate ? new Date(p.endDate) : null;
+      return end && end <= cutoff;
+    });
+  }
+
+  /**
+   * Policies missing a nominee — used by AuditEngine risk checklist.
+   */
+  static async getPoliciesMissingNominee(): Promise<Insurance[]> {
+    const policies = await this.getPolicies();
+    return policies.filter(p => !(p.nominee || p.nomineeName || p.nomineeRelation));
   }
 }
