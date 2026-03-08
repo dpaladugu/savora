@@ -132,6 +132,8 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <TaxEngine />;
       case 'ai-advisor':
         return <LLMAdvisor />;
+      case 'financial-health-audit':
+        return <FinancialHealthAudit onMoreNavigation={onMoreNavigation} />;
       case 'audit-log':
         if (role !== 'ADMIN') return <AccessDenied reason="Audit Log is restricted to ADMIN only." />;
         return <AuditLogViewer />;
