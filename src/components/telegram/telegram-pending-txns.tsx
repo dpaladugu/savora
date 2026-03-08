@@ -119,6 +119,9 @@ export function TelegramPendingTxns() {
         isPartialRent: false,
         paymentMix: [{ mode: 'UPI', amount: p.amount }],
         isSplit: false,
+        splitWith: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       await (db as any).pendingTxns?.update(p.id, { status: 'approved' });
       toast.success(`₹${p.amount.toLocaleString('en-IN')} approved & saved as expense`);
