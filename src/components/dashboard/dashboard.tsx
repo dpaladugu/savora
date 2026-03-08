@@ -436,6 +436,8 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
 
+      {/* ── Monthly Summary ── */}
+      <MonthlySummaryCard />
 
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />
