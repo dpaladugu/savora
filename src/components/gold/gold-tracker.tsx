@@ -158,7 +158,7 @@ export function GoldTracker() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading gold holdings...</div>;
+    return <div className="flex justify-center items-center h-32 text-muted-foreground text-sm">Loading gold holdings…</div>;
   }
 
   return (

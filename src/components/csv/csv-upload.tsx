@@ -290,10 +290,10 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
           )}
 
           {validationResult && (
-            <div className={`rounded-lg p-3 ${
-              validationResult.isValid 
-                ? 'bg-success/10 border border-success/20' 
-                : 'bg-destructive/10 border border-destructive/20'
+            <div className={`rounded-xl p-3 border ${
+              validationResult.isValid
+                ? 'bg-success/8 border-success/25'
+                : 'bg-destructive/8 border-destructive/25'
             }`}>
               <div className="flex items-center gap-2 mb-2">
                 {validationResult.isValid ? (
@@ -308,7 +308,6 @@ export function CSVUpload({ onDataParsed, onImportComplete }: CSVUploadProps) {
                   </>
                 )}
               </div>
-              
               {validationResult.isValid ? (
                 <p className="text-sm text-success">
                   Ready to import {validationResult.rowCount} rows
