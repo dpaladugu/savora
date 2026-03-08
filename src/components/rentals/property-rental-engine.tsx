@@ -932,6 +932,50 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   // ── What-If ──
   const [vacantShops,  setVacantShops]  = React.useState(0);
   const [vacantMonths, setVacantMonths] = React.useState(1);
+  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
+  const [resetting, setResetting] = React.useState(false);
+
+  const totalCollected = gunturCollected + gorantlaCollected;
+  const allPaidCount = occupiedShops.filter(s => s.paid).length + rooms.filter(r => r.paid).length;
+  const totalUnits = occupiedShops.length + rooms.length;
+
+  const handleMonthEndReset = async () => {
+    setResetting(true);
+    try {
+      const now = new Date();
+      const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      // Clear all paid flags
+      await Promise.all([
+        ...shops.map(s => db.gunturShops.update(s.id, { paid: false, updatedAt: now })),
+        ...rooms.map(r => db.gorantlaRooms.update(r.id, { paid: false, updatedAt: now })),
+      ]);
+
+      // Log collection summary to appSettings history
+      const histKey = 'rentalCollectionHistory';
+      const existing = await db.appSettings.get(histKey);
+      const prev: any[] = existing?.value ?? [];
+      await db.appSettings.put({
+        key: histKey,
+        value: [{
+          month: monthLabel,
+          date: now.toISOString(),
+          gunturCollected,
+          gorantlaCollected,
+          total: totalCollected,
+          paidUnits: allPaidCount,
+          totalUnits,
+        }, ...prev].slice(0, 12),
+      });
+
+      toast.success(`Month-end reset done! ₹${totalCollected.toLocaleString('en-IN')} collected in ${monthLabel} logged.`);
+      setShowResetConfirm(false);
+    } catch {
+      toast.error('Reset failed');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const avgShopRent  = occupiedShops.length > 0 ? gunturExpected / occupiedShops.length : 0;
   const vacancyLoss  = vacantShops * avgShopRent * vacantMonths;
