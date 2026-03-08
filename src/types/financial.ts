@@ -170,16 +170,16 @@ export interface CreditCard {
   name: string;
   issuer?: string;
   bankName: string;
-  cardName: string;          // e.g. "Regalia", "Swiggy"
+  cardName?: string;         // e.g. "Regalia", "Swiggy"
   last4?: string;            // legacy alias
-  lastFourDigits: string;    // canonical 4-digit identifier
-  network: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex' | 'Diners' | string;
+  lastFourDigits?: string;   // canonical 4-digit identifier (preferred over last4)
+  network?: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex' | 'Diners' | string;
   cardVariant?: string;
   productVariant?: string;
   // ── Limits & Balance ────────────────────────────────────────────────────────
   creditLimit: number;
   limit?: number;            // legacy alias
-  currentBalance: number;   // outstanding bill amount
+  currentBalance?: number;   // outstanding bill amount
   creditLimitShared?: boolean;
   // ── Fees ────────────────────────────────────────────────────────────────────
   annualFee: number;
@@ -187,7 +187,7 @@ export interface CreditCard {
   feeWaiverRule?: string;    // e.g. "Spend ₹2L/yr"
   // ── Payment & Dates ──────────────────────────────────────────────────────────
   dueDate?: string;          // legacy ISO string
-  dueDay: number;            // day of month (1-31)
+  dueDay?: number;           // day of month (1-31)
   cycleStart?: number;
   stmtDay?: number;          // statement generation day
   statementDate?: number;    // alias for stmtDay
