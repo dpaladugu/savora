@@ -5,7 +5,8 @@
  * the user should set aside so the PROJECTED next premium (after inflation)
  * is ready on renewal date.
  *
- * Medical inflation = 14% p.a. (IRDAI benchmark, hardcoded per India compliance).
+ * Medical inflation rate is read from globalSettings.medicalInflationRate
+ * (defaults to 14% p.a. — IRDAI benchmark for India).
  * For multi-year policies the sinking fund spreads over premiumTermYears × 12 months.
  *
  * Corporate / employer-paid and Government-scheme policies are shown
@@ -25,20 +26,18 @@ import {
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-/** 14% p.a. medical inflation per IRDAI benchmark (India compliance) */
-const MEDICAL_INFLATION = 0.14;
+/** Default 14% p.a. medical inflation per IRDAI benchmark */
+const DEFAULT_MEDICAL_INFLATION = 0.14;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 /**
  * Projects the next premium at renewal using compound medical inflation.
  * years = number of policy term years (1, 2, 3 …)
  * For a 3-year policy last paid today, the next premium is due in 3 years
- * so we inflate by (1 + 0.14)^3.
+ * so we inflate by (1 + inflation)^3.
  */
-function projectedNextPremium(currentPremium: number, termYears: number): number {
-  // Inflate the per-year premium by medical inflation over the policy term
-  const inflated = currentPremium * Math.pow(1 + MEDICAL_INFLATION, termYears);
+function projectedNextPremium(currentPremium: number, termYears: number, inflationRate: number): number {
+  const inflated = currentPremium * Math.pow(1 + inflationRate, termYears);
   return Math.round(inflated);
 }
 
