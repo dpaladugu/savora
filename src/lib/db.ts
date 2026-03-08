@@ -44,6 +44,9 @@ export interface Vehicle {
   depreciationRate?: number;
   ncbPercent?: number;
   owner?: string;
+  vehicleValue?: number;
+  regNo?: string;
+  type?: string;
   createdAt: Date;
   updatedAt: Date;
 }
