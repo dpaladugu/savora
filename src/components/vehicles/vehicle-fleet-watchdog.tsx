@@ -175,14 +175,14 @@ export function VehicleFleetWatchdog() {
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
                   <span>0 km</span>
-                  <span className="text-yellow-600">{WARNING_KM} km ⚠️</span>
-                  <span className="text-red-600">{OVERDUE_KM} km 🔴</span>
+                  <span className="text-warning font-medium">{WARNING_KM} km ⚠️</span>
+                  <span className="text-destructive font-medium">{OVERDUE_KM} km 🔴</span>
                 </div>
                 <Progress
                   value={Math.min(100, (oil.kmSinceService / OVERDUE_KM) * 100)}
                   className={`h-3 ${
                     oil.status === 'overdue' ? '[&>div]:bg-destructive' :
-                    oil.status === 'warning' ? '[&>div]:bg-yellow-500' : '[&>div]:bg-green-500'
+                    oil.status === 'warning' ? '[&>div]:bg-warning' : '[&>div]:bg-success'
                   }`}
                 />
               </div>
