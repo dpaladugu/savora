@@ -444,6 +444,20 @@ db.version(10).stores({}).upgrade(tx =>
   })
 );
 
+// v11 — Add advanceAmount + advanceDate to gunturShops and gorantlaRooms
+db.version(11).stores({}).upgrade(tx =>
+  Promise.all([
+    tx.table('gunturShops').toCollection().modify((row: any) => {
+      if (row.advanceAmount === undefined) row.advanceAmount = 0;
+      if (row.advanceDate   === undefined) row.advanceDate   = null;
+    }),
+    tx.table('gorantlaRooms').toCollection().modify((row: any) => {
+      if (row.advanceAmount === undefined) row.advanceAmount = 0;
+      if (row.advanceDate   === undefined) row.advanceDate   = null;
+    }),
+  ])
+);
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
