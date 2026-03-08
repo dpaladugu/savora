@@ -120,7 +120,7 @@ export function SuggestionsEngine() {
       {prioritySuggestions.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
+            <AlertTriangle className="w-5 h-5 text-destructive" />
             Priority Actions
           </h2>
           {prioritySuggestions.map((suggestion) => {
