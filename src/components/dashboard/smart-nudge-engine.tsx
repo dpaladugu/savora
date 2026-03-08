@@ -113,8 +113,21 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           body: sip
             ? `Start ${formatCurrency(sip)}/month to reach ${formatCurrency(goal.targetAmount)} ${months && months > 0 ? `in ${months} months` : ''}`
             : `You have ${formatCurrency(remaining)} remaining — start a monthly SIP to stay on track`,
-          ctaLabel: 'Plan SIP →',
-          ctaAction: () => onMoreNavigation('sip-planner'),
+          ctaLabel: 'Start SIP →',
+          ctaAction: () => {
+            if (sip) {
+              setPrefill({
+                description: `SIP – ${name}`,
+                amount: sip,
+                category: 'Investment',
+                frequency: 'monthly',
+                type: 'expense',
+                account: 'ICICI Salary Account',
+                goalName: name,
+              });
+            }
+            onMoreNavigation('recurring-transactions');
+          },
           priority: 1,
           color: 'primary',
         });
