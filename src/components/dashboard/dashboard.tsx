@@ -26,6 +26,7 @@ import { NetWorthWidget } from './net-worth-widget';
 import { SmartNudgeEngine } from './smart-nudge-engine';
 import { GunturWaterfallCard } from './guntur-waterfall-card';
 import { DebtFreedomCountdown } from './debt-freedom-countdown';
+import { DataHealthWidget } from './data-health-widget';
 
 
 
