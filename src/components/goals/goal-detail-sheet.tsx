@@ -114,9 +114,11 @@ export function GoalDetailSheet({ goal, open, onClose }: GoalDetailSheetProps) {
         createdAt: now,
         updatedAt: now,
       } as any);
-      // Update goal's currentAmount
+      // Re-read current amount to avoid stale closure on rapid taps
+      const fresh = await db.goals.get(goal.id);
+      const freshCurrent = (fresh as any)?.currentAmount ?? current;
       await db.goals.update(goal.id, {
-        currentAmount: current + amt,
+        currentAmount: freshCurrent + amt,
         updatedAt: now,
       } as any);
       toast.success(`₹${amt.toLocaleString('en-IN')} added to "${name}"`);
