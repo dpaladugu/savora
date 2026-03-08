@@ -192,7 +192,7 @@ export function TransactionList() {
                 <div key={txn.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50">
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-3">
-                      <div className={`flex items-center gap-2 ${txn.amount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      <div className={`flex items-center gap-2 ${txn.amount >= 0 ? 'text-success' : 'text-destructive'}`}>
                         {txn.amount >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
                         <span className="font-medium">{formatAmount(txn.amount)}</span>
                       </div>

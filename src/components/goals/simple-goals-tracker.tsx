@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Target } from "lucide-react"; // Removed TrendingUp as it's not used directly here
+import { Progress } from "@/components/ui/progress";
+import { Plus, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
-import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+import { ModuleHeader } from "@/components/layout/module-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Goal {
   id: string;
