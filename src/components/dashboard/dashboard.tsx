@@ -352,6 +352,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
+      {/* ── Onboarding Checklist (collapses once all items done) ── */}
+      <OnboardingChecklist
+        incomeCount={incomeCount}
+        onAddIncome={() => setShowIncomeDialog(true)}
+        onTabChange={onTabChange}
+        onMoreNavigation={onMoreNavigation}
+        ef={ef}
+      />
+
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
 
