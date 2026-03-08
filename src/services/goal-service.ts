@@ -1,6 +1,6 @@
 
-import { db } from '@/db';
-import type { Goal, Dependent } from '@/db';
+import { db } from '@/lib/db';
+import type { Goal, Dependent } from '@/lib/db';
 import { Logger } from '@/services/logger';
 import { format, addYears, addDays } from 'date-fns';
 
