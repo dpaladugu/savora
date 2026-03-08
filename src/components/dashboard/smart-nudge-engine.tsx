@@ -15,10 +15,11 @@ import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import {
   Sparkles, Target, TrendingDown, PiggyBank,
-  Zap, X, AlertTriangle, ArrowUpRight,
+  X, AlertTriangle, ArrowUpRight, ShieldAlert,
 } from 'lucide-react';
 import type { Goal } from '@/types/financial';
 import { useSIPPrefillStore } from '@/store/sipPrefillStore';
+import { DataSafetyService } from '@/services/DataSafetyService';
 
 interface Nudge {
   id: string;
@@ -236,6 +237,22 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
           color: 'warning',
         });
       }
+    }
+
+    // ── 5. Backup overdue ────────────────────────────────────────────────────
+    const lastBackupMs = DataSafetyService.getLastBackupMs();
+    if (lastBackupMs !== null && DataSafetyService.shouldNudgeBackup()) {
+      const days = Math.floor(lastBackupMs / (1000 * 60 * 60 * 24));
+      list.push({
+        id: 'backup-overdue',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: 'Backup overdue',
+        body: `Last backup was ${days} days ago. Export a .savbak to protect your data against device loss.`,
+        ctaLabel: 'Backup now →',
+        ctaAction: () => onMoreNavigation('settings'),
+        priority: 2,
+        color: 'warning',
+      });
     }
 
     // Sort by priority, cap at 3
