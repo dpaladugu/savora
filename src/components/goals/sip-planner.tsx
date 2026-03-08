@@ -251,6 +251,15 @@ export function SIPPlanner() {
   const [started, setStarted]       = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
+  // Consume goalIdForPlanner from store (set by GoalsManager "Plan SIP" CTA)
+  useEffect(() => {
+    if (goalIdForPlanner) {
+      setSelectedGoalId(goalIdForPlanner);
+      setTab('planner');
+      clearGoalIdForPlanner();
+    }
+  }, [goalIdForPlanner, clearGoalIdForPlanner]);
+
   const selectedGoal: Goal | null = selectedGoalId !== 'custom'
     ? (activeGoals.find((g) => g.id === selectedGoalId) ?? null)
     : null;
