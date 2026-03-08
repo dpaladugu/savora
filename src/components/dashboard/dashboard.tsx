@@ -28,9 +28,10 @@ function QuickActions({ onTabChange, onMoreNavigation }: { onTabChange: (t: stri
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
     { icon: TrendingUp, label: 'Invest',       onClick: () => onTabChange('investments')             },
     { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
+    { icon: Crosshair,  label: 'Debt Strike',  onClick: () => onMoreNavigation('debt-strike')        },
   ];
   return (
-    <div className="grid grid-cols-5 gap-2" role="group" aria-label="Quick actions">
+    <div className="grid grid-cols-6 gap-2" role="group" aria-label="Quick actions">
       {actions.map(({ icon: Icon, label, onClick }) => (
         <button
           key={label}
