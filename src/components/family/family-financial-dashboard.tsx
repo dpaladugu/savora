@@ -236,25 +236,24 @@ export function FamilyFinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-center">
-              <div className="text-4xl font-bold text-green-600 mb-2">A+</div>
+              <div className="text-4xl font-bold text-success mb-2">A+</div>
               <p className="text-muted-foreground mb-4">Excellent financial health</p>
-              
               <div className="space-y-3 text-left">
                 <div className="flex justify-between">
                   <span>Emergency Fund</span>
-                  <Badge variant="outline" className="text-green-600">Good</Badge>
+                  <Badge variant="outline" className="text-success">Good</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Debt-to-Income Ratio</span>
-                  <Badge variant="outline" className="text-yellow-600">Moderate</Badge>
+                  <Badge variant="outline" className="text-warning">Moderate</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Investment Diversity</span>
-                  <Badge variant="outline" className="text-green-600">Good</Badge>
+                  <Badge variant="outline" className="text-success">Good</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Insurance Coverage</span>
-                  <Badge variant="outline" className="text-red-600">Needs Attention</Badge>
+                  <Badge variant="outline" className="text-destructive">Needs Attention</Badge>
                 </div>
               </div>
             </div>

@@ -266,7 +266,7 @@ export function IncomeTracker() {
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <p className="text-lg font-bold text-green-600">
+                      <p className="text-lg font-bold text-success">
                         +{formatCurrency(income.amount)}
                       </p>
                       <Badge variant="outline">{income.category}</Badge>
