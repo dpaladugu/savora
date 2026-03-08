@@ -26,6 +26,8 @@ export interface MoreModuleRouterProps {
 }
 
 export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
+  const role = useRole();
+
   const renderModule = () => {
     switch (activeModule) {
       case 'gold':
@@ -35,11 +37,19 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'insurance':
         return <InsuranceTracker />;
       case 'vehicles':
+        return <VehicleFleetWatchdog />;
+      case 'vehicle-manager':
         return <VehicleManager />;
       case 'enhanced-rentals':
         return <EnhancedRentalManager />;
+      case 'property-engine':
+        return <PropertyRentalEngine />;
       case 'family-dashboard':
         return <FamilyFinancialDashboard />;
+      case 'brother-global':
+        // Only BROTHER or ADMIN can see this
+        if (role !== 'BROTHER' && role !== 'ADMIN') return <div className="p-4 text-muted-foreground">Access restricted</div>;
+        return <BrotherGlobalLiability />;
       case 'smart-goals':
         return <EnhancedAutoGoalDashboard />;
       case 'health-tracker':
@@ -59,7 +69,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'credit-cards':
         return <CreditCardModule />;
       default:
-        return <div>Module not found</div>;
+        return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
   };
 
