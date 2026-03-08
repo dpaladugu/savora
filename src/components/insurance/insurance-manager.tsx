@@ -77,6 +77,7 @@ const emptyForm = {
   familyMember: 'Me',
   sumInsured: '',
   premium: '',
+  premiumTermYears: '1',
   startDate: new Date().toISOString().split('T')[0],
   endDate: '',
   nomineeName: '',
@@ -115,6 +116,7 @@ export function InsuranceManager() {
       type: p.type, provider: p.provider ?? '', policyNo: p.policyNo || '',
       familyMember: p.familyMember || 'Me',
       policySource: p.policySource || 'Personal',
+      premiumTermYears: String(p.premiumTermYears ?? 1),
       sumInsured: p.sumInsured.toString(), premium: p.premium.toString(),
       startDate: p.startDate ? new Date(p.startDate).toISOString().split('T')[0] : '',
       endDate: p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : '',
@@ -128,6 +130,7 @@ export function InsuranceManager() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const isCorp = form.policySource === 'Corporate / Employer';
+    const termYears = Math.max(1, parseInt(form.premiumTermYears) || 1);
     const data: Omit<Insurance, 'id'> = {
       name: `${form.provider} ${form.type}`,
       type: form.type, provider: form.provider, policyNo: form.policyNo,
@@ -135,6 +138,7 @@ export function InsuranceManager() {
       policySource: form.policySource as Insurance['policySource'],
       isCorporate: isCorp,
       hasMaternity: form.hasMaternity,
+      premiumTermYears: termYears,
       sumInsured: parseFloat(form.sumInsured) || 0,
       premium: parseFloat(form.premium) || 0,
       startDate: form.startDate ? new Date(form.startDate) : new Date(),
@@ -343,13 +347,32 @@ export function InsuranceManager() {
               { id: 'provider',   label: 'Provider *',         key: 'provider',   required: true             },
               { id: 'policyNo',   label: 'Policy Number',      key: 'policyNo',   required: false            },
               { id: 'sumInsured', label: 'Sum Insured (₹)',     key: 'sumInsured', required: true, type:'number' },
-              { id: 'premium',    label: 'Annual Premium (₹)', key: 'premium',    required: true, type:'number' },
+              { id: 'premium',    label: 'Total Premium Paid (₹)', key: 'premium', required: true, type:'number' },
             ].map(({ id, label, key, required, type }) => (
               <div key={id} className="space-y-1">
                 <Label htmlFor={id} className="text-xs">{label}</Label>
                 <Input id={id} type={type || 'text'} value={(form as any)[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} className="h-9 text-sm" required={required} />
               </div>
             ))}
+
+            {/* Premium Term */}
+            <div className="space-y-1">
+              <Label className="text-xs">Premium covers (years)</Label>
+              <Select value={form.premiumTermYears} onValueChange={v => setForm(f => ({ ...f, premiumTermYears: v }))}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1" className="text-xs">1 year (annual)</SelectItem>
+                  <SelectItem value="2" className="text-xs">2 years (biennial)</SelectItem>
+                  <SelectItem value="3" className="text-xs">3 years (triennial)</SelectItem>
+                  <SelectItem value="5" className="text-xs">5 years</SelectItem>
+                </SelectContent>
+              </Select>
+              {parseInt(form.premiumTermYears) > 1 && (
+                <p className="text-[10px] text-success flex items-center gap-1 mt-1">
+                  Monthly sinking fund = ₹{Math.ceil((parseFloat(form.premium) || 0) / (parseInt(form.premiumTermYears) * 12)).toLocaleString('en-IN')}/mo over {parseInt(form.premiumTermYears) * 12} months
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Start Date</Label>

@@ -81,9 +81,13 @@ export function InsuranceSinkingFund() {
     goals.some(g => g.notes?.includes(`insurance-sf:${policyId}`));
 
   const createGoal = async (p: typeof policies[0]) => {
-    const months   = monthsUntilRenewal(p.endDate);
-    const monthly  = Math.ceil((p.premium ?? 0) / Math.max(1, months));
-    const goalName = `💳 Insurance: ${p.provider} ${p.type}`;
+    const termYears = (p as any).premiumTermYears ?? 1;
+    const totalMonths = monthsUntilRenewal(p.endDate);
+    // For multi-year policies the sinking fund spreads over the full policy term
+    const effectiveMonths = termYears > 1 ? termYears * 12 : totalMonths;
+    const monthly  = Math.ceil((p.premium ?? 0) / Math.max(1, effectiveMonths));
+    const goalName = `🛡️ Insurance: ${p.provider} ${p.type}`;
+    const termLabel = termYears > 1 ? ` (${termYears}-yr policy → ₹${monthly.toLocaleString('en-IN')}/mo × ${effectiveMonths}mo)` : '';
 
     // Avoid duplicates
     if (hasGoal(p.id)) {
@@ -99,12 +103,12 @@ export function InsuranceSinkingFund() {
         currentAmount: 0,
         deadline:      p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : undefined,
         category:      'Insurance',
-        type:          'Short',
-        notes:         `insurance-sf:${p.id} | Monthly save: ₹${monthly.toLocaleString('en-IN')} for ${months} months. Renewal: ${renewalLabel(p.endDate)}`,
+        type:          termYears >= 3 ? 'Long' : termYears >= 2 ? 'Medium' : 'Short',
+        notes:         `insurance-sf:${p.id} | Monthly save: ₹${monthly.toLocaleString('en-IN')} for ${effectiveMonths} months${termLabel}. Renewal: ${renewalLabel(p.endDate)}`,
         createdAt:     new Date(),
         updatedAt:     new Date(),
       } as any);
-      toast.success(`Sinking fund goal created — save ₹${monthly.toLocaleString('en-IN')}/mo`);
+      toast.success(`Sinking fund goal created — save ₹${monthly.toLocaleString('en-IN')}/mo for ${effectiveMonths} months`);
     } catch {
       toast.error('Failed to create goal');
     }
@@ -163,9 +167,12 @@ export function InsuranceSinkingFund() {
             Personal-Pay Policies — Sinking Fund Required
           </p>
           {personalPay.map(p => {
-            const months  = monthsUntilRenewal(p.endDate);
-            const monthly = Math.ceil((p.premium ?? 0) / Math.max(1, months));
-            const alreadyHas = hasGoal(p.id);
+            const termYears      = (p as any).premiumTermYears ?? 1;
+            const totalMonths    = monthsUntilRenewal(p.endDate);
+            const effectiveMonths = termYears > 1 ? termYears * 12 : totalMonths;
+            const monthly        = Math.ceil((p.premium ?? 0) / Math.max(1, effectiveMonths));
+            const termLabel      = termYears > 1 ? `${termYears}yr policy` : null;
+            const alreadyHas     = hasGoal(p.id);
 
             return (
               <Card key={p.id} className="glass">
@@ -176,6 +183,7 @@ export function InsuranceSinkingFund() {
                         <Heart className="h-3.5 w-3.5 text-primary shrink-0" />
                         <p className="text-sm font-semibold truncate">{p.provider}</p>
                         <Badge variant="secondary" className="text-[9px] px-1.5">{p.type}</Badge>
+                        {termLabel && <Badge variant="outline" className="text-[9px] px-1.5">{termLabel}</Badge>}
                         {(p as any).hasMaternity && (
                           <Badge className="text-[9px] px-1.5 bg-accent/30 text-accent-foreground border-accent/30 border">Maternity ✓</Badge>
                         )}
@@ -198,7 +206,7 @@ export function InsuranceSinkingFund() {
 
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div className="p-2 rounded-lg bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Annual Premium</p>
+                      <p className="text-[10px] text-muted-foreground">Premium Paid</p>
                       <p className="font-semibold tabular-nums">{formatCurrency(p.premium ?? 0)}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-primary/8">
@@ -206,8 +214,8 @@ export function InsuranceSinkingFund() {
                       <p className="font-semibold text-primary tabular-nums">{formatCurrency(monthly)}</p>
                     </div>
                     <div className="p-2 rounded-lg bg-muted/40">
-                      <p className="text-[10px] text-muted-foreground">Months Left</p>
-                      <p className="font-semibold tabular-nums">{months}m</p>
+                      <p className="text-[10px] text-muted-foreground">{termYears > 1 ? 'Total Months' : 'Months Left'}</p>
+                      <p className="font-semibold tabular-nums">{effectiveMonths}m</p>
                     </div>
                   </div>
                 </CardContent>
