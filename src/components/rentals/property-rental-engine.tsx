@@ -932,6 +932,50 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   // ── What-If ──
   const [vacantShops,  setVacantShops]  = React.useState(0);
   const [vacantMonths, setVacantMonths] = React.useState(1);
+  const [showResetConfirm, setShowResetConfirm] = React.useState(false);
+  const [resetting, setResetting] = React.useState(false);
+
+  const totalCollected = gunturCollected + gorantlaCollected;
+  const allPaidCount = occupiedShops.filter(s => s.paid).length + rooms.filter(r => r.paid).length;
+  const totalUnits = occupiedShops.length + rooms.length;
+
+  const handleMonthEndReset = async () => {
+    setResetting(true);
+    try {
+      const now = new Date();
+      const monthLabel = now.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
+
+      // Clear all paid flags
+      await Promise.all([
+        ...shops.map(s => db.gunturShops.update(s.id, { paid: false, updatedAt: now })),
+        ...rooms.map(r => db.gorantlaRooms.update(r.id, { paid: false, updatedAt: now })),
+      ]);
+
+      // Log collection summary to appSettings history
+      const histKey = 'rentalCollectionHistory';
+      const existing = await db.appSettings.get(histKey);
+      const prev: any[] = existing?.value ?? [];
+      await db.appSettings.put({
+        key: histKey,
+        value: [{
+          month: monthLabel,
+          date: now.toISOString(),
+          gunturCollected,
+          gorantlaCollected,
+          total: totalCollected,
+          paidUnits: allPaidCount,
+          totalUnits,
+        }, ...prev].slice(0, 12),
+      });
+
+      toast.success(`Month-end reset done! ₹${totalCollected.toLocaleString('en-IN')} collected in ${monthLabel} logged.`);
+      setShowResetConfirm(false);
+    } catch {
+      toast.error('Reset failed');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const avgShopRent  = occupiedShops.length > 0 ? gunturExpected / occupiedShops.length : 0;
   const vacancyLoss  = vacantShops * avgShopRent * vacantMonths;
@@ -951,9 +995,18 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
       {/* ── Collection Status ── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            This Month's Collection
+          <CardTitle className="text-base flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              This Month's Collection
+            </span>
+            <Button
+              size="sm" variant="outline"
+              className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
+              onClick={() => setShowResetConfirm(true)}
+            >
+              Month-End Reset
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -1201,6 +1254,59 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Month-End Reset Confirmation Dialog ── */}
+      <Dialog open={showResetConfirm} onOpenChange={v => !v && setShowResetConfirm(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Calendar className="h-4 w-4 text-warning" />
+              Month-End Reset
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-1">
+            {/* Collection summary */}
+            <div className="p-3 rounded-xl bg-muted/50 border space-y-2 text-sm">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">This Month's Summary</p>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Guntur Shops</span>
+                <span className="font-semibold tabular-nums">{formatCurrency(gunturCollected)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Gorantla Rooms</span>
+                <span className="font-semibold tabular-nums">{formatCurrency(gorantlaCollected)}</span>
+              </div>
+              <div className="flex justify-between border-t pt-2 font-bold">
+                <span>Total Collected</span>
+                <span className="text-success tabular-nums">{formatCurrency(totalCollected)}</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Units paid</span>
+                <span>{allPaidCount} / {totalUnits}</span>
+              </div>
+            </div>
+            {allPaidCount < totalUnits && (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-warning/10 border border-warning/30 text-xs">
+                <AlertTriangle className="h-3.5 w-3.5 text-warning shrink-0 mt-0.5" />
+                <p className="text-warning">{totalUnits - allPaidCount} unit{totalUnits - allPaidCount !== 1 ? 's' : ''} not yet marked paid. Reset anyway?</p>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              This will log today's collection totals to history and clear all paid flags for the new month.
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setShowResetConfirm(false)} className="flex-1">Cancel</Button>
+              <Button
+                onClick={handleMonthEndReset}
+                disabled={resetting}
+                className="flex-1 bg-warning text-warning-foreground hover:bg-warning/90"
+              >
+                {resetting ? 'Resetting…' : 'Confirm Reset'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

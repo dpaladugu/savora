@@ -19,10 +19,11 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import {
   Target, Zap, AlertTriangle, CheckCircle2,
-  ArrowRight, Info, Building2, Home,
+  ArrowRight, Info, Building2, Home, PlusCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { addMonths, format, differenceInMonths } from 'date-fns';
+import { PrepaymentLogger } from './prepayment-logger';
 
 const INCRED_MIN_PART_PAYMENT = 25_000;
 const DEADLINE = new Date(2029, 11, 31);
@@ -125,6 +126,7 @@ export function SequentialStrikeEngine() {
   // Stress-test vacancy overrides (unit id → vacant)
   const [vacantOverrides, setVacantOverrides] = useState<Record<string, boolean>>({});
   const [manualP5Override, setManualP5Override] = useState<number | null>(null);
+  const [showPrepayment, setShowPrepayment] = useState(false);
 
   const toggleVacant = (id: string) =>
     setVacantOverrides(prev => ({ ...prev, [id]: !prev[id] }));
@@ -219,9 +221,19 @@ export function SequentialStrikeEngine() {
       <div className="flex items-center gap-2">
         <Zap className="h-5 w-5 text-warning" />
         <h2 className="text-xl font-bold tracking-tight">Sequential Strike Engine</h2>
-        <Badge variant={sim.onTrack ? 'default' : 'destructive'} className="ml-auto text-xs">
-          {sim.onTrack ? `✓ +${monthsBuffer}mo buffer` : `⚠ ${Math.abs(monthsBuffer)}mo slip`}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm" variant="outline"
+            className="h-7 text-xs gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+            onClick={() => setShowPrepayment(true)}
+          >
+            <PlusCircle className="h-3.5 w-3.5" />
+            Log Prepayment
+          </Button>
+          <Badge variant={sim.onTrack ? 'default' : 'destructive'} className="text-xs">
+            {sim.onTrack ? `✓ +${monthsBuffer}mo buffer` : `⚠ ${Math.abs(monthsBuffer)}mo slip`}
+          </Badge>
+        </div>
       </div>
 
       {/* Live P5 source banner */}
@@ -523,6 +535,7 @@ export function SequentialStrikeEngine() {
           )}
         </CardContent>
       </Card>
+      <PrepaymentLogger open={showPrepayment} onClose={() => setShowPrepayment(false)} />
     </div>
   );
 }
