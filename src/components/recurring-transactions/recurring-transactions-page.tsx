@@ -42,9 +42,18 @@ export function RecurringTransactionsPage() {
     []
   ) ?? [];
 
+  const { prefill, clearPrefill } = useSIPPrefillStore();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [running, setRunning] = useState(false);
+
+  // Auto-open form with pre-fill when navigated from a nudge CTA
+  useEffect(() => {
+    if (prefill) {
+      setEditing(null);
+      setShowForm(true);
+    }
+  }, [prefill]);
 
   const active  = items.filter(i => i.is_active);
   const paused  = items.filter(i => !i.is_active);
