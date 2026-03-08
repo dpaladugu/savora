@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { useRole, usePermissions } from '@/store/rbacStore';
 import { MaskedValue } from '@/components/ui/masked-value';
 import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { EmergencyFund } from '@/types/financial';
 
 
