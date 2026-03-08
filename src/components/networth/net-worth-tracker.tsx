@@ -220,7 +220,7 @@ export function NetWorthTracker() {
           <CardHeader className="pb-1 pt-3 px-4">
             <div className="flex items-center gap-1.5">
               <CardTitle className="text-xs font-semibold">6-Month Trend</CardTitle>
-              <Info className="h-3 w-3 text-muted-foreground/50" title="Estimated from current snapshot" />
+              <Info className="h-3 w-3 text-muted-foreground/50" aria-label="Estimated from current snapshot" />
             </div>
           </CardHeader>
           <CardContent className="px-2 pb-3">
