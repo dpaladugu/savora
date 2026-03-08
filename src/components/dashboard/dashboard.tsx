@@ -178,6 +178,35 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </button>
       )}
 
+      {/* ── Emergency Fund progress widget ── */}
+      <button
+        onClick={() => onMoreNavigation('emergency-fund')}
+        className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 active:scale-[0.98] transition-all text-left"
+        aria-label="Open Emergency Fund"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10">
+          <PiggyBank className="h-5 w-5 text-success" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold text-foreground">Emergency Fund</p>
+            <span className={`text-xs font-bold tabular-nums ${efPct >= 100 ? 'text-success' : efPct >= 50 ? 'text-warning' : 'value-negative'}`}>
+              {ef ? `${efPct}%` : 'Not set up'}
+            </span>
+          </div>
+          <Progress value={efPct} className="h-1.5" />
+          {ef && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              ₹{ef.currentAmount.toLocaleString('en-IN')} of ₹{ef.targetAmount.toLocaleString('en-IN')} · {ef.targetMonths}-month target
+            </p>
+          )}
+          {!ef && (
+            <p className="text-[10px] text-muted-foreground mt-1">Tap to build your safety net →</p>
+          )}
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+      </button>
+
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} />
 
