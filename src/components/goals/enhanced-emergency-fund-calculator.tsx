@@ -260,9 +260,9 @@ export function EnhancedEmergencyFundCalculator() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="p-4">
                 <div className="text-center">
-                  <Target className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+                  <Target className="w-6 h-6 text-primary mx-auto mb-2" />
                   <div className="text-sm font-medium">Monthly Target</div>
-                  <div className="text-lg font-semibold text-blue-600">
+                  <div className="text-lg font-semibold text-primary">
                     {formatCurrency((efSettings.targetAmount - efSettings.currentAmount) / 12)}
                   </div>
                   <div className="text-xs text-muted-foreground">to reach goal in 12 months</div>
