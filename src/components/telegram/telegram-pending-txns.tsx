@@ -17,7 +17,7 @@ import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatCurrency } from '@/lib/format-utils';
 import { useRole } from '@/store/rbacStore';
-import { CATEGORIES } from '@/lib/categories';
+import { EXPENSE_CATEGORIES } from '@/lib/categories';
 
 // Re-use the same PendingTxn type from the extended DB; if not yet present we declare it here
 export interface PendingTxn {
