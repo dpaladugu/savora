@@ -105,8 +105,8 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const metrics: MetricCardProps[] = [
     {
       title: 'Monthly Surplus',
-      value: perms.showSalary || role === 'ADMIN' ? balanceStr : '🔒 Hidden',
-      change: dashboardData.savingsRate > 0 ? `${dashboardData.savingsRate.toFixed(1)}% saved` : '—',
+      value: (role === 'BROTHER') ? '🔒 Hidden' : balanceStr,
+      change: dashboardData.savingsRate > 0 ? `${dashboardData.savingsRate.toFixed(1)}% saved` : (dashboardData.monthlyIncome === 0 ? 'Add income →' : '—'),
       icon: Wallet,
       changeType: 'positive',
       trend: { value: dashboardData.savingsRate, isPositive: true },
@@ -114,15 +114,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     {
       title: 'Monthly Exp.',
       value: expenseStr,
-      change: '—',
+      change: dashboardData.monthlyExpenses === 0 ? 'No expenses yet' : '—',
       icon: TrendingDown,
       changeType: 'negative',
       trend: { value: 0, isPositive: false },
     },
     {
       title: 'Investments',
-      value: perms.showInvestments || role === 'ADMIN' ? investStr : '🔒 Hidden',
-      change: '—',
+      value: (role === 'BROTHER' || role === 'GUEST') ? '🔒 Hidden' : investStr,
+      change: dashboardData.totalInvestments === 0 ? 'Add investments →' : '—',
       icon: TrendingUp,
       changeType: 'positive',
       trend: { value: 0, isPositive: true },
@@ -130,7 +130,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     {
       title: 'Credit Cards',
       value: ccStr,
-      change: '—',
+      change: dashboardData.creditCardDebt === 0 ? 'No balance' : '—',
       icon: CreditCard,
       changeType: 'neutral',
       trend: { value: 0, isPositive: false },
