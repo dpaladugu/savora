@@ -158,8 +158,8 @@ export interface RentalProperty {
   waterTaxAnnual: number;
   waterTaxDueDay: number;
   maintenanceReserve: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Health {
