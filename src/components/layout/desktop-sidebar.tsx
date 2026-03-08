@@ -58,6 +58,10 @@ export function DesktopSidebar({ activeTab, onTabChange, activeMoreModule, onMor
   const [moreOpen, setMoreOpen] = React.useState(true);
   const role = useRole();
   const visibleModules = moreModules.filter((m) => isModuleVisible(m, role));
+  const pendingCount = useLiveQuery(
+    () => (role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0)),
+    [role]
+  ) ?? 0;
 
   return (
     <aside
