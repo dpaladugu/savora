@@ -6,7 +6,7 @@
 
 import { db } from '@/lib/db';
 import type { RecurringTransaction } from '@/lib/db';
-import { v4 as uuidv4 } from 'uuid';
+const uuidv4 = () => crypto.randomUUID();
 
 // Re-export the DB type so components can import from one place
 export type { RecurringTransaction };
