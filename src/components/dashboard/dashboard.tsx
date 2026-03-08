@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, X } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, MessageCircle } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -175,10 +175,14 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
-  const settings = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
-  const userName = settings?.userName || 'Devavratha';
-
-  const ef = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
+  const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
+  const userName    = settings?.userName || 'Devavratha';
+  const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
+  const incomeCount = useLiveQuery(() => (db as any).incomes?.count().catch(() => 0) ?? Promise.resolve(0), []) ?? 0;
+  const pendingCount = useLiveQuery(
+    () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
+    [role]
+  ) ?? 0;
 
   useEffect(() => {
     db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
@@ -274,6 +278,45 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
             <p className="text-xs text-muted-foreground">Protect your family — add asset distribution &amp; digital legacy →</p>
           </div>
           <Scale className="h-4 w-4 text-muted-foreground shrink-0" />
+        </button>
+      )}
+
+      {/* ── Pending Telegram txns alert (ADMIN only) ── */}
+      {role === 'ADMIN' && pendingCount > 0 && (
+        <button
+          onClick={() => onMoreNavigation('telegram-pending')}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-primary/40 bg-primary/5 hover:bg-primary/10 active:scale-[0.98] transition-all text-left"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 relative">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+              {pendingCount}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {pendingCount} pending Telegram {pendingCount === 1 ? 'transaction' : 'transactions'}
+            </p>
+            <p className="text-xs text-muted-foreground">Tap to review &amp; approve →</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        </button>
+      )}
+
+      {/* ── Salary nudge (show only when no income recorded yet) ── */}
+      {role !== 'BROTHER' && role !== 'GUEST' && incomeCount === 0 && (
+        <button
+          onClick={() => setShowIncomeDialog(true)}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-success/40 bg-success/5 hover:bg-success/10 active:scale-[0.98] transition-all text-left"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15">
+            <Banknote className="h-4 w-4 text-success" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Record your salary</p>
+            <p className="text-xs text-muted-foreground">Monthly Surplus shows ₹0 — add income to see real data →</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
         </button>
       )}
 

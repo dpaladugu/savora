@@ -70,10 +70,10 @@ export function CFARecommendationsDashboard() {
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'High': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'Medium': return <TrendingUp className="w-4 h-4 text-yellow-500" />;
-      case 'Low': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Lightbulb className="w-4 h-4" />;
+      case 'High':   return <AlertTriangle className="w-4 h-4 text-destructive" />;
+      case 'Medium': return <TrendingUp    className="w-4 h-4 text-warning"     />;
+      case 'Low':    return <CheckCircle   className="w-4 h-4 text-success"     />;
+      default:       return <Lightbulb     className="w-4 h-4"                  />;
     }
   };
 
@@ -160,9 +160,9 @@ export function CFARecommendationsDashboard() {
 
       {/* Rebalancing Alert */}
       {portfolioAnalysis?.rebalanceNeeded && (
-        <Alert className="border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
+        <Alert className="border-warning/30 bg-warning/8">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning">
             Your portfolio requires rebalancing. Some asset classes are significantly over or under-weighted.
           </AlertDescription>
         </Alert>
@@ -240,16 +240,16 @@ export function CFARecommendationsDashboard() {
                 <p className="text-muted-foreground mb-4">{rec.description}</p>
 
                 <div className="mb-4">
-                  <h4 className="font-medium mb-2">Impact:</h4>
-                  <p className="text-sm bg-blue-50 p-3 rounded-lg">{rec.expectedImpact}</p>
+                  <h4 className="font-medium mb-2 text-sm">Impact:</h4>
+                  <p className="text-sm bg-primary/5 border border-primary/15 p-3 rounded-lg text-foreground">{rec.expectedImpact}</p>
                 </div>
 
                 <div>
-                  <h4 className="font-medium mb-2">Action Items:</h4>
+                  <h4 className="font-medium mb-2 text-sm">Action Items:</h4>
                   <ul className="space-y-1">
                     {rec.actionItems.map((item, index) => (
                       <li key={index} className="text-sm flex items-start gap-2">
-                        <CheckCircle className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <CheckCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
                         {item}
                       </li>
                     ))}
