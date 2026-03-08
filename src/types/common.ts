@@ -28,6 +28,8 @@ export type NavigationTab = 'dashboard' | 'expenses' | 'credit-cards' | 'investm
 export type MoreModule = 
   | 'emergency-fund' 
   | 'rentals' 
+  | 'enhanced-rentals'
+  | 'property-engine'
   | 'recommendations' 
   | 'cfa-recommendations'
   | 'cashflow' 
@@ -36,10 +38,17 @@ export type MoreModule =
   | 'credit-card-statements'
   | 'recurring-transactions'
   | 'vehicles'
+  | 'vehicle-manager'
   | 'insurance'
   | 'health-tracker'
   | 'subscriptions'
   | 'family-banking'
+  | 'family-dashboard'
+  | 'loans'
+  | 'gold'
+  | 'smart-goals'
+  | 'brother-global'
+  | 'settings'
   | null;
 
 export interface User {
