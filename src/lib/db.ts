@@ -316,6 +316,7 @@ export interface GorantlaRoomRow {
 }
 
 // ─── Database Instance ────────────────────────────────────────────────────────
+export type { PendingTxn };
 const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   txns: EntityTable<Txn, 'id'>;
   rentalProperties: EntityTable<RentalProperty, 'id'>;
