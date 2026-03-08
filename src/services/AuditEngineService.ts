@@ -518,6 +518,48 @@ export class AuditEngineService {
       });
     }
 
+    // ── 5g. Guntur Waterfall Priority Sequence Validation ───────────────────
+    // Enforces: P1 Premium Recovery → P2 Sinking Fund → P3 Household →
+    //           P4 Grandma Safety Net → P5 Debt Strike
+    if (ctx.gunturShops && ctx.waterfallProgress) {
+      const totalOccupiedRent = ctx.gunturShops
+        .filter((s: any) => s.status === 'Occupied')
+        .reduce((sum: number, s: any) => sum + (s.rent || 0), 0);
+
+      const premiumBucket = ctx.waterfallProgress.find((b: any) => b.bucketId === 'premium-recovery');
+      const premiumAccumulated = premiumBucket?.accumulated ?? 0;
+      const premiumGap = Math.max(0, PREMIUM_RECOVERY_TARGET - premiumAccumulated);
+
+      // P1: Flag if Premium Recovery not yet complete and rent is positive
+      if (premiumGap > 0 && totalOccupiedRent > 0) {
+        risks.push({
+          id: 'waterfall-p1-incomplete',
+          category: 'liquidity',
+          severity: 'warning',
+          title: `Waterfall P1: ₹${(premiumGap / 1_000).toFixed(0)}k premium recovery pending`,
+          detail: `₹${(premiumAccumulated / 1_00_000).toFixed(1)}L of ₹1.68L recovered. All Guntur rent must flow to P1 before P2–P5.`,
+          ctaLabel: 'View Waterfall',
+          ctaAction: 'recurring-transactions',
+        });
+      }
+
+      // P3: Household expenses must be funded before Grandma net or debt strike
+      const grandmaBucket = ctx.waterfallProgress.find((b: any) => b.bucketId === 'grandma-safety-net');
+      const grandmaAccumulated = grandmaBucket?.accumulated ?? 0;
+      const availableAfterP1P2 = totalOccupiedRent - SINKING_FUND_MONTHLY - (premiumGap > 0 ? totalOccupiedRent : 0);
+      if (grandmaAccumulated > 0 && availableAfterP1P2 < HOUSEHOLD_MONTHLY && premiumGap > 0) {
+        risks.push({
+          id: 'waterfall-sequence-skip',
+          category: 'liquidity',
+          severity: 'critical',
+          title: 'Waterfall sequence broken: household underfunded',
+          detail: `₹${HOUSEHOLD_MONTHLY.toLocaleString('en-IN')}/mo household priority must be met before Grandma Safety Net. Verify allocation order.`,
+          ctaLabel: 'View Waterfall',
+          ctaAction: 'recurring-transactions',
+        });
+      }
+    }
+
     return risks;
   }
 
