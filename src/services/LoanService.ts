@@ -178,7 +178,7 @@ export class BrotherRepaymentService {
         toPerson: 'Brother',
         from: 'Me',
         to: 'Brother',
-        purpose: loan ? `Repayment – ${loan.name}` : 'Loan Repayment',
+        purpose: loan ? `Repayment – ${loan.type} loan` : 'Loan Repayment',
         mode: repayment.mode ?? 'Bank',
         date: repayment.date ?? new Date(),
         createdAt: new Date(),
