@@ -320,6 +320,9 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   willRows: EntityTable<WillRow, 'id'>;
   digitalAssets: EntityTable<DigitalAsset, 'id'>;
   recurringTransactions: EntityTable<RecurringTransaction, 'id'>;
+  gunturShops: EntityTable<GunturShopRow, 'id'>;
+  waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
+  gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
 };
 
 db.version(1).stores({
