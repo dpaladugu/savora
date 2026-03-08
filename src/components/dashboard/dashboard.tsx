@@ -306,8 +306,11 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
       </button>
 
+      {/* ── Income Quick-Add Dialog ── */}
+      <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
+
       {/* ── Quick Actions ── */}
-      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />
+      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
 
 
       {/* ── Metric Cards ── */}
