@@ -219,7 +219,7 @@ export function CreditCardTracker() {
         currentBalance:  Number(form.currentBalance) || 0,
         annualFee:       Number(form.annualFee) || 0,
         feeWaiverRule:   form.feeWaiverRule,
-        dueDate:         Number(form.dueDate) || 0,
+        dueDay:          Number(form.dueDate) || 0,
         anniversaryDate: form.anniversaryDate,
         paymentMethod:   form.paymentMethod as any,
         updatedAt:       new Date(),
