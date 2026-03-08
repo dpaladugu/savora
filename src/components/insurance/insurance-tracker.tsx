@@ -201,13 +201,8 @@ export function InsuranceTracker() {
         </Card>
       </div>
 
-      {/* dummy closing div to match original structure */}
-      <div className="hidden">
-        </CardContent>
-      </Card>
-
       {/* Insurance Policies List */}
-      <div className="grid gap-4">
+      <div className="space-y-3">
         {policies.length === 0 ? (
           <Card>
             <CardContent className="text-center py-8">
