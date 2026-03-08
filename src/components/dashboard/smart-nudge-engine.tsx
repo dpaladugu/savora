@@ -75,6 +75,7 @@ const colorMap = {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
+  const setPrefill = useSIPPrefillStore(s => s.setPrefill);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   const goals       = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
