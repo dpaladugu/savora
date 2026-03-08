@@ -45,6 +45,19 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
   const rooms    = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
   const progress = useLiveQuery(() => db.waterfallProgress.toArray().catch(() => []), []) ?? [];
 
+  // Live collection status
+  const paidShops   = shops.filter(s => s.status === 'Occupied' && s.paid).length;
+  const totalShops  = shops.filter(s => s.status === 'Occupied').length;
+  const paidRooms   = rooms.filter(r => r.paid).length;
+  const totalRooms  = rooms.length;
+  const paidUnits   = paidShops + paidRooms;
+  const totalUnits  = totalShops + totalRooms;
+  const collectedAmt = shops.filter(s => s.status === 'Occupied' && s.paid).reduce((s, sh) => s + (sh.rent ?? 0), 0)
+                     + rooms.filter(r => r.paid).reduce((s, r) => s + (r.rent ?? 0), 0);
+  const expectedAmt  = shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + (sh.rent ?? 0), 0)
+                     + rooms.reduce((s, r) => s + (r.rent ?? 0), 0);
+  const collectionPct = expectedAmt > 0 ? Math.round((collectedAmt / expectedAmt) * 100) : 0;
+
   // Combined income from both properties
   const shopRent = shops
     .filter(s => s.status === 'Occupied')
