@@ -141,12 +141,12 @@ export function VehicleFleetWatchdog() {
                   </Badge>
                 )}
                 {oil.status === 'warning' && (
-                  <Badge className="bg-yellow-500 text-white">
+                  <Badge className="bg-warning text-warning-foreground">
                     🟠 Service Soon
                   </Badge>
                 )}
                 {oil.status === 'ok' && (
-                  <Badge className="bg-green-500 text-white">
+                  <Badge className="bg-success text-success-foreground">
                     ✅ OK
                   </Badge>
                 )}
