@@ -25,24 +25,23 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
   };
 
   const roleBadgeClass =
-    role === "ADMIN"
-      ? "badge-admin"
-      : role === "SPOUSE"
-      ? "badge-spouse"
-      : role === "BROTHER"
-      ? "badge-brother"
-      : "";
+    role === "ADMIN"   ? "badge-admin"   :
+    role === "SPOUSE"  ? "badge-spouse"  :
+    role === "BROTHER" ? "badge-brother" : "";
 
   return (
     <>
-      {/* ── Fixed header bar ─────────────────────────────────── */}
       <header
         role="banner"
         className="fixed top-0 left-0 right-0 z-50 nav-glass border-b border-border/30"
         style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
       >
-        <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
-          {/* Left: back button + wordmark */}
+        {/*
+          Header inner: full width, horizontal padding scales with breakpoint.
+          No max-w-lg cap here — the sidebar + content already constrain layout.
+        */}
+        <div className="flex items-center justify-between h-14 px-4 lg:px-6 w-full">
+          {/* ── Left: back / logo / wordmark ── */}
           <div className="flex items-center gap-2.5 min-w-0">
             {showBackButton && onBack && (
               <Button
@@ -55,32 +54,27 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
                 <ArrowLeft className="h-4 w-4" aria-hidden="true" />
               </Button>
             )}
-            {/* Logo mark */}
             <div
-              className="flex h-7 w-7 items-center justify-center rounded-lg"
-              style={{
-                background:
-                  "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))",
-              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg shrink-0"
+              style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}
               aria-hidden="true"
             >
               <span className="text-xs font-bold text-white select-none">S</span>
             </div>
-            <h1 className="text-base font-semibold text-foreground tracking-tight truncate">
+            <span className="text-base font-semibold text-foreground tracking-tight truncate select-none">
               {title || "Savora"}
-            </h1>
+            </span>
           </div>
 
-          {/* Right: role + actions */}
+          {/* ── Right: role badge + actions ── */}
           <div className="flex items-center gap-1.5 shrink-0">
             {role !== "GUEST" ? (
-              /* ── Authenticated role badge + lock ── */
               <div className="flex items-center gap-1">
                 <span
-                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold ${roleBadgeClass}`}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold leading-none ${roleBadgeClass}`}
                   aria-label={`Signed in as ${ROLE_NAMES[role]}`}
                 >
-                  <Shield className="w-3 h-3" aria-hidden="true" />
+                  <Shield className="w-3 h-3 shrink-0" aria-hidden="true" />
                   {ROLE_NAMES[role].split(" ")[0]}
                 </span>
                 <Button
@@ -89,26 +83,25 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
                   onClick={handleLogout}
                   aria-label="Lock session and mask values"
                   title="Lock session"
-                  className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-destructive/10 focus-ring"
+                  className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 focus-ring"
                 >
-                  <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </div>
             ) : (
-              /* ── Guest: Reveal Values CTA ── */
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setRevealOpen(true)}
                 aria-label="Enter passphrase to reveal financial values"
-                className="h-8 px-3 rounded-xl text-xs font-medium gap-1.5 border-primary/30 text-primary hover:bg-primary/8 hover:border-primary/50 focus-ring"
+                className="h-9 px-3 rounded-xl text-xs font-medium gap-1.5 border-primary/30 text-primary hover:bg-primary/8 hover:border-primary/50 focus-ring"
               >
                 <Eye className="h-3.5 w-3.5" aria-hidden="true" />
-                Reveal Values
+                <span className="hidden xs:inline">Reveal</span>
+                <span className="xs:hidden">Reveal</span>
               </Button>
             )}
 
-            {/* ── Theme toggle ── */}
             <Button
               variant="ghost"
               size="icon"
@@ -116,11 +109,10 @@ export function GlobalHeader({ title, onBack, showBackButton = false }: GlobalHe
               aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
               className="h-9 w-9 rounded-xl hover:bg-secondary/60 focus-ring"
             >
-              {isDark ? (
-                <Sun className="h-4 w-4 text-warning" aria-hidden="true" />
-              ) : (
-                <Moon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-              )}
+              {isDark
+                ? <Sun  className="h-4 w-4 text-warning"          aria-hidden="true" />
+                : <Moon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+              }
             </Button>
           </div>
         </div>

@@ -206,38 +206,42 @@ export function GlobalSettingsManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Global Settings</h2>
-        <p className="text-muted-foreground">Configure your app preferences and security settings</p>
+        <h2 className="text-lg font-semibold text-foreground">Global Settings</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">App preferences and security settings</p>
       </div>
 
       <Tabs defaultValue="security" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6">
-          <TabsTrigger value="security" className="flex items-center gap-1">
-            <Shield className="h-4 w-4" />
-            Security
-          </TabsTrigger>
-          <TabsTrigger value="financial" className="flex items-center gap-1">
-            <CreditCard className="h-4 w-4" />
-            Financial
-          </TabsTrigger>
-          <TabsTrigger value="alerts" className="flex items-center gap-1">
-            <Bell className="h-4 w-4" />
-            Alerts
-          </TabsTrigger>
-          <TabsTrigger value="personal" className="flex items-center gap-1">
-            <User className="h-4 w-4" />
-            Personal
-          </TabsTrigger>
-          <TabsTrigger value="app" className="flex items-center gap-1">
-            <Settings className="h-4 w-4" />
-            App
-          </TabsTrigger>
-          <TabsTrigger value="advanced" className="flex items-center gap-1">
-            <Zap className="h-4 w-4" />
-            Advanced
-          </TabsTrigger>
+        {/*
+          6-column tab on mobile → overflow/overlap.
+          Fix: scrollable flex row, icon + short label, min-w to prevent squishing.
+        */}
+        <TabsList className="flex w-full overflow-x-auto scrollbar-hide gap-1 rounded-2xl p-1 bg-muted/60 border border-border/40 h-auto">
+          {[
+            { value: 'security',  icon: Shield,    label: 'Security'  },
+            { value: 'financial', icon: CreditCard, label: 'Financial' },
+            { value: 'alerts',    icon: Bell,       label: 'Alerts'    },
+            { value: 'personal',  icon: User,       label: 'Personal'  },
+            { value: 'app',       icon: Settings,   label: 'App'       },
+            { value: 'advanced',  icon: Zap,        label: 'Advanced'  },
+          ].map(({ value, icon: Icon, label }) => (
+            <TabsTrigger
+              key={value}
+              value={value}
+              className="
+                flex flex-1 min-w-[64px] items-center justify-center gap-1
+                py-2 px-2 rounded-xl text-[11px] font-semibold
+                whitespace-nowrap shrink-0
+                data-[state=active]:bg-background data-[state=active]:shadow-sm
+                data-[state=active]:text-primary text-muted-foreground
+                transition-all duration-150
+              "
+            >
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              <span>{label}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         <TabsContent value="security" className="space-y-4">
