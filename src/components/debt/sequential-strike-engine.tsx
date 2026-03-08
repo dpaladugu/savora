@@ -232,7 +232,8 @@ export function SequentialStrikeEngine() {
           </Button>
           <Badge variant={sim.onTrack ? 'default' : 'destructive'} className="text-xs">
             {sim.onTrack ? `✓ +${monthsBuffer}mo buffer` : `⚠ ${Math.abs(monthsBuffer)}mo slip`}
-        </Badge>
+          </Badge>
+        </div>
       </div>
 
       {/* Live P5 source banner */}
