@@ -28,6 +28,61 @@ export function ComprehensiveSettingsScreen() {
   const [showClearDataDialog, setShowClearDataDialog] = useState(false);
   const { logout } = useAuth();
 
+  // Profile fields backed by db.globalSettings
+  const [userName, setUserName] = useState('');
+  const [userMission, setUserMission] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+
+  useEffect(() => {
+    loadSettings();
+    db.globalSettings.limit(1).first().then(s => {
+      if (s?.userName)    setUserName(s.userName);
+      if (s?.userMission) setUserMission(s.userMission);
+    }).catch(() => {});
+  }, []);
+
+  const handleSaveProfile = async () => {
+    setProfileSaving(true);
+    try {
+      const existing = await db.globalSettings.limit(1).first();
+      if (existing) {
+        await db.globalSettings.update(existing.id, { userName: userName.trim(), userMission: userMission.trim() });
+      } else {
+        await db.globalSettings.add({
+          id: crypto.randomUUID(),
+          userName: userName.trim(),
+          userMission: userMission.trim(),
+          failedPinAttempts: 0,
+          maxFailedAttempts: 5,
+          autoLockMinutes: 30,
+          taxRegime: 'New',
+          birthdayBudget: 0,
+          birthdayAlertDays: 7,
+          emergencyContacts: [],
+          dependents: [],
+          salaryCreditDay: 1,
+          annualBonus: 0,
+          medicalInflationRate: 7,
+          educationInflation: 10,
+          vehicleInflation: 5,
+          maintenanceInflation: 5,
+          privacyMask: false,
+          darkMode: false,
+          timeZone: 'Asia/Kolkata',
+          isTest: false,
+          theme: 'system',
+          deviceThemes: {},
+          revealSecret: '',
+        });
+      }
+      toast.success('Profile saved');
+    } catch {
+      toast.error('Failed to save profile');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   useEffect(() => { loadSettings(); }, []);
 
   const loadSettings = async () => {
