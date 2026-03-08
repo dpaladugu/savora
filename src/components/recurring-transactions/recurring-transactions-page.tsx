@@ -69,7 +69,7 @@ export function RecurringTransactionsPage() {
         await RecurringTransactionService.create(data);
         toast.success('Recurring transaction added');
       }
-      setShowForm(false); setEditing(null);
+      setShowForm(false); setEditing(null); clearPrefill();
     } catch {
       toast.error('Failed to save');
     }
