@@ -56,7 +56,7 @@ function AccessDenied({ reason }: { reason: string }) {
   );
 }
 
-export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
+export function MoreModuleRouter({ activeModule, onMoreNavigation }: MoreModuleRouterProps) {
   const role = useRole();
 
   // Scroll to top whenever module changes
