@@ -16,6 +16,7 @@ const tabs = [
 ] as const;
 
 export function SettingsScreen() {
+  const [activeTab, setActiveTab] = useState('user');
   return (
     <div className="w-full">
       {/* ── Page title ── */}
