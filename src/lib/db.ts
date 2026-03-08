@@ -570,6 +570,17 @@ db.version(13).stores({}).upgrade(async tx => {
   }
 });
 
+// v14 — Correct InCred EMI to ₹32,641 (was incorrectly seeded as ₹12,000)
+db.version(14).stores({}).upgrade(async tx => {
+  const incred = await tx.table('loans').get('loan-incred-2026');
+  if (incred && (incred.emi ?? 0) !== 32641) {
+    await tx.table('loans').update('loan-incred-2026', {
+      emi: 32641,
+      updatedAt: new Date(),
+    });
+  }
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
