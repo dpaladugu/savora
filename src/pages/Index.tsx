@@ -13,6 +13,7 @@ import { Auth } from "@/components/auth/Auth";
 import { db } from "@/lib/db";
 import { seedInitialData } from "@/lib/seed-data";
 import { performStartupVerification, logStartupResults } from "@/utils/startup-verification";
+import { GlobalHeader } from "@/components/layout/global-header";
 
 const MainApp = () => {
   // Move hooks to the top level and add error handling
@@ -28,7 +29,8 @@ const MainApp = () => {
   return (
     <GlobalErrorBoundary>
       <div className="relative min-h-screen">
-        <div className="pb-20 md:pb-0">
+        <GlobalHeader title="Savora" />
+        <div className="pt-14 pb-20 md:pb-0">
           <MainContentRouter
             activeTab={activeTab}
             activeMoreModule={activeMoreModule}
