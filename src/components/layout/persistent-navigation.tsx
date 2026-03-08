@@ -4,6 +4,10 @@ import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-re
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useRole } from "@/store/rbacStore";
+
 
 interface PersistentNavigationProps {
   activeTab: string;
