@@ -129,14 +129,14 @@ export function IncomeTracker() {
         animate={{ opacity: 1, y: 0 }}
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
       >
-        <Card className="bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+        <Card className="bg-gradient-to-br from-success to-accent text-success-foreground">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-sm">Total Income</p>
+                <p className="text-success-foreground/80 text-sm">Total Income</p>
                 <p className="text-2xl font-bold">{formatCurrency(totalIncome)}</p>
               </div>
-              <TrendingUp className="w-8 h-8 text-green-200" />
+              <TrendingUp className="w-8 h-8 text-success-foreground/70" />
             </div>
           </CardContent>
         </Card>
