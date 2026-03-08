@@ -995,9 +995,18 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
       {/* ── Collection Status ── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            This Month's Collection
+          <CardTitle className="text-base flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              This Month's Collection
+            </span>
+            <Button
+              size="sm" variant="outline"
+              className="h-7 text-xs border-warning/40 text-warning hover:bg-warning/10"
+              onClick={() => setShowResetConfirm(true)}
+            >
+              Month-End Reset
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
