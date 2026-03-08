@@ -124,18 +124,18 @@ export function VehicleList({ vehicles, onDelete, onEdit }: VehicleListProps) {
             <CardDescription className="text-xs font-semibold mb-1">Insurance & Compliance</CardDescription>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2 text-sm">
               {vehicle.insuranceExpiry && (
-                <div className={`flex items-center text-muted-foreground ${isDateApproaching(vehicle.insuranceExpiry) ? 'font-semibold text-orange-600 dark:text-orange-400' : ''} ${isDateInPast(vehicle.insuranceExpiry) ? 'text-red-600 dark:text-red-400' : ''}`}>
-                    <CalendarDays aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />
+                <div className={`flex items-center text-muted-foreground ${isDateApproaching(vehicle.insuranceExpiry) ? 'font-semibold text-warning' : ''} ${isDateInPast(vehicle.insuranceExpiry) ? 'value-negative' : ''}`}>
+                    <CalendarDays aria-hidden="true" className="w-4 h-4 mr-1.5 text-muted-foreground" />
                     Ins. Due: <span className="ml-1">{formatDateSafe(vehicle.insuranceExpiry)}</span>
-                    {isDateApproaching(vehicle.insuranceExpiry) && !isDateInPast(vehicle.insuranceExpiry) && <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-600">Soon</Badge>}
+                    {isDateApproaching(vehicle.insuranceExpiry) && !isDateInPast(vehicle.insuranceExpiry) && <Badge variant="outline" className="ml-2 text-xs border-warning/50 text-warning">Soon</Badge>}
                     {isDateInPast(vehicle.insuranceExpiry) && <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>}
                 </div>
               )}
               {vehicle.pucExpiry && (
-                 <div className={`flex items-center text-muted-foreground ${isDateApproaching(vehicle.pucExpiry) ? 'font-semibold text-orange-600 dark:text-orange-400' : ''} ${isDateInPast(vehicle.pucExpiry) ? 'text-red-600 dark:text-red-400' : ''}`}>
-                    <Cog aria-hidden="true" className="w-4 h-4 mr-1.5 text-gray-400" />
+                 <div className={`flex items-center text-muted-foreground ${isDateApproaching(vehicle.pucExpiry) ? 'font-semibold text-warning' : ''} ${isDateInPast(vehicle.pucExpiry) ? 'value-negative' : ''}`}>
+                    <Cog aria-hidden="true" className="w-4 h-4 mr-1.5 text-muted-foreground" />
                     PUCC Due: <span className="ml-1">{formatDateSafe(vehicle.pucExpiry)}</span>
-                    {isDateApproaching(vehicle.pucExpiry) && !isDateInPast(vehicle.pucExpiry) && <Badge variant="outline" className="ml-2 text-xs border-orange-500 text-orange-600">Soon</Badge>}
+                    {isDateApproaching(vehicle.pucExpiry) && !isDateInPast(vehicle.pucExpiry) && <Badge variant="outline" className="ml-2 text-xs border-warning/50 text-warning">Soon</Badge>}
                     {isDateInPast(vehicle.pucExpiry) && <Badge variant="destructive" className="ml-2 text-xs">Expired</Badge>}
                 </div>
               )}
