@@ -209,7 +209,7 @@ export function InsuranceSinkingFund() {
           {personalPay.map(p => {
             const termYears       = (p as any).premiumTermYears ?? 1;
             const effectiveMonths = termYears > 1 ? termYears * 12 : monthsUntilRenewal(p.endDate);
-            const projPremium     = projectedNextPremium(p.premium ?? 0, termYears);
+            const projPremium     = projectedNextPremium(p.premium ?? 0, termYears, medicalInflation);
             const monthly         = Math.ceil(projPremium / Math.max(1, effectiveMonths));
             const inflationAmt    = projPremium - (p.premium ?? 0);
             const alreadyHas      = hasGoal(p.id);
