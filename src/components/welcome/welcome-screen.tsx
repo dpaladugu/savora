@@ -1,52 +1,69 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
+import { TrendingUp, Shield, Zap } from "lucide-react";
 
 interface WelcomeScreenProps {
   onComplete: () => void;
 }
 
 export function WelcomeScreen({ onComplete }: WelcomeScreenProps) {
-  console.log('WelcomeScreen: Component mounting');
-  console.log('WelcomeScreen: React version check:', typeof React, React);
-  
   const navigate = useNavigate();
 
-  const handleCreateAccount = () => {
-    console.log('WelcomeScreen: handleCreateAccount triggered');
-    try {
-      navigate("/auth");
-    } catch (error) {
-      console.error('WelcomeScreen: Error during navigation:', error);
-    }
-  };
-
-  const handleSkipForNow = () => {
-    console.log('WelcomeScreen: handleSkipForNow triggered');
-    // For demo purposes, let's allow users to skip auth and go directly to the app
-    onComplete();
-  };
+  const features = [
+    { icon: TrendingUp, text: "Track every rupee, every loan, every asset" },
+    { icon: Shield,     text: "Role-based privacy — Admin, Spouse, Brother" },
+    { icon: Zap,        text: "Guntur waterfall & Gorantla rental engine" },
+  ];
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Card className="w-full max-w-md mx-4">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Welcome to Savora</CardTitle>
-          <CardDescription>
-            Your personal finance management companion.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Button onClick={handleCreateAccount} className="w-full">
-            Create Account
-          </Button>
-          <Button onClick={handleSkipForNow} variant="outline" className="w-full">
-            Skip for Now (Demo Mode)
-          </Button>
-        </CardContent>
-      </Card>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-background px-6">
+      {/* Logo */}
+      <div
+        className="flex h-16 w-16 items-center justify-center rounded-2xl mb-6 shadow-glow"
+        style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}
+        aria-hidden="true"
+      >
+        <span className="text-2xl font-bold text-white select-none">S</span>
+      </div>
+
+      <h1 className="text-3xl font-bold text-foreground tracking-tight mb-1 text-center">
+        Welcome to Savora
+      </h1>
+      <p className="text-sm text-muted-foreground text-center mb-8 max-w-xs">
+        Your family's private financial command centre
+      </p>
+
+      {/* Feature list */}
+      <div className="w-full max-w-sm space-y-3 mb-10">
+        {features.map(({ icon: Icon, text }) => (
+          <div key={text} className="flex items-center gap-3 p-3.5 rounded-2xl bg-secondary/50 border border-border/50">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 shrink-0">
+              <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
+            </div>
+            <p className="text-sm text-foreground">{text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* CTAs */}
+      <div className="w-full max-w-sm space-y-3">
+        <Button
+          onClick={onComplete}
+          className="w-full h-12 rounded-2xl text-sm font-semibold"
+          style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)))" }}
+        >
+          Get Started
+        </Button>
+        <Button
+          onClick={() => navigate("/auth")}
+          variant="outline"
+          className="w-full h-12 rounded-2xl text-sm font-medium border-border/60"
+        >
+          Sign In with Account
+        </Button>
+      </div>
     </div>
   );
 }

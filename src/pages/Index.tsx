@@ -16,7 +16,6 @@ import { performStartupVerification, logStartupResults } from "@/utils/startup-v
 import { GlobalHeader } from "@/components/layout/global-header";
 
 const MainApp = () => {
-  // Move hooks to the top level and add error handling
   let isUnlocked = false;
   try {
     isUnlocked = useAppStore((state) => state.isUnlocked);
@@ -25,34 +24,41 @@ const MainApp = () => {
   }
 
   const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
-  
+
   return (
     <GlobalErrorBoundary>
-      <div className="relative min-h-screen">
+      {/* Full-height flex column so content fills between header and nav */}
+      <div className="flex flex-col min-h-screen bg-background">
+        {/* Fixed top header */}
         <GlobalHeader title="Savora" />
-        <div className="pt-14 pb-20 md:pb-0">
+
+        {/* Scrollable content area — pt accounts for fixed header (56px), pb for nav (72px) */}
+        <main
+          className="flex-1 px-4 pt-[70px] pb-[80px] overflow-y-auto"
+          id="main-content"
+          tabIndex={-1}
+        >
           <MainContentRouter
             activeTab={activeTab}
             activeMoreModule={activeMoreModule}
             onMoreNavigation={handleMoreNavigation}
             onTabChange={handleTabChange}
           />
-          <PersistentNavigation
-            activeTab={activeTab}
-            onTabChange={handleTabChange}
-            activeMoreModule={activeMoreModule}
-            onMoreNavigation={handleMoreNavigation}
-          />
-        </div>
+        </main>
+
+        {/* Persistent bottom nav */}
+        <PersistentNavigation
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          activeMoreModule={activeMoreModule}
+          onMoreNavigation={handleMoreNavigation}
+        />
       </div>
     </GlobalErrorBoundary>
   );
 };
 
 const Index = () => {
-  console.log('Index: Component mounting');
-  
-  // Use direct store access with error handling instead of selector hook
   let isUnlocked = false;
   try {
     isUnlocked = useAppStore((state) => state.isUnlocked);
@@ -66,29 +72,13 @@ const Index = () => {
   const [hasPin, setHasPin] = React.useState(false);
 
   React.useEffect(() => {
-    console.log('Index: useEffect for initial state checking');
     async function checkInitialState() {
       try {
-        // Run startup verification
         const startupChecks = await performStartupVerification();
         logStartupResults(startupChecks);
-        
-        // Check for critical errors
-        const criticalErrors = startupChecks.filter(c => c.status === 'error');
-        if (criticalErrors.length > 0) {
-          console.warn('Critical startup errors detected:', criticalErrors);
-        }
-
-        // Initialize the database and seed data if needed
         await seedInitialData();
-
-        // Check if user exists by looking at globalSettings
         const settings = await db.globalSettings.toArray();
-        const existingUser = settings.length > 0;
-        console.log('Index: Existing user check result:', existingUser);
-        setHasExistingUser(existingUser);
-
-        // For now, skip PIN check - can be added later
+        setHasExistingUser(settings.length > 0);
         setHasPin(false);
       } catch (error) {
         console.error("Index: Error checking initial state:", error);
@@ -96,40 +86,28 @@ const Index = () => {
         setHasPin(false);
       } finally {
         setAppInitialized(true);
-        console.log('Index: App initialization completed');
       }
     }
-
     checkInitialState();
   }, []);
 
   const handleUnlockSuccess = () => {
-    console.log('Index: handleUnlockSuccess called');
     setHasExistingUser(true);
     setHasPin(true);
     navigate('/dashboard');
   };
 
   const handleOnboardingComplete = async () => {
-    console.log('Index: handleOnboardingComplete called');
     try {
-      // Seed initial data which includes basic settings
       await seedInitialData();
-      
       setHasExistingUser(true);
-      setHasPin(false); // No PIN set yet
-      console.log('Index: Profile created, proceeding to main app');
+      setHasPin(false);
     } catch (error) {
       console.error('Index: Error creating profile:', error);
     }
   };
 
-  console.log('Index: Render state - initialized:', isAppInitialized, 'hasUser:', hasExistingUser, 'hasPin:', hasPin, 'isUnlocked:', isUnlocked);
-
-  if (!isAppInitialized) {
-    console.log('Index: Rendering LoadingScreen');
-    return <LoadingScreen />;
-  }
+  if (!isAppInitialized) return <LoadingScreen />;
 
   return (
     <Routes>
