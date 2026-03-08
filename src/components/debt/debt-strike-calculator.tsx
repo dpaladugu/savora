@@ -5,8 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Target, TrendingDown, Calendar, Zap, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
+import { SequentialStrikeEngine } from './sequential-strike-engine';
 
 interface DebtItem {
   name: string;
