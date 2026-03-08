@@ -366,7 +366,7 @@ export function CreditCardModule() {
                   className="text-2xl font-bold"
                 />
               </div>
-              <AlertTriangle className="h-8 w-8 text-orange-500" />
+              <AlertTriangle className="h-8 w-8 text-warning" />
             </div>
           </CardContent>
         </Card>
