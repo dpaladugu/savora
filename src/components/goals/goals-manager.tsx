@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Target, Plus, Trash2, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { db } from '@/lib/db';
+import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
