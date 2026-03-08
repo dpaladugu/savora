@@ -62,11 +62,11 @@ interface WaterfallBucket {
 }
 
 const waterfallBuckets: WaterfallBucket[] = [
-  { id: 'premium', label: 'Premium Recovery', target: 167943, icon: <ShoppingBag className="w-4 h-4" />, color: 'bg-blue-500' },
-  { id: 'sinking', label: '2029 Sinking Fund', monthly: 5400, target: 5400 * 12 * 3, icon: <PiggyBank className="w-4 h-4" />, color: 'bg-purple-500' },
-  { id: 'household', label: 'Household Expenses', monthly: 45000, target: 45000, icon: <Home className="w-4 h-4" />, color: 'bg-green-500' },
-  { id: 'grandma', label: "Grandma's Safety Net", target: 500000, icon: <CheckCircle className="w-4 h-4" />, color: 'bg-orange-500' },
-  { id: 'debt', label: 'ICICI Loan Prepayment', target: Infinity, icon: <ArrowDown className="w-4 h-4" />, color: 'bg-red-500' },
+  { id: 'premium', label: 'Premium Recovery', target: 167943, icon: <ShoppingBag className="w-4 h-4" />, color: 'bg-primary' },
+  { id: 'sinking', label: '2029 Sinking Fund', monthly: 5400, target: 5400 * 12 * 3, icon: <PiggyBank className="w-4 h-4" />, color: 'bg-accent' },
+  { id: 'household', label: 'Household Expenses', monthly: 45000, target: 45000, icon: <Home className="w-4 h-4" />, color: 'bg-success' },
+  { id: 'grandma', label: "Grandma's Safety Net", target: 500000, icon: <CheckCircle className="w-4 h-4" />, color: 'bg-warning' },
+  { id: 'debt', label: 'ICICI Loan Prepayment (Debt Strike)', target: Infinity, icon: <ArrowDown className="w-4 h-4" />, color: 'bg-destructive' },
 ];
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
