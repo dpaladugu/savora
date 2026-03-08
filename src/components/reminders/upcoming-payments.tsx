@@ -107,14 +107,10 @@ export function UpcomingPayments() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'overdue':
-        return 'border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800';
-      case 'due-today':
-        return 'border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800';
-      case 'upcoming':
-        return 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800';
-      default:
-        return 'border-gray-200 bg-gray-50 dark:bg-gray-900/10 dark:border-gray-800';
+      case 'overdue':   return 'border-destructive/40 bg-destructive/5';
+      case 'due-today': return 'border-warning/40 bg-warning/5';
+      case 'upcoming':  return 'border-primary/30 bg-primary/5';
+      default:          return 'border-border bg-muted/20';
     }
   };
 
@@ -164,8 +160,8 @@ export function UpcomingPayments() {
         <Card className="metric-card border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 dark:bg-red-900/20 rounded-lg">
-                <Clock className="w-5 h-5 text-red-600" />
+              <div className="p-2 bg-destructive/10 rounded-lg">
+                <Clock className="w-5 h-5 text-destructive" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-foreground">{formatCurrency(totalDueAmount)}</div>
@@ -178,8 +174,8 @@ export function UpcomingPayments() {
         <Card className="metric-card border-border/50">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg">
-                <Calendar className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Calendar className="w-5 h-5 text-primary" />
               </div>
               <div>
                 <div className="text-2xl font-bold text-foreground">{reminders.length}</div>
@@ -194,7 +190,7 @@ export function UpcomingPayments() {
       {todayReminders.length > 0 && (
         <div className="space-y-4">
           <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-            <Clock className="w-5 h-5 text-red-600" />
+            <Clock className="w-5 h-5 text-destructive" />
             Action Required
           </h2>
           {todayReminders.map((reminder) => {
@@ -204,7 +200,7 @@ export function UpcomingPayments() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5 text-gray-600" />
+                      <Icon className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <h3 className="font-semibold text-foreground">{reminder.title}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -219,13 +215,14 @@ export function UpcomingPayments() {
                       )}
                       <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium px-2 py-1 rounded ${
-                          reminder.status === 'overdue' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                          'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                          reminder.status === 'overdue'
+                            ? 'bg-destructive/10 text-destructive'
+                            : 'bg-warning/10 text-warning'
                         }`}>
                           {getStatusLabel(reminder.status)}
                         </span>
                         {reminder.autoDebit && (
-                          <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                          <span className="text-xs text-success bg-success/10 px-2 py-1 rounded">
                             Auto-debit
                           </span>
                         )}
@@ -250,7 +247,7 @@ export function UpcomingPayments() {
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5 text-gray-600" />
+                      <Icon className="w-5 h-5 text-muted-foreground" />
                       <div>
                         <h3 className="font-semibold text-foreground">{reminder.title}</h3>
                         <p className="text-sm text-muted-foreground">
@@ -265,7 +262,7 @@ export function UpcomingPayments() {
                       )}
                       <div className="flex items-center gap-2">
                         {reminder.autoDebit && (
-                          <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                          <span className="text-xs text-success bg-success/10 px-2 py-1 rounded">
                             Auto-debit
                           </span>
                         )}

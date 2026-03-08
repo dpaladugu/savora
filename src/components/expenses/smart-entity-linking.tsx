@@ -105,10 +105,10 @@ export function SmartEntityLinking({ category, description, onLinkChange, linked
   return (
     <div className="space-y-3">
       {suggestions.map((suggestion) => (
-        <div key={suggestion.type} className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+        <div key={suggestion.type} className="p-3 bg-primary/5 rounded-lg border border-primary/20">
           <div className="flex items-center gap-2 mb-2">
-            <suggestion.icon className="w-4 h-4 text-blue-600" />
-            <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+            <suggestion.icon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">
               {suggestion.label}
             </span>
           </div>

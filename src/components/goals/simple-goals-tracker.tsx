@@ -3,11 +3,11 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Target } from "lucide-react"; // Removed TrendingUp as it's not used directly here
+import { Progress } from "@/components/ui/progress";
+import { Plus, Target } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-// import { GlobalHeader } from "@/components/layout/global-header"; // Removed
-import { ModuleHeader } from "@/components/layout/module-header"; // Import ModuleHeader
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Import Select
+import { ModuleHeader } from "@/components/layout/module-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Goal {
   id: string;
@@ -101,14 +101,14 @@ export function SimpleGoalsTracker() {
 
           <Card className="metric-card border-border/50">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-green-600">₹{totalSaved.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-success">₹{totalSaved.toLocaleString()}</div>
               <div className="text-sm text-muted-foreground">Saved</div>
             </CardContent>
           </Card>
 
           <Card className="metric-card border-border/50">
             <CardContent className="p-4 text-center">
-              <div className="text-2xl font-bold text-blue-600">{progress.toFixed(1)}%</div>
+              <div className="text-2xl font-bold text-primary">{progress.toFixed(1)}%</div>
               <div className="text-sm text-muted-foreground">Progress</div>
             </CardContent>
           </Card>
@@ -147,20 +147,13 @@ export function SimpleGoalsTracker() {
                         <div className="text-lg font-semibold text-foreground">
                           ₹{goal.currentAmount.toLocaleString()} / ₹{goal.targetAmount.toLocaleString()}
                         </div>
-                        <div className={`text-sm ${isCompleted ? 'text-green-600' : 'text-blue-600'}`}>
+                        <div className={`text-sm ${isCompleted ? 'text-success' : 'text-primary'}`}>
                           {goalProgress.toFixed(1)}% {isCompleted ? 'Complete!' : 'Progress'}
                         </div>
                       </div>
                     </div>
                     
-                    <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 mb-2">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          isCompleted ? 'bg-green-500' : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${Math.min(goalProgress, 100)}%` }}
-                      />
-                    </div>
+                    <Progress value={Math.min(goalProgress, 100)} className={`h-2 mb-2 ${isCompleted ? '[&>div]:bg-success' : '[&>div]:bg-primary'}`} />
                     
                     <div className="flex justify-between text-xs text-muted-foreground">
                       <span>Deadline: {new Date(goal.deadline).toLocaleDateString()}</span>

@@ -21,7 +21,7 @@ export function CSVDataPreview({
   
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-green-500">
+      <div className="flex items-center gap-2 text-success">
         <CheckCircle className="w-4 h-4" />
         <span className="text-sm font-medium">
           Preview Data ({csvType}) - Showing {previewData.length} of {displayCount} records

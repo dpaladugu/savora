@@ -66,7 +66,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-full ${itemIsExpense ? 'bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300' : 'bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-300'}`}>
+                  <div className={`p-2 rounded-full ${itemIsExpense ? 'bg-destructive/10 text-destructive' : 'bg-success/10 text-success'}`}>
                     {itemIsExpense ? <TrendingDown className="w-4 h-4"/> : <TrendingUp className="w-4 h-4"/>}
                   </div>
                   <div className="flex-1">
@@ -76,7 +76,7 @@ export function TransactionList({ transactions, onEdit, onDelete }: TransactionL
                         <Calendar className="w-3 h-3" />
                         {formatDate(item.date)}
                         {'source_recurring_transaction_id' in item && item.source_recurring_transaction_id && (
-                          <Repeat className="w-3 h-3 ml-1 text-blue-500" />
+                          <Repeat className="w-3 h-3 ml-1 text-primary" />
                         )}
                       </span>
                       {subLine && (

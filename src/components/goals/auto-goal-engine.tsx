@@ -192,15 +192,15 @@ const PRIORITY_STACK = [
 ];
 
 const catColors: Record<string, string> = {
-  Vehicle:    'bg-blue-500/10 text-blue-600',
-  Education:  'bg-violet-500/10 text-violet-600',
-  Health:     'bg-rose-500/10 text-rose-600',
-  Retirement: 'bg-amber-500/10 text-amber-600',
-  'Tax Saving':'bg-green-500/10 text-green-600',
-  Property:   'bg-orange-500/10 text-orange-600',
-  Lifestyle:  'bg-pink-500/10 text-pink-600',
-  Insurance:  'bg-cyan-500/10 text-cyan-600',
-  Investment: 'bg-yellow-500/10 text-yellow-600',
+  Vehicle:     'bg-primary/10 text-primary',
+  Education:   'bg-accent/10 text-accent',
+  Health:      'bg-destructive/10 text-destructive',
+  Retirement:  'bg-warning/10 text-warning',
+  'Tax Saving':'bg-success/10 text-success',
+  Property:    'bg-warning/15 text-warning',
+  Lifestyle:   'bg-primary/15 text-primary',
+  Insurance:   'bg-accent/15 text-accent',
+  Investment:  'bg-success/15 text-success',
 };
 
 export function AutoGoalEngine() {

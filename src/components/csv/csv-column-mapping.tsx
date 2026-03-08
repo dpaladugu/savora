@@ -34,7 +34,7 @@ export function CSVColumnMapping({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2 text-orange-500">
+      <div className="flex items-center gap-2 text-warning">
         <MapPin className="w-4 h-4" />
         <span className="text-sm font-medium">Column Mapping Required</span>
       </div>

@@ -104,7 +104,7 @@ export function FamilyFinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{formatCurrency(totalFamilyWealth)}</div>
-            <div className="flex items-center gap-1 text-sm text-green-600">
+            <div className="flex items-center gap-1 text-sm text-success">
               <TrendingUp className="w-3 h-3" />
               +{wealthGrowth}% this year
             </div>
@@ -132,7 +132,7 @@ export function FamilyFinancialDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{formatCurrency(familyData.totalLoans)}</div>
+            <div className="text-2xl font-bold text-destructive">{formatCurrency(familyData.totalLoans)}</div>
             <p className="text-sm text-muted-foreground">Outstanding amount</p>
           </CardContent>
         </Card>
@@ -190,7 +190,7 @@ export function FamilyFinancialDashboard() {
                       </div>
                       <div>
                         <span className="text-muted-foreground">Loan Burden:</span>
-                        <p className="font-medium text-red-600">{formatCurrency(member.loanBurden)}</p>
+                        <p className="font-medium text-destructive">{formatCurrency(member.loanBurden)}</p>
                       </div>
                     </div>
                   </div>
@@ -236,25 +236,24 @@ export function FamilyFinancialDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-center">
-              <div className="text-4xl font-bold text-green-600 mb-2">A+</div>
+              <div className="text-4xl font-bold text-success mb-2">A+</div>
               <p className="text-muted-foreground mb-4">Excellent financial health</p>
-              
               <div className="space-y-3 text-left">
                 <div className="flex justify-between">
                   <span>Emergency Fund</span>
-                  <Badge variant="outline" className="text-green-600">Good</Badge>
+                  <Badge variant="outline" className="text-success">Good</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Debt-to-Income Ratio</span>
-                  <Badge variant="outline" className="text-yellow-600">Moderate</Badge>
+                  <Badge variant="outline" className="text-warning">Moderate</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Investment Diversity</span>
-                  <Badge variant="outline" className="text-green-600">Good</Badge>
+                  <Badge variant="outline" className="text-success">Good</Badge>
                 </div>
                 <div className="flex justify-between">
                   <span>Insurance Coverage</span>
-                  <Badge variant="outline" className="text-red-600">Needs Attention</Badge>
+                  <Badge variant="outline" className="text-destructive">Needs Attention</Badge>
                 </div>
               </div>
             </div>
