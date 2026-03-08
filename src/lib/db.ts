@@ -85,6 +85,10 @@ export interface Insurance {
   familyMember?: string;
   notes?: string;
   isActive?: boolean;
+  // Corporate / source metadata
+  policySource?: 'Personal' | 'Corporate / Employer' | 'Government Scheme';
+  isCorporate?: boolean;   // true = employer-provided (job-dependent antifragility risk)
+  hasMaternity?: boolean;  // maternity rider / maternity coverage flag
   createdAt: Date;
   updatedAt: Date;
 }

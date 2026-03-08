@@ -18,21 +18,49 @@ import { InsuranceGapAnalysis } from './insurance-gap-analysis';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
-  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp
+  Heart, Car, Users, Briefcase, CheckCircle2, Clock, TrendingUp, Activity
 } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Insurance } from '@/lib/db';
 
 const INSURANCE_TYPES = [
-  'Health', 'Term Life', 'Vehicle', 'Personal Accident', 'Home', 'Travel', 'Other'
+  // Personal policies
+  'Health',
+  'Super Top-Up Health',
+  'Critical Illness',
+  'Term Life',
+  'Personal Accident',
+  'Vehicle',
+  'Home',
+  'Travel',
+  // Corporate / Group policies (job-dependent)
+  'Corporate Group Health',
+  'Corporate Group Term',
+  'Corporate Parental Health',  // covers parents under employer
+  // Specialty
+  'Maternity Rider',
+  'Other',
 ] as const;
 
-const FAMILY_MEMBERS = ['Me', 'Spouse', 'Mother', 'Grandmother', 'Brother', 'Family Floater'];
+const POLICY_SOURCE = ['Personal', 'Corporate / Employer', 'Government Scheme'] as const;
+
+const FAMILY_MEMBERS = [
+  'Me', 'Spouse', 'Baby / Child',
+  'Mother', 'Father', 'Mother-in-Law', 'Father-in-Law',
+  'Grandmother', 'Brother',
+  'Family Floater',
+];
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   'Health': Heart,
+  'Super Top-Up Health': Heart,
+  'Critical Illness': Activity,
   'Term Life': Shield,
+  'Corporate Group Health': Briefcase,
+  'Corporate Group Term': Briefcase,
+  'Corporate Parental Health': Users,
+  'Maternity Rider': Heart,
   'Vehicle': Car,
   'Personal Accident': Users,
   'Home': Briefcase,
@@ -42,6 +70,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
 
 const emptyForm = {
   type: 'Health' as string,
+  policySource: 'Personal' as string,
   provider: '',
   policyNo: '',
   familyMember: 'Me',
@@ -51,6 +80,7 @@ const emptyForm = {
   endDate: '',
   nomineeName: '',
   nomineeRelation: '',
+  hasMaternity: false,
   notes: '',
 };
 
@@ -83,10 +113,12 @@ export function InsuranceManager() {
     setForm({
       type: p.type, provider: p.provider ?? '', policyNo: p.policyNo || '',
       familyMember: p.familyMember || 'Me',
+      policySource: p.policySource || 'Personal',
       sumInsured: p.sumInsured.toString(), premium: p.premium.toString(),
       startDate: p.startDate ? new Date(p.startDate).toISOString().split('T')[0] : '',
       endDate: p.endDate ? new Date(p.endDate).toISOString().split('T')[0] : '',
       nomineeName: p.nomineeName || '', nomineeRelation: p.nomineeRelation || '',
+      hasMaternity: p.hasMaternity ?? false,
       notes: p.notes || '',
     });
     setShowModal(true);
@@ -94,10 +126,14 @@ export function InsuranceManager() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    const isCorp = form.policySource === 'Corporate / Employer';
     const data: Omit<Insurance, 'id'> = {
       name: `${form.provider} ${form.type}`,
       type: form.type, provider: form.provider, policyNo: form.policyNo,
       familyMember: form.familyMember,
+      policySource: form.policySource as Insurance['policySource'],
+      isCorporate: isCorp,
+      hasMaternity: form.hasMaternity,
       sumInsured: parseFloat(form.sumInsured) || 0,
       premium: parseFloat(form.premium) || 0,
       startDate: form.startDate ? new Date(form.startDate) : new Date(),
@@ -276,6 +312,24 @@ export function InsuranceManager() {
                 </Select>
               </div>
             </div>
+
+            {/* Policy Source — critical for antifragility scoring */}
+            <div className="space-y-1">
+              <Label className="text-xs">Policy Source</Label>
+              <Select value={form.policySource} onValueChange={v => setForm(f => ({ ...f, policySource: v }))}>
+                <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {POLICY_SOURCE.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              {form.policySource === 'Corporate / Employer' && (
+                <p className="text-[10px] text-warning flex items-center gap-1 mt-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Corporate cover lapses if you change jobs — antifragility risk.
+                </p>
+              )}
+            </div>
+
             {[
               { id: 'provider',   label: 'Provider *',         key: 'provider',   required: true             },
               { id: 'policyNo',   label: 'Policy Number',      key: 'policyNo',   required: false            },
@@ -307,6 +361,18 @@ export function InsuranceManager() {
                 <Input value={form.nomineeRelation} onChange={e => setForm(f => ({ ...f, nomineeRelation: e.target.value }))} className="h-9 text-sm" placeholder="Spouse / Child" />
               </div>
             </div>
+
+            {/* Maternity flag */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.hasMaternity}
+                onChange={e => setForm(f => ({ ...f, hasMaternity: e.target.checked }))}
+                className="h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-xs text-foreground">Policy includes maternity cover</span>
+            </label>
+
             <div className="space-y-1">
               <Label className="text-xs">Notes</Label>
               <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} className="h-9 text-sm" placeholder="Optional" />

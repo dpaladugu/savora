@@ -166,27 +166,39 @@ export interface PortfolioAnalysis {
 
 export interface CreditCard {
   id: string;
+  // ── Identity ────────────────────────────────────────────────────────────────
   name: string;
-  issuer: string;
+  issuer?: string;
   bankName: string;
-  last4: string;
-  network: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex';
-  cardVariant: string;
-  productVariant: string;
-  annualFee: number;
-  annualFeeGst: number;
+  cardName?: string;         // e.g. "Regalia", "Swiggy"
+  last4?: string;            // legacy alias
+  lastFourDigits?: string;   // canonical 4-digit identifier (preferred over last4)
+  network?: 'Visa' | 'Mastercard' | 'Rupay' | 'Amex' | 'Diners' | string;
+  cardVariant?: string;
+  productVariant?: string;
+  // ── Limits & Balance ────────────────────────────────────────────────────────
   creditLimit: number;
-  creditLimitShared: boolean;
-  fuelSurchargeWaiver: boolean;
-  rewardPointsBalance: number;
-  cycleStart: number;
-  stmtDay: number;
-  dueDay: number;
-  fxTxnFee: number;
-  emiConversion: boolean;
-  currentBalance: number;
-  limit: number;
-  dueDate: string;
+  limit?: number;            // legacy alias
+  currentBalance?: number;   // outstanding bill amount
+  creditLimitShared?: boolean;
+  // ── Fees ────────────────────────────────────────────────────────────────────
+  annualFee: number;
+  annualFeeGst?: number;
+  feeWaiverRule?: string;    // e.g. "Spend ₹2L/yr"
+  // ── Payment & Dates ──────────────────────────────────────────────────────────
+  dueDate?: string;          // legacy ISO string
+  dueDay?: number;           // day of month (1-31)
+  cycleStart?: number;
+  stmtDay?: number;          // statement generation day
+  statementDate?: number;    // alias for stmtDay
+  anniversaryDate?: string;  // card activation anniversary (ISO date)
+  paymentMethod?: 'UPI' | 'NEFT' | 'NACH Auto-Pay' | 'In App' | 'Cheque' | string;
+  // ── Misc ─────────────────────────────────────────────────────────────────────
+  fxTxnFee?: number;
+  emiConversion?: boolean;
+  fuelSurchargeWaiver?: boolean;
+  rewardPointsBalance?: number;
+  isActive?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

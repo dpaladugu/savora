@@ -106,21 +106,40 @@ export function InsuranceGapAnalysis() {
       const byType = (keyword: string) =>
         all.filter(p => p.type?.toLowerCase().includes(keyword.toLowerCase()));
 
+      // Corporate (employer-provided) policies — job-dependent, antifragility risk
+      const isCorpPolicy = (p: any) =>
+        p.isCorporate ||
+        p.policySource === 'Corporate / Employer' ||
+        p.type?.toLowerCase().includes('corporate') ||
+        p.type?.toLowerCase().includes('group');
+
       // ── Term Life ────────────────────────────────────────────────────────────
-      const termPolicies   = byType('term');
-      const personalTerm   = termPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
-      const totalTerm      = personalTerm + employerTerm;
-      const termRequired   = annualIncome * 10;
+      const termPolicies     = byType('term');
+      const personalTermPolicies = termPolicies.filter(p => !isCorpPolicy(p));
+      const corpTermPolicies     = termPolicies.filter(p => isCorpPolicy(p));
+      const personalTerm     = personalTermPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
+      const corpTermSum      = corpTermPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
+      const totalTerm        = personalTerm + employerTerm + corpTermSum;
+      const termRequired     = annualIncome * 10;
+      // For antifragility: personal-only term (not counting employer)
+      const personalTermOnly = personalTerm;
 
       // ── Health / Floater ──────────────────────────────────────────────────────
       const healthPolicies  = all.filter(p =>
         p.type?.toLowerCase().includes('health') ||
         p.type?.toLowerCase().includes('medical') ||
-        p.type?.toLowerCase().includes('floater')
+        p.type?.toLowerCase().includes('floater') ||
+        p.type?.toLowerCase().includes('parental')
       );
-      const personalHealth  = healthPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
-      const totalHealth     = personalHealth + employerHealth;
+      const personalHealthPolicies = healthPolicies.filter(p => !isCorpPolicy(p));
+      const corpHealthPolicies     = healthPolicies.filter(p => isCorpPolicy(p));
+      const personalHealth  = personalHealthPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
+      const corpHealthSum   = corpHealthPolicies.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
+      const totalHealth     = personalHealth + employerHealth + corpHealthSum;
       const healthRequired  = annualIncome * 5;
+
+      // Maternity cover flag
+      const hasMaternity    = all.some((p: any) => p.hasMaternity || p.type?.toLowerCase().includes('maternity'));
 
       // ── Critical Illness ──────────────────────────────────────────────────────
       const ciPolicies   = byType('critical');
@@ -128,10 +147,9 @@ export function InsuranceGapAnalysis() {
       const ciRequired   = annualIncome * 2;
 
       // ── Super Top-Up / Top-Up ─────────────────────────────────────────────────
-      const superTopUp  = byType('top').concat(byType('super'));
+      const superTopUp    = byType('top').concat(byType('super'));
       const superTopUpSum = superTopUp.reduce((s, p) => s + (p.sumInsured ?? 0), 0);
       const baseHealthOk  = totalHealth >= 1_000_000; // 10L base
-      const superTopUpNeeded = !baseHealthOk || superTopUpSum === 0;
 
       // ── Personal Accident ─────────────────────────────────────────────────────
       const paPolicies = byType('accident');
@@ -145,6 +163,10 @@ export function InsuranceGapAnalysis() {
       // ── Missing nominees ──────────────────────────────────────────────────────
       const missingNominee = all.filter(p => !p.nomineeName?.trim());
 
+      // Corporate-only coverage (no personal backup) = antifragility failure
+      const corpOnlyHealth = totalHealth > 0 && personalHealth === 0 && employerHealth === 0;
+      const corpOnlyTerm   = totalTerm > 0 && personalTermOnly === 0 && employerTerm === 0;
+
       const res: GapResult[] = [
         // 1. Term Life
         {
@@ -154,7 +176,7 @@ export function InsuranceGapAnalysis() {
           rule: 'CFA Rule: ≥ 10× Annual Income',
           required: termRequired,
           personalCover: personalTerm,
-          employerCover: employerTerm,
+          employerCover: employerTerm + corpTermSum,
           current: totalTerm,
           gap: Math.max(0, termRequired - totalTerm),
           pct: termRequired > 0 ? Math.min(100, (totalTerm / termRequired) * 100) : 0,
@@ -283,12 +305,14 @@ export function InsuranceGapAnalysis() {
 
       // ── Antifragility Scorecard ───────────────────────────────────────────────
       const sc: ScoreItem[] = [
-        { label: 'Term Life ≥ 10× income',        ok: totalTerm    >= termRequired,   critical: true },
-        { label: 'Health ≥ 5× income',             ok: totalHealth  >= healthRequired, critical: true },
-        { label: 'Critical Illness cover',          ok: ciSum        >= ciRequired,     critical: true },
-        { label: 'Super Top-Up ≥ ₹30L',            ok: superTopUpSum >= 3_000_000,     critical: false },
-        { label: 'PA cover ≥ 2× income',            ok: paSum        >= paRequired,     critical: false },
-        { label: 'All policies have nominees',       ok: missingNominee.length === 0,   critical: true },
+        { label: 'Term Life ≥ 10× income',          ok: totalTerm    >= termRequired,   critical: true  },
+        { label: 'Health ≥ 5× income',               ok: totalHealth  >= healthRequired, critical: true  },
+        { label: 'Personal health (not corp-only)',   ok: !corpOnlyHealth,               critical: true  },
+        { label: 'Critical Illness cover',            ok: ciSum        >= ciRequired,     critical: true  },
+        { label: 'Super Top-Up ≥ ₹30L',              ok: superTopUpSum >= 3_000_000,     critical: false },
+        { label: 'PA cover ≥ 2× income',              ok: paSum        >= paRequired,     critical: false },
+        { label: 'Maternity cover in place',          ok: hasMaternity,                  critical: false },
+        { label: 'All policies have nominees',         ok: missingNominee.length === 0,   critical: true  },
       ];
 
       setResults(res);
