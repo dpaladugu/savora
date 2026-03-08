@@ -309,7 +309,7 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             {shops.map(shop => (
-              <div key={shop.id} className={`p-3 rounded-lg border text-sm ${shop.status === 'Vacant' ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-card'}`}>
+              <div key={shop.id} className={`p-3 rounded-lg border text-sm ${shop.status === 'Vacant' ? 'border-destructive/30 bg-destructive/5' : shop.paid ? 'border-success/40 bg-success/5' : 'border-border bg-card'}`}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-medium">{shop.name}</span>
                   {shop.status === 'Vacant'
@@ -321,6 +321,13 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                   ? <Input type="number" defaultValue={shop.rent} className="h-7 text-xs font-semibold text-primary" onBlur={e => updateShopRent(shop.id, parseFloat(e.target.value) || 0)} />
                   : <div className="text-primary font-semibold">{shop.status === 'Vacant' ? '—' : formatCurrency(shop.rent)}</div>
                 }
+                {shop.status === 'Occupied' && (
+                  readOnly
+                    ? <Badge variant={shop.paid ? 'default' : 'outline'} className="mt-1 text-xs w-full justify-center">{shop.paid ? '✓ Paid' : 'Unpaid'}</Badge>
+                    : <Button size="sm" variant={shop.paid ? 'default' : 'outline'} onClick={() => db.gunturShops.update(shop.id, { paid: !shop.paid, updatedAt: new Date() })} className="mt-1 h-6 text-xs w-full">
+                        {shop.paid ? '✓ Paid' : 'Mark Paid'}
+                      </Button>
+                )}
               </div>
             ))}
           </div>
