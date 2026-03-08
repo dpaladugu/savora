@@ -160,9 +160,9 @@ export function CFARecommendationsDashboard() {
 
       {/* Rebalancing Alert */}
       {portfolioAnalysis?.rebalanceNeeded && (
-        <Alert className="border-yellow-200 bg-yellow-50">
-          <AlertTriangle className="h-4 w-4 text-yellow-600" />
-          <AlertDescription className="text-yellow-800">
+        <Alert className="border-warning/30 bg-warning/8">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertDescription className="text-warning">
             Your portfolio requires rebalancing. Some asset classes are significantly over or under-weighted.
           </AlertDescription>
         </Alert>
