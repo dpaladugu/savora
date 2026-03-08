@@ -19,8 +19,12 @@ import {
   Sparkles,
   Home,
   Banknote,
-  AlertCircle
+  AlertCircle,
+  Globe,
+  Bike,
+  Building,
 } from 'lucide-react';
+import { useRole } from '@/store/rbacStore';
 
 interface MoreModule {
   id: string;
