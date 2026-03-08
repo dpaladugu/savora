@@ -1,6 +1,6 @@
 
-import { db } from "@/db";
-import type { Vehicle as AppVehicle } from "@/db";
+import { db } from "@/lib/db";
+import type { Vehicle as AppVehicle } from "@/lib/db";
 
 export class VehicleService {
 
