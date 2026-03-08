@@ -526,6 +526,14 @@ export function LLMAdvisor() {
           </CardContent>
         </Card>
       )}
+          </div>{/* end advisor inner div */}
+        </TabsContent>
+
+        {/* ── Tab 2: Financial Health Audit ── */}
+        <TabsContent value="audit" className="mt-0">
+          <FinancialHealthAudit />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
