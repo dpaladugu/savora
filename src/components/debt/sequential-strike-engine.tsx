@@ -119,6 +119,9 @@ interface UnitToggle {
 }
 
 export function SequentialStrikeEngine() {
+  // Auto-sync EMI reductions on mount
+  useAutoEmiSync();
+
   // Live data
   const loans   = useLiveQuery(() => db.loans.toArray(), []);
   const shops   = useLiveQuery(() => db.gunturShops.toArray(), []);
