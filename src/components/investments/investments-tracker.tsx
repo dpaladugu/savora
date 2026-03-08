@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/format-utils';
 import { db, Investment } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/lib/utils';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 export function InvestmentsTracker() {
   const investments = useLiveQuery(() => db.investments.toArray()) || [];
@@ -35,17 +36,19 @@ export function InvestmentsTracker() {
     <div className="space-y-4">
       {/* ── Summary metrics — 1 col stacked on mobile ── */}
       <div className="grid grid-cols-1 gap-3">
-        {[
-          { label: 'Portfolio Value', value: formatCurrency(totalValue),    color: 'text-foreground'                                },
-          { label: 'Total Invested',  value: formatCurrency(totalInvested), color: 'text-foreground'                                },
-          { label: 'Total Returns',   value: formatCurrency(totalReturns),  color: totalReturns >= 0 ? 'value-positive' : 'value-negative',
-            sub: `${returnsPercent >= 0 ? '+' : ''}${returnsPercent.toFixed(2)}%` },
-        ].map(({ label, value, color, sub }) => (
+        {([
+          { label: 'Portfolio Value', amount: totalValue,    color: 'text-foreground',   sub: undefined as string | undefined },
+          { label: 'Total Invested',  amount: totalInvested, color: 'text-foreground',   sub: undefined as string | undefined },
+          { label: 'Total Returns',   amount: totalReturns,  color: totalReturns >= 0 ? 'value-positive' : 'value-negative',
+            sub: `${returnsPercent >= 0 ? '+' : ''}${returnsPercent.toFixed(2)}%` as string | undefined },
+        ]).map(({ label, amount, color, sub }) => (
           <Card key={label} className="glass">
             <CardContent className="flex items-center justify-between p-4">
               <p className="text-xs text-muted-foreground">{label}</p>
               <div className="text-right">
-                <p className={cn('text-lg font-bold tabular-nums', color)}>{value}</p>
+                <p className={cn('text-lg font-bold tabular-nums', color)}>
+                  <MaskedAmount amount={amount} permission="showInvestments" />
+                </p>
                 {sub && <p className={cn('text-xs font-medium', color)}>{sub}</p>}
               </div>
             </CardContent>

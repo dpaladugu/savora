@@ -12,6 +12,7 @@ import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Loan } from '@/lib/db-extended';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 const emptyForm = {
   type: 'Personal' as 'Personal' | 'Personal-Brother' | 'Education-Brother',
@@ -83,18 +84,28 @@ export function LoanManager() {
 
       {/* Summary — 3 equal cols */}
       <div className="grid grid-cols-3 gap-2">
-        {[
-          { label: 'Outstanding', value: formatCurrency(totalOut), cls: 'value-negative' },
-          { label: 'Monthly EMI', value: formatCurrency(totalEMI), cls: 'text-foreground' },
-          { label: 'High Rate',   value: hiCount.toString(),        cls: hiCount > 0 ? 'value-negative' : 'value-positive' },
-        ].map(({ label, value, cls }) => (
-          <Card key={label} className="glass">
-            <CardContent className="p-3 text-center">
-              <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{label}</p>
-              <p className={`text-sm font-bold tabular-nums ${cls}`}>{value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        <Card className="glass">
+          <CardContent className="p-3 text-center">
+            <p className="text-[10px] text-muted-foreground mb-1 leading-tight">Outstanding</p>
+            <p className="text-sm font-bold tabular-nums value-negative">
+              <MaskedAmount amount={totalOut} permission="showSalary" />
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="glass">
+          <CardContent className="p-3 text-center">
+            <p className="text-[10px] text-muted-foreground mb-1 leading-tight">Monthly EMI</p>
+            <p className="text-sm font-bold tabular-nums text-foreground">
+              <MaskedAmount amount={totalEMI} permission="showSalary" />
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="glass">
+          <CardContent className="p-3 text-center">
+            <p className="text-[10px] text-muted-foreground mb-1 leading-tight">High Rate</p>
+            <p className={`text-sm font-bold tabular-nums ${hiCount > 0 ? 'value-negative' : 'value-positive'}`}>{hiCount}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Loan List */}

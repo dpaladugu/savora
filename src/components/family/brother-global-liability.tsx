@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const USD_TO_INR = 83; // Fixed rate
@@ -151,11 +152,15 @@ export function BrotherGlobalLiability() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20">
               <p className="text-xs text-muted-foreground">Outstanding</p>
-              <p className="font-bold text-destructive">{formatCurrency(INCRED_LOAN.principal)}</p>
+              <p className="font-bold text-destructive">
+                <MaskedAmount amount={INCRED_LOAN.principal} permission="showBrotherUS" />
+              </p>
             </div>
             <div className="p-2 rounded-lg bg-background border">
               <p className="text-xs text-muted-foreground">Monthly Interest</p>
-              <p className="font-bold">{formatCurrency(inCredMonthlyInterest)}</p>
+              <p className="font-bold">
+                <MaskedAmount amount={inCredMonthlyInterest} permission="showBrotherUS" />
+              </p>
             </div>
           </div>
         </CardContent>
@@ -253,16 +258,16 @@ export function BrotherGlobalLiability() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">InCred Loan (India)</span>
-              <span>{formatCurrency(INCRED_LOAN.principal)}</span>
+              <span><MaskedAmount amount={INCRED_LOAN.principal} permission="showBrotherUS" /></span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">US Liabilities (×₹{USD_TO_INR})</span>
-              <span>{formatCurrency(totalUSDebt_INR)}</span>
+              <span><MaskedAmount amount={totalUSDebt_INR} permission="showBrotherUS" /></span>
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-base">
               <span>Total Global Debt</span>
-              <span className="text-destructive">{formatCurrency(totalGlobalDebt_INR)}</span>
+              <span className="text-destructive"><MaskedAmount amount={totalGlobalDebt_INR} permission="showBrotherUS" /></span>
             </div>
           </div>
         </CardContent>
