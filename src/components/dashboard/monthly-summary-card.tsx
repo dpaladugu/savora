@@ -145,5 +145,6 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
         )}
       </CardContent>
     </Card>
+    </button>
   );
 }
