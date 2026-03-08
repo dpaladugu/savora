@@ -55,6 +55,8 @@ const modules: MoreModule[] = [
   { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,    status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
 
   // ── Configuration ──────────────────────────────────────────────
+  { id: 'csv-import',         title: 'CSV Import',           description: 'Import transactions from bank CSV files',         icon: Upload,      status: 'available',    category: 'settings',  priority: 'medium' },
+  { id: 'recurring-transactions', title: 'Recurring Txns',  description: 'Manage recurring income and expense schedules',   icon: Repeat,      status: 'available',    category: 'settings',  priority: 'medium' },
   { id: 'settings', title: 'Settings', description: 'Preferences, security & account', icon: Settings, status: 'available', category: 'settings', priority: 'high' },
 ];
 
