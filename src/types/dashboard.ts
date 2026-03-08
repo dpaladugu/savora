@@ -21,11 +21,11 @@ export interface DashboardData {
 
 export interface Goal {
   id: string;
-  title: string;
+  title?: string;
   targetAmount: number;
   currentAmount: number;
-  deadline: string;
-  category: string;
+  deadline?: string;
+  category?: string;
 }
 
 export interface Transaction {
