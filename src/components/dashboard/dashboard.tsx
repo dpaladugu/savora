@@ -1,14 +1,16 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target, Shield } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, CreditCard, Plus, Target, Shield, Scale, AlertTriangle } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useRole, usePermissions } from '@/store/rbacStore';
 import { MaskedValue } from '@/components/ui/masked-value';
+import { db } from '@/lib/db';
+
 
 interface DashboardProps {
   onTabChange: (tab: string) => void;
@@ -72,6 +74,12 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const { dashboardData, loading } = useDashboardData();
   const role = useRole();
   const perms = usePermissions();
+  const [hasWill, setHasWill] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
+  }, []);
+
 
   // Build metric value strings (actual values — masking applied inside MetricValue)
   const balanceStr     = `₹${(245678).toLocaleString('en-IN')}`;
@@ -148,8 +156,24 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         )}
       </div>
 
+      {/* ── Will & Estate nudge (ADMIN only, no will entries) ── */}
+      {role === 'ADMIN' && hasWill === false && (
+        <button
+          onClick={() => onMoreNavigation('will-estate')}
+          className="w-full flex items-start gap-3 p-3.5 rounded-2xl border border-warning/40 bg-warning/5 hover:bg-warning/10 transition-colors text-left"
+        >
+          <AlertTriangle className="h-4 w-4 text-warning mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-warning">No will entries found</p>
+            <p className="text-xs text-muted-foreground">Protect your family — add asset distribution &amp; digital legacy →</p>
+          </div>
+          <Scale className="h-4 w-4 text-muted-foreground shrink-0" />
+        </button>
+      )}
+
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} />
+
 
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />

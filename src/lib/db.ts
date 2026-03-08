@@ -159,6 +159,31 @@ export interface FamilyTransfer {
   updatedAt?: Date;
 }
 
+export interface WillRow {
+  id: string;
+  assetDescription: string;
+  assetType: string;
+  beneficiary: string;
+  percentage: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DigitalAsset {
+  id: string;
+  type: string;
+  name: string;
+  loginUrl?: string;
+  username?: string;
+  storageLocation: string;
+  nominee: string;
+  accessInstructions: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AuditLog {
   id: string;
   action: string;
@@ -243,6 +268,8 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   incomes: EntityTable<Income, 'id'>;
   insurancePolicies: EntityTable<Insurance, 'id'>;
   spendingLimits: EntityTable<SpendingLimit, 'id'>;
+  willRows: EntityTable<WillRow, 'id'>;
+  digitalAssets: EntityTable<DigitalAsset, 'id'>;
 };
 
 db.version(1).stores({
@@ -272,6 +299,12 @@ db.version(1).stores({
 db.version(2).stores({
   insurancePolicies: '++id, type, provider, familyMember, endDate, createdAt, updatedAt',
   spendingLimits: '++id, category, monthlyCap, alertAt, createdAt, updatedAt',
+});
+
+// Version 3: Will & Estate (WillRow + DigitalAsset)
+db.version(3).stores({
+  willRows:      '++id, assetDescription, assetType, beneficiary, createdAt, updatedAt',
+  digitalAssets: '++id, type, name, nominee, createdAt, updatedAt',
 });
 
 export { db };
