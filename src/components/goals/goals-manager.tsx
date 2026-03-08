@@ -102,11 +102,8 @@ export function GoalsManager({
       name: newGoal.name,
       targetAmount: parseInt(newGoal.targetAmount),
       currentAmount: 0,
-      startDate: new Date().toISOString().split('T')[0],
       deadline: newGoal.endDate,
       category: newGoal.category,
-      status: 'active',
-      priority: 'medium',
       notes: '',
     };
     const id = crypto.randomUUID();
