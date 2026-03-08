@@ -251,6 +251,7 @@ export function RecurringGoals() {
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-4">
                         <span className="text-muted-foreground">Due:</span>
+                        <span className="text-muted-foreground">Due:</span>
 ...
                         <span className={`font-medium ${daysUntilDue <= 30 ? 'text-warning' : 'text-foreground'}`}>
                           {new Date(goal.nextDueDate).toLocaleDateString('en-IN')}
