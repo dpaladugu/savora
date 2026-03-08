@@ -258,16 +258,16 @@ export function BrotherGlobalLiability() {
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">InCred Loan (India)</span>
-              <span>{formatCurrency(INCRED_LOAN.principal)}</span>
+              <span><MaskedAmount amount={INCRED_LOAN.principal} permission="showBrotherUS" /></span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">US Liabilities (×₹{USD_TO_INR})</span>
-              <span>{formatCurrency(totalUSDebt_INR)}</span>
+              <span><MaskedAmount amount={totalUSDebt_INR} permission="showBrotherUS" /></span>
             </div>
             <Separator />
             <div className="flex justify-between font-bold text-base">
               <span>Total Global Debt</span>
-              <span className="text-destructive">{formatCurrency(totalGlobalDebt_INR)}</span>
+              <span className="text-destructive"><MaskedAmount amount={totalGlobalDebt_INR} permission="showBrotherUS" /></span>
             </div>
           </div>
         </CardContent>
