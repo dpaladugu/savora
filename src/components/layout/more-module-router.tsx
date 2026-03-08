@@ -38,6 +38,12 @@ export interface MoreModuleRouterProps {
 export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
   const role = useRole();
 
+  // Scroll to top whenever module changes
+  React.useEffect(() => {
+    const main = document.getElementById('main-content');
+    if (main) main.scrollTop = 0;
+  }, [activeModule]);
+
   const renderModule = () => {
     switch (activeModule) {
       case 'gold':
