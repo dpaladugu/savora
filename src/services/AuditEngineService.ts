@@ -39,7 +39,10 @@ export function dirSignal(days: number): TrafficLight {
 }
 
 // ─── Guntur Waterfall constants (from property-rental-engine) ─────────────────
-const SINKING_FUND_MONTHLY = 5_400;  // priority bucket 2 deduction from rent
+const SINKING_FUND_MONTHLY    = 5_400;   // priority 2 — Sinking Fund
+const HOUSEHOLD_MONTHLY       = 45_000;  // priority 3 — Household Expenses
+const GRANDMA_SAFETY_NET_TARGET = 5_00_000; // priority 4 — Grandma Safety Net corpus
+const PREMIUM_RECOVERY_TARGET = 1_67_943;  // priority 1 — ICICI Premium Recovery
 
 // ─── Result Types ─────────────────────────────────────────────────────────────
 

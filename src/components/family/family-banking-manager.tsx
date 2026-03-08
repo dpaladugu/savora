@@ -129,6 +129,19 @@ export function FamilyBankingManager() {
         date: new Date(txnForm.date),
         createdAt: new Date(),
       });
+
+      // ── Deduct from source account (keeps balances accurate) ──────────────
+      if (txnForm.fromAccountId) {
+        const acct = accounts.find(a => a.id === txnForm.fromAccountId);
+        if (acct) {
+          const newBalance = Math.max(0, acct.currentBalance - amt);
+          await db.familyBankAccounts?.update(txnForm.fromAccountId, {
+            currentBalance: newBalance,
+            updatedAt: new Date(),
+          });
+        }
+      }
+
       toast.success('Transfer recorded');
       setTxnModal(false);
       setTxnForm({ ...emptyTxnForm });
