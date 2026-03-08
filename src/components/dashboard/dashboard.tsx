@@ -22,6 +22,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import type { EmergencyFund } from '@/types/financial';
 import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
+import { NetWorthWidget } from './net-worth-widget';
 
 
 
