@@ -3,13 +3,15 @@ import React, { useEffect, useState } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
-import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight } from 'lucide-react';
 import type { MetricCardProps } from '@/types/dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { useRole, usePermissions } from '@/store/rbacStore';
 import { MaskedValue } from '@/components/ui/masked-value';
 import { db } from '@/lib/db';
+import type { EmergencyFund } from '@/types/financial';
 
 
 
@@ -76,10 +78,16 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const role = useRole();
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
+  const [ef, setEf] = useState<EmergencyFund | null>(null);
 
   useEffect(() => {
     db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
+    db.emergencyFunds.limit(1).first().then(r => setEf(r ?? null)).catch(() => {});
   }, []);
+
+  const efPct = ef && ef.targetAmount > 0
+    ? Math.min(100, Math.round((ef.currentAmount / ef.targetAmount) * 100))
+    : 0;
 
 
 
@@ -169,6 +177,35 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
           <Scale className="h-4 w-4 text-muted-foreground shrink-0" />
         </button>
       )}
+
+      {/* ── Emergency Fund progress widget ── */}
+      <button
+        onClick={() => onMoreNavigation('emergency-fund')}
+        className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 active:scale-[0.98] transition-all text-left"
+        aria-label="Open Emergency Fund"
+      >
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-success/10">
+          <PiggyBank className="h-5 w-5 text-success" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-semibold text-foreground">Emergency Fund</p>
+            <span className={`text-xs font-bold tabular-nums ${efPct >= 100 ? 'text-success' : efPct >= 50 ? 'text-warning' : 'value-negative'}`}>
+              {ef ? `${efPct}%` : 'Not set up'}
+            </span>
+          </div>
+          <Progress value={efPct} className="h-1.5" />
+          {ef && (
+            <p className="text-[10px] text-muted-foreground mt-1">
+              ₹{ef.currentAmount.toLocaleString('en-IN')} of ₹{ef.targetAmount.toLocaleString('en-IN')} · {ef.targetMonths}-month target
+            </p>
+          )}
+          {!ef && (
+            <p className="text-[10px] text-muted-foreground mt-1">Tap to build your safety net →</p>
+          )}
+        </div>
+        <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+      </button>
 
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} />

@@ -1,6 +1,7 @@
 
 import { db } from '@/db';
 import type { Goal, Dependent } from '@/db';
+import { db as mainDb } from '@/lib/db';
 import { Logger } from '@/services/logger';
 import { format, addYears, addDays } from 'date-fns';
 
@@ -18,6 +19,7 @@ export class GoalService {
     };
 
     await db.goals.add(goal);
+    await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'goal', entityId: id, newValues: goal, timestamp: new Date() });
     Logger.info('Goal created', { goalId: id, name: goalData.name });
     return goal;
   }
@@ -152,10 +154,10 @@ export class GoalService {
   static async updateGoalProgress(goalId: string, amount: number): Promise<void> {
     const goal = await db.goals.get(goalId);
     if (goal) {
-      await db.goals.update(goalId, {
-        currentAmount: goal.currentAmount + amount
-      });
-      Logger.info('Goal progress updated', { goalId, newAmount: goal.currentAmount + amount });
+      const newAmount = goal.currentAmount + amount;
+      await db.goals.update(goalId, { currentAmount: newAmount });
+      await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'goal', entityId: goalId, oldValues: { currentAmount: goal.currentAmount }, newValues: { currentAmount: newAmount }, timestamp: new Date() });
+      Logger.info('Goal progress updated', { goalId, newAmount });
     }
   }
 

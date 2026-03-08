@@ -11,6 +11,7 @@ import { Plus, Edit, Trash2, Banknote, AlertTriangle } from 'lucide-react';
 import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
+import { db } from '@/lib/db';
 import type { Loan } from '@/lib/db-extended';
 import { MaskedAmount } from '@/components/ui/masked-value';
 
@@ -40,7 +41,13 @@ export function LoanManager() {
     e.preventDefault();
     try {
       const data = { type: form.type, borrower: form.borrower, principal: +form.principal, roi: +form.roi, tenureMonths: +form.tenureMonths, emi: +form.emi, outstanding: +form.outstanding, startDate: new Date(form.startDate), isActive: true };
-      editingLoan ? await LoanService.updateLoan(editingLoan.id, data) : await LoanService.createLoan(data);
+      if (editingLoan) {
+        await LoanService.updateLoan(editingLoan.id, data);
+        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'loan', entityId: editingLoan.id, oldValues: editingLoan, newValues: data, timestamp: new Date() });
+      } else {
+        const newLoan = await LoanService.createLoan(data);
+        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'loan', entityId: (newLoan as any)?.id ?? 'new', newValues: data, timestamp: new Date() });
+      }
       toast.success(editingLoan ? 'Loan updated' : 'Loan added');
       setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null); load();
     } catch { toast.error('Failed to save loan'); }
@@ -54,7 +61,12 @@ export function LoanManager() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Mark loan as inactive?')) return;
-    try { await LoanService.updateLoan(id, { isActive: false }); toast.success('Loan marked inactive'); load(); }
+    try {
+      const old = loans.find(l => l.id === id);
+      await LoanService.updateLoan(id, { isActive: false });
+      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'delete', entity: 'loan', entityId: id, oldValues: old, timestamp: new Date() });
+      toast.success('Loan marked inactive'); load();
+    }
     catch { toast.error('Failed to update loan'); }
   };
 
