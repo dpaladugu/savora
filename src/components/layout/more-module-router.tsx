@@ -144,6 +144,9 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'debt-strike':
         if (role === 'GUEST') return <AccessDenied reason="Sign in to view Debt Strike calculator." />;
         return <DebtStrikeCalculator />;
+      case 'net-worth':
+        if (role === 'GUEST') return <AccessDenied reason="Sign in to view Net Worth." />;
+        return <NetWorthTracker />;
       case 'telegram-pending':
         if (role !== 'ADMIN') return <AccessDenied reason="Only ADMIN can review pending Telegram transactions." />;
         return <TelegramPendingTxns />;

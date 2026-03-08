@@ -4,7 +4,7 @@ import {
   CreditCard, FileText, Repeat, Car, Shield, Heart, Coins,
   Users2, Target, TrendingUp, Brain, Settings, Sparkles,
   Home, Banknote, AlertCircle, Globe, Bike, Building,
-  Scale, Calculator, Zap, BarChart3, Upload, Crosshair, MessageCircle,
+  Scale, Calculator, Zap, BarChart3, Upload, Crosshair, MessageCircle, Landmark,
 } from 'lucide-react';
 import { useRole } from '@/store/rbacStore';
 
