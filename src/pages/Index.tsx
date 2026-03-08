@@ -15,6 +15,7 @@ import { GlobalHeader } from "@/components/layout/global-header";
 import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useLiveQuery } from "dexie-react-hooks";
+import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
 
 const MainApp = () => {
   let isUnlocked = false;
@@ -109,6 +110,7 @@ const Index = () => {
         const startupChecks = await performStartupVerification();
         logStartupResults(startupChecks);
         await seedInitialData();
+        await processRecurringTransactions();
         const settings = await db.globalSettings.toArray();
         setHasExistingUser(settings.length > 0);
         setHasPin(false);
