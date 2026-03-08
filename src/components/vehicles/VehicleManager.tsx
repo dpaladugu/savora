@@ -79,7 +79,10 @@ export function VehicleManager() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const now = new Date();
       const data = {
+        name: `${form.make} ${form.model}`.trim(),
+        year: form.purchaseDate ? new Date(form.purchaseDate).getFullYear() : now.getFullYear(),
         owner: form.owner, regNo: form.regNo, type: form.type,
         make: form.make, model: form.model, fuelType: form.fuelType,
         purchaseDate: new Date(form.purchaseDate),
@@ -89,6 +92,8 @@ export function VehicleManager() {
         fuelEfficiency: 0,
         vehicleValue: parseFloat(form.vehicleValue) || 0,
         fuelLogs: [], serviceLogs: [], claims: [], treadDepthMM: 0,
+        createdAt: editingVehicle?.createdAt ?? now,
+        updatedAt: now,
       };
       if (editingVehicle) {
         await VehicleService.updateVehicle(editingVehicle.id, data);
