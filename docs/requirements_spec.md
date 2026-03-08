@@ -200,33 +200,41 @@ Anonymous JSON prompt builder (no PII). LLM settings form exists in Settings. Te
 
 ---
 
-## 27. Estate & Digital Assets 🔴 Pending
-Will rows + DigitalAsset table. Auto-nudge if age ≥ 30 and no Will rows.
+## 27. Estate & Digital Assets ✅ Live
+Will rows + DigitalAsset table. Auto-nudge on Dashboard if ADMIN has no will rows.
 
 ---
 
-## 28. SpendingLimit 🔴 Pending — In build queue
+## 28. SpendingLimit ✅ Live
 Per-category monthly cap, 80% alert toast, settings screen.
 
 ---
 
-## 29. PWA & Cross-Device Experience 🔴 Pending
-Service worker, offline banner, Add-to-Home-Screen prompt.
+## 29. PWA & Cross-Device Experience ✅ Live
+Service worker registered, offline shell cached, manifest updated.
 
 ---
 
 ## 30. Build Order (Current Sprint)
 1. ✅ Auto-lock idle timer — **done**
-2. 🔴 Insurance full CRUD
-3. 🔴 Family Banking (accounts + transfers)
-4. 🔴 Brother Repayment Tracker
-5. 🔴 Spending Limits
-6. 🔴 Will & Estate
-7. 🔴 Auto-Goal + Nudge Engine
-8. 🔴 Tax Engine (advance tax reminders)
-9. 🔴 PWA + Service Worker
+2. ✅ Insurance full CRUD — **done**
+3. ✅ Family Banking (accounts + transfers) — **done**
+4. ✅ Brother Repayment Tracker — **done**
+5. ✅ Spending Limits — **done**
+6. ✅ Will & Estate — **done**
+7. ✅ Auto-Goal + Nudge Engine (14 rules, §24.1) — **done**
+8. ✅ Tax Engine (advance tax reminders, regime compare, 80CCD) — **done**
+9. ✅ PWA + Service Worker — **done**
+
+### Next Priorities
+- 🔴 LLM Prompt Engine (anonymous JSON builder, §25)
+- 🔴 Audit Log (every CRUD with old/new values, §19)
+- 🔴 Telegram Capture (`/add <amount> <category>`, §23)
+- 🔴 QR-scan camera restore (§26)
+- 🔴 Insurance gap analysis (term < 10× income, health < 5× income, §20)
 
 ---
 
 ## Status
-**v1.2-march-2026 – ACTIVELY IN DEVELOPMENT**
+**v1.3-march-2026 – BUILD ORDER COMPLETE · ENTERING POLISH PHASE**
+
