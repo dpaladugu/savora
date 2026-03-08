@@ -34,7 +34,10 @@ const modules: MoreModule[] = [
   { id: 'vehicles',        title: 'Vehicle Watchdog',       description: 'FZS oil alerts, Fuelio CSV sync, insurance',         icon: Bike,        status: 'available',    category: 'tracking',  priority: 'high' },
   { id: 'property-engine', title: 'Guntur / Gorantla',      description: 'Waterfall allocation, Dwacra deduction, Care Fund',  icon: Building,    status: 'available',    category: 'tracking',  priority: 'high', roleBlocked: 'BROTHER' },
   { id: 'enhanced-rentals',title: 'Rental Properties',      description: 'Rental income, expenses & tenant info',              icon: Home,        status: 'beta',         category: 'tracking',  priority: 'medium' },
-  { id: 'insurance',       title: 'Insurance',              description: 'Policies, premiums & claims',                        icon: Shield,      status: 'available',    category: 'tracking',  priority: 'medium', roleBlocked: 'BROTHER' },
+  { id: 'insurance-manager', title: 'Insurance',            description: 'Policies, renewals, gap alerts',                     icon: Shield,      status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
+  { id: 'spending-limits',  title: 'Spending Limits',       description: 'Per-category caps with 80% alerts',                  icon: Shield,      status: 'available',    category: 'financial', priority: 'high' },
+  { id: 'brother-repayment',title: 'Brother Repayment',     description: 'InCred education loan repayment ledger',             icon: Globe,       status: 'available',    category: 'financial', priority: 'high', roleRequired: 'BROTHER' },
+  { id: 'family-banking-v2',title: 'Family Banking',        description: 'Mother & Grandma accounts + transfers',              icon: Users2,      status: 'available',    category: 'financial', priority: 'high' },
   { id: 'health-tracker',  title: 'Health Tracker',         description: 'Mother & Grandma — prescriptions, vitals, records',  icon: Heart,       status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'gold',            title: 'Gold Investments',       description: 'Gold holdings & price movements',                    icon: Coins,       status: 'beta',         category: 'tracking',  priority: 'low',   roleBlocked: 'BROTHER' },
 
