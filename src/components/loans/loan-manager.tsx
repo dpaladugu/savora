@@ -12,6 +12,7 @@ import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Loan } from '@/lib/db-extended';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 const emptyForm = {
   type: 'Personal' as 'Personal' | 'Personal-Brother' | 'Education-Brother',

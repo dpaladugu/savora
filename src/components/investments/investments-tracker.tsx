@@ -8,6 +8,7 @@ import { formatCurrency } from '@/lib/format-utils';
 import { db, Investment } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { cn } from '@/lib/utils';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 export function InvestmentsTracker() {
   const investments = useLiveQuery(() => db.investments.toArray()) || [];

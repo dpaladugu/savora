@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
+import { MaskedAmount } from '@/components/ui/masked-value';
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const USD_TO_INR = 83; // Fixed rate
