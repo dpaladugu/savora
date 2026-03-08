@@ -19,12 +19,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { GunturShopRow, GorantlaRoomRow } from '@/lib/db';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
-const DWACRA_DEDUCTION        = 5000;
-const INS_RECOVERY_TARGET     = 170000;   // ₹1.70L already paid Feb 2026
-const INS_RECOVERY_MONTHLY    = 5400;     // current P1 allocation
-const INS_2029_MONTHLY_UPSHIFT = 8000;   // auto-upshift once P1 done
-const MEDICAL_INFLATION_RATE  = 0.14;    // 14% IRDAI medical CPI
-const INS_2029_TARGET         = Math.round(INS_RECOVERY_TARGET * Math.pow(1 + MEDICAL_INFLATION_RATE, 3)); // ≈₹2,48,000
+const DWACRA_DEDUCTION         = 5000;
+const INS_RECOVERY_TARGET      = 170000;
+const INS_RECOVERY_MONTHLY     = 5400;
+const INS_2029_MONTHLY_UPSHIFT = 8000;
+const MEDICAL_INFLATION_RATE   = 0.14;
+const INS_2029_TARGET          = Math.round(INS_RECOVERY_TARGET * Math.pow(1 + MEDICAL_INFLATION_RATE, 3));
 
 const DEFAULT_GORANTLA: Omit<GorantlaRoomRow, 'updatedAt'>[] = [
   { id: 'gr-kitchen',  roomId: 'kitchen',    name: 'Kitchen',         tenant: 'Tenant A', rent: 3000, paid: false },
@@ -52,18 +52,31 @@ interface WaterfallBucket {
 }
 
 const WATERFALL_BUCKETS: WaterfallBucket[] = [
-  { id: 'recovery', label: 'Ins. Recovery (₹1.7L Paid)',    target: INS_RECOVERY_TARGET,  monthly: INS_RECOVERY_MONTHLY,  icon: <ShieldCheck className="w-4 h-4" />, colorClass: 'bg-primary'     },
-  { id: 'sinking',  label: "Mother's Health Ins. (2029)",   target: INS_2029_TARGET,      monthly: INS_RECOVERY_MONTHLY,  icon: <PiggyBank className="w-4 h-4" />,   colorClass: 'bg-accent'      },
-  { id: 'household',label: 'Household Expenses',            target: 45000, monthly: 45000, icon: <Home className="w-4 h-4" />,                                         colorClass: 'bg-success'     },
-  { id: 'grandma',  label: "Grandma's Safety Net",          target: 500000,                icon: <CheckCircle className="w-4 h-4" />,                                   colorClass: 'bg-warning'     },
-  { id: 'debt',     label: 'ICICI Loan Prepayment',         target: Infinity,              icon: <ArrowDown className="w-4 h-4" />,                                     colorClass: 'bg-destructive' },
+  { id: 'recovery',  label: 'Ins. Recovery (₹1.7L Paid)',  target: INS_RECOVERY_TARGET,  monthly: INS_RECOVERY_MONTHLY,  icon: <ShieldCheck className="w-4 h-4" />, colorClass: 'bg-primary'     },
+  { id: 'sinking',   label: "Mother's Health Ins. (2029)", target: INS_2029_TARGET,       monthly: INS_RECOVERY_MONTHLY,  icon: <PiggyBank className="w-4 h-4" />,   colorClass: 'bg-accent'      },
+  { id: 'household', label: 'Household Expenses',          target: 45000, monthly: 45000, icon: <Home className="w-4 h-4" />,                                         colorClass: 'bg-success'     },
+  { id: 'grandma',   label: "Grandma's Safety Net",        target: 500000,                icon: <CheckCircle className="w-4 h-4" />,                                   colorClass: 'bg-warning'     },
+  { id: 'debt',      label: 'ICICI Loan Prepayment',       target: Infinity,              icon: <ArrowDown className="w-4 h-4" />,                                     colorClass: 'bg-destructive' },
 ];
+
+function cascadeIncome(netCollected: number): Record<string, number> {
+  let rem = netCollected;
+  const result: Record<string, number> = {};
+  for (const b of WATERFALL_BUCKETS) {
+    if (rem <= 0) { result[b.id] = 0; continue; }
+    const cap  = b.monthly ?? (b.target === Infinity ? rem : b.target);
+    const fill = Math.min(rem, cap);
+    result[b.id] = fill;
+    rem -= fill;
+  }
+  return result;
+}
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 type ActivePage = 'guntur' | 'gorantla' | 'planner';
 
 export function PropertyRentalEngine() {
-  const role = useRole();
+  const role      = useRole();
   const isBrother = role === 'BROTHER';
   const [activePage, setActivePage] = React.useState<ActivePage>('guntur');
 
@@ -77,9 +90,9 @@ export function PropertyRentalEngine() {
   }, []);
 
   const tabs: { id: ActivePage; label: string }[] = [
-    { id: 'guntur',   label: 'Guntur Waterfall' },
-    { id: 'gorantla', label: 'Gorantla' },
-    { id: 'planner',  label: '📊 Allocation Planner' },
+    { id: 'guntur',  label: 'Guntur Waterfall' },
+    { id: 'gorantla',label: 'Gorantla' },
+    { id: 'planner', label: '📊 Allocation Planner' },
   ];
 
   return (
@@ -90,7 +103,6 @@ export function PropertyRentalEngine() {
           <span>You have <strong className="text-foreground">read-only access</strong> to Guntur &amp; Gorantla data.</span>
         </div>
       )}
-
       <div className="flex gap-2 flex-wrap">
         {tabs.map(t => (
           <Button key={t.id} variant={activePage === t.id ? 'default' : 'outline'} size="sm" onClick={() => setActivePage(t.id)}>
@@ -98,9 +110,8 @@ export function PropertyRentalEngine() {
           </Button>
         ))}
       </div>
-
       {activePage === 'guntur'   && <GunturWaterfallPage readOnly={isBrother} />}
-      {activePage === 'gorantla' && <GorantlaPage readOnly={isBrother} />}
+      {activePage === 'gorantla' && <GorantlaPage        readOnly={isBrother} />}
       {activePage === 'planner'  && <AllocationPlannerPage readOnly={isBrother} />}
     </div>
   );
@@ -115,7 +126,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const [propertyTax, setPropertyTax] = React.useState(0);
   const [waterTax, setWaterTax]       = React.useState(0);
   useEffect(() => { if (taxSetting) { setPropertyTax(taxValues.propertyTax ?? 0); setWaterTax(taxValues.waterTax ?? 0); } }, [taxSetting, taxValues]);
-  const saveTaxSettings = async (pt: number, wt: number) =>
+  const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
   const totalTaxDeduction = propertyTax + waterTax;
@@ -157,7 +168,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {rooms.map(room => (
-            <div key={room.id} className="flex items-center justify-between p-3 rounded-lg border bg-card">
+            <div key={room.id} className={`flex items-center justify-between p-3 rounded-lg border ${room.paid ? 'bg-success/5 border-success/30' : 'bg-card border-border'}`}>
               <div>
                 <p className="font-medium text-sm">{room.name}</p>
                 <p className="text-xs text-muted-foreground">{room.tenant}</p>
@@ -176,7 +187,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions (Tax at Source)
+              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -194,7 +205,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
             </div>
           </div>
 
-          <div className="space-y-2 text-sm">
+          <div className="space-y-1.5 text-sm">
             {totalTaxDeduction > 0 && (
               <div className="flex justify-between text-destructive">
                 <span>− Property &amp; Water Tax</span>
@@ -202,7 +213,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
               </div>
             )}
             <div className="flex justify-between text-destructive">
-              <span>− Dwacra Loan (extra deduction)</span>
+              <span>− Dwacra Loan</span>
               <span>−{formatCurrency(DWACRA_DEDUCTION)}</span>
             </div>
             <div className="flex justify-between font-semibold border-t pt-2">
@@ -245,7 +256,7 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const [propertyTax, setPropertyTax] = React.useState(0);
   const [waterTax, setWaterTax]       = React.useState(0);
   useEffect(() => { if (taxSetting) { setPropertyTax(taxValues.propertyTax ?? 0); setWaterTax(taxValues.waterTax ?? 0); } }, [taxSetting, taxValues]);
-  const saveTaxSettings = async (pt: number, wt: number) =>
+  const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
   const totalTaxDeduction = propertyTax + waterTax;
@@ -324,7 +335,9 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                 {shop.status === 'Occupied' && (
                   readOnly
                     ? <Badge variant={shop.paid ? 'default' : 'outline'} className="mt-1 text-xs w-full justify-center">{shop.paid ? '✓ Paid' : 'Unpaid'}</Badge>
-                    : <Button size="sm" variant={shop.paid ? 'default' : 'outline'} onClick={() => db.gunturShops.update(shop.id, { paid: !shop.paid, updatedAt: new Date() })} className="mt-1 h-6 text-xs w-full">
+                    : <Button size="sm" variant={shop.paid ? 'default' : 'outline'}
+                        onClick={() => db.gunturShops.update(shop.id, { paid: !shop.paid, updatedAt: new Date() })}
+                        className="mt-1 h-6 text-xs w-full">
                         {shop.paid ? '✓ Paid' : 'Mark Paid'}
                       </Button>
                 )}
@@ -336,7 +349,7 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions (Tax at Source)
+              <ArrowDown className="w-3 h-3 text-destructive" />P0 — Systemic Deductions
             </p>
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
@@ -353,9 +366,9 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
               </div>
             </div>
             {totalTaxDeduction > 0 && (
-              <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-destructive/5 border border-destructive/20">
-                <span className="text-destructive font-medium">Total P0 Deduction</span>
-                <span className="text-destructive font-semibold">−{formatCurrency(totalTaxDeduction)}</span>
+              <div className="flex justify-between text-xs p-2 rounded-lg bg-destructive/5 border border-destructive/20 text-destructive">
+                <span className="font-medium">Total P0 Deduction</span>
+                <span className="font-semibold">−{formatCurrency(totalTaxDeduction)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm font-semibold border-t pt-2">
@@ -381,8 +394,8 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
           </div>
           <div className="space-y-2">
             {WATERFALL_BUCKETS.map((bucket, i) => {
-              const fill        = bars[i].fill;
-              const accumulated = bucketProgress[bucket.id] ?? 0;
+              const fill          = bars[i].fill;
+              const accumulated   = bucketProgress[bucket.id] ?? 0;
               const targetDisplay = bucket.id === 'debt' ? 'Overflow' : formatCurrency(bucket.target);
               const progressPct   = bucket.id === 'debt' ? 100 : Math.min(100, (accumulated / bucket.target) * 100);
               return (
@@ -411,45 +424,26 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
 
 // ─── ALLOCATION PLANNER PAGE ──────────────────────────────────────────────────
 function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
-  const shops = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
-  const rooms = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
+  const shops    = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
+  const rooms    = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
+  const progress = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
 
-  // ── Per-unit collection status ──
-  const gunturCollected   = shops.filter(s => s.paid && s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0);
-  const gunturExpected    = shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0);
-  const gorantlaCollected = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
-  const gorantlaExpected  = rooms.reduce((s, r) => s + r.rent, 0);
-  const gunturUnpaid      = shops.filter(s => s.status === 'Occupied' && !s.paid);
-  const gorantlaUnpaid    = rooms.filter(r => !r.paid);
-
-  // ── Cascade actual collected through buckets ──
-  function cascadeActual(netCollected: number) {
-    let rem = netCollected;
-    const result: Record<string, number> = {};
-    for (const b of WATERFALL_BUCKETS) {
-      if (rem <= 0) { result[b.id] = 0; continue; }
-      const cap = b.monthly ?? (b.target === Infinity ? rem : b.target);
-      const fill = Math.min(rem, cap);
-      result[b.id] = fill;
-      rem -= fill;
-    }
-    return result;
-  }
-
-  const gunturTaxSetting    = useLiveQuery(() => db.appSettings.get('gunturTaxSettings'), []);
-  const gorantlaTaxSetting  = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
-  const progress            = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
+  const gunturTaxSetting   = useLiveQuery(() => db.appSettings.get('gunturTaxSettings'), []);
+  const gorantlaTaxSetting = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
 
   const gunturTax   = React.useMemo(() => { try { return JSON.parse(gunturTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gunturTaxSetting]);
   const gorantlaTax = React.useMemo(() => { try { return JSON.parse(gorantlaTaxSetting?.value ?? '{}'); } catch { return {}; } }, [gorantlaTaxSetting]);
 
-  // What-If slider state
-  const [vacantShops,  setVacantShops]  = React.useState(0);
-  const [vacantMonths, setVacantMonths] = React.useState(1);
+  // ── Per-unit collection breakdown ──
+  const occupiedShops      = shops.filter(s => s.status === 'Occupied');
+  const gunturExpected     = occupiedShops.reduce((s, sh) => s + sh.rent, 0);
+  const gunturCollected    = occupiedShops.filter(s => s.paid).reduce((s, sh) => s + sh.rent, 0);
+  const gorantlaExpected   = rooms.reduce((s, r) => s + r.rent, 0);
+  const gorantlaCollected  = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
+  const gunturUnpaid       = occupiedShops.filter(s => !s.paid);
+  const gorantlaUnpaid     = rooms.filter(r => !r.paid);
 
-  const recoveryAccumulated = progress.find(p => p.bucketId === 'recovery')?.accumulated ?? 0;
-
-  // ── Expected (full rent roll) vs Collected (paid flags) ──
+  // ── P0 deductions ──
   const gunturP0   = (gunturTax.propertyTax ?? 0) + (gunturTax.waterTax ?? 0);
   const gorantlaP0 = (gorantlaTax.propertyTax ?? 0) + (gorantlaTax.waterTax ?? 0) + DWACRA_DEDUCTION;
 
@@ -461,13 +455,15 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   const gorantlaCollectedNet = Math.max(0, gorantlaCollected - gorantlaP0);
   const combinedCollectedNet = gunturCollectedNet + gorantlaCollectedNet;
 
-  const unallocated = Math.max(0, combinedCollectedNet - WATERFALL_BUCKETS.filter(b => b.id !== 'debt').reduce((s, b) => s + (b.monthly ?? b.target), 0));
+  const actualFills   = cascadeIncome(combinedCollectedNet);
+  const expectedFills = cascadeIncome(combinedExpectedNet);
 
-  // Bucket fills from actual collected
-  const actualFills   = cascadeActual(combinedCollectedNet);
-  const expectedFills = cascadeActual(combinedExpectedNet);
+  const collectionPct = combinedExpectedNet > 0 ? Math.round((combinedCollectedNet / combinedExpectedNet) * 100) : 0;
 
-  // P1 / P2 timeline (based on expected net)
+  // ── P1 / P2 timelines ──
+  const recoveryAccumulated = progress.find(p => p.bucketId === 'recovery')?.accumulated ?? 0;
+  const p2Accumulated       = progress.find(p => p.bucketId === 'sinking')?.accumulated  ?? 0;
+
   const p1Remaining    = Math.max(0, INS_RECOVERY_TARGET - recoveryAccumulated);
   const p1PctDone      = Math.min(100, (recoveryAccumulated / INS_RECOVERY_TARGET) * 100);
   const p1MonthsLeft   = combinedExpectedNet > 0 ? Math.ceil(p1Remaining / Math.min(combinedExpectedNet, INS_RECOVERY_MONTHLY)) : 999;
@@ -475,7 +471,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   const p1Done         = p1Remaining <= 0;
 
   const p2Saving       = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
-  const p2Accumulated  = progress.find(p => p.bucketId === 'sinking')?.accumulated ?? 0;
   const p2Remaining    = Math.max(0, INS_2029_TARGET - p2Accumulated);
   const p2PctDone      = Math.min(100, (p2Accumulated / INS_2029_TARGET) * 100);
   const p2MonthsLeft   = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
@@ -484,25 +479,26 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   const feb2029          = new Date(2029, 1, 1);
   const p2SafeByDeadline = p2MaturityDate <= feb2029;
 
-  // What-If
-  const avgShopRent    = shops.filter(s => s.status === 'Occupied').length > 0
-    ? shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0) / shops.filter(s => s.status === 'Occupied').length : 0;
-  const vacancyLoss    = vacantShops * avgShopRent * vacantMonths;
-  const whatIfNet      = Math.max(0, combinedExpectedNet - vacantShops * avgShopRent);
-  const whatIfP1Mo     = whatIfNet > 0 ? Math.ceil(p1Remaining / Math.min(whatIfNet, INS_RECOVERY_MONTHLY)) : 999;
-  const whatIfP1Date   = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo); return d; })();
-  const p1Slip         = Math.max(0, whatIfP1Mo - p1MonthsLeft);
-  const whatIfP2Mo     = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
-  const whatIfP2Date   = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo + whatIfP2Mo); return d; })();
-  const p2SlipSafe     = whatIfP2Date <= feb2029;
+  // ── What-If ──
+  const [vacantShops,  setVacantShops]  = React.useState(0);
+  const [vacantMonths, setVacantMonths] = React.useState(1);
+
+  const avgShopRent  = occupiedShops.length > 0 ? gunturExpected / occupiedShops.length : 0;
+  const vacancyLoss  = vacantShops * avgShopRent * vacantMonths;
+  const whatIfNet    = Math.max(0, combinedExpectedNet - vacantShops * avgShopRent);
+  const whatIfP1Mo   = whatIfNet > 0 ? Math.ceil(p1Remaining / Math.min(whatIfNet, INS_RECOVERY_MONTHLY)) : 999;
+  const whatIfP1Date = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo); return d; })();
+  const p1Slip       = Math.max(0, whatIfP1Mo - p1MonthsLeft);
+  const whatIfP2Mo   = p2Saving > 0 ? Math.ceil(p2Remaining / p2Saving) : 999;
+  const whatIfP2Date = (() => { const d = new Date(); d.setMonth(d.getMonth() + whatIfP1Mo + whatIfP2Mo); return d; })();
+  const p2SlipSafe   = whatIfP2Date <= feb2029;
 
   const fmt = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-  const collectionPct  = combinedExpectedNet > 0 ? Math.round((combinedCollectedNet / combinedExpectedNet) * 100) : 0;
 
   return (
     <div className="space-y-4">
 
-      {/* ── Collection Status: per shop/room ── */}
+      {/* ── Collection Status ── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -511,7 +507,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {/* Progress bar */}
           <div className="space-y-1">
             <div className="flex justify-between text-xs text-muted-foreground">
               <span>Collected {formatCurrency(gunturCollected + gorantlaCollected)} of {formatCurrency(gunturExpected + gorantlaExpected)} gross</span>
@@ -520,13 +515,15 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             <Progress value={collectionPct} className="h-2" />
           </div>
 
-          {/* Guntur shops */}
+          {/* Guntur per-shop grid */}
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Guntur — {shops.filter(s=>s.status==='Occupied' && s.paid).length}/{shops.filter(s=>s.status==='Occupied').length} shops paid</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Guntur — {occupiedShops.filter(s => s.paid).length}/{occupiedShops.length} shops paid
+            </p>
             <div className="grid grid-cols-3 gap-1.5">
-              {shops.filter(s => s.status === 'Occupied').map(shop => (
+              {occupiedShops.map(shop => (
                 <div key={shop.id} className={`flex flex-col items-center p-2 rounded-lg border text-xs ${shop.paid ? 'bg-success/10 border-success/30 text-success' : 'bg-destructive/5 border-destructive/20 text-destructive'}`}>
-                  <span className="font-medium truncate w-full text-center">{shop.name}</span>
+                  <span className="font-medium">{shop.name}</span>
                   <span>{shop.paid ? '✓' : '✗'} {formatCurrency(shop.rent)}</span>
                 </div>
               ))}
@@ -534,14 +531,16 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             {gunturUnpaid.length > 0 && (
               <p className="text-xs text-destructive flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                {gunturUnpaid.map(s => s.name).join(', ')} unpaid — missing {formatCurrency(gunturUnpaid.reduce((s,sh)=>s+sh.rent,0))}
+                {gunturUnpaid.map(s => s.name).join(', ')} unpaid — missing {formatCurrency(gunturUnpaid.reduce((s, sh) => s + sh.rent, 0))}
               </p>
             )}
           </div>
 
-          {/* Gorantla rooms */}
+          {/* Gorantla per-room grid */}
           <div className="space-y-1">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Gorantla — {rooms.filter(r=>r.paid).length}/{rooms.length} rooms paid</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+              Gorantla — {rooms.filter(r => r.paid).length}/{rooms.length} rooms paid
+            </p>
             <div className="grid grid-cols-2 gap-1.5">
               {rooms.map(room => (
                 <div key={room.id} className={`flex justify-between items-center p-2 rounded-lg border text-xs ${room.paid ? 'bg-success/10 border-success/30 text-success' : 'bg-destructive/5 border-destructive/20 text-destructive'}`}>
@@ -553,7 +552,7 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             {gorantlaUnpaid.length > 0 && (
               <p className="text-xs text-destructive flex items-center gap-1">
                 <AlertTriangle className="w-3 h-3" />
-                {gorantlaUnpaid.map(r => r.name).join(', ')} unpaid — missing {formatCurrency(gorantlaUnpaid.reduce((s,r)=>s+r.rent,0))}
+                {gorantlaUnpaid.map(r => r.name).join(', ')} unpaid — missing {formatCurrency(gorantlaUnpaid.reduce((s, r) => s + r.rent, 0))}
               </p>
             )}
           </div>
@@ -569,24 +568,24 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {/* NOI row */}
-          <div className="grid grid-cols-3 gap-2 text-xs pb-2 border-b">
-            <div />
+          <div className="grid grid-cols-3 gap-2 text-xs pb-1 border-b">
+            <div className="text-muted-foreground">Bucket</div>
             <div className="text-center font-semibold text-muted-foreground">Collected</div>
             <div className="text-center font-semibold text-muted-foreground">Expected</div>
           </div>
+          {/* NOI row */}
           <div className="grid grid-cols-3 gap-2 text-xs items-center py-1 border-b border-dashed">
-            <span className="text-muted-foreground">Net after P0</span>
+            <span className="text-muted-foreground font-medium">Net after P0</span>
             <span className="text-center font-semibold text-primary">{formatCurrency(combinedCollectedNet)}</span>
-            <span className="text-center font-semibold text-muted-foreground">{formatCurrency(combinedExpectedNet)}</span>
+            <span className="text-center text-muted-foreground">{formatCurrency(combinedExpectedNet)}</span>
           </div>
           {WATERFALL_BUCKETS.map(bucket => {
-            const actual   = actualFills[bucket.id] ?? 0;
-            const expected = expectedFills[bucket.id] ?? 0;
+            const actual    = actualFills[bucket.id]   ?? 0;
+            const expected  = expectedFills[bucket.id] ?? 0;
             const shortfall = expected - actual;
             return (
               <div key={bucket.id} className="grid grid-cols-3 gap-2 text-xs items-center py-1">
-                <span className="flex items-center gap-1 text-muted-foreground">
+                <span className="flex items-center gap-1 text-muted-foreground truncate">
                   <ArrowRight className="w-3 h-3 shrink-0" />{bucket.label}
                 </span>
                 <span className={`text-center font-semibold ${actual >= expected ? 'text-success' : actual > 0 ? 'text-warning' : 'text-destructive'}`}>
@@ -600,18 +599,19 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             );
           })}
 
-          {/* Recommendation */}
-          {gunturUnpaid.length > 0 || gorantlaUnpaid.length > 0 ? (
+          {(gunturUnpaid.length > 0 || gorantlaUnpaid.length > 0) ? (
             <div className="mt-2 p-2 rounded-lg bg-warning/10 border border-warning/20 text-xs space-y-1">
               <p className="font-semibold text-warning flex items-center gap-1"><AlertTriangle className="w-3 h-3" />Action Required</p>
-              {gunturUnpaid.length > 0 && <p>Chase {gunturUnpaid.map(s=>s.name).join(', ')} in Guntur — {formatCurrency(gunturUnpaid.reduce((s,sh)=>s+sh.rent,0))} pending</p>}
-              {gorantlaUnpaid.length > 0 && <p>Chase {gorantlaUnpaid.map(r=>r.name).join(', ')} in Gorantla — {formatCurrency(gorantlaUnpaid.reduce((s,r)=>s+r.rent,0))} pending</p>}
-              {actualFills['recovery'] < (expectedFills['recovery'] ?? 0) && <p>P1 Recovery shortfall this month: {formatCurrency((expectedFills['recovery'] ?? 0) - (actualFills['recovery'] ?? 0))}</p>}
+              {gunturUnpaid.length > 0 && <p>Chase {gunturUnpaid.map(s => s.name).join(', ')} (Guntur) — {formatCurrency(gunturUnpaid.reduce((s, sh) => s + sh.rent, 0))} pending</p>}
+              {gorantlaUnpaid.length > 0 && <p>Chase {gorantlaUnpaid.map(r => r.name).join(', ')} (Gorantla) — {formatCurrency(gorantlaUnpaid.reduce((s, r) => s + r.rent, 0))} pending</p>}
+              {(actualFills['recovery'] ?? 0) < (expectedFills['recovery'] ?? 0) && (
+                <p>P1 Recovery shortfall this month: {formatCurrency((expectedFills['recovery'] ?? 0) - (actualFills['recovery'] ?? 0))}</p>
+              )}
             </div>
           ) : (
             <div className="mt-2 p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success flex items-center gap-2">
               <CheckCircle className="w-4 h-4 shrink-0" />
-              All units paid — full {formatCurrency(combinedCollectedNet)} NOI flowing to waterfall ✓
+              All units paid — {formatCurrency(combinedCollectedNet)} NOI flowing to waterfall ✓
             </div>
           )}
         </CardContent>
@@ -650,7 +650,7 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
         </CardContent>
       </Card>
 
-      {/* ── P2 2029 Renewal Reserve ── */}
+      {/* ── P2 2029 Renewal ── */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -672,7 +672,7 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             <div className="p-2 rounded-lg bg-card border space-y-1">
               <p className="text-muted-foreground">Saving Rate</p>
               <p className="font-semibold text-accent">
-                {p1Done ? formatCurrency(INS_2029_MONTHLY_UPSHIFT) : formatCurrency(INS_RECOVERY_MONTHLY)}/mo
+                {formatCurrency(p2Saving)}/mo
                 {!p1Done && <span className="text-muted-foreground"> (upshifts after P1)</span>}
               </p>
             </div>
@@ -684,7 +684,7 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
           {!p2SafeByDeadline && (
             <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>⚠ Current saving rate <strong>won't meet Feb 2029</strong>. Increase P2 or reduce P4 prepayment temporarily.</span>
+              <span>⚠ Current saving rate <strong>won't meet Feb 2029</strong>. Increase P2 allocation or reduce P4 prepayment temporarily.</span>
             </div>
           )}
         </CardContent>
@@ -748,167 +748,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground text-center py-2">Move the sliders to simulate vacancy impact on insurance timelines.</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-        <CardContent className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg border bg-card space-y-1">
-              <p className="text-xs text-muted-foreground">Guntur (after P0)</p>
-              <p className="text-lg font-bold text-primary">{formatCurrency(gunturNet)}</p>
-              {gunturP0 > 0 && <p className="text-xs text-destructive">−{formatCurrency(gunturP0)} taxes</p>}
-            </div>
-            <div className="p-3 rounded-lg border bg-card space-y-1">
-              <p className="text-xs text-muted-foreground">Gorantla (after P0 + Dwacra)</p>
-              <p className="text-lg font-bold text-primary">{formatCurrency(gorantlaNet)}</p>
-              {gorantlaP0 > 0 && <p className="text-xs text-destructive">−{formatCurrency(gorantlaP0)} deductions</p>}
-            </div>
-          </div>
-          <div className="flex justify-between items-center p-2 rounded-lg bg-primary/5 border border-primary/20">
-            <span className="text-sm font-semibold">Combined NOI to Waterfall</span>
-            <span className="text-lg font-bold text-primary">{formatCurrency(combinedNet)}</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── P1 Insurance Recovery ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-primary" />
-            P1 — Insurance Recovery (₹1.7L paid Feb 2026)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Progress value={p1PctDone} className="h-3" />
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{formatCurrency(recoveryAccumulated)} recovered</span>
-            <span className="font-medium">{formatCurrency(INS_RECOVERY_TARGET)} target</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2 rounded-lg bg-card border space-y-1">
-              <p className="text-muted-foreground">Monthly Allocation</p>
-              <p className="font-semibold text-primary">{formatCurrency(INS_RECOVERY_MONTHLY)}/mo</p>
-            </div>
-            <div className={`p-2 rounded-lg border space-y-1 ${p1Done ? 'bg-success/10 border-success/30' : 'bg-card'}`}>
-              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Completion</p>
-              <p className={`font-semibold ${p1Done ? 'text-success' : 'text-foreground'}`}>
-                {p1Done ? '✓ Complete' : formatMonthYear(p1MaturityDate)}
-              </p>
-            </div>
-          </div>
-          {p1Done && (
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-success/10 border border-success/20 text-xs text-success">
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              P1 complete! Monthly allocation auto-upshifts to <strong>{formatCurrency(INS_2029_MONTHLY_UPSHIFT)}/mo</strong> for P2.
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── P2 2029 Renewal Reserve ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <PiggyBank className="w-4 h-4 text-accent" />
-            P2 — Mother's Health Ins. Reserve (Feb 2029)
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between text-xs mb-1">
-            <span className="text-muted-foreground">14% medical inflation × 3 yrs → target</span>
-            <span className="font-semibold text-accent">{formatCurrency(INS_2029_TARGET)}</span>
-          </div>
-          <Progress value={p2PctDone} className="h-3" />
-          <div className="flex justify-between text-sm">
-            <span className="text-muted-foreground">{formatCurrency(p2Accumulated)} saved</span>
-            <span className="font-medium">{formatCurrency(INS_2029_TARGET)} target</span>
-          </div>
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <div className="p-2 rounded-lg bg-card border space-y-1">
-              <p className="text-muted-foreground">Saving Rate</p>
-              <p className="font-semibold text-accent">
-                {p1Done ? formatCurrency(INS_2029_MONTHLY_UPSHIFT) : formatCurrency(INS_RECOVERY_MONTHLY)}/mo
-                {!p1Done && <span className="text-muted-foreground"> (upshifts after P1)</span>}
-              </p>
-            </div>
-            <div className={`p-2 rounded-lg border space-y-1 ${p2SafeByDeadline ? 'bg-success/10 border-success/30' : 'bg-destructive/10 border-destructive/30'}`}>
-              <p className="text-muted-foreground flex items-center gap-1"><Calendar className="w-3 h-3" />Est. Ready</p>
-              <p className={`font-semibold ${p2SafeByDeadline ? 'text-success' : 'text-destructive'}`}>{formatMonthYear(p2MaturityDate)}</p>
-            </div>
-          </div>
-          {!p2SafeByDeadline && (
-            <div className="flex items-start gap-2 p-2 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive">
-              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>⚠ Current saving rate <strong>won't meet Feb 2029</strong> deadline. Increase P2 allocation or reduce P4 debt prepayment temporarily.</span>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── What-If Vacancy Simulator ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-warning" />
-            What-If: Guntur Vacancy Simulator
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <label className="text-muted-foreground">Vacant Shops</label>
-                <span className="font-semibold text-foreground">{vacantShops} shop{vacantShops !== 1 ? 's' : ''}</span>
-              </div>
-              <Slider min={0} max={5} step={1} value={[vacantShops]} onValueChange={([v]) => setVacantShops(v)} />
-            </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-xs">
-                <label className="text-muted-foreground">Duration</label>
-                <span className="font-semibold text-foreground">{vacantMonths} month{vacantMonths !== 1 ? 's' : ''}</span>
-              </div>
-              <Slider min={1} max={12} step={1} value={[vacantMonths]} onValueChange={([v]) => setVacantMonths(v)} />
-            </div>
-          </div>
-
-          {vacantShops > 0 ? (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20 space-y-1">
-                  <p className="text-muted-foreground">Income Loss</p>
-                  <p className="font-bold text-destructive">−{formatCurrency(vacancyLoss)}</p>
-                  <p className="text-muted-foreground">over {vacantMonths} mo</p>
-                </div>
-                <div className="p-2 rounded-lg bg-card border space-y-1">
-                  <p className="text-muted-foreground">Monthly NOI drops to</p>
-                  <p className="font-bold text-warning">{formatCurrency(whatIfNet)}</p>
-                  <p className="text-muted-foreground">from {formatCurrency(combinedNet)}</p>
-                </div>
-              </div>
-
-              <div className="space-y-1.5 p-3 rounded-lg bg-card border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Impact on Recovery Timeline</p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">P1 Maturity</span>
-                  <span className={`font-semibold ${p1Slip > 0 ? 'text-warning' : 'text-success'}`}>
-                    {formatMonthYear(whatIfP1Date)} {p1Slip > 0 ? `(+${p1Slip} mo slip)` : ''}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">P2 Ready by</span>
-                  <span className={`font-semibold ${p2SlipSafe ? 'text-success' : 'text-destructive'}`}>
-                    {formatMonthYear(whatIfP2Date)} {!p2SlipSafe ? '⚠ Misses Feb 2029' : '✓ Safe'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground text-center py-2">Move the sliders to simulate vacancy impact on your insurance timelines.</p>
           )}
         </CardContent>
       </Card>
