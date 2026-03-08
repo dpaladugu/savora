@@ -2,22 +2,10 @@
 import Dexie, { type EntityTable } from 'dexie';
 import type { EmergencyFund, Investment, CreditCard, RentalProperty, Health, Txn, Goal, Tenant } from '@/types/financial';
 
-// Re-export types from financial.ts for backwards compatibility
 export type { EmergencyFund, Investment, CreditCard, RentalProperty, Health, Txn, Goal, Tenant } from '@/types/financial';
 
-// Contact interface for emergency contacts
-export interface Contact {
-  name: string;
-  phone: string;
-  relation: string;
-}
-
-// Dependent interface for family dependents
-export interface Dependent {
-  name: string;
-  dob: Date;
-  relation: string;
-}
+export interface Contact { name: string; phone: string; relation: string; }
+export interface Dependent { name: string; dob: Date; relation: string; }
 
 export interface Vehicle {
   id: string;
@@ -44,6 +32,7 @@ export interface Vehicle {
   depreciationRate?: number;
   ncbPercent?: number;
   owner?: string;
+  vehicleValue?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -193,7 +182,6 @@ export interface GlobalSettings {
   revealSecret: string;
 }
 
-// Expense and Income interfaces for extended schema compatibility
 export interface Expense {
   id: string;
   amount: number;
@@ -241,7 +229,6 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   incomes: EntityTable<Income, 'id'>;
 };
 
-// Schema definition using camelCase field names
 db.version(1).stores({
   txns: '++id, amount, currency, category, date, note, goalId, cardId, vehicleId, tenantId, propertyId, createdAt, updatedAt',
   rentalProperties: '++id, address, owner, type, squareYards, monthlyRent, dueDay, escalationPercent, createdAt, updatedAt',
@@ -260,7 +247,7 @@ db.version(1).stores({
   familyBankAccounts: '++id, name, balance, createdAt, updatedAt',
   familyTransfers: '++id, amount, from, to, date, createdAt, updatedAt',
   auditLogs: '++id, action, timestamp, userId',
-  globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, birthdayBudget, birthdayAlertDays, emergencyContacts, dependents, salaryCreditDay, annualBonus, medicalInflationRate, educationInflation, vehicleInflation, maintenanceInflation, privacyMask, darkMode, timeZone, isTest, theme, deviceThemes, revealSecret',
+  globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, privacyMask, darkMode, timeZone, isTest, theme, revealSecret',
   expenses: '++id, amount, date, category, description, createdAt, updatedAt',
   incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt'
 });

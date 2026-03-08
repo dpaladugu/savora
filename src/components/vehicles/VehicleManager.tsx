@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -8,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Plus, Edit, Trash2, Car, AlertTriangle, Flame, Wrench } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Edit, Trash2, Car, AlertTriangle, Flame, Wrench, Upload } from 'lucide-react';
 import { VehicleService } from '@/services/VehicleService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import type { Vehicle } from '@/db';
+import type { Vehicle } from '@/lib/db';
 import { PageHeader } from '@/components/layout/page-header';
+import { FuelioImporter } from './FuelioImporter';
 
 // FZS oil change watchdog thresholds
 const FZS_WARN_KM   = 1000;
@@ -49,10 +52,10 @@ function OilAlert({ vehicle }: { vehicle: Vehicle }) {
 }
 
 const emptyForm = {
-  owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-  regNo: '', type: 'Car' as 'Car' | 'Other' | 'Motorcycle' | 'Scooter' | 'Truck',
+  owner: 'Me',
+  regNo: '', type: 'Car',
   make: '', model: '',
-  fuelType: 'Petrol' as 'Petrol' | 'Diesel' | 'Electric' | 'CNG' | 'Hybrid',
+  fuelType: 'Petrol',
   purchaseDate: '', insuranceExpiry: '', pucExpiry: '', odometer: '', vehicleValue: '',
 };
 
@@ -62,6 +65,8 @@ export function VehicleManager() {
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState({ ...emptyForm });
+  const [fuelioTarget, setFuelioTarget] = useState<Vehicle | null>(null);
+  const [activeTab, setActiveTab] = useState<'fleet' | 'import'>('fleet');
 
   useEffect(() => { load(); }, []);
 
@@ -227,6 +232,17 @@ export function VehicleManager() {
       </div>
 
       {/* Add / Edit Modal */}
+      {/* Fuelio Import Dialog */}
+      {fuelioTarget && (
+        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <FuelioImporter vehicle={fuelioTarget} onDone={() => { setFuelioTarget(null); load(); }} />
+            <Button variant="ghost" size="sm" className="w-full mt-2 rounded-xl text-muted-foreground" onClick={() => setFuelioTarget(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
       <Dialog open={showModal} onOpenChange={(o) => { setShowModal(o); if (!o) { setEditingVehicle(null); setForm({ ...emptyForm }); } }}>
         <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>

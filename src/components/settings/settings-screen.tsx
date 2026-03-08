@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GlobalSettingsManager } from './global-settings-manager';
 import { LLMSettingsForm } from './llm-settings-form';
 import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
+import { BackupRestore } from './backup-restore';
 import { Settings, Brain, Shield, User, Database } from 'lucide-react';
 
 const tabs = [
@@ -73,10 +74,7 @@ export function SettingsScreen() {
         </TabsContent>
 
         <TabsContent value="data">
-          <div className="text-center py-12">
-            <Database className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" aria-hidden="true" />
-            <p className="text-sm text-muted-foreground">Data management features coming soon</p>
-          </div>
+          <BackupRestore />
         </TabsContent>
       </Tabs>
     </div>
