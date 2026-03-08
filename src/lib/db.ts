@@ -276,6 +276,18 @@ export interface AppSettingTable {
   value: any;
 }
 
+export interface PendingTxn {
+  id: string;
+  rawText: string;
+  amount: number;
+  category: string;
+  note: string;
+  paymentMode?: string;
+  source: 'telegram' | 'manual';
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+}
+
 export interface GunturShopRow {
   id: string;
   shopId: string;
@@ -333,6 +345,7 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   gunturShops: EntityTable<GunturShopRow, 'id'>;
   waterfallProgress: EntityTable<WaterfallProgressRow, 'id'>;
   gorantlaRooms: EntityTable<GorantlaRoomRow, 'id'>;
+  pendingTxns: EntityTable<PendingTxn, 'id'>;
   // Legacy compatibility — used by PinLock and AiChatService
   appSettings: EntityTable<AppSettingTable, 'key'>;
 };
@@ -397,6 +410,11 @@ db.version(6).stores({
 //      Also stamps lastAutoRunAt on globalSettings for idempotency guard
 db.version(7).stores({
   appSettings: '&key',
+});
+
+// v8 — §23 Telegram PendingTxns capture queue
+db.version(8).stores({
+  pendingTxns: '++id, status, source, createdAt',
 });
 
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
