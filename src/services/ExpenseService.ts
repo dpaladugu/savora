@@ -70,6 +70,7 @@ export class ExpenseService {
 
   static async bulkAddExpenses(expensesData: Expense[]): Promise<void> {
     try {
+      const now = new Date();
       const txns = expensesData.map(expense => ({
         id: expense.id || self.crypto.randomUUID(),
         date: new Date(expense.date),
@@ -85,6 +86,8 @@ export class ExpenseService {
         splitWith: [],
         isPartialRent: false,
         isSplit: false,
+        createdAt: now,
+        updatedAt: now,
       }));
       
       await db.txns.bulkAdd(txns);
