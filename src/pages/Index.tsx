@@ -16,6 +16,7 @@ import { DesktopSidebar } from "@/components/layout/desktop-sidebar";
 import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useLiveQuery } from "dexie-react-hooks";
 import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
+import { toast } from "sonner";
 
 const MainApp = () => {
   let isUnlocked = false;
