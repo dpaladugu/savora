@@ -305,12 +305,14 @@ export function InsuranceGapAnalysis() {
 
       // ── Antifragility Scorecard ───────────────────────────────────────────────
       const sc: ScoreItem[] = [
-        { label: 'Term Life ≥ 10× income',        ok: totalTerm    >= termRequired,   critical: true },
-        { label: 'Health ≥ 5× income',             ok: totalHealth  >= healthRequired, critical: true },
-        { label: 'Critical Illness cover',          ok: ciSum        >= ciRequired,     critical: true },
-        { label: 'Super Top-Up ≥ ₹30L',            ok: superTopUpSum >= 3_000_000,     critical: false },
-        { label: 'PA cover ≥ 2× income',            ok: paSum        >= paRequired,     critical: false },
-        { label: 'All policies have nominees',       ok: missingNominee.length === 0,   critical: true },
+        { label: 'Term Life ≥ 10× income',          ok: totalTerm    >= termRequired,   critical: true  },
+        { label: 'Health ≥ 5× income',               ok: totalHealth  >= healthRequired, critical: true  },
+        { label: 'Personal health (not corp-only)',   ok: !corpOnlyHealth,               critical: true  },
+        { label: 'Critical Illness cover',            ok: ciSum        >= ciRequired,     critical: true  },
+        { label: 'Super Top-Up ≥ ₹30L',              ok: superTopUpSum >= 3_000_000,     critical: false },
+        { label: 'PA cover ≥ 2× income',              ok: paSum        >= paRequired,     critical: false },
+        { label: 'Maternity cover in place',          ok: hasMaternity,                  critical: false },
+        { label: 'All policies have nominees',         ok: missingNominee.length === 0,   critical: true  },
       ];
 
       setResults(res);
