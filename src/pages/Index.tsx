@@ -105,6 +105,8 @@ const Index = () => {
   const [isAppInitialized, setAppInitialized] = React.useState(false);
   const [hasExistingUser, setHasExistingUser] = React.useState<boolean | undefined>(undefined);
   const [hasPin, setHasPin] = React.useState(false);
+  // Show setup wizard when income table is empty (first real use)
+  const [showSetupWizard, setShowSetupWizard] = React.useState(false);
 
   React.useEffect(() => {
     async function checkInitialState() {
@@ -116,7 +118,6 @@ const Index = () => {
         // ── Run recurring transactions & notify user if any were posted ──
         const recurResult = await processRecurringTransactions();
         if (recurResult.processed > 0) {
-          // Defer toast until after app is fully mounted (avoids "no toaster" race)
           setTimeout(() => {
             toast.success(
               `✅ ${recurResult.processed} recurring transaction${recurResult.processed > 1 ? 's' : ''} auto-posted`,
@@ -131,6 +132,12 @@ const Index = () => {
         const settings = await db.globalSettings.toArray();
         setHasExistingUser(settings.length > 0);
         setHasPin(false);
+
+        // ── Show setup wizard if no income has ever been entered ──────────
+        const incomeCount = await db.incomes.count();
+        if (incomeCount === 0) {
+          setShowSetupWizard(true);
+        }
       } catch (error) {
         console.error("Index: Error checking initial state:", error);
         setHasExistingUser(false);
@@ -165,6 +172,11 @@ const Index = () => {
 
   if (hasPin && !isUnlocked) {
     return <PinLock onUnlockSuccess={handleUnlockSuccess} />;
+  }
+
+  // First-run: show setup wizard before main app
+  if (showSetupWizard) {
+    return <FinancialSetupWizard onComplete={() => setShowSetupWizard(false)} />;
   }
 
   return <MainApp />;
