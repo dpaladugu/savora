@@ -8,10 +8,12 @@ import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Home, PiggyBank, ShieldCheck,
   ChefHat, Droplets, ShoppingBag, Coffee, Scissors,
   ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar, IndianRupee,
+  Phone, FileText, TrendingDown, ChevronDown, ChevronUp, User, PlusCircle,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { format } from 'date-fns';
@@ -19,7 +21,7 @@ import { toast } from 'sonner';
 import { useRole } from '@/store/rbacStore';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { GunturShopRow, GorantlaRoomRow } from '@/lib/db';
+import type { GunturShopRow, GorantlaRoomRow, RentHikeLog } from '@/lib/db';
 
 // ─── CONSTANTS ───────────────────────────────────────────────────────────────
 const DWACRA_DEDUCTION         = 5000;
