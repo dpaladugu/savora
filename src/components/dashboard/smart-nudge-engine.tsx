@@ -42,13 +42,17 @@ function monthsUntil(deadline?: string | Date): number | null {
   return Math.round(m);
 }
 
-// Expected current amount if contributions had been linear from 0 to targetAmount by deadline
+// Expected current amount if contributions had been linear from creation to deadline
 function expectedByNow(goal: Goal): number {
-  const months = monthsUntil((goal as any).deadline ?? (goal as any).targetDate);
-  if (!months || months <= 0) return goal.targetAmount;
-  const totalMonths = months + (goal as any).monthsElapsed || months + 12;
-  const elapsed = totalMonths - months;
-  if (elapsed <= 0) return 0;
+  const monthsLeft = monthsUntil((goal as any).deadline ?? (goal as any).targetDate);
+  if (!monthsLeft || monthsLeft <= 0) return goal.targetAmount;
+  // Estimate total duration from createdAt to deadline
+  const createdAt = (goal as any).createdAt ? new Date((goal as any).createdAt) : null;
+  const deadline  = (goal as any).deadline ?? (goal as any).targetDate;
+  const deadlineDate = deadline ? new Date(deadline) : null;
+  if (!createdAt || !deadlineDate) return 0;
+  const totalMonths = Math.max(1, Math.ceil((deadlineDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24 * 30)));
+  const elapsed = Math.max(0, totalMonths - monthsLeft);
   return (elapsed / totalMonths) * goal.targetAmount;
 }
 
