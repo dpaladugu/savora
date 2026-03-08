@@ -62,11 +62,14 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
 
   const handleMoreSheetClose = () => {
     setIsMoreSheetOpen(false);
+    // Only return to dashboard if no module was selected (user dismissed the sheet)
     setTimeout(() => {
-      if (propsRef.current.activeTab === "more" && !propsRef.current.activeMoreModule) {
-        propsRef.current.onTabChange("dashboard");
+      const { activeTab, activeMoreModule, onTabChange } = propsRef.current;
+      if (activeTab === "more" && !activeMoreModule) {
+        onTabChange("dashboard");
       }
-    }, 0);
+      // If a module was selected, stay on 'more' with that module — do nothing
+    }, 50);
   };
 
   const isActive = (id: string) => activeTab === id;
