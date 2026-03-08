@@ -107,14 +107,10 @@ export function UpcomingPayments() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'overdue':
-        return 'border-red-200 bg-red-50 dark:bg-red-900/10 dark:border-red-800';
-      case 'due-today':
-        return 'border-orange-200 bg-orange-50 dark:bg-orange-900/10 dark:border-orange-800';
-      case 'upcoming':
-        return 'border-blue-200 bg-blue-50 dark:bg-blue-900/10 dark:border-blue-800';
-      default:
-        return 'border-gray-200 bg-gray-50 dark:bg-gray-900/10 dark:border-gray-800';
+      case 'overdue':   return 'border-destructive/40 bg-destructive/5';
+      case 'due-today': return 'border-warning/40 bg-warning/5';
+      case 'upcoming':  return 'border-primary/30 bg-primary/5';
+      default:          return 'border-border bg-muted/20';
     }
   };
 
