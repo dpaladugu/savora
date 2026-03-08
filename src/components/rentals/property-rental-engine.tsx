@@ -756,24 +756,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
 }
 
 
-  // ── What-If Calculation ──
-  const avgShopRent = shops.filter(s => s.status === 'Occupied').length > 0
-    ? shops.filter(s => s.status === 'Occupied').reduce((s, sh) => s + sh.rent, 0) / shops.filter(s => s.status === 'Occupied').length
-    : 0;
-  const vacancyLoss        = vacantShops * avgShopRent * vacantMonths;
-  const whatIfNet          = Math.max(0, combinedNet - (vacantShops * avgShopRent));
-  const whatIfP1Months     = whatIfNet > 0 ? Math.ceil(p1Remaining / Math.min(whatIfNet, INS_RECOVERY_MONTHLY)) : 999;
-  const whatIfP1Date       = new Date();
-  whatIfP1Date.setMonth(whatIfP1Date.getMonth() + whatIfP1Months);
-  const p1Slip             = Math.max(0, whatIfP1Months - p1MonthsLeft);
-  const whatIfP2Saving     = p1Done ? INS_2029_MONTHLY_UPSHIFT : INS_RECOVERY_MONTHLY;
-  const whatIfP2Months     = whatIfP2Saving > 0 ? Math.ceil(p2Remaining / whatIfP2Saving) : 999;
-  const whatIfP2Date       = new Date();
-  whatIfP2Date.setMonth(whatIfP2Date.getMonth() + whatIfP1Months + whatIfP2Months);
-  const p2SlipSafe         = whatIfP2Date <= feb2029;
-
-  const formatMonthYear = (d: Date) => d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
-
   return (
     <div className="space-y-4">
 
