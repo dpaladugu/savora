@@ -268,10 +268,25 @@ export function BackupRestore() {
                 />
               </div>
               <input ref={fileRef} type="file" accept=".savbak,.json" className="hidden" onChange={handleRestoreFile} />
-              <Button variant="outline" className="w-full rounded-xl gap-2" onClick={() => fileRef.current?.click()} disabled={status === 'busy'}>
-                <Upload className="h-4 w-4" />
-                {status === 'busy' ? statusMsg : 'Select Backup File (.savbak)'}
-              </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="w-full rounded-xl gap-2" onClick={() => fileRef.current?.click()} disabled={status === 'busy'}>
+                  <Upload className="h-4 w-4" />
+                  {status === 'busy' ? 'Restoring…' : 'File Restore'}
+                </Button>
+                <QRScanButton password={password} onDecrypted={async (data) => {
+                  try {
+                    for (const [table, rows] of Object.entries(data) as [string, any[]][]) {
+                      if ((db as any)[table]?.bulkPut) {
+                        await (db as any)[table].clear();
+                        if (rows.length) await (db as any)[table].bulkPut(rows);
+                      }
+                    }
+                    toast.success('Restored from QR scan successfully');
+                  } catch {
+                    toast.error('QR restore failed');
+                  }
+                }} />
+              </div>
 
               {status === 'done' && (
                 <div className="flex items-center gap-2 p-2 rounded-xl bg-success/8 border border-success/20">
