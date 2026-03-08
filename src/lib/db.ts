@@ -328,4 +328,9 @@ db.version(3).stores({
   digitalAssets: '++id, type, name, nominee, createdAt, updatedAt',
 });
 
+// Version 4: Recurring Transactions
+db.version(4).stores({
+  recurringTransactions: '++id, description, category, frequency, type, is_active, next_date, createdAt, updatedAt',
+});
+
 export { db };
