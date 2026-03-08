@@ -19,6 +19,7 @@ export class GoalService {
     };
 
     await db.goals.add(goal);
+    await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'goal', entityId: id, newValues: goal, timestamp: new Date() });
     Logger.info('Goal created', { goalId: id, name: goalData.name });
     return goal;
   }
