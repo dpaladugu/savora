@@ -393,7 +393,7 @@ export function CreditCardModule() {
                 <p className="text-sm text-muted-foreground">Cards</p>
                 <p className="text-2xl font-bold">{creditCards.length}</p>
               </div>
-              <CreditCard className="h-8 w-8 text-blue-500" />
+              <CreditCard className="h-8 w-8 text-primary" />
             </div>
           </CardContent>
         </Card>
