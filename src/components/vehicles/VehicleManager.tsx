@@ -52,10 +52,10 @@ function OilAlert({ vehicle }: { vehicle: Vehicle }) {
 }
 
 const emptyForm = {
-  owner: 'Me' as 'Me' | 'Mother' | 'Grandmother',
-  regNo: '', type: 'Car' as 'Car' | 'Other' | 'Motorcycle' | 'Scooter' | 'Truck',
+  owner: 'Me',
+  regNo: '', type: 'Car',
   make: '', model: '',
-  fuelType: 'Petrol' as 'Petrol' | 'Diesel' | 'Electric' | 'CNG' | 'Hybrid',
+  fuelType: 'Petrol',
   purchaseDate: '', insuranceExpiry: '', pucExpiry: '', odometer: '', vehicleValue: '',
 };
 
