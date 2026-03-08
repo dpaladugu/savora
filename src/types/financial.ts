@@ -29,18 +29,69 @@ export interface Investment {
   startDate?: Date;
   maturityDate?: Date;
   expectedReturn?: number;
-  // Extended fields
-  familyMember?: string;
+
+  // ── Common ──────────────────────────────────────────────────────────────────
+  familyMember?: string;           // Me | Mother | Grandmother | Brother
   taxBenefit?: boolean;
   notes?: string;
   folioNo?: string;
-  sipAmount?: number;
-  sipDay?: number;
   goalId?: string;
   lockInYears?: number;
   interestRate?: number;
   interestCreditDate?: Date;
-  frequency?: string;
+  frequency?: string;              // Monthly | Quarterly | Yearly | One-time
+
+  // ── SIP / Mutual Fund ───────────────────────────────────────────────────────
+  sipAmount?: number;              // Monthly SIP instalment (₹)
+  sipDay?: number;                 // Debit day of month (1-31)
+  isSIP?: boolean;                 // true → recurring SIP
+  schemeCode?: string;             // AMFI scheme code
+  amcName?: string;                // Asset Management Company
+  sipStartDate?: Date;
+  sipEndDate?: Date;               // null = perpetual
+
+  // ── EPF ─────────────────────────────────────────────────────────────────────
+  uan?: string;                    // Universal Account Number
+  employeeContribution?: number;   // Monthly employee share (₹)
+  employerContribution?: number;   // Monthly employer share (₹)
+  establishmentCode?: string;
+
+  // ── PPF ─────────────────────────────────────────────────────────────────────
+  ppfAccountNo?: string;
+  ppfBank?: string;                // SBI | PO | HDFC | ICICI etc.
+  ppfAnnualContribution?: number;  // Target annual contribution (₹)
+  ppfOpenDate?: Date;              // Account opening date (maturity = open + 15 yrs)
+  ppf80CUsed?: number;             // ₹ claimed under 80C this FY
+
+  // ── NPS ──────────────────────────────────────────────────────────────────────
+  pran?: string;                   // Permanent Retirement Account Number
+  npsEquityPct?: number;           // % in Equity (E) fund
+  npsCorpDebtPct?: number;         // % in Corporate Debt (C) fund
+  npsGovDebtPct?: number;          // % in Government Securities (G) fund
+  nps80CCDUsed?: number;           // ₹ claimed under 80CCD(1B) this FY (max ₹50,000)
+  npsTier?: 'T1' | 'T2';
+
+  // ── SGB (Sovereign Gold Bond) ────────────────────────────────────────────────
+  sgbSeries?: string;              // e.g. "SGB 2022-23 Series VI"
+  sgbIssuePrice?: number;          // Issue price per gram (₹)
+  sgbUnits?: number;               // Grams purchased
+  sgbIssueDate?: Date;
+  sgbMaturityDate?: Date;          // Issue date + 8 years
+  sgbCouponRate?: number;          // Fixed at 2.5% p.a.
+  sgbCouponAccount?: string;       // "SBI" — coupon credited here
+  sgbPrematureExitDate?: Date;     // Optional: 5th year exit window
+
+  // ── FD / RD ──────────────────────────────────────────────────────────────────
+  bankName?: string;               // Bank where FD/RD is held
+  accountNumber?: string;          // Deposit account/receipt no.
+  fdPrincipal?: number;
+  fdRate?: number;                 // Interest rate % p.a.
+  fdTenureDays?: number;           // Tenure in days
+  fdMaturityAmount?: number;       // Calculated or entered maturity value
+  fdTdsApplicable?: boolean;
+  fdAutoRenewal?: boolean;
+  rdMonthlyInstalment?: number;    // Monthly instalment for RD
+
   createdAt?: Date;
   updatedAt?: Date;
 }

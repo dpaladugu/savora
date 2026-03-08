@@ -4,7 +4,7 @@ import React from 'react';
 import { Dashboard } from '@/components/dashboard/dashboard';
 import { ExpenseTracker } from '@/components/expenses/expense-tracker';
 import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker';
-import { InvestmentsTracker } from '@/components/investments/investments-tracker';
+import { InvestmentHub } from '@/components/investments/investment-hub';
 import { IncomeTracker } from '@/components/income/income-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
 import { SettingsScreen } from '@/components/settings/settings-screen';
@@ -43,7 +43,7 @@ export function MainContentRouter({
     case 'credit-cards':
       return <CreditCardTracker />;
     case 'investments':
-      return <InvestmentsTracker />;
+      return <InvestmentHub />;
     case 'income':
       return <IncomeTracker />;
     case 'goals':
