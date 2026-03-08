@@ -5,7 +5,7 @@
  * • Restore via file upload or QR scan (via device camera)
  * • CSV export per table
  */
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Download, Upload, QrCode, ShieldCheck, FileText, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Download, Upload, QrCode, ShieldCheck, FileText, AlertTriangle, CheckCircle2, Camera, X } from 'lucide-react';
 import QRCodeLib from 'qrcode';
 
 // ─── AES-256 helpers ──────────────────────────────────────────────────────────
