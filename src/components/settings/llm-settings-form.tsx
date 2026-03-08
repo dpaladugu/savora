@@ -298,7 +298,7 @@ export function LLMSettingsForm() {
               {testResult && (
                 <div>
                   <Label>Test Result:</Label>
-                  <div className="mt-2 p-3 bg-gray-50 rounded-lg">
+                  <div className="mt-2 p-3 bg-muted rounded-lg">
                     <pre className="text-sm whitespace-pre-wrap">{testResult}</pre>
                   </div>
                 </div>
