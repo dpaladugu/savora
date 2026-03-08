@@ -159,6 +159,31 @@ export interface FamilyTransfer {
   updatedAt?: Date;
 }
 
+export interface WillRow {
+  id: string;
+  assetDescription: string;
+  assetType: string;
+  beneficiary: string;
+  percentage: number;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface DigitalAsset {
+  id: string;
+  type: string;
+  name: string;
+  loginUrl?: string;
+  username?: string;
+  storageLocation: string;
+  nominee: string;
+  accessInstructions: string;
+  notes?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface AuditLog {
   id: string;
   action: string;
