@@ -126,21 +126,21 @@ export interface BrotherRepayment {
   amount: number;
   date: Date;
   loanId?: string;
-  mode?: 'Cash' | 'Bank' | 'UPI';
+  mode?: string;
   note?: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface FamilyBankAccount {
   id: string;
-  name: string;
-  balance: number;
-  owner?: 'Mother' | 'Grandmother';
-  bankName?: string;
+  name?: string;
+  balance?: number;
+  owner: 'Mother' | 'Grandmother';
+  bankName: string;
   accountNo?: string;
-  type?: 'Savings' | 'Current' | 'FD';
-  currentBalance?: number;
+  type: string;
+  currentBalance: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -148,15 +148,15 @@ export interface FamilyBankAccount {
 export interface FamilyTransfer {
   id: string;
   amount: number;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   date: Date;
   fromAccountId?: string;
-  toPerson?: 'Mother' | 'Grandmother' | 'Brother';
-  purpose?: string;
-  mode?: 'Cash' | 'Bank' | 'UPI';
+  toPerson: 'Mother' | 'Grandmother' | 'Brother';
+  purpose: string;
+  mode: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface AuditLog {
