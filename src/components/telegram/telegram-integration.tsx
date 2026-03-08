@@ -173,9 +173,9 @@ export function TelegramIntegration() {
                     </div>
                     <div className="flex items-center gap-2">
                       {upload.status === 'processed' ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+                        <CheckCircle className="w-4 h-4 text-success" />
                       ) : (
-                        <AlertCircle className="w-4 h-4 text-orange-500" />
+                        <AlertCircle className="w-4 h-4 text-warning" />
                       )}
                       <span className="text-sm">{upload.recordsProcessed} records</span>
                     </div>
