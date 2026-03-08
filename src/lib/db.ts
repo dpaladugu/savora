@@ -496,6 +496,80 @@ db.version(12).stores({
   ])
 );
 
+// v13 — Seed real March 2026 debt architecture
+//  • Close old HDFC (~₹10.8L) and old ICICI (~₹7.77L) entries
+//  • Upsert InCred Education Loan: ₹10,21,156 @ 14.2% ROI
+//  • Upsert ICICI Master PL: ₹33,00,000 @ 9.99% ROI, 72 months
+db.version(13).stores({}).upgrade(async tx => {
+  const all = await tx.table('loans').toArray();
+
+  // ── Close legacy loans ──────────────────────────────────────────────────────
+  for (const l of all) {
+    const name  = (l.name  ?? '').toLowerCase();
+    const type  = (l.type  ?? '').toLowerCase();
+    const p     = l.principal ?? 0;
+    const isOldHDFC  = name.includes('hdfc')  || (type.includes('personal') && p >= 9_00_000 && p <= 12_00_000);
+    const isOldICICI = !name.includes('master') && (name.includes('icici') || (type.includes('personal') && p >= 6_00_000 && p <= 9_00_000));
+    if ((isOldHDFC || isOldICICI) && l.isActive !== false) {
+      await tx.table('loans').update(l.id, {
+        isActive: false,
+        outstanding: 0,
+        updatedAt: new Date(),
+      });
+    }
+  }
+
+  // ── Helper: check if a "real" loan already exists ───────────────────────────
+  const hasIncred = all.some(l => {
+    const n = (l.name ?? l.type ?? '').toLowerCase();
+    return (n.includes('incred') || n.includes('education')) && l.isActive !== false;
+  });
+  const hasICICIMaster = all.some(l => {
+    const n = (l.name ?? '').toLowerCase();
+    return n.includes('master') && (n.includes('icici') || (l.roi ?? 0) <= 10.5);
+  });
+
+  // ── Upsert InCred Education Loan ─────────────────────────────────────────────
+  if (!hasIncred) {
+    await tx.table('loans').add({
+      id: 'loan-incred-2026',
+      name: 'InCred Education Loan',
+      type: 'Personal',
+      borrower: 'Me',
+      principal: 23_21_156,        // original principal
+      outstanding: 10_21_156,      // residual after ₹13L strike on Feb 17 2026
+      roi: 14.2,
+      interestRate: 14.2,
+      emi: 12000,
+      tenureMonths: 120,
+      isActive: true,
+      startDate: new Date(2022, 5, 1),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+
+  // ── Upsert ICICI Master PL ───────────────────────────────────────────────────
+  if (!hasICICIMaster) {
+    await tx.table('loans').add({
+      id: 'loan-icici-master-2026',
+      name: 'ICICI Master Loan',
+      type: 'Personal',
+      borrower: 'Me',
+      principal: 33_00_000,
+      outstanding: 33_00_000,
+      roi: 9.99,
+      interestRate: 9.99,
+      emi: 55000,
+      tenureMonths: 72,
+      isActive: true,
+      startDate: new Date(2026, 1, 17),  // Feb 17 2026
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+  }
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
