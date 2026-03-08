@@ -1,6 +1,6 @@
 /**
  * GunturWaterfallCard — Dashboard widget
- * Shows live P1→P5 bucket progress from DB (gunturShops + waterfallProgress).
+ * Shows live P1→P5 bucket progress from DB (gunturShops + gorantlaRooms + waterfallProgress).
  * Tapping navigates to the full Rental Engine.
  */
 import React from 'react';
@@ -12,23 +12,28 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, Droplets } from 'lucide-react';
 
-// ─── Bucket definitions (mirrors property-rental-engine constants) ─────────────
+// ─── Waterfall constants ───────────────────────────────────────────────────────
+const DWACRA          = 5_000;    // Gorantla-only monthly DWACRA deduction
+const INS_RECOVERY_TARGET = 1_67_943; // ₹1.7L insurance recovery corpus
+const INS_2029_TARGET     = Math.round(1_67_943 * Math.pow(1.14, 3)); // ~₹2.48L @ 14% inflation
+
 interface Bucket {
   id: string;
   label: string;
   priority: string;
-  target: number;         // monthly target (Infinity = surplus)
-  isFlow: boolean;        // true = monthly-flow bucket, false = accumulation
+  target: number;
+  monthlyFlow: number; // expected monthly allocation
+  isFlow: boolean;
   colorClass: string;
-  trackInDb: boolean;     // does waterfallProgress track this?
+  trackInDb: boolean;
 }
 
 const BUCKETS: Bucket[] = [
-  { id: 'premium',   priority: 'P1', label: 'Premium Recovery',  target: 167943, isFlow: false, colorClass: 'bg-primary',     trackInDb: true  },
-  { id: 'sinking',   priority: 'P2', label: '2029 Sinking Fund',  target: 5400,   isFlow: true,  colorClass: 'bg-accent',      trackInDb: true  },
-  { id: 'household', priority: 'P3', label: 'Household Expenses', target: 45000,  isFlow: true,  colorClass: 'bg-success',     trackInDb: true  },
-  { id: 'grandma',   priority: 'P4', label: "Grandma Safety Net", target: 500000, isFlow: false, colorClass: 'bg-warning',     trackInDb: true  },
-  { id: 'debt',      priority: 'P5', label: 'ICICI Prepayment',   target: 0,      isFlow: true,  colorClass: 'bg-destructive', trackInDb: false },
+  { id: 'premium',   priority: 'P1', label: 'Premium Recovery',   target: INS_RECOVERY_TARGET, monthlyFlow: 5_400,  isFlow: false, colorClass: 'bg-primary',     trackInDb: true  },
+  { id: 'sinking',   priority: 'P2', label: '2029 Sinking Fund',   target: INS_2029_TARGET,     monthlyFlow: 5_400,  isFlow: true,  colorClass: 'bg-accent',      trackInDb: true  },
+  { id: 'household', priority: 'P3', label: 'Household Expenses',  target: 45_000,              monthlyFlow: 45_000, isFlow: true,  colorClass: 'bg-success',     trackInDb: true  },
+  { id: 'grandma',   priority: 'P4', label: "Grandma Safety Net",  target: 5_00_000,            monthlyFlow: 0,      isFlow: false, colorClass: 'bg-warning',     trackInDb: true  },
+  { id: 'debt',      priority: 'P5', label: 'ICICI Prepayment',    target: 0,                   monthlyFlow: 0,      isFlow: true,  colorClass: 'bg-destructive', trackInDb: false },
 ];
 
 interface Props {
@@ -37,52 +42,57 @@ interface Props {
 
 export function GunturWaterfallCard({ onNavigate }: Props) {
   const shops    = useLiveQuery(() => db.gunturShops.toArray().catch(() => []), []) ?? [];
+  const rooms    = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
   const progress = useLiveQuery(() => db.waterfallProgress.toArray().catch(() => []), []) ?? [];
 
-  const totalRent = shops
+  // Combined income from both properties
+  const shopRent = shops
     .filter(s => s.status === 'Occupied')
-    .reduce((s, shop) => s + (shop.rent ?? 0), 0);
+    .reduce((s, sh) => s + (sh.rent ?? 0), 0);
+  const roomRent = rooms.reduce((s, r) => s + (r.rent ?? 0), 0);
 
-  const occupiedCount = shops.filter(s => s.status === 'Occupied').length;
-  const vacantCount   = shops.filter(s => s.status === 'Vacant').length;
+  // P0 — DWACRA deduction (Gorantla-only)
+  const netAfterP0 = Math.max(0, shopRent + roomRent - DWACRA);
+
+  const occupiedShops = shops.filter(s => s.status === 'Occupied').length;
+  const vacantShops   = shops.filter(s => s.status === 'Vacant').length;
 
   // Map accumulated values from DB
   const accMap: Record<string, number> = {};
   for (const row of progress) accMap[row.bucketId] = row.accumulated ?? 0;
 
-  // Calculate remaining after each bucket in the waterfall
-  let remaining = totalRent;
+  // Calculate cascade: allocate to each bucket in order
+  let remaining = netAfterP0;
   const bucketData = BUCKETS.map(b => {
-    let pct = 0;
+    let pct       = 0;
     let allocated = 0;
-    let display = '';
+    let display   = '';
 
     if (b.id === 'debt') {
-      // P5 gets whatever is left
       allocated = Math.max(0, remaining);
-      pct = allocated > 0 ? 100 : 0;
-      display = formatCurrency(allocated) + '/mo surplus';
+      pct       = allocated > 0 ? 100 : 0;
+      display   = formatCurrency(allocated) + '/mo surplus → InCred/ICICI';
     } else if (b.isFlow) {
-      // Monthly flow — compare allocation vs target
-      allocated = Math.min(remaining, b.target);
-      pct = b.target > 0 ? Math.min(100, Math.round((allocated / b.target) * 100)) : 0;
-      display = `${formatCurrency(allocated)} / ${formatCurrency(b.target)}/mo`;
+      allocated = Math.min(remaining, b.monthlyFlow);
+      pct       = b.monthlyFlow > 0 ? Math.min(100, Math.round((allocated / b.monthlyFlow) * 100)) : 0;
+      display   = `${formatCurrency(allocated)} / ${formatCurrency(b.monthlyFlow)}/mo`;
       remaining -= allocated;
     } else {
       // Accumulation bucket — use DB progress
       const acc = accMap[b.id] ?? 0;
       allocated = acc;
-      pct = b.target > 0 ? Math.min(100, Math.round((acc / b.target) * 100)) : 0;
-      display = `${formatCurrency(acc)} / ${formatCurrency(b.target)}`;
-      // Deduct monthly contribution from remaining (assume 1 month)
-      const monthlyContrib = b.id === 'sinking' ? 5400 : Math.min(remaining, 0);
-      remaining -= Math.min(remaining, monthlyContrib);
+      pct       = b.target > 0 ? Math.min(100, Math.round((acc / b.target) * 100)) : 0;
+      display   = `${formatCurrency(acc)} / ${formatCurrency(b.target)}`;
+      // Deduct monthly contribution from remaining
+      const monthlyContrib = Math.min(remaining, b.monthlyFlow || 0);
+      remaining -= monthlyContrib;
     }
 
     return { ...b, pct, display, allocated };
   });
 
-  const fullyFunded = bucketData.filter(b => b.pct >= 100).length;
+  const fullyFunded = bucketData.filter(b => b.id !== 'debt' && b.pct >= 100).length;
+  const totalRent   = shopRent + roomRent;
 
   return (
     <button
@@ -96,25 +106,37 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
             <div className="flex h-7 w-7 items-center justify-center rounded-xl bg-primary/10">
               <Droplets className="h-4 w-4 text-primary" />
             </div>
-            <span className="flex-1">Guntur Waterfall</span>
+            <span className="flex-1">Waterfall 2.0</span>
             <Badge variant="outline" className="text-[10px] border-primary/30 text-primary">
               {formatCurrency(totalRent)}/mo
             </Badge>
             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
           </CardTitle>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-[10px] text-muted-foreground">
-              {occupiedCount} occupied · {vacantCount} vacant
+              Guntur {occupiedShops} shops · Gorantla {rooms.length} rooms
             </span>
-            <span className="text-[10px] text-muted-foreground">·</span>
-            <span className="text-[10px] text-success font-medium">
-              {fullyFunded}/{BUCKETS.length} buckets funded
+            {vacantShops > 0 && (
+              <span className="text-[10px] text-destructive font-medium">
+                · {vacantShops} vacant
+              </span>
+            )}
+            <span className="text-[10px] text-success font-medium ml-auto">
+              {fullyFunded}/{BUCKETS.length - 1} funded
             </span>
           </div>
         </CardHeader>
 
         <CardContent className="px-4 pb-4 space-y-2.5">
-          {bucketData.map((b, i) => (
+          {/* P0 deduction label */}
+          {DWACRA > 0 && (
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground px-0.5">
+              <span>P0 DWACRA deduction</span>
+              <span className="text-destructive tabular-nums">−{formatCurrency(DWACRA)}/mo</span>
+            </div>
+          )}
+
+          {bucketData.map((b) => (
             <div key={b.id} className="space-y-1">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
@@ -146,7 +168,7 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
             ))}
           </div>
           <p className="text-[9px] text-muted-foreground text-center">
-            P1 → P2 → P3 → P4 → P5 · overflow cascades down
+            P0 deductions → P1 recovery → P2 sinking → P3 household → P4 grandma → P5 debt
           </p>
         </CardContent>
       </Card>

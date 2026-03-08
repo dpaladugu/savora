@@ -79,6 +79,7 @@ export function BudgetVsActual({ onNavigateToLimits }: { onNavigateToLimits?: ()
   const now        = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
 
+  // Pull from both txns (negative = expense) and expenses table (positive amounts)
   const txns = useLiveQuery(() =>
     db.txns.filter(t => {
       const d = t.date instanceof Date ? t.date.toISOString().split('T')[0] : String(t.date).slice(0, 10);
@@ -86,12 +87,22 @@ export function BudgetVsActual({ onNavigateToLimits }: { onNavigateToLimits?: ()
     }).toArray()
   ) ?? [];
 
-  // ── Spend by category this month ──────────────────────────────────────────
+  const expenseRows = useLiveQuery(() =>
+    db.expenses.filter(e => {
+      const d = e.date instanceof Date ? e.date.toISOString().split('T')[0] : String(e.date).slice(0, 10);
+      return d >= monthStart;
+    }).toArray()
+  ) ?? [];
+
+  // ── Spend by category this month (union of txns + expenses) ──────────────
   const spendByCategory = useMemo(() => {
     const m: Record<string, number> = {};
+    // From txns (negative amounts)
     for (const t of txns) m[t.category] = (m[t.category] ?? 0) + Math.abs(t.amount);
+    // From expenses table (positive amounts)
+    for (const e of expenseRows) m[e.category] = (m[e.category] ?? 0) + Math.abs(e.amount);
     return m;
-  }, [txns]);
+  }, [txns, expenseRows]);
 
   // ── Budgeted rows ─────────────────────────────────────────────────────────
   const rows = useMemo(() =>
