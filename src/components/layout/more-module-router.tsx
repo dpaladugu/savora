@@ -28,6 +28,7 @@ import { WillEstateManager } from '@/components/estate/will-estate-manager';
 import { TaxEngine } from '@/components/tax/tax-engine';
 import { LLMAdvisor } from '@/components/ai/llm-advisor';
 import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
+import { FinancialHealthAudit } from '@/components/audit/financial-health-audit';
 import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
 import { CSVImportFlow } from '@/components/imports/csv-import-flow';
@@ -41,6 +42,7 @@ import { Shield } from 'lucide-react';
 
 export interface MoreModuleRouterProps {
   activeModule: string;
+  onMoreNavigation?: (moduleId: string) => void;
 }
 
 // ── Access-denied placeholder ────────────────────────────────────────────────
@@ -54,7 +56,7 @@ function AccessDenied({ reason }: { reason: string }) {
   );
 }
 
-export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
+export function MoreModuleRouter({ activeModule, onMoreNavigation }: MoreModuleRouterProps) {
   const role = useRole();
 
   // Scroll to top whenever module changes
@@ -131,6 +133,8 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <TaxEngine />;
       case 'ai-advisor':
         return <LLMAdvisor />;
+      case 'financial-health-audit':
+        return <FinancialHealthAudit onMoreNavigation={onMoreNavigation} />;
       case 'audit-log':
         if (role !== 'ADMIN') return <AccessDenied reason="Audit Log is restricted to ADMIN only." />;
         return <AuditLogViewer />;

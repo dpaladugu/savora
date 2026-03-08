@@ -1,16 +1,18 @@
 /**
  * LLM Advisor — §25 LLM Prompt Engine
  * Privacy-first: builds an anonymised snapshot (zero PII) → CFA-grade advice.
- * Supports streaming via configured API key, or copy-to-clipboard for any LLM.
+ * Tab 1: AI Prompt Engine  |  Tab 2: Financial Health Audit (CFA/FRM Rules Engine)
  */
 import React, { useState, useRef } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FinancialHealthAudit } from '@/components/audit/financial-health-audit';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Brain, Copy, RefreshCw, ShieldCheck, Sparkles, Zap,
+  Brain, Activity, Copy, RefreshCw, ShieldCheck, Sparkles, Zap,
   TrendingDown, CheckCircle2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { LLMPromptService } from '@/services/LLMPromptService';
@@ -341,18 +343,37 @@ export function LLMAdvisor() {
   const hasInsurance = snapshot?.insurance?.length > 0;
 
   return (
-    <div className="p-4 space-y-4 max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto">
+      {/* ── Top-level Tab bar ── */}
+      <Tabs defaultValue="advisor" className="w-full">
+        <div className="px-4 pt-4">
+          <TabsList className="grid grid-cols-2 w-full rounded-2xl p-1 bg-muted/60 border border-border/40 h-auto gap-0.5 mb-0">
+            <TabsTrigger value="advisor"
+              className="tab-trigger flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-muted-foreground transition-all duration-150">
+              <Brain className="h-3.5 w-3.5 shrink-0" />
+              AI Advisor
+            </TabsTrigger>
+            <TabsTrigger value="audit"
+              className="tab-trigger flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl text-xs font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-primary text-muted-foreground transition-all duration-150">
+              <Activity className="h-3.5 w-3.5 shrink-0" />
+              Health Audit
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-      {/* ── Header ── */}
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
-          <Brain className="h-5 w-5 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-lg font-bold text-foreground">AI Financial Advisor</h1>
-          <p className="text-xs text-muted-foreground">Privacy-first · Zero PII · §25 LLM Prompt Engine</p>
-        </div>
-      </div>
+        {/* ── Tab 1: AI Prompt Engine ── */}
+        <TabsContent value="advisor" className="mt-0">
+          <div className="p-4 space-y-4">
+            {/* ── Header ── */}
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+                <Brain className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-foreground">AI Financial Advisor</h1>
+                <p className="text-xs text-muted-foreground">Privacy-first · Zero PII · §25 LLM Prompt Engine</p>
+              </div>
+            </div>
 
       {/* ── Privacy badge ── */}
       <Card className="border-success/30 bg-success/5">
@@ -505,6 +526,14 @@ export function LLMAdvisor() {
           </CardContent>
         </Card>
       )}
+          </div>{/* end advisor inner div */}
+        </TabsContent>
+
+        {/* ── Tab 2: Financial Health Audit ── */}
+        <TabsContent value="audit" className="mt-0">
+          <FinancialHealthAudit />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
