@@ -772,24 +772,24 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                         {shop.paid ? '✓ Paid' : 'Mark Paid'}
                       </Button>
                 )}
-                {/* Advance info */}
                 {shop.status === 'Occupied' && (
-                  <div className="mt-1.5 flex items-center justify-between text-xs">
-                    {shop.advanceAmount && shop.advanceAmount > 0 ? (
-                      <span className="text-muted-foreground flex items-center gap-1">
-                        <IndianRupee className="w-2.5 h-2.5 text-primary" />
-                        <span className="font-medium text-foreground">{formatCurrency(shop.advanceAmount)}</span>
-                        {shop.advanceDate && <span>· {format(new Date(shop.advanceDate), 'MMM yy')}</span>}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground italic">No advance</span>
-                    )}
-                    {!readOnly && (
-                      <Button size="sm" variant="ghost" className="h-5 text-xs px-1.5" onClick={() => setAdvanceShop(shop)}>
-                        {shop.advanceAmount ? 'Edit' : '+Adv'}
-                      </Button>
-                    )}
-                  </div>
+                  <UnitDetailStrip
+                    unitId={shop.id}
+                    unitType="shop"
+                    unitName={shop.name}
+                    tenantName={shop.tenant}
+                    currentRent={shop.rent}
+                    tenantContact={shop.tenantContact}
+                    leaseStart={shop.leaseStart ?? null}
+                    tenantIdNote={shop.tenantIdNote}
+                    advanceAmount={shop.advanceAmount}
+                    advanceDate={shop.advanceDate ?? null}
+                    readOnly={readOnly}
+                    onProfileSave={async (contact, ls, idNote) => {
+                      await db.gunturShops.update(shop.id, { tenantContact: contact, leaseStart: ls ?? undefined, tenantIdNote: idNote, updatedAt: new Date() });
+                    }}
+                    onAdvanceEdit={() => setAdvanceShop(shop)}
+                  />
                 )}
               </div>
             ))}
