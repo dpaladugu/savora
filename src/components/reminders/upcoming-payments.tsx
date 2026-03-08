@@ -262,7 +262,7 @@ export function UpcomingPayments() {
                       )}
                       <div className="flex items-center gap-2">
                         {reminder.autoDebit && (
-                          <span className="text-xs text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded">
+                          <span className="text-xs text-success bg-success/10 px-2 py-1 rounded">
                             Auto-debit
                           </span>
                         )}
