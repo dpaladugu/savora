@@ -34,8 +34,8 @@ const modules: MoreModule[] = [
   { id: 'vehicles',        title: 'Vehicle Watchdog',       description: 'FZS oil alerts, Fuelio CSV sync, insurance',         icon: Bike,        status: 'available',    category: 'tracking',  priority: 'high' },
   { id: 'property-engine', title: 'Guntur / Gorantla',      description: 'Waterfall allocation, Dwacra deduction, Care Fund',  icon: Building,    status: 'available',    category: 'tracking',  priority: 'high', roleBlocked: 'BROTHER' },
   { id: 'enhanced-rentals',title: 'Rental Properties',      description: 'Rental income, expenses & tenant info',              icon: Home,        status: 'beta',         category: 'tracking',  priority: 'medium' },
-  { id: 'insurance',       title: 'Insurance',              description: 'Policies, premiums & claims',                        icon: Shield,      status: 'coming-soon',  category: 'tracking',  priority: 'medium', roleBlocked: 'BROTHER' },
-  { id: 'health-tracker',  title: 'Health Tracker',         description: 'Medical expenses, BoA + HDFC Optima',               icon: Heart,       status: 'coming-soon',  category: 'tracking',  priority: 'low',   roleBlocked: 'BROTHER' },
+  { id: 'insurance',       title: 'Insurance',              description: 'Policies, premiums & claims',                        icon: Shield,      status: 'available',    category: 'tracking',  priority: 'medium', roleBlocked: 'BROTHER' },
+  { id: 'health-tracker',  title: 'Health Tracker',         description: 'Mother & Grandma — prescriptions, vitals, records',  icon: Heart,       status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'gold',            title: 'Gold Investments',       description: 'Gold holdings & price movements',                    icon: Coins,       status: 'beta',         category: 'tracking',  priority: 'low',   roleBlocked: 'BROTHER' },
 
   // ── Analysis & Intelligence ────────────────────────────────────
