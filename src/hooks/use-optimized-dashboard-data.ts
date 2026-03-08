@@ -2,8 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { db } from "@/db";
-import type { Expense, Income, Investment } from '@/db';
+import { db } from "@/lib/db";
+import type { Expense, Income } from '@/lib/db';
+import type { Investment } from '@/types/financial';
 import { format, parseISO, isValid } from 'date-fns';
 
 // Helper function to safely parse dates

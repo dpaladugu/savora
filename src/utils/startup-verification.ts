@@ -1,5 +1,5 @@
 
-import { db } from '@/db';
+import { db } from '@/lib/db';
 import { Logger } from '@/services/logger';
 
 export interface StartupCheck {

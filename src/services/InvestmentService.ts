@@ -1,6 +1,6 @@
 
-import { db } from "@/db";
-import type { Investment } from "@/db";
+import { db } from "@/lib/db";
+import type { Investment } from "@/lib/db";
 
 // Legacy compatibility interface for existing components
 export interface InvestmentData {

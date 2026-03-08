@@ -1,6 +1,6 @@
 
-import { db } from "@/db";
-import type { Investment } from "@/db";
+import { db } from "@/lib/db";
+import type { Investment } from "@/lib/db";
 
 export class GoldInvestmentService {
   static async addGoldInvestment(investmentData: Omit<Investment, 'id'>): Promise<string> {
