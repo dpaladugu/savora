@@ -360,17 +360,9 @@ export function GlobalSettingsManager() {
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <Label>Dark Mode</Label>
-                  <p className="text-xs text-muted-foreground">Use system preference</p>
+                  <p className="text-xs text-muted-foreground">Toggle dark / light theme</p>
                 </div>
                 <Switch checked={settings.darkMode} onCheckedChange={(v) => updateSetting({ darkMode: v })} />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <Label>Notifications</Label>
-                  <p className="text-xs text-muted-foreground">Enable in-app alerts</p>
-                </div>
-                <Switch checked={settings.notificationsEnabled} onCheckedChange={(v) => updateSetting({ notificationsEnabled: v })} />
               </div>
             </CardContent>
           </Card>
