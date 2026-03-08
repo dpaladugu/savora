@@ -115,23 +115,30 @@ export class InvestmentService {
     }
   }
 
-  static async getInvestments(): Promise<InvestmentData[]> {
+  static async getInvestments(): Promise<Investment[]> {
+    try {
+      return await db.investments.toArray();
+    } catch (error) {
+      console.error(`Error in InvestmentService.getInvestments:`, error);
+      throw error;
+    }
+  }
+
+  static async getInvestmentsLegacy(): Promise<InvestmentData[]> {
     try {
       const investments = await db.investments.toArray();
-      
-      // Map Investment to InvestmentData for compatibility
       return investments.map(investment => ({
         id: investment.id,
         fund_name: investment.name,
         investment_type: investment.type,
         invested_value: investment.investedValue,
         current_value: investment.currentValue,
-        purchaseDate: investment.startDate.toISOString().split('T')[0],
+        purchaseDate: investment.startDate?.toISOString().split('T')[0],
         quantity: investment.units,
         notes: investment.notes
       }));
     } catch (error) {
-      console.error(`Error in InvestmentService.getInvestments:`, error);
+      console.error(`Error in InvestmentService.getInvestmentsLegacy:`, error);
       throw error;
     }
   }

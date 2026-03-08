@@ -11,21 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus, Edit, Trash2, Download, Calendar, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import { SubscriptionService } from '@/services/SubscriptionService';
-
-interface Subscription {
-  id: string;
-  name: string;
-  cost: number;
-  category: string;
-  billingCycle: 'Monthly' | 'Quarterly' | 'Yearly';
-  nextRenewal: Date;
-  autoRenew: boolean;
-  reminderEnabled: boolean;
-  reminderDays: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { SubscriptionService, type Subscription } from '@/services/SubscriptionService';
 
 const categories = [
   'Entertainment', 'Software', 'Utilities', 'Health', 'Education', 

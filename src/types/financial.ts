@@ -14,10 +14,11 @@ export interface EmergencyFund {
   updatedAt: Date;
 }
 
+
 export interface Investment {
   id: string;
   name: string;
-  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB';
+  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB' | 'Others';
   currentValue: number;
   purchasePrice: number;
   quantity: number;
@@ -28,6 +29,18 @@ export interface Investment {
   startDate: Date;
   maturityDate?: Date;
   expectedReturn?: number;
+  // Extended fields
+  familyMember?: string;
+  taxBenefit?: boolean;
+  notes?: string;
+  folioNo?: string;
+  sipAmount?: number;
+  sipDay?: number;
+  goalId?: string;
+  lockInYears?: number;
+  interestRate?: number;
+  interestCreditDate?: Date;
+  frequency?: string;
   createdAt: Date;
   updatedAt: Date;
 }

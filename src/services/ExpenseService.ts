@@ -22,6 +22,7 @@ export class ExpenseService {
       const newId = self.crypto.randomUUID();
       
       // Convert expense to transaction format
+      const now = new Date();
       const txnData: Txn = {
         id: newId,
         date: new Date(expenseData.date),
@@ -37,6 +38,8 @@ export class ExpenseService {
         splitWith: [],
         isPartialRent: false,
         isSplit: false,
+        createdAt: now,
+        updatedAt: now,
       };
       
       await db.txns.add(txnData);
@@ -67,6 +70,7 @@ export class ExpenseService {
 
   static async bulkAddExpenses(expensesData: Expense[]): Promise<void> {
     try {
+      const now = new Date();
       const txns = expensesData.map(expense => ({
         id: expense.id || self.crypto.randomUUID(),
         date: new Date(expense.date),
@@ -82,6 +86,8 @@ export class ExpenseService {
         splitWith: [],
         isPartialRent: false,
         isSplit: false,
+        createdAt: now,
+        updatedAt: now,
       }));
       
       await db.txns.bulkAdd(txns);

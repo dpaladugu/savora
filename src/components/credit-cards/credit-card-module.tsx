@@ -107,7 +107,9 @@ export function CreditCardModule() {
     e.preventDefault();
     
     try {
+      const now = new Date();
       const cardData = {
+        name: `${formData.issuer} ${formData.last4}`,
         issuer: formData.issuer,
         bankName: formData.bankName,
         last4: formData.last4,
@@ -117,6 +119,7 @@ export function CreditCardModule() {
         annualFee: formData.annualFee,
         annualFeeGst: Math.round(formData.annualFee * 0.18),
         creditLimit: formData.creditLimit,
+        limit: formData.creditLimit,
         creditLimitShared: false,
         fuelSurchargeWaiver: false,
         rewardPointsBalance: 0,
@@ -125,7 +128,10 @@ export function CreditCardModule() {
         dueDay: 20,
         currentBalance: formData.currentBalance,
         fxTxnFee: 3.5,
-        emiConversion: false
+        emiConversion: false,
+        dueDate: formData.dueDate || new Date().toISOString().split('T')[0],
+        createdAt: now,
+        updatedAt: now,
       };
 
       if (editingCard) {

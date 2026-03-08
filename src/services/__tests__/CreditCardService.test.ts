@@ -16,8 +16,11 @@ describe('CreditCardService', () => {
   });
 
   describe('addCreditCard', () => {
+
     it('should add a new credit card with generated ID', async () => {
-      const cardData = {
+      const now = new Date();
+      const cardData: Omit<import('@/types/financial').CreditCard, 'id'> = {
+        name: 'Test Bank 1234',
         issuer: 'Test Bank',
         bankName: 'Test Bank',
         last4: '1234',
@@ -27,6 +30,7 @@ describe('CreditCardService', () => {
         annualFee: 5000,
         annualFeeGst: 900,
         creditLimit: 100000,
+        limit: 100000,
         creditLimitShared: false,
         fuelSurchargeWaiver: true,
         rewardPointsBalance: 1000,
@@ -35,6 +39,10 @@ describe('CreditCardService', () => {
         dueDay: 20,
         fxTxnFee: 3.5,
         emiConversion: false,
+        currentBalance: 0,
+        dueDate: now.toISOString().split('T')[0],
+        createdAt: now,
+        updatedAt: now,
       };
       
       mockDb.creditCards.add.mockResolvedValue('new-card-id');
@@ -56,7 +64,9 @@ describe('CreditCardService', () => {
     it('should handle database errors', async () => {
       mockDb.creditCards.add.mockRejectedValue(new Error('Database error'));
 
+      const now = new Date();
       await expect(CreditCardService.addCreditCard({
+        name: 'Test Bank 1234',
         issuer: 'Test Bank',
         bankName: 'Test Bank',
         last4: '1234',
@@ -66,6 +76,7 @@ describe('CreditCardService', () => {
         annualFee: 0,
         annualFeeGst: 0,
         creditLimit: 50000,
+        limit: 50000,
         creditLimitShared: false,
         fuelSurchargeWaiver: false,
         rewardPointsBalance: 0,
@@ -74,6 +85,10 @@ describe('CreditCardService', () => {
         dueDay: 20,
         fxTxnFee: 0,
         emiConversion: false,
+        currentBalance: 0,
+        dueDate: now.toISOString().split('T')[0],
+        createdAt: now,
+        updatedAt: now,
       })).rejects.toThrow('Database error');
     });
   });

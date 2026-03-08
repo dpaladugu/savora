@@ -19,8 +19,12 @@ import {
   Sparkles,
   Home,
   Banknote,
-  AlertCircle
+  AlertCircle,
+  Globe,
+  Bike,
+  Building,
 } from 'lucide-react';
+import { useRole } from '@/store/rbacStore';
 
 interface MoreModule {
   id: string;
@@ -30,6 +34,7 @@ interface MoreModule {
   status: 'available' | 'coming-soon' | 'beta';
   category: 'financial' | 'tracking' | 'analysis' | 'settings';
   priority: 'high' | 'medium' | 'low';
+  roleRequired?: 'ADMIN' | 'SPOUSE' | 'BROTHER';
 }
 
 const modules: MoreModule[] = [
@@ -167,16 +172,49 @@ const modules: MoreModule[] = [
     status: 'available',
     category: 'settings',
     priority: 'high'
-  }
+  },
+
+  // New March 2026 Modules
+  {
+    id: 'vehicles',
+    title: 'Vehicle Fleet & Watchdog',
+    description: 'FZS oil alerts, Fuelio CSV sync, insurance reminders',
+    icon: Bike,
+    status: 'available',
+    category: 'tracking',
+    priority: 'high',
+  },
+  {
+    id: 'property-engine',
+    title: 'Guntur / Gorantla Rentals',
+    description: 'Waterfall allocation, Dwacra deduction, Grandma Care Fund',
+    icon: Building,
+    status: 'available',
+    category: 'tracking',
+    priority: 'high',
+  },
+  {
+    id: 'brother-global',
+    title: "Brother's Global Liability",
+    description: 'InCred loan, US Hand Loans, USD↔INR converter',
+    icon: Globe,
+    status: 'available',
+    category: 'financial',
+    priority: 'high',
+    roleRequired: 'BROTHER' as const,
+  },
 ];
 
 export function MoreScreen() {
+  const role = useRole();
+
+  const visibleModules = modules.filter(m => {
+    if (m.roleRequired && role !== m.roleRequired && role !== 'ADMIN') return false;
+    return true;
+  });
+
   const handleModuleClick = (moduleId: string, status: string) => {
-    if (status === 'coming-soon') {
-      return; // Do nothing for coming soon modules
-    }
-    
-    // Navigate to module
+    if (status === 'coming-soon') return;
     window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: moduleId }));
   };
 
