@@ -306,6 +306,8 @@ export interface GunturShopRow {
   rent: number;
   status: 'Vacant' | 'Occupied';
   paid: boolean;
+  advanceAmount?: number;
+  advanceDate?: Date;
   updatedAt: Date;
 }
 
@@ -323,6 +325,8 @@ export interface GorantlaRoomRow {
   tenant: string;
   rent: number;
   paid: boolean;
+  advanceAmount?: number;
+  advanceDate?: Date;
   updatedAt: Date;
 }
 
@@ -438,6 +442,20 @@ db.version(10).stores({}).upgrade(tx =>
   tx.table('gunturShops').toCollection().modify((shop: any) => {
     if (shop.paid === undefined) shop.paid = false;
   })
+);
+
+// v11 — Add advanceAmount + advanceDate to gunturShops and gorantlaRooms
+db.version(11).stores({}).upgrade(tx =>
+  Promise.all([
+    tx.table('gunturShops').toCollection().modify((row: any) => {
+      if (row.advanceAmount === undefined) row.advanceAmount = 0;
+      if (row.advanceDate   === undefined) row.advanceDate   = null;
+    }),
+    tx.table('gorantlaRooms').toCollection().modify((row: any) => {
+      if (row.advanceAmount === undefined) row.advanceAmount = 0;
+      if (row.advanceDate   === undefined) row.advanceDate   = null;
+    }),
+  ])
 );
 
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────

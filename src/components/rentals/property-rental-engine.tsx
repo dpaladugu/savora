@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,12 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import {
   Home, PiggyBank, ShieldCheck,
   ChefHat, Droplets, ShoppingBag, Coffee, Scissors,
-  ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar,
+  ArrowDown, ArrowRight, CheckCircle, AlertTriangle, TrendingUp, Calendar, IndianRupee,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useRole } from '@/store/rbacStore';
 import { db } from '@/lib/db';
@@ -72,6 +75,74 @@ function cascadeIncome(netCollected: number): Record<string, number> {
   return result;
 }
 
+// ─── ADVANCE DIALOG ───────────────────────────────────────────────────────────
+interface AdvanceDialogProps {
+  open: boolean;
+  onClose: () => void;
+  unitName: string;
+  currentAmount: number;
+  currentDate: Date | null;
+  onSave: (amount: number, date: Date) => Promise<void>;
+}
+
+function AdvanceDialog({ open, onClose, unitName, currentAmount, currentDate, onSave }: AdvanceDialogProps) {
+  const [amount, setAmount] = useState(currentAmount || 0);
+  const [date, setDate]     = useState(currentDate ? format(currentDate, 'yyyy-MM-dd') : '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setAmount(currentAmount || 0);
+      setDate(currentDate ? format(currentDate, 'yyyy-MM-dd') : '');
+    }
+  }, [open, currentAmount, currentDate]);
+
+  const handleSave = async () => {
+    if (!date) { toast.error('Please enter the date advance was received'); return; }
+    setSaving(true);
+    try {
+      await onSave(amount, new Date(date));
+      toast.success(`Advance updated for ${unitName}`);
+      onClose();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <IndianRupee className="w-4 h-4 text-primary" />
+            Advance — {unitName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Advance Amount (₹)</Label>
+            <Input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label>Date Received</Label>
+            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          {currentAmount > 0 && currentDate && (
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Current Record</p>
+              <p>Amount: <span className="font-semibold text-primary">{formatCurrency(currentAmount)}</span></p>
+              <p>Received: <span className="font-semibold">{format(new Date(currentDate), 'dd MMM yyyy')}</span></p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Save Advance'}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 type ActivePage = 'guntur' | 'gorantla' | 'planner';
 
@@ -129,6 +200,8 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
+  const [advanceRoom, setAdvanceRoom] = useState<GorantlaRoomRow | null>(null);
+
   const totalTaxDeduction = propertyTax + waterTax;
   const grossRent     = rooms.reduce((s, r) => s + r.rent, 0);
   const collectedRent = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
@@ -159,6 +232,18 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
+      {advanceRoom && (
+        <AdvanceDialog
+          open={!!advanceRoom}
+          onClose={() => setAdvanceRoom(null)}
+          unitName={advanceRoom.name}
+          currentAmount={advanceRoom.advanceAmount ?? 0}
+          currentDate={advanceRoom.advanceDate ? new Date(advanceRoom.advanceDate) : null}
+          onSave={async (amount, date) => {
+            await db.gorantlaRooms.update(advanceRoom.id, { advanceAmount: amount, advanceDate: date, updatedAt: new Date() });
+          }}
+        />
+      )}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
@@ -168,17 +253,36 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
         </CardHeader>
         <CardContent className="space-y-3">
           {rooms.map(room => (
-            <div key={room.id} className={`flex items-center justify-between p-3 rounded-lg border ${room.paid ? 'bg-success/5 border-success/30' : 'bg-card border-border'}`}>
-              <div>
-                <p className="font-medium text-sm">{room.name}</p>
-                <p className="text-xs text-muted-foreground">{room.tenant}</p>
+            <div key={room.id} className={`p-3 rounded-lg border space-y-2 ${room.paid ? 'bg-success/5 border-success/30' : 'bg-card border-border'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-sm">{room.name}</p>
+                  <p className="text-xs text-muted-foreground">{room.tenant}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
+                  {readOnly
+                    ? <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">{room.paid ? '✓ Paid' : 'Unpaid'}</Badge>
+                    : <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">{room.paid ? '✓ Paid' : 'Mark Paid'}</Button>
+                  }
+                </div>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
-                {readOnly
-                  ? <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">{room.paid ? '✓ Paid' : 'Unpaid'}</Badge>
-                  : <Button size="sm" variant={room.paid ? 'default' : 'outline'} onClick={() => togglePaid(room.id, room.paid)} className="h-7 text-xs">{room.paid ? '✓ Paid' : 'Mark Paid'}</Button>
-                }
+              {/* Advance row */}
+              <div className="flex items-center justify-between text-xs">
+                {room.advanceAmount && room.advanceAmount > 0 ? (
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <IndianRupee className="w-3 h-3 text-primary" />
+                    Advance: <span className="font-semibold text-foreground">{formatCurrency(room.advanceAmount)}</span>
+                    {room.advanceDate && <span className="text-muted-foreground ml-1">· {format(new Date(room.advanceDate), 'dd MMM yyyy')}</span>}
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground italic">No advance recorded</span>
+                )}
+                {!readOnly && (
+                  <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setAdvanceRoom(room)}>
+                    {room.advanceAmount ? 'Edit' : '+ Add'} Advance
+                  </Button>
+                )}
               </div>
             </div>
           ))}
@@ -259,6 +363,8 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const saveTaxSettings = (pt: number, wt: number) =>
     db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
 
+  const [advanceShop, setAdvanceShop] = useState<GunturShopRow | null>(null);
+
   const totalTaxDeduction = propertyTax + waterTax;
   const bucketProgress: Record<string, number> = {};
   progress.forEach(p => { bucketProgress[p.bucketId] = p.accumulated; });
@@ -310,6 +416,18 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
 
   return (
     <div className="space-y-4">
+      {advanceShop && (
+        <AdvanceDialog
+          open={!!advanceShop}
+          onClose={() => setAdvanceShop(null)}
+          unitName={advanceShop.name}
+          currentAmount={advanceShop.advanceAmount ?? 0}
+          currentDate={advanceShop.advanceDate ? new Date(advanceShop.advanceDate) : null}
+          onSave={async (amount, date) => {
+            await db.gunturShops.update(advanceShop.id, { advanceAmount: amount, advanceDate: date, updatedAt: new Date() });
+          }}
+        />
+      )}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center justify-between text-base">
@@ -340,6 +458,25 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                         className="mt-1 h-6 text-xs w-full">
                         {shop.paid ? '✓ Paid' : 'Mark Paid'}
                       </Button>
+                )}
+                {/* Advance info */}
+                {shop.status === 'Occupied' && (
+                  <div className="mt-1.5 flex items-center justify-between text-xs">
+                    {shop.advanceAmount && shop.advanceAmount > 0 ? (
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <IndianRupee className="w-2.5 h-2.5 text-primary" />
+                        <span className="font-medium text-foreground">{formatCurrency(shop.advanceAmount)}</span>
+                        {shop.advanceDate && <span>· {format(new Date(shop.advanceDate), 'MMM yy')}</span>}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground italic">No advance</span>
+                    )}
+                    {!readOnly && (
+                      <Button size="sm" variant="ghost" className="h-5 text-xs px-1.5" onClick={() => setAdvanceShop(shop)}>
+                        {shop.advanceAmount ? 'Edit' : '+Adv'}
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             ))}
