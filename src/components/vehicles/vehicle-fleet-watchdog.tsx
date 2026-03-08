@@ -164,7 +164,7 @@ export function VehicleFleetWatchdog() {
                 </div>
                 <div className={`text-center p-2 rounded-lg border ${
                   oil.status === 'overdue' ? 'bg-destructive/10 border-destructive' :
-                  oil.status === 'warning' ? 'bg-yellow-500/10 border-yellow-500' : 'bg-background'
+                  oil.status === 'warning' ? 'bg-warning/10 border-warning' : 'bg-background'
                 }`}>
                   <p className="text-muted-foreground text-xs">Since Service</p>
                   <p className="font-bold">{oil.kmSinceService.toLocaleString()} km</p>
