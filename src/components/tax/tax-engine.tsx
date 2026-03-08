@@ -312,6 +312,12 @@ export function TaxEngine() {
 
         {/* ── Advance Tax Tab ───────────────────────────────────── */}
         <TabsContent value="advance" className="space-y-4 mt-3">
+          {autoLoaded && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/8 border border-success/20 text-xs text-success">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              Auto-loaded: income from DB · 80C from EPF/PPF/SIP · 80D from personal insurance premiums
+            </div>
+          )}
           <Card>
             <CardContent className="pt-4 pb-4 px-4 space-y-3">
               <div className="space-y-1.5">
@@ -337,10 +343,20 @@ export function TaxEngine() {
                   <Input type="number" value={grossIncome || ''} onChange={e => setGrossIncome(Number(e.target.value))} className="h-8 text-sm" />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">80C Deductions (₹)</Label>
+                  <Label className="text-xs">80C Deductions (₹) <span className="text-muted-foreground">(Old regime)</span></Label>
                   <Input type="number" value={deductions80C || ''} onChange={e => setDeductions80C(Number(e.target.value))} className="h-8 text-sm" />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">80D Health Insurance Premium (₹) <span className="text-muted-foreground">(Old regime)</span></Label>
+                <Input type="number" value={deductions80D || ''} onChange={e => setDeductions80D(Number(e.target.value))} className="h-8 text-sm" />
+              </div>
+              {taxRegime === 'New' && (
+                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  You are on New Regime — 80C/80D not deductible. Shown here for Old vs New comparison only.
+                </p>
+              )}
             </CardContent>
           </Card>
 
