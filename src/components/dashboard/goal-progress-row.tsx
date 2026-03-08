@@ -1,13 +1,16 @@
 /**
  * GoalProgressRow — horizontal scroll strip of active goals
  * shown on the Dashboard below the metric cards.
+ * Tapping a card opens the GoalDetailSheet.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { Target, ChevronRight } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { formatCurrency } from '@/lib/format-utils';
+import { GoalDetailSheet } from '@/components/goals/goal-detail-sheet';
+import type { Goal } from '@/types/financial';
 
 interface GoalProgressRowProps {
   onNavigate: (module: string) => void;
@@ -30,6 +33,7 @@ function DaysChip({ days }: { days: number | null }) {
 
 export function GoalProgressRow({ onNavigate }: GoalProgressRowProps) {
   const goals = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
 
   const active = goals
     .filter(g => {
@@ -37,72 +41,82 @@ export function GoalProgressRow({ onNavigate }: GoalProgressRowProps) {
       const current = (g as any).currentAmount ?? 0;
       return target > 0 && current < target;
     })
-    .slice(0, 8); // cap at 8 cards
+    .slice(0, 8);
 
   if (active.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      {/* Section header */}
-      <button
-        onClick={() => onNavigate('goals')}
-        className="flex items-center justify-between w-full group"
-      >
-        <div className="flex items-center gap-1.5">
-          <Target className="h-3.5 w-3.5 text-primary" />
-          <span className="text-xs font-semibold text-foreground">Goals</span>
-          <span className="text-[10px] text-muted-foreground">({active.length} active)</span>
+    <>
+      <div className="space-y-2">
+        {/* Section header */}
+        <button
+          onClick={() => onNavigate('goals')}
+          className="flex items-center justify-between w-full group"
+        >
+          <div className="flex items-center gap-1.5">
+            <Target className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-foreground">Goals</span>
+            <span className="text-[10px] text-muted-foreground">({active.length} active)</span>
+          </div>
+          <div className="flex items-center gap-0.5 text-muted-foreground group-hover:text-foreground transition-colors">
+            <span className="text-[10px]">View all</span>
+            <ChevronRight className="h-3 w-3" />
+          </div>
+        </button>
+
+        {/* Horizontal scroll strip */}
+        <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
+          {active.map(g => {
+            const goal     = g as any;
+            const target   = goal.targetAmount ?? 0;
+            const current  = goal.currentAmount ?? 0;
+            const pct      = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+            const days     = daysRemaining(goal.deadline ?? goal.targetDate);
+            const name     = goal.name ?? goal.title ?? 'Goal';
+
+            return (
+              <button
+                key={goal.id}
+                onClick={() => setSelectedGoal(g as Goal)}
+                className="
+                  flex-shrink-0 w-36 p-3 rounded-2xl
+                  bg-card border border-border/50
+                  hover:border-primary/30 hover:bg-primary/3
+                  active:scale-[0.97] transition-all text-left
+                  space-y-2
+                "
+                aria-label={`Open details for ${name}`}
+              >
+                {/* Name + days */}
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{name}</p>
+                  <DaysChip days={days} />
+                </div>
+
+                {/* Progress bar */}
+                <Progress value={pct} className="h-1.5" />
+
+                {/* Amounts */}
+                <div className="flex items-end justify-between">
+                  <span className="text-[10px] text-muted-foreground tabular-nums">
+                    {formatCurrency(current)}
+                  </span>
+                  <span className="text-[10px] font-bold text-foreground tabular-nums">
+                    {pct}%
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <div className="flex items-center gap-0.5 text-muted-foreground group-hover:text-foreground transition-colors">
-          <span className="text-[10px]">View all</span>
-          <ChevronRight className="h-3 w-3" />
-        </div>
-      </button>
-
-      {/* Horizontal scroll strip */}
-      <div className="flex gap-2.5 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
-        {active.map(g => {
-          const goal     = g as any;
-          const target   = goal.targetAmount ?? 0;
-          const current  = goal.currentAmount ?? 0;
-          const pct      = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
-          const days     = daysRemaining(goal.deadline ?? goal.targetDate);
-          const name     = goal.name ?? goal.title ?? 'Goal';
-
-          return (
-            <button
-              key={goal.id}
-              onClick={() => onNavigate('goals')}
-              className="
-                flex-shrink-0 w-36 p-3 rounded-2xl
-                bg-card border border-border/50
-                hover:border-primary/30 hover:bg-primary/3
-                active:scale-[0.97] transition-all text-left
-                space-y-2
-              "
-            >
-              {/* Name + days */}
-              <div className="space-y-0.5">
-                <p className="text-xs font-semibold text-foreground leading-tight line-clamp-1">{name}</p>
-                <DaysChip days={days} />
-              </div>
-
-              {/* Progress bar */}
-              <Progress value={pct} className="h-1.5" />
-
-              {/* Amounts */}
-              <div className="flex items-end justify-between">
-                <span className="text-[10px] text-muted-foreground tabular-nums">
-                  {formatCurrency(current)}
-                </span>
-                <span className="text-[10px] font-bold text-foreground tabular-nums">
-                  {pct}%
-                </span>
-              </div>
-            </button>
-          );
-        })}
       </div>
-    </div>
+
+      {/* Goal Detail Bottom Sheet */}
+      <GoalDetailSheet
+        goal={selectedGoal}
+        open={!!selectedGoal}
+        onClose={() => setSelectedGoal(null)}
+      />
+    </>
   );
 }
