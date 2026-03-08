@@ -31,8 +31,8 @@ import { RecurringTransactionRecord } from "@/types/recurring-transaction";
 interface RecurringTransactionFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>) => void;
-  initialData?: RecurringTransactionRecord | null;
+  onSubmit: (data: any) => void;
+  initialData?: any | null;
 }
 
 export function RecurringTransactionForm({

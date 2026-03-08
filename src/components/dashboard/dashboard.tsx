@@ -21,6 +21,7 @@ import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import type { EmergencyFund } from '@/types/financial';
+import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
 
 
 
@@ -450,6 +451,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
       {/* ── Goal Progress Row ── */}
       <GoalProgressRow onNavigate={onTabChange} />
+
+      {/* ── Upcoming Recurring Transactions ── */}
+      <UpcomingRecurringStrip onNavigate={onMoreNavigation} />
 
       {/* ── Charts + Recent Activity ── */}
       <div className="grid gap-4 lg:grid-cols-2">
