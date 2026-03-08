@@ -209,7 +209,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       </button>
 
       {/* ── Quick Actions ── */}
-      <QuickActions onTabChange={onTabChange} />
+      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />
 
 
       {/* ── Metric Cards ── */}
