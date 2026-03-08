@@ -239,6 +239,22 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       }
     }
 
+    // ── 5. Backup overdue ────────────────────────────────────────────────────
+    const lastBackupMs = DataSafetyService.getLastBackupMs();
+    if (lastBackupMs !== null && DataSafetyService.shouldNudgeBackup()) {
+      const days = Math.floor(lastBackupMs / (1000 * 60 * 60 * 24));
+      list.push({
+        id: 'backup-overdue',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: 'Backup overdue',
+        body: `Last backup was ${days} days ago. Export a .savbak to protect your data against device loss.`,
+        ctaLabel: 'Backup now →',
+        ctaAction: () => onMoreNavigation('settings'),
+        priority: 2,
+        color: 'warning',
+      });
+    }
+
     // Sort by priority, cap at 3
     return list.sort((a, b) => a.priority - b.priority).slice(0, 3);
   }, [activeGoals, recurring, loans, investments, creditCards, ef, settings]);
