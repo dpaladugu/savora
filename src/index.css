@@ -126,8 +126,15 @@
     font-feature-settings: "cv11", "salt", "ss01", "ss03";
   }
 
-  /* ── WCAG 2.2 AA: All interactive elements ≥ 24×24 visible + 44×44 touch ── */
-  button, a, [role="button"], input, select, textarea {
+  /* ── WCAG 2.2 AA: 44×44 touch targets on interactive elements ──
+     Tab triggers are EXCLUDED — they size from their parent TabsList.
+     Using :not() guards prevents the global rule from collapsing tab rows. ── */
+  button:not([role="tab"]):not(.tab-trigger),
+  a:not([role="tab"]),
+  [role="button"]:not([role="tab"]),
+  input,
+  select,
+  textarea {
     min-height: 44px;
   }
 
