@@ -70,10 +70,10 @@ export function CFARecommendationsDashboard() {
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'High': return <AlertTriangle className="w-4 h-4 text-red-500" />;
-      case 'Medium': return <TrendingUp className="w-4 h-4 text-yellow-500" />;
-      case 'Low': return <CheckCircle className="w-4 h-4 text-green-500" />;
-      default: return <Lightbulb className="w-4 h-4" />;
+      case 'High':   return <AlertTriangle className="w-4 h-4 text-destructive" />;
+      case 'Medium': return <TrendingUp    className="w-4 h-4 text-warning"     />;
+      case 'Low':    return <CheckCircle   className="w-4 h-4 text-success"     />;
+      default:       return <Lightbulb     className="w-4 h-4"                  />;
     }
   };
 
