@@ -66,19 +66,19 @@ export interface DashboardData {
 export interface Goal {
   id: string;
   name: string;
-  title: string;
+  title?: string;          // optional alias for name
   targetAmount: number;
   currentAmount: number;
-  deadline: string;
-  category: string;
-  // Extended fields for AutoGoalEngine compatibility
+  deadline?: string;       // optional ISO string
+  category?: string;       // optional
+  // Extended fields
   slug?: string;
   type?: 'Short' | 'Medium' | 'Long';
   targetDate?: Date;
   notes?: string;
   priority?: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Transaction {

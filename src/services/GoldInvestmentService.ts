@@ -9,7 +9,7 @@ export class GoldInvestmentService {
       const recordToAdd: Investment = {
         ...investmentData,
         id: newId,
-        type: 'Gold-Coin',
+        type: 'Gold' as Investment['type'],
       };
       await db.investments.add(recordToAdd);
       return newId;
