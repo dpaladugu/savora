@@ -18,14 +18,21 @@ export function NetWorthWidget({ onNavigate }: Props) {
   const loans       = useLiveQuery(() => db.loans.toArray().catch(() => []), []) ?? [];
   const creditCards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
 
-  const totalAssets = (
-    investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0) +
-    gold.reduce((s, g) => { const w = (g as any).netWeight ?? (g as any).weight ?? 0; return s + 8500 * w; }, 0) +
-    (ef?.currentAmount ?? 0)
-  );
+  // ── Assets: all investment types + physical gold + EF corpus ──────────────
+  const investmentTotal = investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+  // Physical gold: prefer netWeight (grams), fallback to weight field
+  const goldTotal = gold.reduce((s, g) => {
+    const w = (g as any).netWeight ?? (g as any).weight ?? 0;
+    // use stored currentMcxPrice if available, else default ₹8,500/gram (approximate)
+    const price = (g as any).currentMcxPrice ?? 8500;
+    return s + price * w;
+  }, 0);
+  const efCorpus = ef?.currentAmount ?? 0;
+
+  const totalAssets      = investmentTotal + goldTotal + efCorpus;
   const totalLiabilities = (
-    loans.reduce((s, l) => s + (l.outstanding ?? l.principal ?? 0), 0) +
-    creditCards.reduce((s, c) => s + (c.currentBalance ?? 0), 0)
+    loans.reduce((s, l) => s + ((l as any).outstanding ?? l.principal ?? 0), 0) +
+    creditCards.reduce((s, c) => s + ((c as any).currentBalance ?? 0), 0)
   );
   const netWorth = totalAssets - totalLiabilities;
   const isPositive = netWorth >= 0;

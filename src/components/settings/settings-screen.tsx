@@ -6,7 +6,9 @@ import { LLMSettingsForm } from './llm-settings-form';
 import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
 import { BackupRestore } from './backup-restore';
 import { BackupNudge } from './backup-nudge';
-import { Settings, Brain, Shield, User, Database } from 'lucide-react';
+import { Settings, Brain, Shield, User, Database, Wand2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
 
 const tabs = [
   { value: 'user',   label: 'User',   icon: User     },
@@ -17,17 +19,33 @@ const tabs = [
 
 export function SettingsScreen() {
   const [activeTab, setActiveTab] = useState('user');
+  const [showWizard, setShowWizard] = useState(false);
+
+  if (showWizard) {
+    return <FinancialSetupWizard onComplete={() => setShowWizard(false)} />;
+  }
+
   return (
     <div className="w-full">
       {/* ── Page title ── */}
-      <div className="mb-4">
-        <h1 className="text-xl font-bold flex items-center gap-2 text-foreground">
-          <Settings className="h-5 w-5 text-primary" aria-hidden="true" />
-          Settings
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          Preferences, security and AI configuration
-        </p>
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold flex items-center gap-2 text-foreground">
+            <Settings className="h-5 w-5 text-primary" aria-hidden="true" />
+            Settings
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Preferences, security and AI configuration
+          </p>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 text-xs gap-1.5 rounded-xl shrink-0"
+          onClick={() => setShowWizard(true)}
+        >
+          <Wand2 className="h-3.5 w-3.5" /> Setup Wizard
+        </Button>
       </div>
 
       <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
