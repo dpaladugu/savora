@@ -58,6 +58,7 @@ export function ExpenseTracker() {
         await ExpenseService.addExpense(payload);
         await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'expense', entityId: crypto.randomUUID(), newValues: payload, timestamp: new Date() });
         toast({ title: 'Expense added' });
+        // Spending-limit check fires automatically inside ExpenseService.addExpense
       }
       setForm(emptyForm); setShowForm(false); setEditingExpense(null); load();
     } catch { toast({ title: 'Failed to save', variant: 'destructive' }); }
