@@ -34,12 +34,12 @@ const DEFAULT_GORANTLA: Omit<GorantlaRoomRow, 'updatedAt'>[] = [
 ];
 
 const DEFAULT_SHOPS: Omit<GunturShopRow, 'updatedAt'>[] = [
-  { id: 'gs-1', shopId: 'shop-1', name: 'Shop 1', tenant: '',        rent: 0,    status: 'Vacant'   },
-  { id: 'gs-2', shopId: 'shop-2', name: 'Shop 2', tenant: 'Milk',    rent: 5500, status: 'Occupied' },
-  { id: 'gs-3', shopId: 'shop-3', name: 'Shop 3', tenant: 'Salon',   rent: 3700, status: 'Occupied' },
-  { id: 'gs-4', shopId: 'shop-4', name: 'Shop 4', tenant: 'Noodles', rent: 3900, status: 'Occupied' },
-  { id: 'gs-5', shopId: 'shop-5', name: 'Shop 5', tenant: 'Tea',     rent: 4000, status: 'Occupied' },
-  { id: 'gs-6', shopId: 'shop-6', name: 'Shop 6', tenant: 'Bags',    rent: 2500, status: 'Occupied' },
+  { id: 'gs-1', shopId: 'shop-1', name: 'Shop 1', tenant: '',        rent: 0,    status: 'Vacant',   paid: false },
+  { id: 'gs-2', shopId: 'shop-2', name: 'Shop 2', tenant: 'Milk',    rent: 5500, status: 'Occupied', paid: false },
+  { id: 'gs-3', shopId: 'shop-3', name: 'Shop 3', tenant: 'Salon',   rent: 3700, status: 'Occupied', paid: false },
+  { id: 'gs-4', shopId: 'shop-4', name: 'Shop 4', tenant: 'Noodles', rent: 3900, status: 'Occupied', paid: false },
+  { id: 'gs-5', shopId: 'shop-5', name: 'Shop 5', tenant: 'Tea',     rent: 4000, status: 'Occupied', paid: false },
+  { id: 'gs-6', shopId: 'shop-6', name: 'Shop 6', tenant: 'Bags',    rent: 2500, status: 'Occupied', paid: false },
 ];
 
 interface WaterfallBucket {

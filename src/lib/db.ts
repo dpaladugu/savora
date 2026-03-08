@@ -433,6 +433,13 @@ db.version(9).stores({}).upgrade(tx =>
   tx.table('appSettings').put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: 0, waterTax: 0 }) }).catch(() => {})
 );
 
+// v10 — Add paid flag to gunturShops
+db.version(10).stores({}).upgrade(tx =>
+  tx.table('gunturShops').toCollection().modify((shop: any) => {
+    if (shop.paid === undefined) shop.paid = false;
+  })
+);
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
