@@ -30,7 +30,7 @@ import { LLMAdvisor } from '@/components/ai/llm-advisor';
 import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
 import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
-import { CSVImports } from '@/components/imports/csv-imports';
+import { CSVImportFlow } from '@/components/imports/csv-import-flow';
 import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
 import { DebtStrikeCalculator } from '@/components/debt/debt-strike-calculator';
 import { TelegramPendingTxns } from '@/components/telegram/telegram-pending-txns';
@@ -137,7 +137,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'budget-vs-actual':
         return <BudgetVsActual />;
       case 'csv-import':
-        return <CSVImports />;
+        return <CSVImportFlow />;
       case 'recurring-transactions':
         return <RecurringTransactionsPage />;
       case 'debt-strike':
