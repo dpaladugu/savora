@@ -1,20 +1,18 @@
 /**
  * LLM Advisor — §25 LLM Prompt Engine
  * Privacy-first: builds an anonymised snapshot (zero PII) → CFA-grade advice.
- * Supports streaming via configured API key, or copy-to-clipboard for any LLM.
- * Tab 2: Financial Health Audit (CFA/FRM Rules Engine)
+ * Tab 1: AI Prompt Engine  |  Tab 2: Financial Health Audit (CFA/FRM Rules Engine)
  */
 import React, { useState, useRef } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FinancialHealthAudit } from '@/components/audit/financial-health-audit';
-import { Brain, Activity } from 'lucide-react';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
-  Brain, Copy, RefreshCw, ShieldCheck, Sparkles, Zap,
+  Brain, Activity, Copy, RefreshCw, ShieldCheck, Sparkles, Zap,
   TrendingDown, CheckCircle2, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { LLMPromptService } from '@/services/LLMPromptService';
