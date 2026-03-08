@@ -62,14 +62,28 @@ export interface Insurance {
   provider?: string;
   company?: string;
   policyNumber?: string;
+  policyNo?: string;
   sumAssured?: number;
-  sumInsured?: number;
+  sumInsured: number;
   premiumAmount?: number;
   premiumDueDate?: Date;
+  startDate?: Date;
   endDate?: Date;
   nominee?: string;
+  nomineeName?: string;
+  nomineeRelation?: string;
+  familyMember?: string;
   notes?: string;
   isActive?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SpendingLimit {
+  id: string;
+  category: string;
+  monthlyCap: number;
+  alertAt: number;   // percentage, default 80
   createdAt: Date;
   updatedAt: Date;
 }
