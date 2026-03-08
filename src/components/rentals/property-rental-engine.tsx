@@ -755,13 +755,6 @@ function AllocationPlannerPage({ readOnly = false }: { readOnly?: boolean }) {
   );
 }
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-primary" />
-            Net Operating Income (NOI) — This Month
-          </CardTitle>
-        </CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-lg border bg-card space-y-1">
