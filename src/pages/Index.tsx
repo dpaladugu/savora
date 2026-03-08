@@ -17,6 +17,7 @@ import { useAutoLock } from "@/hooks/use-auto-lock";
 import { useLiveQuery } from "dexie-react-hooks";
 import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
 import { toast } from "sonner";
+import { FinancialSetupWizard } from "@/components/setup/financial-setup-wizard";
 
 const MainApp = () => {
   let isUnlocked = false;
