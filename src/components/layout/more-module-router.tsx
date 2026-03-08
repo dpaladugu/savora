@@ -110,7 +110,7 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'budget-vs-actual':
         return <BudgetVsActual />;
       case 'csv-import':
-        return <CsvImports />;
+        return <CSVImports />;
       case 'recurring-transactions':
         return <RecurringTransactionsPage />;
       default:
