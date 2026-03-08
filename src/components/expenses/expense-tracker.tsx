@@ -12,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
+import { checkSpendingLimitAfterExpense } from '@/lib/spending-limit-checker';
 
 
 export function ExpenseTracker() {
