@@ -21,6 +21,7 @@ export class InvestmentService {
       const newId = self.crypto.randomUUID();
       
       // Map InvestmentData to Investment interface
+      const now = new Date();
       const recordToAdd: Investment = {
         id: newId,
         type: investmentData.investment_type as Investment['type'] || 'Others',
@@ -29,7 +30,10 @@ export class InvestmentService {
         units: investmentData.quantity || 0,
         investedValue: investmentData.invested_value || 0,
         currentValue: investmentData.current_value || investmentData.invested_value || 0,
-        startDate: investmentData.purchaseDate ? new Date(investmentData.purchaseDate) : new Date(),
+        purchasePrice: investmentData.invested_value || 0,
+        quantity: investmentData.quantity || 0,
+        purchaseDate: investmentData.purchaseDate ? new Date(investmentData.purchaseDate) : now,
+        startDate: investmentData.purchaseDate ? new Date(investmentData.purchaseDate) : now,
         frequency: 'One-time',
         taxBenefit: false,
         familyMember: 'Me',
@@ -41,7 +45,9 @@ export class InvestmentService {
         goalId: undefined,
         lockInYears: undefined,
         interestRate: undefined,
-        interestCreditDate: undefined
+        interestCreditDate: undefined,
+        createdAt: now,
+        updatedAt: now,
       };
       
       await db.investments.add(recordToAdd);
