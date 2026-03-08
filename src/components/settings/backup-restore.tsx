@@ -53,6 +53,74 @@ async function decryptJSON(base64: string, password: string): Promise<any> {
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
+// ─── QR Camera Scan Button ────────────────────────────────────────────────────
+function QRScanButton({ password, onDecrypted }: { password: string; onDecrypted: (data: any) => void }) {
+  const videoRef  = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [scanning, setScanning] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopScan = useCallback(() => {
+    streamRef.current?.getTracks().forEach(t => t.stop());
+    streamRef.current = null;
+    setScanning(false);
+  }, []);
+
+  useEffect(() => () => { stopScan(); }, [stopScan]);
+
+  async function startScan() {
+    if (!('BarcodeDetector' in window)) {
+      toast.error('QR scan not supported on this browser. Use Chrome/Edge on Android.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+      setScanning(true);
+
+      // @ts-ignore
+      const detector = new (window as any).BarcodeDetector({ formats: ['qr_code'] });
+      const tick = async () => {
+        if (!scanning && !streamRef.current) return;
+        try {
+          const barcodes = await detector.detect(videoRef.current);
+          if (barcodes.length > 0) {
+            const raw = barcodes[0].rawValue as string;
+            stopScan();
+            if (!password) { toast.error('Enter restore password first'); return; }
+            const data = await decryptJSON(raw, password);
+            onDecrypted(data);
+          } else {
+            requestAnimationFrame(tick);
+          }
+        } catch { requestAnimationFrame(tick); }
+      };
+      videoRef.current?.addEventListener('loadedmetadata', tick, { once: true });
+    } catch {
+      toast.error('Camera access denied');
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outline" className="w-full rounded-xl gap-2" onClick={scanning ? stopScan : startScan}>
+        {scanning ? <><X className="h-4 w-4" />Stop Scan</> : <><Camera className="h-4 w-4" />Scan QR</>}
+      </Button>
+      {scanning && (
+        <div className="relative rounded-xl overflow-hidden border border-border/40 bg-black mt-2">
+          <video ref={videoRef} autoPlay playsInline className="w-full h-48 object-cover" />
+          <canvas ref={canvasRef} className="hidden" />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div className="w-40 h-40 border-2 border-primary rounded-xl opacity-70" />
+          </div>
+          <p className="absolute bottom-2 w-full text-center text-[10px] text-white/70">Point at QR code</p>
+        </div>
+      )}
+    </>
+  );
+}
+
 // ─── Table export helpers ─────────────────────────────────────────────────────
 const TABLE_NAMES = [
   'txns','rentalProperties','goals','vehicles','creditCards','loans',
