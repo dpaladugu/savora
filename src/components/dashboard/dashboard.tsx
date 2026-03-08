@@ -247,6 +247,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
+  const [showMonthDrilldown, setShowMonthDrilldown] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
