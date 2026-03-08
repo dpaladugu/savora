@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
+import { useRole } from '@/store/rbacStore';
 
 // ─── GORANTLA (NAGARALU) CONFIG ─────────────────────────────────────────────
 
