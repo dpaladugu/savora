@@ -6,7 +6,7 @@
  */
 
 import { db } from '@/lib/db';
-import type { Loan, BrotherRepayment } from '@/lib/db';
+import type { Loan, BrotherRepayment, AmortRow } from '@/lib/db';
 
 // ─── AmortRow (local — matches db-schema-extended shape) ─────────────────────
 export interface AmortRow {
