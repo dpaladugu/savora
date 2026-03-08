@@ -183,6 +183,7 @@ export function CreditCardTracker() {
   const handleAdd = async (form: typeof emptyForm) => {
     try {
       await CreditCardService.addCreditCard({
+        name:            `${form.bankName} ${form.cardName}`,
         bankName:        form.bankName,
         cardName:        form.cardName,
         network:         form.network as any,
@@ -191,7 +192,7 @@ export function CreditCardTracker() {
         currentBalance:  Number(form.currentBalance) || 0,
         annualFee:       Number(form.annualFee) || 0,
         feeWaiverRule:   form.feeWaiverRule,
-        dueDate:         Number(form.dueDate) || 0,
+        dueDay:          Number(form.dueDate) || 0,
         anniversaryDate: form.anniversaryDate,
         paymentMethod:   form.paymentMethod as any,
         isActive:        true,
