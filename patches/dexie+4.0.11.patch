@@ -1,0 +1,12 @@
+diff --git a/node_modules/dexie/dist/dexie.d.ts b/node_modules/dexie/dist/dexie.d.ts
+index 1234567..abcdefg 100644
+--- a/node_modules/dexie/dist/dexie.d.ts
++++ b/node_modules/dexie/dist/dexie.d.ts
+@@ -1147,7 +1147,7 @@ export interface _Table<T, TKey, TInsertType> extends Table<T, TKey, TInsertType
+ export interface _Collection<T, TKey> extends Collection<T, TKey> {
+ }
+-export declare module Dexie {
++export declare namespace Dexie {
+ 	// The "Dexie.Promise" type.
+ 	type Promise<T = any> = PromiseExtended<T>; // Because many samples have been Dexie.Promise.
+ 	// The "Dexie.Table" interface. Same as named exported interface Table.
