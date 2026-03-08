@@ -54,6 +54,7 @@ const modules: MoreModule[] = [
   { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',          icon: Target,      status: 'beta',         category: 'analysis',  priority: 'low' },
   { id: 'debt-strike',        title: 'Debt Strike',          description: 'Snowball calculator · debt-free countdown to 2029', icon: Crosshair, status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'net-worth',          title: 'Net Worth',            description: 'Assets − Liabilities = your real wealth snapshot',  icon: Landmark,  status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
+  { id: 'sip-planner',        title: 'SIP Planner',          description: 'Simulate monthly SIP · corpus chart · start SIP',    icon: TrendingUp, status: 'available',   category: 'analysis',  priority: 'high' },
   { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,       status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
   { id: 'telegram-pending',   title: 'Telegram Queue',       description: 'ADMIN — approve or reject Telegram-captured txns', icon: MessageCircle,  status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },
 
