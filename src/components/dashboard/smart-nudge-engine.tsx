@@ -15,10 +15,11 @@ import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import {
   Sparkles, Target, TrendingDown, PiggyBank,
-  Zap, X, AlertTriangle, ArrowUpRight,
+  X, AlertTriangle, ArrowUpRight, ShieldAlert,
 } from 'lucide-react';
 import type { Goal } from '@/types/financial';
 import { useSIPPrefillStore } from '@/store/sipPrefillStore';
+import { DataSafetyService } from '@/services/DataSafetyService';
 
 interface Nudge {
   id: string;
