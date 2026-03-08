@@ -24,6 +24,7 @@ import {
 import { formatCurrency } from '@/lib/format-utils';
 import { addMonths, format, differenceInMonths } from 'date-fns';
 import { PrepaymentLogger } from './prepayment-logger';
+import { useAutoEmiSync } from '@/hooks/use-auto-emi-sync';
 
 const INCRED_MIN_PART_PAYMENT = 25_000;
 const DEADLINE = new Date(2029, 11, 31);
@@ -118,6 +119,9 @@ interface UnitToggle {
 }
 
 export function SequentialStrikeEngine() {
+  // Auto-sync EMI reductions on mount
+  useAutoEmiSync();
+
   // Live data
   const loans   = useLiveQuery(() => db.loans.toArray(), []);
   const shops   = useLiveQuery(() => db.gunturShops.toArray(), []);
