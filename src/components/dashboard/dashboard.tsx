@@ -23,6 +23,7 @@ import { toast } from 'sonner';
 import type { EmergencyFund } from '@/types/financial';
 import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
 import { NetWorthWidget } from './net-worth-widget';
+import { SmartNudgeEngine } from './smart-nudge-engine';
 
 
 
@@ -455,6 +456,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
       {/* ── Goal Progress Row ── */}
       <GoalProgressRow onNavigate={onTabChange} />
+
+      {/* ── Smart Nudges — proactive SIP / debt / EF alerts ── */}
+      <SmartNudgeEngine onMoreNavigation={onMoreNavigation} onTabChange={onTabChange} />
 
       {/* ── Upcoming Recurring Transactions ── */}
       <UpcomingRecurringStrip onNavigate={onMoreNavigation} />
