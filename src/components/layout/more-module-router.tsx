@@ -26,6 +26,9 @@ import { ComprehensiveSettingsScreen } from '@/components/settings/comprehensive
 import { CreditCardModule } from '@/components/credit-cards/credit-card-module';
 import { WillEstateManager } from '@/components/estate/will-estate-manager';
 import { TaxEngine } from '@/components/tax/tax-engine';
+import { LLMAdvisor } from '@/components/ai/llm-advisor';
+import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
+import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { useRole } from '@/store/rbacStore';
 
 export interface MoreModuleRouterProps {
