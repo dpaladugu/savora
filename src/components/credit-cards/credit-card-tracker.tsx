@@ -125,62 +125,45 @@ export function CreditCardTracker() {
       </div>
 
       {/* Cards List */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         {cards.length === 0 ? (
-          <Card className="metric-card border-border/50">
+          <Card className="glass">
             <CardContent className="p-8 text-center">
-              <CreditCard className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No Credit Cards Added</h3>
-              <p className="text-muted-foreground mb-4">
-                Add your credit cards to track limits and due dates
-              </p>
-              <Button onClick={() => setShowAddForm(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Your First Card
+              <CreditCard className="w-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+              <p className="text-sm text-muted-foreground mb-3">No cards added yet</p>
+              <Button size="sm" onClick={() => setShowAddForm(true)} className="h-9 text-xs rounded-xl gap-1.5">
+                <Plus className="w-3.5 h-3.5" /> Add Your First Card
               </Button>
             </CardContent>
           </Card>
         ) : (
           cards.map((card) => (
-            <Card key={card.id} className="metric-card border-border/50">
+            <Card key={card.id} className="glass">
               <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${card.isActive ? 'bg-green-500' : 'bg-gray-400'}`} />
-                      <h3 className="text-lg font-semibold text-foreground">
-                        {card.bankName} {card.cardName}
-                      </h3>
-                      <span className="text-sm text-muted-foreground">****{card.lastFourDigits}</span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Credit Limit:</span>
-                        <div className="font-semibold text-foreground">{formatCurrency(card.creditLimit)}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Due Date:</span>
-                        <div className="font-semibold text-foreground">{card.dueDate}th of month</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Annual Fee:</span>
-                        <div className="font-semibold text-foreground">{formatCurrency(card.annualFee)}</div>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Fee Waiver:</span>
-                        <div className="font-semibold text-foreground text-xs">{card.feeWaiverRule}</div>
-                      </div>
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
+                      <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${card.isActive ? 'bg-success' : 'bg-muted-foreground/40'}`} />
+                      <h3 className="text-sm font-semibold text-foreground truncate">{card.bankName} {card.cardName}</h3>
+                      <span className="text-xs text-muted-foreground">****{card.lastFourDigits}</span>
                     </div>
                   </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => toggleCardStatus(card.id)}
-                  >
+                  <Button variant="outline" size="sm" className="h-7 text-xs shrink-0 rounded-lg" onClick={() => toggleCardStatus(card.id)}>
                     {card.isActive ? 'Deactivate' : 'Activate'}
                   </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  {[
+                    { label: 'Limit',     val: formatCurrency(card.creditLimit) },
+                    { label: 'Due Date',  val: `${card.dueDate}th` },
+                    { label: 'Annual Fee',val: formatCurrency(card.annualFee) },
+                    { label: 'Fee Waiver',val: card.feeWaiverRule || '—' },
+                  ].map(({ label, val }) => (
+                    <div key={label} className="p-2 rounded-lg bg-muted/40">
+                      <p className="text-muted-foreground text-[10px]">{label}</p>
+                      <p className="font-medium truncate">{val}</p>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
