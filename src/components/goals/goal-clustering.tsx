@@ -68,27 +68,27 @@ export function GoalClustering({ goals, onCreateCluster }: GoalClusteringProps) 
 
   const getFundTypeColor = (fundType: string) => {
     const colors: Record<string, string> = {
-      'Liquid': 'bg-blue-500',
-      'Arbitrage': 'bg-green-500',
-      'Flexi Cap': 'bg-purple-500',
-      'Gold': 'bg-yellow-500',
+      'Liquid':    'bg-primary',
+      'Arbitrage': 'bg-success',
+      'Flexi Cap': 'bg-accent',
+      'Gold':      'bg-warning',
     };
-    return colors[fundType] || 'bg-gray-500';
+    return colors[fundType] || 'bg-muted-foreground';
   };
 
   if (clusters.length === 0) return null;
 
   return (
     <div className="space-y-4">
-      <Card className="border-green-200 bg-green-50 dark:bg-green-950 dark:border-green-800">
+      <Card className="border-success/30 bg-success/5">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <Lightbulb className="w-5 h-5 text-green-600" />
+            <Lightbulb className="w-5 h-5 text-success" />
             <div>
-              <h3 className="font-semibold text-green-800 dark:text-green-200">
+              <h3 className="font-semibold text-foreground">
                 Smart Goal Clustering Available
               </h3>
-              <p className="text-sm text-green-700 dark:text-green-300">
+              <p className="text-sm text-muted-foreground">
                 We found {clusters.length} opportunity(ies) to simplify your SIP management
               </p>
             </div>

@@ -124,9 +124,9 @@ export function EnhancedAutoGoalDashboard() {
 
       {/* Surplus Alert */}
       {totalSurplus > 0 && (
-        <Alert className="border-green-200 bg-green-50">
-          <DollarSign className="h-4 w-4 text-green-600" />
-          <AlertDescription className="text-green-800">
+        <Alert className="border-success/30 bg-success/5">
+          <DollarSign className="h-4 w-4 text-success" />
+          <AlertDescription className="text-success">
             You have ₹{formatCurrency(totalSurplus)} available for goal funding this month!
           </AlertDescription>
         </Alert>

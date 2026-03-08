@@ -88,8 +88,8 @@ export function EmergencyFundAdvisor() {
         </div>
 
         {missingData.length > 0 && (
-          <Alert variant="default" className="bg-yellow-50 border-yellow-200 dark:bg-yellow-900/30 dark:border-yellow-800">
-            <Lightbulb className="h-4 w-4" />
+          <Alert variant="default" className="bg-warning/5 border-warning/30">
+            <Lightbulb className="h-4 w-4 text-warning" />
             <AlertTitle>For Better Advice</AlertTitle>
             <AlertDescription>
               Your advice will be more accurate if you provide the following data:
