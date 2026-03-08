@@ -581,6 +581,19 @@ db.version(14).stores({}).upgrade(async tx => {
   }
 });
 
+// v15 — Correct ICICI Master Loan EMI to ₹61,424 + set first EMI date April 5 2026
+db.version(15).stores({}).upgrade(async tx => {
+  const icici = await tx.table('loans').get('loan-icici-master-2026');
+  if (icici) {
+    await tx.table('loans').update('loan-icici-master-2026', {
+      emi: 61424,
+      startDate: new Date(2026, 3, 5), // April 5, 2026 — first EMI date
+      tenureMonths: 72,
+      updatedAt: new Date(),
+    });
+  }
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
