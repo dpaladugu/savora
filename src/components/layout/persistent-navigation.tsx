@@ -154,7 +154,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
             id="more-sheet"
             side="bottom"
             className="h-[84vh] overflow-y-auto glass-deep rounded-t-3xl border-t-0 p-0"
-            onInteractOutside={handleMoreSheetClose}
+            onInteractOutside={() => handleSheetOpenChange(false)}
           >
             {/* ── Drag indicator ── */}
             <div className="flex justify-center pt-3 pb-1">
@@ -166,7 +166,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
             </SheetHeader>
 
             <div className="px-1 pb-8 scrollbar-thin">
-              <MoreScreen onNavigate={handleMoreModuleClick} onClose={handleMoreSheetClose} />
+              <MoreScreen onNavigate={handleMoreModuleClick} onClose={() => handleSheetOpenChange(false)} />
             </div>
           </SheetContent>
         </Sheet>
