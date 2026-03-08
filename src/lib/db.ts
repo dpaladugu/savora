@@ -412,6 +412,11 @@ db.version(7).stores({
   appSettings: '&key',
 });
 
+// v8 — §23 Telegram PendingTxns capture queue
+db.version(8).stores({
+  pendingTxns: '++id, status, source, createdAt',
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
