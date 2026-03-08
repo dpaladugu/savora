@@ -72,8 +72,6 @@ const waterfallBuckets: WaterfallBucket[] = [
 
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 
-import { useRole } from '@/store/rbacStore';
-
 type ActivePage = 'gorantla' | 'guntur';
 
 export function PropertyRentalEngine() {
