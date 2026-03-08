@@ -69,6 +69,7 @@ export interface Insurance {
   name: string;
   type: string;
   premium: number;
+  premiumTermYears?: number;   // 1 = annual, 2 = biennial, 3 = triennial etc.
   provider?: string;
   company?: string;
   policyNumber?: string;
@@ -87,8 +88,8 @@ export interface Insurance {
   isActive?: boolean;
   // Corporate / source metadata
   policySource?: 'Personal' | 'Corporate / Employer' | 'Government Scheme';
-  isCorporate?: boolean;   // true = employer-provided (job-dependent antifragility risk)
-  hasMaternity?: boolean;  // maternity rider / maternity coverage flag
+  isCorporate?: boolean;
+  hasMaternity?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
