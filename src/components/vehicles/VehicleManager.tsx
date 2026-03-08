@@ -14,7 +14,7 @@ import { Plus, Edit, Trash2, Car, AlertTriangle, Flame, Wrench, Upload } from 'l
 import { VehicleService } from '@/services/VehicleService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
-import type { Vehicle } from '@/db';
+import type { Vehicle } from '@/lib/db';
 import { PageHeader } from '@/components/layout/page-header';
 import { FuelioImporter } from './FuelioImporter';
 
