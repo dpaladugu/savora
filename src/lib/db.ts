@@ -399,4 +399,19 @@ db.version(7).stores({
   appSettings: '&key',
 });
 
+// ─── Safe open: if a schema upgrade fails (stale IndexedDB from dev builds),
+//     delete the database and reload once so the user never sees a broken app.
+db.open().catch(err => {
+  if (
+    err?.name === 'UpgradeError' ||
+    err?.name === 'DatabaseClosedError' ||
+    (err?.message && err.message.includes('changing primary key'))
+  ) {
+    console.warn('[Savora] Schema conflict detected — clearing stale DB and reloading.');
+    Dexie.delete('SavoraDB').then(() => {
+      window.location.reload();
+    });
+  }
+});
+
 export { db };
