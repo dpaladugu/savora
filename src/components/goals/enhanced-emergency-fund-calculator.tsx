@@ -271,9 +271,9 @@ export function EnhancedEmergencyFundCalculator() {
 
               <Card className="p-4">
                 <div className="text-center">
-                  <Shield className="w-6 h-6 text-green-600 mx-auto mb-2" />
+                  <Shield className="w-6 h-6 text-success mx-auto mb-2" />
                   <div className="text-sm font-medium">Safety Score</div>
-                  <div className="text-lg font-semibold text-green-600">
+                  <div className="text-lg font-semibold text-success">
                     {progressPercentage >= 75 ? 'High' : progressPercentage >= 50 ? 'Medium' : 'Low'}
                   </div>
                   <div className="text-xs text-muted-foreground">financial security level</div>
