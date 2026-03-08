@@ -8,15 +8,6 @@
 import { db } from '@/lib/db';
 import type { Loan, BrotherRepayment, AmortRow } from '@/lib/db';
 
-// ─── AmortRow (local — matches db-schema-extended shape) ─────────────────────
-export interface AmortRow {
-  month: number;
-  emi: number;
-  principalPart: number;
-  interestPart: number;
-  balance: number;
-}
-
 export class LoanService {
   /**
    * Create a new loan, generating its full amortisation schedule.
@@ -25,13 +16,20 @@ export class LoanService {
     loan: Omit<Loan, 'id'>
   ): Promise<string> {
     const id = crypto.randomUUID();
-    const emi = LoanService._calcEMI(loan.principal, loan.roi ?? loan.interestRate, loan.tenureMonths ?? 0);
+    const roi = (loan as any).roi ?? loan.interestRate ?? 0;
+    const tenureMonths = (loan as any).tenureMonths ?? 0;
+    const emi = LoanService._calcEMI(loan.principal, roi, tenureMonths);
+    const amortisationSchedule = LoanService._buildSchedule(loan.principal, roi, tenureMonths);
 
     await db.loans.add({
       ...loan,
       id,
+      roi,
       emi: emi || loan.emi || 0,
-    });
+      amortisationSchedule,
+      createdAt: (loan as any).createdAt ?? new Date(),
+      updatedAt: new Date(),
+    } as any);
     return id;
   }
 
