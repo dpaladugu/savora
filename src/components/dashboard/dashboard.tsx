@@ -158,7 +158,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">Dashboard</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, Prasad</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Welcome back, {userName}</p>
         </div>
         {role === 'GUEST' && (
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted border border-border/50 text-xs text-muted-foreground">
