@@ -560,10 +560,10 @@ db.version(13).stores({}).upgrade(async tx => {
       outstanding: 33_00_000,
       roi: 9.99,
       interestRate: 9.99,
-      emi: 55000,
+      emi: 61424,
       tenureMonths: 72,
       isActive: true,
-      startDate: new Date(2026, 1, 17),  // Feb 17 2026
+      startDate: new Date(2026, 3, 5),  // April 5, 2026 — first EMI date
       createdAt: new Date(),
       updatedAt: new Date(),
     });
