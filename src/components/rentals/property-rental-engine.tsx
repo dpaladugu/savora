@@ -219,7 +219,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
 // ─── GUNTUR WATERFALL PAGE ────────────────────────────────────────────────────
 
-function GunturWaterfallPage() {
+function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const [shops, setShops] = useState<GunturShop[]>(defaultGunturShops);
   const [bucketProgress, setBucketProgress] = useState<Record<string, number>>({
     premium: 0, sinking: 0, household: 0, grandma: 0, debt: 0
