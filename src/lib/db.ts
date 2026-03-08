@@ -478,6 +478,24 @@ db.version(11).stores({}).upgrade(tx =>
   ])
 );
 
+// v12 — Tenant profiles (contact, leaseStart, idNote) + RentHikeLog table
+db.version(12).stores({
+  rentHikeLogs: '++id, unitId, unitType, hikeDate, createdAt',
+}).upgrade(tx =>
+  Promise.all([
+    tx.table('gunturShops').toCollection().modify((row: any) => {
+      if (row.tenantContact === undefined) row.tenantContact = '';
+      if (row.leaseStart    === undefined) row.leaseStart    = null;
+      if (row.tenantIdNote  === undefined) row.tenantIdNote  = '';
+    }),
+    tx.table('gorantlaRooms').toCollection().modify((row: any) => {
+      if (row.tenantContact === undefined) row.tenantContact = '';
+      if (row.leaseStart    === undefined) row.leaseStart    = null;
+      if (row.tenantIdNote  === undefined) row.tenantIdNote  = '';
+    }),
+  ])
+);
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
