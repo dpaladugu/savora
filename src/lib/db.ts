@@ -305,6 +305,7 @@ export interface GunturShopRow {
   tenant: string;
   rent: number;
   status: 'Vacant' | 'Occupied';
+  paid: boolean;
   updatedAt: Date;
 }
 
