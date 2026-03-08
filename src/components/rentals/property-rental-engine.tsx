@@ -225,6 +225,32 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const shops    = useLiveQuery(() => db.gunturShops.toArray(), []) ?? [];
   const progress = useLiveQuery(() => db.waterfallProgress.toArray(), []) ?? [];
 
+  // Persistent tax settings via appSettings
+  const taxSetting = useLiveQuery(
+    () => db.appSettings.get('gunturTaxSettings'),
+    []
+  );
+  const taxValues = React.useMemo(() => {
+    try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; }
+  }, [taxSetting]);
+
+  const [propertyTax, setPropertyTax] = React.useState(0);
+  const [waterTax, setWaterTax]       = React.useState(0);
+
+  // Sync from DB once loaded
+  React.useEffect(() => {
+    if (taxSetting) {
+      setPropertyTax(taxValues.propertyTax ?? 0);
+      setWaterTax(taxValues.waterTax ?? 0);
+    }
+  }, [taxSetting, taxValues]);
+
+  const saveTaxSettings = async (pt: number, wt: number) => {
+    await db.appSettings.put({ key: 'gunturTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
+  };
+
+  const totalTaxDeduction = propertyTax + waterTax;
+
   const bucketProgress: Record<string, number> = {};
   progress.forEach(p => { bucketProgress[p.bucketId] = p.accumulated; });
 
@@ -236,7 +262,8 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
     Bags:    <ShoppingBag className="w-3 h-3" />,
   };
 
-  const totalRent = shops.reduce((s, sh) => s + sh.rent, 0);
+  const grossRent = shops.reduce((s, sh) => s + sh.rent, 0);
+  const netRent   = Math.max(0, grossRent - totalTaxDeduction);
 
   const updateShopRent = async (id: string, rent: number) => {
     if (readOnly) return;
@@ -245,7 +272,7 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
 
   const runWaterfall = async () => {
     if (readOnly) { toast.error('Read-only access'); return; }
-    let remaining = totalRent;
+    let remaining = netRent;
     for (const bucket of WATERFALL_BUCKETS) {
       if (remaining <= 0) break;
       const monthlyTarget = bucket.monthly ?? bucket.target;
@@ -258,16 +285,16 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
         await db.waterfallProgress.add({ id: crypto.randomUUID(), bucketId: bucket.id, accumulated: fill, updatedAt: new Date() });
       }
     }
-    toast.success(`Waterfall executed! ₹${totalRent.toLocaleString('en-IN')} allocated.`);
+    toast.success(`Waterfall executed! ₹${netRent.toLocaleString('en-IN')} net allocated.`);
   };
 
   const getWaterfallBars = () => {
-    let remaining = totalRent;
+    let remaining = netRent;
     return WATERFALL_BUCKETS.map(bucket => {
       const monthlyTarget = bucket.monthly ?? bucket.target;
       const fill = Math.min(remaining, monthlyTarget === Infinity ? remaining : monthlyTarget);
       remaining -= fill;
-      return { ...bucket, fill, pct: totalRent > 0 ? (fill / totalRent) * 100 : 0 };
+      return { ...bucket, fill, pct: netRent > 0 ? (fill / netRent) * 100 : 0 };
     });
   };
 
@@ -285,10 +312,10 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
               <Home className="w-4 h-4 text-primary" />
               Guntur — 6 Shops
             </span>
-            <Badge variant="outline">Total: {formatCurrency(totalRent)}/mo</Badge>
+            <Badge variant="outline">Gross: {formatCurrency(grossRent)}/mo</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             {shops.map(shop => (
               <div key={shop.id} className={`p-3 rounded-lg border text-sm ${shop.status === 'Vacant' ? 'border-destructive/30 bg-destructive/5' : 'border-border bg-card'}`}>
@@ -313,6 +340,51 @@ function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
                 )}
               </div>
             ))}
+          </div>
+
+          {/* ── Systemic Tax Deductions (P0) ── */}
+          <Separator />
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+              <ArrowDown className="w-3 h-3 text-destructive" />
+              P0 — Systemic Deductions (Tax at Source)
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Property Tax /mo</label>
+                <Input
+                  type="number"
+                  disabled={readOnly}
+                  value={propertyTax}
+                  onChange={e => setPropertyTax(parseFloat(e.target.value) || 0)}
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
+                  className="h-7 text-xs"
+                  placeholder="₹0"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Water Tax /mo</label>
+                <Input
+                  type="number"
+                  disabled={readOnly}
+                  value={waterTax}
+                  onChange={e => setWaterTax(parseFloat(e.target.value) || 0)}
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
+                  className="h-7 text-xs"
+                  placeholder="₹0"
+                />
+              </div>
+            </div>
+            {totalTaxDeduction > 0 && (
+              <div className="flex items-center justify-between text-xs p-2 rounded-lg bg-destructive/5 border border-destructive/20">
+                <span className="text-destructive font-medium">Total P0 Deduction</span>
+                <span className="text-destructive font-semibold">−{formatCurrency(totalTaxDeduction)}</span>
+              </div>
+            )}
+            <div className="flex justify-between text-sm font-semibold border-t pt-2">
+              <span>Net to Waterfall</span>
+              <span className="text-primary">{formatCurrency(netRent)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>
