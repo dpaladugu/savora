@@ -134,7 +134,7 @@ export function SuggestionsEngine() {
                       <h3 className="font-semibold text-foreground mb-1">{suggestion.title}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{suggestion.description}</p>
                       {suggestion.action && (
-                        <span className="text-xs font-medium px-2 py-1 bg-white dark:bg-gray-800 rounded border">
+                        <span className="text-xs font-medium px-2 py-1 bg-card rounded border border-border">
                           {suggestion.action}
                         </span>
                       )}
