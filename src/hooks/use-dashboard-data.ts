@@ -100,12 +100,17 @@ export function useDashboardData() {
       const emergencyFundTarget  = ef?.targetAmount  ?? 0;
 
       // ── Goals ──────────────────────────────────────────────────────
+      const now = new Date();
       const goalsMapped = goals.map((g: any) => ({
         id: g.id,
         name: g.name ?? g.title ?? '',
+        title: g.title ?? g.name ?? '',
         targetAmount: g.targetAmount ?? 0,
         currentAmount: g.currentAmount ?? 0,
-        deadline: g.deadline ?? g.targetDate,
+        deadline: g.deadline ?? (g.targetDate ? String(g.targetDate) : ''),
+        category: g.category ?? 'Other',
+        createdAt: g.createdAt ?? now,
+        updatedAt: g.updatedAt ?? now,
       }));
 
       // ── Recent transactions (most recent 10 expense txns) ──────────
