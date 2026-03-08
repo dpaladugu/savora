@@ -152,11 +152,15 @@ export function BrotherGlobalLiability() {
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20">
               <p className="text-xs text-muted-foreground">Outstanding</p>
-              <p className="font-bold text-destructive">{formatCurrency(INCRED_LOAN.principal)}</p>
+              <p className="font-bold text-destructive">
+                <MaskedAmount amount={INCRED_LOAN.principal} permission="showBrotherUS" />
+              </p>
             </div>
             <div className="p-2 rounded-lg bg-background border">
               <p className="text-xs text-muted-foreground">Monthly Interest</p>
-              <p className="font-bold">{formatCurrency(inCredMonthlyInterest)}</p>
+              <p className="font-bold">
+                <MaskedAmount amount={inCredMonthlyInterest} permission="showBrotherUS" />
+              </p>
             </div>
           </div>
         </CardContent>
