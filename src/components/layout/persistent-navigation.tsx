@@ -124,7 +124,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
         })}
 
         {/* ── More sheet trigger ── */}
-        <Sheet open={isMoreSheetOpen} onOpenChange={setIsMoreSheetOpen}>
+        <Sheet open={isMoreSheetOpen} onOpenChange={handleSheetOpenChange}>
           <SheetTrigger asChild>
             <button
               onClick={handleMoreClick}
