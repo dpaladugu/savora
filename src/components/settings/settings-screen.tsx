@@ -19,6 +19,12 @@ const tabs = [
 
 export function SettingsScreen() {
   const [activeTab, setActiveTab] = useState('user');
+  const [showWizard, setShowWizard] = useState(false);
+
+  if (showWizard) {
+    return <FinancialSetupWizard onComplete={() => setShowWizard(false)} />;
+  }
+
   return (
     <div className="w-full">
       {/* ── Page title ── */}
