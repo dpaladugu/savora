@@ -87,6 +87,12 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
   const monthLabel = new Date().toLocaleString('en-IN', { month: 'long' });
 
   return (
+    <button
+      onClick={onDrilldown}
+      disabled={!onDrilldown}
+      className="w-full text-left cursor-pointer hover:opacity-90 transition-opacity focus:outline-none focus-ring rounded-2xl"
+      aria-label="View monthly category breakdown"
+    >
     <Card className="glass">
       <CardContent className="p-4 space-y-3">
         {/* Header */}
