@@ -148,6 +148,8 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'net-worth':
         if (role === 'GUEST') return <AccessDenied reason="Sign in to view Net Worth." />;
         return <NetWorthTracker />;
+      case 'sip-planner':
+        return <SIPPlanner />;
       case 'telegram-pending':
         if (role !== 'ADMIN') return <AccessDenied reason="Only ADMIN can review pending Telegram transactions." />;
         return <TelegramPendingTxns />;
