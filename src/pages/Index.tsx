@@ -1,6 +1,5 @@
 
 import React from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
 import { PersistentNavigation } from "@/components/layout/persistent-navigation";
 import { WelcomeScreen } from "@/components/welcome/welcome-screen";
 import { LoadingScreen } from "@/components/layout/loading-screen";
@@ -9,7 +8,6 @@ import { GlobalErrorBoundary } from "@/components/ui/global-error-boundary";
 import { useNavigationRouter } from "@/components/layout/navigation-router";
 import { useAppStore } from "@/store/appStore";
 import { PinLock } from "@/components/auth/PinLock";
-import { Auth } from "@/components/auth/Auth";
 import { db } from "@/lib/db";
 import { seedInitialData } from "@/lib/seed-data";
 import { performStartupVerification, logStartupResults } from "@/utils/startup-verification";
@@ -38,13 +36,6 @@ const MainApp = () => {
 
   return (
     <GlobalErrorBoundary>
-      {/*
-        Layout grid:
-          Mobile  (< 768px)  : single column, fixed top header + fixed bottom nav
-          Tablet  (768–1024) : single column, fixed top header + fixed bottom nav
-          Desktop (≥ 1024px) : fixed top header spans full width;
-                               content area is split: 240px left sidebar + flex-1 main
-      */}
       <div className="flex flex-col min-h-screen bg-background">
         {/* ── Fixed top header — full width on all devices ── */}
         <GlobalHeader title="Savora" />
@@ -108,7 +99,6 @@ const Index = () => {
     console.error('Index: Error accessing store:', error);
   }
 
-  const navigate = useNavigate();
   const [isAppInitialized, setAppInitialized] = React.useState(false);
   const [hasExistingUser, setHasExistingUser] = React.useState<boolean | undefined>(undefined);
   const [hasPin, setHasPin] = React.useState(false);
@@ -136,7 +126,6 @@ const Index = () => {
   const handleUnlockSuccess = () => {
     setHasExistingUser(true);
     setHasPin(true);
-    navigate('/dashboard');
   };
 
   const handleOnboardingComplete = async () => {
@@ -151,22 +140,15 @@ const Index = () => {
 
   if (!isAppInitialized) return <LoadingScreen />;
 
-  return (
-    <Routes>
-      <Route path="/auth" element={<Auth />} />
-      <Route path="/*" element={
-        <>
-          {!hasExistingUser ? (
-            <WelcomeScreen onComplete={handleOnboardingComplete} />
-          ) : hasPin && !isUnlocked ? (
-            <PinLock onUnlockSuccess={handleUnlockSuccess} />
-          ) : (
-            <MainApp />
-          )}
-        </>
-      } />
-    </Routes>
-  );
+  if (!hasExistingUser) {
+    return <WelcomeScreen onComplete={handleOnboardingComplete} />;
+  }
+
+  if (hasPin && !isUnlocked) {
+    return <PinLock onUnlockSuccess={handleUnlockSuccess} />;
+  }
+
+  return <MainApp />;
 };
 
 export default Index;
