@@ -268,4 +268,10 @@ db.version(1).stores({
   incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt'
 });
 
+// Version 2: add insurancePolicies + spendingLimits
+db.version(2).stores({
+  insurancePolicies: '++id, type, provider, familyMember, endDate, createdAt, updatedAt',
+  spendingLimits: '++id, category, monthlyCap, alertAt, createdAt, updatedAt',
+});
+
 export { db };

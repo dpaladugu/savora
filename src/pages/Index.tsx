@@ -28,6 +28,14 @@ const MainApp = () => {
 
   const { activeTab, activeMoreModule, handleTabChange, handleMoreNavigation } = useNavigationRouter();
 
+  // Read auto-lock setting from GlobalSettings (live)
+  const autoLockMinutes = useLiveQuery(async () => {
+    const settings = await db.globalSettings.toArray();
+    return settings[0]?.autoLockMinutes ?? 5;
+  }, [], 5);
+
+  useAutoLock(autoLockMinutes);
+
   return (
     <GlobalErrorBoundary>
       {/*
