@@ -30,7 +30,7 @@ import { LLMAdvisor } from '@/components/ai/llm-advisor';
 import { AuditLogViewer } from '@/components/audit/audit-log-viewer';
 import { InsuranceGapAnalysis } from '@/components/insurance/insurance-gap-analysis';
 import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
-import { CsvImports } from '@/components/imports/csv-imports';
+import { CSVImports } from '@/components/imports/csv-imports';
 import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
 import { useRole } from '@/store/rbacStore';
 
