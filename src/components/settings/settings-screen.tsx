@@ -30,7 +30,7 @@ export function SettingsScreen() {
         </p>
       </div>
 
-      <Tabs defaultValue="user" className="space-y-4">
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
         {/*
           4 tabs at top-level. Use a 4-column grid so they never scroll or overlap.
           Each cell is equal-width. On 320px SE: 4×~72px = fine.
