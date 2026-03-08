@@ -111,7 +111,22 @@ const Index = () => {
         const startupChecks = await performStartupVerification();
         logStartupResults(startupChecks);
         await seedInitialData();
-        await processRecurringTransactions();
+
+        // ── Run recurring transactions & notify user if any were posted ──
+        const recurResult = await processRecurringTransactions();
+        if (recurResult.processed > 0) {
+          // Defer toast until after app is fully mounted (avoids "no toaster" race)
+          setTimeout(() => {
+            toast.success(
+              `✅ ${recurResult.processed} recurring transaction${recurResult.processed > 1 ? 's' : ''} auto-posted`,
+              {
+                description: recurResult.items.slice(0, 4).join(' · ') + (recurResult.items.length > 4 ? ' …' : ''),
+                duration: 6000,
+              },
+            );
+          }, 1200);
+        }
+
         const settings = await db.globalSettings.toArray();
         setHasExistingUser(settings.length > 0);
         setHasPin(false);
