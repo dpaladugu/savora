@@ -25,10 +25,32 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { Insurance } from '@/lib/db';
 
 const INSURANCE_TYPES = [
-  'Health', 'Term Life', 'Vehicle', 'Personal Accident', 'Home', 'Travel', 'Other'
+  // Personal policies
+  'Health',
+  'Super Top-Up Health',
+  'Critical Illness',
+  'Term Life',
+  'Personal Accident',
+  'Vehicle',
+  'Home',
+  'Travel',
+  // Corporate / Group policies (job-dependent)
+  'Corporate Group Health',
+  'Corporate Group Term',
+  'Corporate Parental Health',  // covers parents under employer
+  // Specialty
+  'Maternity Rider',
+  'Other',
 ] as const;
 
-const FAMILY_MEMBERS = ['Me', 'Spouse', 'Mother', 'Grandmother', 'Brother', 'Family Floater'];
+const POLICY_SOURCE = ['Personal', 'Corporate / Employer', 'Government Scheme'] as const;
+
+const FAMILY_MEMBERS = [
+  'Me', 'Spouse', 'Baby / Child',
+  'Mother', 'Father', 'Mother-in-Law', 'Father-in-Law',
+  'Grandmother', 'Brother',
+  'Family Floater',
+];
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
   'Health': Heart,
