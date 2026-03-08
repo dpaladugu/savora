@@ -6,14 +6,54 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Edit3, Plus, Receipt, X } from 'lucide-react';
+import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle } from 'lucide-react';
 import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
 import { checkSpendingLimitAfterExpense } from '@/lib/spending-limit-checker';
+import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
+// ─── Spending Limits Bar ──────────────────────────────────────────────────────
+function SpendingLimitsBar({ monthlyTotal }: { monthlyTotal: number }) {
+  const limits = useLiveQuery(() => db.spendingLimits.toArray().catch(() => []), []) ?? [];
+  if (!limits.length) return null;
+
+  // Aggregate all limits vs monthly total (simplified: overall cap)
+  const totalCap = limits.reduce((s, l) => s + l.monthlyCap, 0);
+  if (totalCap === 0) return null;
+
+  const pct = Math.min(100, Math.round((monthlyTotal / totalCap) * 100));
+  const alertPct = Math.min(...limits.map(l => l.alertAt ?? 80));
+  const isWarning = pct >= alertPct;
+  const isOver    = pct >= 100;
+
+  return (
+    <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-xs ${
+      isOver    ? 'border-destructive/40 bg-destructive/5'
+      : isWarning ? 'border-warning/40 bg-warning/5'
+      : 'border-border/40 bg-muted/30'
+    }`}>
+      <AlertTriangle className={`h-3.5 w-3.5 shrink-0 ${isOver ? 'text-destructive' : isWarning ? 'text-warning' : 'text-muted-foreground'}`} />
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between mb-1">
+          <span className={`font-medium ${isOver ? 'text-destructive' : isWarning ? 'text-warning' : 'text-foreground'}`}>
+            {isOver ? 'Over budget!' : isWarning ? `${pct}% of budget used` : `${pct}% of budget`}
+          </span>
+          <span className="text-muted-foreground tabular-nums">{formatCurrency(monthlyTotal)} / {formatCurrency(totalCap)}</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-destructive' : isWarning ? 'bg-warning' : 'bg-primary'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ExpenseTracker() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -100,6 +140,9 @@ export function ExpenseTracker() {
           </Button>
         }
       />
+
+      {/* Spending Limits Bar — shows only when limits are configured */}
+      <SpendingLimitsBar monthlyTotal={monthlyTotal} />
 
       {/* Add / Edit Form — inline, not a modal */}
       {showForm && (

@@ -427,6 +427,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
+      {/* ── Monthly Summary Drilldown ── */}
+      <MonthlySummaryDrilldown open={showMonthDrilldown} onClose={() => setShowMonthDrilldown(false)} />
+
       {/* ── Onboarding Checklist (collapses once all items done) ── */}
       <OnboardingChecklist
         incomeCount={incomeCount}
