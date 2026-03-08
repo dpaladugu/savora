@@ -31,25 +31,25 @@ async function deriveKey(password: string, salt: Uint8Array<ArrayBuffer>): Promi
 }
 
 async function encryptJSON(data: object, password: string): Promise<string> {
-  const salt = crypto.getRandomValues(new Uint8Array(16));
-  const iv   = crypto.getRandomValues(new Uint8Array(12));
+  const salt = crypto.getRandomValues(new Uint8Array(16)) as Uint8Array<ArrayBuffer>;
+  const iv   = crypto.getRandomValues(new Uint8Array(12)) as Uint8Array<ArrayBuffer>;
   const key  = await deriveKey(password, salt);
   const enc  = new TextEncoder();
-  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(JSON.stringify(data)));
+  const ct   = await crypto.subtle.encrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, enc.encode(JSON.stringify(data)));
   const combined = new Uint8Array(salt.length + iv.length + ct.byteLength);
   combined.set(salt, 0);
   combined.set(iv, salt.length);
   combined.set(new Uint8Array(ct), salt.length + iv.length);
-  return btoa(String.fromCharCode(...combined));
+  return btoa(String.fromCharCode(...Array.from(combined)));
 }
 
 async function decryptJSON(base64: string, password: string): Promise<any> {
-  const raw  = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  const salt = raw.slice(0, 16);
-  const iv   = raw.slice(16, 28);
-  const ct   = raw.slice(28);
+  const raw  = Uint8Array.from(atob(base64), c => c.charCodeAt(0)) as Uint8Array<ArrayBuffer>;
+  const salt = raw.slice(0, 16) as Uint8Array<ArrayBuffer>;
+  const iv   = raw.slice(16, 28) as Uint8Array<ArrayBuffer>;
+  const ct   = raw.slice(28) as Uint8Array<ArrayBuffer>;
   const key  = await deriveKey(password, salt);
-  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ct as BufferSource);
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
