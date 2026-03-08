@@ -599,6 +599,42 @@ db.version(15).stores({}).upgrade(async tx => {
   }
 });
 
+// v16 — Seed real Feb 17 2026 prepayment: ₹13,00,000 strike against InCred Education Loan
+//        Reduces outstanding from ₹23,21,156 → ₹10,21,156 and logs history entry.
+db.version(16).stores({}).upgrade(async tx => {
+  // Update InCred outstanding to post-strike balance
+  const incred = await tx.table('loans').get('loan-incred-2026');
+  if (incred && (incred.outstanding ?? incred.principal) > 10_21_156) {
+    await tx.table('loans').update('loan-incred-2026', {
+      outstanding: 10_21_156,
+      updatedAt: new Date(),
+    });
+  }
+
+  // Record in prepayment history (appSettings key-value store)
+  const existing = await tx.table('appSettings').get('prepaymentHistory');
+  const prev: any[] = existing?.value ?? [];
+  const alreadyLogged = prev.some(
+    (r: any) => r.loanId === 'loan-incred-2026' && r.amount === 13_00_000
+  );
+  if (!alreadyLogged) {
+    await tx.table('appSettings').put({
+      key: 'prepaymentHistory',
+      value: [
+        {
+          id: 'prepay-incred-feb2026',
+          loanId: 'loan-incred-2026',
+          loanName: 'InCred Education Loan',
+          amount: 13_00_000,
+          date: new Date(2026, 1, 17), // Feb 17 2026
+          note: 'Feb 2026 salary + bonus surplus — P1 strike',
+        },
+        ...prev,
+      ].slice(0, 50),
+    });
+  }
+});
+
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
 import('./audit-middleware').then(({ installAuditMiddleware }) => {
   installAuditMiddleware(db);
