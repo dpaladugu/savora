@@ -175,15 +175,15 @@ export function SubscriptionManager() {
 
       {/* Upcoming Renewals Alert */}
       {upcomingSubscriptions.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className="border-warning/40 bg-warning/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-800">
+            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning">
               <AlertTriangle className="w-4 h-4" />
               Upcoming Renewals
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-orange-700">
+            <p className="text-warning">
               {upcomingSubscriptions.length} subscription(s) due for renewal in the next 7 days.
             </p>
           </CardContent>
