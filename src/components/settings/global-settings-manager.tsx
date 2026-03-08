@@ -206,10 +206,10 @@ export function GlobalSettingsManager() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div>
-        <h2 className="text-2xl font-bold">Global Settings</h2>
-        <p className="text-muted-foreground">Configure your app preferences and security settings</p>
+        <h2 className="text-lg font-semibold text-foreground">Global Settings</h2>
+        <p className="text-xs text-muted-foreground mt-0.5">App preferences and security settings</p>
       </div>
 
       <Tabs defaultValue="security" className="space-y-4">
