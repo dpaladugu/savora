@@ -59,7 +59,12 @@ export function InsuranceTracker() {
     try {
       setLoading(true);
       const allPolicies = await InsuranceService.getPolicies();
-      setPolicies(allPolicies as InsurancePolicy[]);
+      // Map canonical Insurance → component's InsurancePolicy shape
+      setPolicies(allPolicies.map(p => ({
+        ...p,
+        dueDay: (p as any).dueDay ?? 1,
+        nomineeDOB: (p as any).nomineeDOB ?? '',
+      })) as InsurancePolicy[]);
     } catch (error) {
       toast.error('Insurance service not yet implemented');
       console.error('Error loading insurance:', error);
