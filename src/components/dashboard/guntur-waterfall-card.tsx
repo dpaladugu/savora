@@ -138,6 +138,21 @@ export function GunturWaterfallCard({ onNavigate }: Props) {
               {fullyFunded}/{BUCKETS.length - 1} funded
             </span>
           </div>
+          {/* Live collection status bar */}
+          <div className="mt-1.5 flex items-center justify-between text-[10px]">
+            <span className={`font-semibold ${collectionPct === 100 ? 'text-success' : collectionPct >= 70 ? 'text-warning' : 'text-destructive'}`}>
+              {paidUnits}/{totalUnits} paid this month
+            </span>
+            <span className="text-muted-foreground tabular-nums">
+              {formatCurrency(collectedAmt)} / {formatCurrency(expectedAmt)}
+            </span>
+          </div>
+          <div className="mt-1 relative h-1 w-full rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${collectionPct === 100 ? 'bg-success' : collectionPct >= 70 ? 'bg-warning' : 'bg-destructive'}`}
+              style={{ width: `${collectionPct}%` }}
+            />
+          </div>
         </CardHeader>
 
         <CardContent className="px-4 pb-4 space-y-2.5">
