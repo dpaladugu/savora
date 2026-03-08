@@ -162,15 +162,15 @@ export function GoldTracker() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Gold Tracker</h1>
-          <p className="text-muted-foreground">Manage your gold investments and track their performance</p>
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Gold Investments</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Holdings, weights & valuations</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Gold
+        <Button size="sm" onClick={() => setShowAddModal(true)} className="h-9 gap-1.5 shrink-0 rounded-xl text-xs">
+          <Plus className="h-3.5 w-3.5" /> Add Gold
         </Button>
       </div>
 

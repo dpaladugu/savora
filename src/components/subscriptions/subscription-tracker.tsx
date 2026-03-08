@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Edit, Trash2, Download, Calendar, Bell } from 'lucide-react';
+import { Plus, Edit, Trash2, Download, Calendar, Bell, Repeat } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import { SubscriptionService, type Subscription } from '@/services/SubscriptionService';
