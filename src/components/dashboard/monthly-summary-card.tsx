@@ -125,22 +125,29 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
 
         {/* Trend note */}
         {expenseDelta !== null && (
-          <div className="flex items-center gap-1.5 pt-0.5">
-            {expenseDelta > 5 ? (
-              <TrendingUp className="h-3 w-3 text-destructive shrink-0" />
-            ) : expenseDelta < -5 ? (
-              <TrendingDown className="h-3 w-3 text-success shrink-0" />
-            ) : (
-              <Minus className="h-3 w-3 text-muted-foreground shrink-0" />
+          <div className="flex items-center justify-between gap-2 pt-0.5">
+            <div className="flex items-center gap-1.5">
+              {expenseDelta > 5 ? (
+                <TrendingUp className="h-3 w-3 text-destructive shrink-0" />
+              ) : expenseDelta < -5 ? (
+                <TrendingDown className="h-3 w-3 text-success shrink-0" />
+              ) : (
+                <Minus className="h-3 w-3 text-muted-foreground shrink-0" />
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                {expenseDelta > 5
+                  ? `Spending up ${expenseDelta.toFixed(0)}% vs last month`
+                  : expenseDelta < -5
+                  ? `Spending down ${Math.abs(expenseDelta).toFixed(0)}% vs last month`
+                  : 'Spending on par with last month'}
+                {prevIncome > 0 && income === 0 && ' · Add income for full picture'}
+              </p>
+            </div>
+            {expenseDelta > 20 && onDrilldown && (
+              <span className="text-[10px] font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
+                Tap for breakdown ↑
+              </span>
             )}
-            <p className="text-[10px] text-muted-foreground">
-              {expenseDelta > 5
-                ? `Spending up ${expenseDelta.toFixed(0)}% vs last month`
-                : expenseDelta < -5
-                ? `Spending down ${Math.abs(expenseDelta).toFixed(0)}% vs last month`
-                : 'Spending on par with last month'}
-              {prevIncome > 0 && income === 0 && ' · Add income for full picture'}
-            </p>
           </div>
         )}
       </CardContent>
