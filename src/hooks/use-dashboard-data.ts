@@ -117,7 +117,7 @@ export function useDashboardData() {
           amount: Math.abs(t.amount),
           description: t.note ?? t.category,
           category: t.category,
-          date: t.date,
+          date: t.date instanceof Date ? t.date.toISOString().split('T')[0] : String(t.date),
           type: 'expense' as const,
         }));
 
