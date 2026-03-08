@@ -19,7 +19,9 @@
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "dexie": ["./src/lib/dexie-shim.ts"],
+      "dexie-react-hooks": ["./src/lib/dexie-react-hooks-shim.ts"]
     },
     "skipLibCheck": true,
     "strict": false,
