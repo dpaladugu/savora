@@ -75,6 +75,74 @@ function cascadeIncome(netCollected: number): Record<string, number> {
   return result;
 }
 
+// ─── ADVANCE DIALOG ───────────────────────────────────────────────────────────
+interface AdvanceDialogProps {
+  open: boolean;
+  onClose: () => void;
+  unitName: string;
+  currentAmount: number;
+  currentDate: Date | null;
+  onSave: (amount: number, date: Date) => Promise<void>;
+}
+
+function AdvanceDialog({ open, onClose, unitName, currentAmount, currentDate, onSave }: AdvanceDialogProps) {
+  const [amount, setAmount] = useState(currentAmount || 0);
+  const [date, setDate]     = useState(currentDate ? format(currentDate, 'yyyy-MM-dd') : '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setAmount(currentAmount || 0);
+      setDate(currentDate ? format(currentDate, 'yyyy-MM-dd') : '');
+    }
+  }, [open, currentAmount, currentDate]);
+
+  const handleSave = async () => {
+    if (!date) { toast.error('Please enter the date advance was received'); return; }
+    setSaving(true);
+    try {
+      await onSave(amount, new Date(date));
+      toast.success(`Advance updated for ${unitName}`);
+      onClose();
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <IndianRupee className="w-4 h-4 text-primary" />
+            Advance — {unitName}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="space-y-2">
+            <Label>Advance Amount (₹)</Label>
+            <Input type="number" value={amount} onChange={e => setAmount(parseFloat(e.target.value) || 0)} placeholder="0" />
+          </div>
+          <div className="space-y-2">
+            <Label>Date Received</Label>
+            <Input type="date" value={date} onChange={e => setDate(e.target.value)} />
+          </div>
+          {currentAmount > 0 && currentDate && (
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/20 text-xs text-muted-foreground space-y-1">
+              <p className="font-medium text-foreground">Current Record</p>
+              <p>Amount: <span className="font-semibold text-primary">{formatCurrency(currentAmount)}</span></p>
+              <p>Received: <span className="font-semibold">{format(new Date(currentDate), 'dd MMM yyyy')}</span></p>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="flex-1">{saving ? 'Saving…' : 'Save Advance'}</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── MAIN COMPONENT ──────────────────────────────────────────────────────────
 type ActivePage = 'guntur' | 'gorantla' | 'planner';
 
