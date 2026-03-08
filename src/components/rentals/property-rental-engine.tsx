@@ -580,23 +580,23 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
                   }
                 </div>
               </div>
-              {/* Advance row */}
-              <div className="flex items-center justify-between text-xs">
-                {room.advanceAmount && room.advanceAmount > 0 ? (
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <IndianRupee className="w-3 h-3 text-primary" />
-                    Advance: <span className="font-semibold text-foreground">{formatCurrency(room.advanceAmount)}</span>
-                    {room.advanceDate && <span className="text-muted-foreground ml-1">· {format(new Date(room.advanceDate), 'dd MMM yyyy')}</span>}
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground italic">No advance recorded</span>
-                )}
-                {!readOnly && (
-                  <Button size="sm" variant="ghost" className="h-6 text-xs px-2" onClick={() => setAdvanceRoom(room)}>
-                    {room.advanceAmount ? 'Edit' : '+ Add'} Advance
-                  </Button>
-                )}
-              </div>
+              <UnitDetailStrip
+                unitId={room.id}
+                unitType="room"
+                unitName={room.name}
+                tenantName={room.tenant}
+                currentRent={room.rent}
+                tenantContact={room.tenantContact}
+                leaseStart={room.leaseStart ?? null}
+                tenantIdNote={room.tenantIdNote}
+                advanceAmount={room.advanceAmount}
+                advanceDate={room.advanceDate ?? null}
+                readOnly={readOnly}
+                onProfileSave={async (contact, ls, idNote) => {
+                  await db.gorantlaRooms.update(room.id, { tenantContact: contact, leaseStart: ls ?? undefined, tenantIdNote: idNote, updatedAt: new Date() });
+                }}
+                onAdvanceEdit={() => setAdvanceRoom(room)}
+              />
             </div>
           ))}
 
