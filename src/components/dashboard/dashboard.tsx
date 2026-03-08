@@ -253,7 +253,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
   const userName    = settings?.userName || 'Devavratha';
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
-  const incomeCount = useLiveQuery(() => (db as any).incomes?.count().catch(() => 0) ?? Promise.resolve(0), []) ?? 0;
+  const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
   const pendingCount = useLiveQuery(
     () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
     [role]
