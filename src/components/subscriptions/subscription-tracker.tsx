@@ -192,251 +192,145 @@ export function SubscriptionTracker() {
   }
 
   return (
-    <div className="p-4 space-y-4">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Subscriptions</h1>
-          <p className="text-muted-foreground">Manage your recurring subscriptions</p>
+    <div className="space-y-4">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Subscriptions</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Recurring charges & renewals</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={exportToCSV} disabled={subscriptions.length === 0}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
+        <div className="flex gap-2 shrink-0">
+          <Button variant="outline" size="sm" onClick={exportToCSV} disabled={subscriptions.length === 0} className="h-9 text-xs gap-1.5 rounded-xl">
+            <Download className="h-3.5 w-3.5" /> CSV
           </Button>
-          <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Subscription
-              </Button>
-            </DialogTrigger>
-          </Dialog>
+          <Button size="sm" onClick={() => setShowAddModal(true)} className="h-9 text-xs gap-1.5 rounded-xl">
+            <Plus className="h-3.5 w-3.5" /> Add
+          </Button>
         </div>
       </div>
 
-      {/* Alert for upcoming renewals */}
+      {/* Upcoming alert */}
       {upcomingRenewals.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-orange-800">
-              <Bell className="w-4 h-4" />
-              Upcoming Renewals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-orange-700 text-sm">
-              {upcomingRenewals.length} subscription(s) renewing in the next 7 days
+        <Card className="border-warning/30 bg-warning/5">
+          <CardContent className="p-3 flex items-center gap-2">
+            <Bell className="h-4 w-4 text-warning shrink-0" aria-hidden="true" />
+            <p className="text-xs text-warning font-medium">
+              {upcomingRenewals.length} subscription{upcomingRenewals.length > 1 ? 's' : ''} renewing within 7 days
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{subscriptions.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(getTotalMonthlyCost())}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Renewals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-orange-600">{upcomingRenewals.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Subscriptions List */}
-      <div className="space-y-4">
-        {subscriptions.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No subscriptions found. Add your first subscription to get started!</p>
+      {/* Summary — 3 col */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Active',   value: subscriptions.length.toString(),          cls: 'text-foreground'  },
+          { label: 'Monthly',  value: formatCurrency(getTotalMonthlyCost()),    cls: 'text-foreground'  },
+          { label: 'Due Soon', value: upcomingRenewals.length.toString(),        cls: upcomingRenewals.length > 0 ? 'value-negative' : 'text-foreground' },
+        ].map(({ label, value, cls }) => (
+          <Card key={label} className="glass">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+              <p className={`text-sm font-bold tabular-nums ${cls}`}>{value}</p>
             </CardContent>
           </Card>
-        ) : (
-          subscriptions.map((subscription) => {
-            const isUpcoming = upcomingRenewals.some(s => s.id === subscription.id);
-            return (
-              <Card key={subscription.id} className={`p-4 ${isUpcoming ? 'border-orange-200' : ''}`}>
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{subscription.name}</h3>
-                      <Badge variant="outline">{subscription.category}</Badge>
-                      <Badge variant="secondary">{subscription.billingCycle}</Badge>
-                      {isUpcoming && <Badge variant="destructive">Due Soon</Badge>}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Cost:</span>
-                        <p className="font-medium">{formatCurrency(subscription.cost)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Next Renewal:</span>
-                        <p className="font-medium">{subscription.nextRenewal.toLocaleDateString()}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Auto Renew:</span>
-                        <p className="font-medium">{subscription.autoRenew ? 'Yes' : 'No'}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Reminders:</span>
-                        <p className="font-medium">
-                          {subscription.reminderEnabled ? `${subscription.reminderDays} days` : 'Off'}
-                        </p>
-                      </div>
-                    </div>
+        ))}
+      </div>
+
+      {/* List */}
+      <div className="space-y-2">
+        {subscriptions.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <Repeat className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" aria-hidden="true" />
+              <p className="text-sm text-muted-foreground">No subscriptions yet.</p>
+            </CardContent>
+          </Card>
+        ) : subscriptions.map(sub => {
+          const isUpcoming = upcomingRenewals.some(s => s.id === sub.id);
+          return (
+            <Card key={sub.id} className={`glass ${isUpcoming ? 'border-warning/40' : ''}`}>
+              <CardContent className="p-4">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                    <h3 className="text-sm font-semibold text-foreground">{sub.name}</h3>
+                    <Badge variant="outline" className="text-[10px]">{sub.category}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">{sub.billingCycle}</Badge>
+                    {isUpcoming && <Badge variant="destructive" className="text-[10px]">Due Soon</Badge>}
                   </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(subscription)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(subscription.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleEdit(sub)} aria-label="Edit"><Edit className="h-3.5 w-3.5" /></Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(sub.id)} aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></Button>
                   </div>
                 </div>
-              </Card>
-            );
-          })
-        )}
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <div><span className="text-muted-foreground">Cost: </span><span className="font-medium">{formatCurrency(sub.cost)}</span></div>
+                  <div><span className="text-muted-foreground">Renews: </span><span className="font-medium">{sub.nextRenewal.toLocaleDateString('en-IN')}</span></div>
+                  <div><span className="text-muted-foreground">Auto-renew: </span><span className="font-medium">{sub.autoRenew ? 'Yes' : 'No'}</span></div>
+                  <div><span className="text-muted-foreground">Reminder: </span><span className="font-medium">{sub.reminderEnabled ? `${sub.reminderDays}d` : 'Off'}</span></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Add/Edit Modal */}
       <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>{editingSubscription ? 'Edit Subscription' : 'Add Subscription'}</DialogTitle>
+            <DialogTitle className="text-base">{editingSubscription ? 'Edit Subscription' : 'Add Subscription'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="Netflix, Spotify, etc."
-                required
-              />
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Name</Label>
+              <Input value={formData.name} onChange={e => setFormData(p => ({...p, name: e.target.value}))} placeholder="Netflix, Spotify…" className="h-9 text-sm" required />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="cost">Cost (₹)</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  value={formData.cost}
-                  onChange={(e) => setFormData({...formData, cost: e.target.value})}
-                  required
-                />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Cost (₹)</Label>
+                <Input type="number" step="0.01" value={formData.cost} onChange={e => setFormData(p => ({...p, cost: e.target.value}))} className="h-9 text-sm" required />
               </div>
-              <div>
-                <Label htmlFor="category">Category</Label>
-                <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+              <div className="space-y-1">
+                <Label className="text-xs">Category</Label>
+                <Select value={formData.category} onValueChange={v => setFormData(p => ({...p, category: v}))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{categories.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}</SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Billing Cycle</Label>
+                <Select value={formData.billingCycle} onValueChange={(v: any) => setFormData(p => ({...p, billingCycle: v}))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category} value={category}>{category}</SelectItem>
-                    ))}
+                    <SelectItem value="Monthly" className="text-xs">Monthly</SelectItem>
+                    <SelectItem value="Quarterly" className="text-xs">Quarterly</SelectItem>
+                    <SelectItem value="Yearly" className="text-xs">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="billingCycle">Billing Cycle</Label>
-                <Select value={formData.billingCycle} onValueChange={(value: any) => setFormData({...formData, billingCycle: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                    <SelectItem value="Yearly">Yearly</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="nextRenewal">Next Renewal</Label>
-                <Input
-                  id="nextRenewal"
-                  type="date"
-                  value={formData.nextRenewal}
-                  onChange={(e) => setFormData({...formData, nextRenewal: e.target.value})}
-                  required
-                />
+              <div className="space-y-1">
+                <Label className="text-xs">Next Renewal</Label>
+                <Input type="date" value={formData.nextRenewal} onChange={e => setFormData(p => ({...p, nextRenewal: e.target.value}))} className="h-9 text-sm" required />
               </div>
             </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div>
-                <Label htmlFor="autoRenew">Auto Renew</Label>
-                <p className="text-sm text-muted-foreground">Automatically renew subscription</p>
-              </div>
-              <Switch
-                id="autoRenew"
-                checked={formData.autoRenew}
-                onCheckedChange={(checked) => setFormData({...formData, autoRenew: checked})}
-              />
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/40">
+              <div><p className="text-xs font-medium">Auto Renew</p><p className="text-[10px] text-muted-foreground">Auto-charge on renewal</p></div>
+              <Switch checked={formData.autoRenew} onCheckedChange={v => setFormData(p => ({...p, autoRenew: v}))} aria-label="Toggle auto renew" />
             </div>
-
-            <div className="flex items-center justify-between p-3 border rounded-lg">
-              <div>
-                <Label htmlFor="reminderEnabled">Renewal Reminders</Label>
-                <p className="text-sm text-muted-foreground">Get notified before renewal</p>
-              </div>
-              <Switch
-                id="reminderEnabled"
-                checked={formData.reminderEnabled}
-                onCheckedChange={(checked) => setFormData({...formData, reminderEnabled: checked})}
-              />
+            <div className="flex items-center justify-between p-3 rounded-xl border border-border/40">
+              <div><p className="text-xs font-medium">Reminders</p><p className="text-[10px] text-muted-foreground">Notify before renewal</p></div>
+              <Switch checked={formData.reminderEnabled} onCheckedChange={v => setFormData(p => ({...p, reminderEnabled: v}))} aria-label="Toggle reminders" />
             </div>
-
             {formData.reminderEnabled && (
-              <div>
-                <Label htmlFor="reminderDays">Reminder Days Before</Label>
-                <Input
-                  id="reminderDays"
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={formData.reminderDays}
-                  onChange={(e) => setFormData({...formData, reminderDays: parseInt(e.target.value)})}
-                />
+              <div className="space-y-1">
+                <Label className="text-xs">Remind X days before</Label>
+                <Input type="number" min="1" max="30" value={formData.reminderDays} onChange={e => setFormData(p => ({...p, reminderDays: parseInt(e.target.value)}))} className="h-9 text-sm" />
               </div>
             )}
-
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => {
-                setShowAddModal(false);
-                setEditingSubscription(null);
-                resetForm();
-              }}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingSubscription ? 'Update' : 'Add'} Subscription
-              </Button>
+            <div className="flex gap-2 pt-1">
+              <Button type="submit" size="sm" className="flex-1 h-9 text-xs">{editingSubscription ? 'Update' : 'Add'}</Button>
+              <Button type="button" size="sm" variant="outline" className="flex-1 h-9 text-xs" onClick={() => { setShowAddModal(false); setEditingSubscription(null); resetForm(); }}>Cancel</Button>
             </div>
           </form>
         </DialogContent>
