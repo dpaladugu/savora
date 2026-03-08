@@ -112,69 +112,35 @@ export function HealthTracker() {
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Health Tracker</h1>
-          <p className="text-muted-foreground">Track your health records, prescriptions, and vital signs</p>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Health Tracker</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Prescriptions, vitals & medical records</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowPrescriptionModal(true)} className="flex items-center gap-2">
-            <Plus className="w-4 h-4" />
-            Add Prescription
+        <div className="flex gap-1.5 shrink-0">
+          <Button size="sm" onClick={() => setShowPrescriptionModal(true)} className="h-9 text-xs gap-1 rounded-xl">
+            <Plus className="w-3.5 h-3.5" /> Rx
           </Button>
-          <Button onClick={() => setShowVitalModal(true)} variant="outline" className="flex items-center gap-2">
-            <Activity className="w-4 h-4" />
-            Record Vitals
+          <Button size="sm" variant="outline" onClick={() => setShowVitalModal(true)} className="h-9 text-xs gap-1 rounded-xl">
+            <Activity className="w-3.5 h-3.5" /> Vitals
           </Button>
         </div>
       </div>
 
-      {/* Health Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Heart className="w-4 h-4" />
-              Current BMI
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {health?.bmi ? health.bmi.toFixed(1) : 'N/A'}
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {health?.heightCm && health?.weightKg ? 
-                `${health.weightKg}kg / ${health.heightCm}cm` : 
-                'Update height & weight'
-              }
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              Active Prescriptions
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{health?.prescriptions.length || 0}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="w-4 h-4" />
-              Recent Vitals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{health?.vitals.length || 0}</div>
-            <p className="text-xs text-muted-foreground">recorded</p>
-          </CardContent>
-        </Card>
+      {/* Overview — 3 col compact */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'BMI', value: health?.bmi ? health.bmi.toFixed(1) : '—' },
+          { label: 'Prescriptions', value: (health?.prescriptions.length || 0).toString() },
+          { label: 'Vital Records', value: (health?.vitals.length || 0).toString() },
+        ].map(({ label, value }) => (
+          <Card key={label} className="glass">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+              <p className="text-sm font-bold text-foreground tabular-nums">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Prescriptions */}
