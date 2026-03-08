@@ -281,6 +281,45 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </button>
       )}
 
+      {/* ── Pending Telegram txns alert (ADMIN only) ── */}
+      {role === 'ADMIN' && pendingCount > 0 && (
+        <button
+          onClick={() => onMoreNavigation('telegram-pending')}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-primary/40 bg-primary/5 hover:bg-primary/10 active:scale-[0.98] transition-all text-left"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/15 relative">
+            <MessageCircle className="h-4 w-4 text-primary" />
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+              {pendingCount}
+            </span>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">
+              {pendingCount} pending Telegram {pendingCount === 1 ? 'transaction' : 'transactions'}
+            </p>
+            <p className="text-xs text-muted-foreground">Tap to review &amp; approve →</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        </button>
+      )}
+
+      {/* ── Salary nudge (show only when no income recorded yet) ── */}
+      {role !== 'BROTHER' && role !== 'GUEST' && incomeCount === 0 && (
+        <button
+          onClick={() => setShowIncomeDialog(true)}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-success/40 bg-success/5 hover:bg-success/10 active:scale-[0.98] transition-all text-left"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15">
+            <Banknote className="h-4 w-4 text-success" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Record your salary</p>
+            <p className="text-xs text-muted-foreground">Monthly Surplus shows ₹0 — add income to see real data →</p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        </button>
+      )}
+
       {/* ── Emergency Fund progress widget ── */}
       <button
         onClick={() => onMoreNavigation('emergency-fund')}
