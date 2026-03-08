@@ -452,6 +452,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Goal Progress Row ── */}
       <GoalProgressRow onNavigate={onTabChange} />
 
+      {/* ── Upcoming Recurring Transactions ── */}
+      <UpcomingRecurringStrip onNavigate={onMoreNavigation} />
+
       {/* ── Charts + Recent Activity ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <DashboardCharts data={dashboardData} />
