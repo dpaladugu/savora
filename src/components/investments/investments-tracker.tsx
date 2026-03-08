@@ -1,154 +1,103 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Plus, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, BarChart2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { db, Investment } from '@/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { cn } from '@/lib/utils';
 
 export function InvestmentsTracker() {
-  // Use the correct table name from the database
   const investments = useLiveQuery(() => db.investments.toArray()) || [];
   const [sortBy, setSortBy] = useState<'name' | 'value' | 'returns'>('name');
   const [showAddForm, setShowAddForm] = useState(false);
 
-  // Calculate total portfolio value
-  const totalValue = investments.reduce((sum, inv) => sum + (inv.currentValue || 0), 0);
-  const totalInvested = investments.reduce((sum, inv) => sum + (inv.investedValue || 0), 0);
-  const totalReturns = totalValue - totalInvested;
-  const returnsPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
+  const totalValue    = investments.reduce((s, i) => s + (i.currentValue  || 0), 0);
+  const totalInvested = investments.reduce((s, i) => s + (i.investedValue || 0), 0);
+  const totalReturns  = totalValue - totalInvested;
+  const returnsPercent = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
 
-  // Sort investments
-  const sortedInvestments = [...investments].sort((a, b) => {
-    switch (sortBy) {
-      case 'value':
-        return (b.currentValue || 0) - (a.currentValue || 0);
-      case 'returns':
-        const aReturns = (a.currentValue || 0) - (a.investedValue || 0);
-        const bReturns = (b.currentValue || 0) - (b.investedValue || 0);
-        return bReturns - aReturns;
-      default:
-        return (a.name || '').localeCompare(b.name || '');
-    }
+  const sorted = [...investments].sort((a, b) => {
+    if (sortBy === 'value')   return (b.currentValue || 0) - (a.currentValue || 0);
+    if (sortBy === 'returns') return ((b.currentValue || 0) - (b.investedValue || 0)) - ((a.currentValue || 0) - (a.investedValue || 0));
+    return (a.name || '').localeCompare(b.name || '');
   });
 
-  const handleAddInvestment = () => {
-    setShowAddForm(true);
-  };
+  const sorts: { key: typeof sortBy; label: string }[] = [
+    { key: 'name',    label: 'Name'    },
+    { key: 'value',   label: 'Value'   },
+    { key: 'returns', label: 'Returns' },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Portfolio Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Portfolio Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Invested</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalInvested)}</div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Returns</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center space-x-2">
-              <div className={`text-2xl font-bold ${totalReturns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(totalReturns)}
+    <div className="space-y-4">
+      {/* ── Summary metrics — 1 col stacked on mobile ── */}
+      <div className="grid grid-cols-1 gap-3">
+        {[
+          { label: 'Portfolio Value', value: formatCurrency(totalValue),    color: 'text-foreground'                                },
+          { label: 'Total Invested',  value: formatCurrency(totalInvested), color: 'text-foreground'                                },
+          { label: 'Total Returns',   value: formatCurrency(totalReturns),  color: totalReturns >= 0 ? 'value-positive' : 'value-negative',
+            sub: `${returnsPercent >= 0 ? '+' : ''}${returnsPercent.toFixed(2)}%` },
+        ].map(({ label, value, color, sub }) => (
+          <Card key={label} className="glass">
+            <CardContent className="flex items-center justify-between p-4">
+              <p className="text-xs text-muted-foreground">{label}</p>
+              <div className="text-right">
+                <p className={cn('text-lg font-bold tabular-nums', color)}>{value}</p>
+                {sub && <p className={cn('text-xs font-medium', color)}>{sub}</p>}
               </div>
-              {totalReturns >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              )}
-            </div>
-            <div className={`text-sm ${totalReturns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {returnsPercentage.toFixed(2)}%
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Controls */}
-      <div className="flex justify-between items-center">
-        <div className="flex space-x-2">
-          <Button
-            variant={sortBy === 'name' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortBy('name')}
-          >
-            Sort by Name
-          </Button>
-          <Button
-            variant={sortBy === 'value' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortBy('value')}
-          >
-            Sort by Value
-          </Button>
-          <Button
-            variant={sortBy === 'returns' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortBy('returns')}
-          >
-            Sort by Returns
-          </Button>
+      {/* ── Controls row ── */}
+      <div className="flex items-center justify-between gap-2">
+        {/* Sort pills — wrap instead of overflow */}
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Sort investments">
+          {sorts.map(({ key, label }) => (
+            <Button
+              key={key}
+              variant={sortBy === key ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setSortBy(key)}
+              className="h-8 text-xs px-3 rounded-xl"
+              aria-pressed={sortBy === key}
+            >
+              {label}
+            </Button>
+          ))}
         </div>
-        
-        <Button onClick={handleAddInvestment} className="flex items-center space-x-2">
-          <Plus className="h-4 w-4" />
-          <span>Add Investment</span>
+        <Button size="sm" onClick={() => setShowAddForm(true)} className="h-8 text-xs px-3 rounded-xl gap-1.5 shrink-0">
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" /> Add
         </Button>
       </div>
 
-      {/* Investment List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedInvestments.map((investment) => {
-          const returns = (investment.currentValue || 0) - (investment.investedValue || 0);
-          const returnsPercentage = (investment.investedValue || 0) > 0 ? (returns / (investment.investedValue || 0)) * 100 : 0;
-          
+      {/* ── Investment List ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {sorted.map(investment => {
+          const ret  = (investment.currentValue || 0) - (investment.investedValue || 0);
+          const retP = (investment.investedValue || 0) > 0 ? (ret / (investment.investedValue || 0)) * 100 : 0;
           return (
-            <Card key={investment.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <CardTitle className="text-lg">{investment.name}</CardTitle>
-                  <Badge variant="secondary">
-                    {investment.type || 'Investment'}
-                  </Badge>
+            <Card key={investment.id} className="glass hover:shadow-card-hover transition-shadow">
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-foreground leading-tight">{investment.name}</p>
+                  <Badge variant="secondary" className="text-[10px] shrink-0">{investment.type || 'Investment'}</Badge>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Current Value</span>
-                  <span className="font-medium">{formatCurrency(investment.currentValue || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Invested</span>
-                  <span className="font-medium">{formatCurrency(investment.investedValue || 0)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-sm text-muted-foreground">Returns</span>
-                  <div className="flex items-center space-x-1">
-                    <span className={`font-medium ${returns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(returns)}
-                    </span>
-                    <span className={`text-xs ${returns >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      ({returnsPercentage.toFixed(1)}%)
-                    </span>
-                  </div>
+                <div className="space-y-1.5 text-xs">
+                  {[
+                    { label: 'Current Value', val: formatCurrency(investment.currentValue || 0), cls: 'text-foreground' },
+                    { label: 'Invested',       val: formatCurrency(investment.investedValue || 0), cls: 'text-foreground' },
+                    { label: 'Returns',        val: `${formatCurrency(ret)} (${retP.toFixed(1)}%)`, cls: ret >= 0 ? 'value-positive' : 'value-negative' },
+                  ].map(({ label, val, cls }) => (
+                    <div key={label} className="flex justify-between">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className={cn('font-medium tabular-nums', cls)}>{val}</span>
+                    </div>
+                  ))}
                 </div>
               </CardContent>
             </Card>
@@ -158,10 +107,12 @@ export function InvestmentsTracker() {
 
       {investments.length === 0 && (
         <Card>
-          <CardContent className="text-center py-8">
-            <div className="text-muted-foreground">
-              No investments found. Add your first investment to get started.
-            </div>
+          <CardContent className="py-10 text-center">
+            <BarChart2 className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">No investments yet.</p>
+            <Button size="sm" variant="outline" className="mt-3 h-9 text-xs rounded-xl gap-1.5" onClick={() => setShowAddForm(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add Investment
+            </Button>
           </CardContent>
         </Card>
       )}

@@ -1,352 +1,198 @@
 
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Calculator, AlertTriangle } from 'lucide-react';
+import { Plus, Edit, Trash2, Banknote, AlertTriangle } from 'lucide-react';
 import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
 import type { Loan } from '@/lib/db-extended';
 
+const emptyForm = {
+  type: 'Personal' as 'Personal' | 'Personal-Brother' | 'Education-Brother',
+  borrower: 'Me' as 'Me' | 'Brother',
+  principal: '', roi: '', tenureMonths: '', emi: '', outstanding: '',
+  startDate: new Date().toISOString().split('T')[0],
+};
+
 export function LoanManager() {
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
   const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    type: 'Personal' as 'Personal' | 'Personal-Brother' | 'Education-Brother',
-    borrower: 'Me' as 'Me' | 'Brother',
-    principal: '',
-    roi: '',
-    tenureMonths: '',
-    emi: '',
-    outstanding: '',
-    startDate: new Date().toISOString().split('T')[0]
-  });
+  const [form, setForm] = useState({ ...emptyForm });
 
-  useEffect(() => {
-    loadLoans();
-  }, []);
+  useEffect(() => { load(); }, []);
 
-  const loadLoans = async () => {
-    try {
-      setLoading(true);
-      const allLoans = await LoanService.getAllLoans();
-      setLoans(allLoans);
-    } catch (error) {
-      toast.error('Failed to load loans');
-      console.error('Error loading loans:', error);
-    } finally {
-      setLoading(false);
-    }
+  const load = async () => {
+    try { setLoading(true); setLoans(await LoanService.getAllLoans()); }
+    catch { toast.error('Failed to load loans'); }
+    finally { setLoading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const loanData = {
-        type: formData.type,
-        borrower: formData.borrower,
-        principal: parseFloat(formData.principal),
-        roi: parseFloat(formData.roi),
-        tenureMonths: parseInt(formData.tenureMonths),
-        emi: parseFloat(formData.emi),
-        outstanding: parseFloat(formData.outstanding),
-        startDate: new Date(formData.startDate),
-        isActive: true
-      };
-
-      if (editingLoan) {
-        await LoanService.updateLoan(editingLoan.id, loanData);
-        toast.success('Loan updated successfully');
-      } else {
-        await LoanService.createLoan(loanData);
-        toast.success('Loan added successfully');
-      }
-
-      resetForm();
-      setShowAddModal(false);
-      setEditingLoan(null);
-      loadLoans();
-    } catch (error) {
-      toast.error('Failed to save loan');
-      console.error('Error saving loan:', error);
-    }
+      const data = { type: form.type, borrower: form.borrower, principal: +form.principal, roi: +form.roi, tenureMonths: +form.tenureMonths, emi: +form.emi, outstanding: +form.outstanding, startDate: new Date(form.startDate), isActive: true };
+      editingLoan ? await LoanService.updateLoan(editingLoan.id, data) : await LoanService.createLoan(data);
+      toast.success(editingLoan ? 'Loan updated' : 'Loan added');
+      setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null); load();
+    } catch { toast.error('Failed to save loan'); }
   };
 
   const handleEdit = (loan: Loan) => {
     setEditingLoan(loan);
-    setFormData({
-      type: loan.type,
-      borrower: loan.borrower,
-      principal: loan.principal.toString(),
-      roi: loan.roi.toString(),
-      tenureMonths: loan.tenureMonths.toString(),
-      emi: loan.emi.toString(),
-      outstanding: loan.outstanding.toString(),
-      startDate: loan.startDate.toISOString().split('T')[0]
-    });
-    setShowAddModal(true);
+    setForm({ type: loan.type, borrower: loan.borrower, principal: loan.principal.toString(), roi: loan.roi.toString(), tenureMonths: loan.tenureMonths.toString(), emi: loan.emi.toString(), outstanding: loan.outstanding.toString(), startDate: loan.startDate.toISOString().split('T')[0] });
+    setShowModal(true);
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this loan?')) {
-      try {
-        await LoanService.updateLoan(id, { isActive: false });
-        toast.success('Loan marked as inactive');
-        loadLoans();
-      } catch (error) {
-        toast.error('Failed to update loan');
-        console.error('Error updating loan:', error);
-      }
-    }
+    if (!confirm('Mark loan as inactive?')) return;
+    try { await LoanService.updateLoan(id, { isActive: false }); toast.success('Loan marked inactive'); load(); }
+    catch { toast.error('Failed to update loan'); }
   };
 
-  const resetForm = () => {
-    setFormData({
-      type: 'Personal',
-      borrower: 'Me',
-      principal: '',
-      roi: '',
-      tenureMonths: '',
-      emi: '',
-      outstanding: '',
-      startDate: new Date().toISOString().split('T')[0]
-    });
-  };
+  const active = loans.filter(l => l.isActive);
+  const totalOut = active.reduce((s, l) => s + l.outstanding, 0);
+  const totalEMI = active.reduce((s, l) => s + l.emi, 0);
+  const hiCount  = active.filter(l => l.roi > 12).length;
 
-  const totalOutstanding = loans.filter(loan => loan.isActive).reduce((sum, loan) => sum + loan.outstanding, 0);
-  const totalEMI = loans.filter(loan => loan.isActive).reduce((sum, loan) => sum + loan.emi, 0);
-  const highInterestLoans = loans.filter(loan => loan.isActive && loan.roi > 12);
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading loans...</div>;
-  }
+  if (loading) return (
+    <div className="space-y-3 animate-pulse" aria-busy="true">
+      {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-2xl" />)}
+    </div>
+  );
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Loan Manager</h1>
-          <p className="text-muted-foreground">Track and manage your loans and repayments</p>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl font-bold text-foreground">Loans & EMIs</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Track balances and repayment schedules</p>
         </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Loan
+        <Button size="sm" onClick={() => setShowModal(true)} className="h-9 gap-1.5 shrink-0 rounded-xl text-xs">
+          <Plus className="h-3.5 w-3.5" /> Add Loan
         </Button>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Total Outstanding</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalOutstanding)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly EMI</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(totalEMI)}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">High Interest Loans</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{highInterestLoans.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Loans List */}
-      <div className="grid gap-4">
-        {loans.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No loans recorded yet. Add your first loan to get started!</p>
+      {/* Summary — 3 equal cols */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Outstanding', value: formatCurrency(totalOut), cls: 'value-negative' },
+          { label: 'Monthly EMI', value: formatCurrency(totalEMI), cls: 'text-foreground' },
+          { label: 'High Rate',   value: hiCount.toString(),        cls: hiCount > 0 ? 'value-negative' : 'value-positive' },
+        ].map(({ label, value, cls }) => (
+          <Card key={label} className="glass">
+            <CardContent className="p-3 text-center">
+              <p className="text-[10px] text-muted-foreground mb-1 leading-tight">{label}</p>
+              <p className={`text-sm font-bold tabular-nums ${cls}`}>{value}</p>
             </CardContent>
           </Card>
-        ) : (
-          loans.map((loan) => (
-            <Card key={loan.id} className={!loan.isActive ? 'opacity-60' : ''}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-lg">{loan.type} Loan</h3>
-                      <Badge variant={loan.isActive ? "default" : "secondary"}>
-                        {loan.isActive ? 'Active' : 'Closed'}
-                      </Badge>
-                      <Badge variant="outline">{loan.borrower}</Badge>
-                      {loan.roi > 12 && (
-                        <Badge variant="destructive" className="flex items-center gap-1">
-                          <AlertTriangle className="w-3 h-3" />
-                          High Interest
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">Principal:</span>
-                        <p className="font-medium">{formatCurrency(loan.principal)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Interest Rate:</span>
-                        <p className="font-medium">{loan.roi}%</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">EMI:</span>
-                        <p className="font-medium">{formatCurrency(loan.emi)}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Outstanding:</span>
-                        <p className="font-medium">{formatCurrency(loan.outstanding)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button size="sm" variant="outline" onClick={() => handleEdit(loan)}>
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleDelete(loan.id)}>
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
+        ))}
       </div>
 
-      {/* Add/Edit Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md">
+      {/* Loan List */}
+      <div className="space-y-2">
+        {loans.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <Banknote className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm text-muted-foreground">No loans recorded yet.</p>
+            </CardContent>
+          </Card>
+        ) : loans.map(loan => (
+          <Card key={loan.id} className={`glass ${!loan.isActive ? 'opacity-50' : ''}`}>
+            <CardContent className="p-4">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                  <h3 className="text-sm font-semibold text-foreground">{loan.type} Loan</h3>
+                  <Badge variant={loan.isActive ? 'default' : 'secondary'} className="text-[10px]">{loan.isActive ? 'Active' : 'Closed'}</Badge>
+                  <Badge variant="outline" className="text-[10px]">{loan.borrower}</Badge>
+                  {loan.roi > 12 && (
+                    <Badge variant="destructive" className="text-[10px] gap-0.5">
+                      <AlertTriangle className="h-2.5 w-2.5" /> High
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex gap-1 shrink-0">
+                  <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleEdit(loan)} aria-label="Edit loan"><Edit className="h-3.5 w-3.5" /></Button>
+                  <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(loan.id)} aria-label="Delete loan"><Trash2 className="h-3.5 w-3.5" /></Button>
+                </div>
+              </div>
+              {/* 2-col grid — never 4 on mobile */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                {[
+                  { label: 'Principal',    val: formatCurrency(loan.principal)  },
+                  { label: 'Rate',         val: `${loan.roi}%`                  },
+                  { label: 'EMI',          val: formatCurrency(loan.emi)        },
+                  { label: 'Outstanding',  val: formatCurrency(loan.outstanding) },
+                ].map(({ label, val }) => (
+                  <div key={label}>
+                    <span className="text-muted-foreground">{label}: </span>
+                    <span className="font-medium text-foreground">{val}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Add / Edit Modal */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>{editingLoan ? 'Edit Loan' : 'Add Loan'}</DialogTitle>
+            <DialogTitle className="text-base">{editingLoan ? 'Edit Loan' : 'Add Loan'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="type">Loan Type</Label>
-              <Select value={formData.type} onValueChange={(value: any) => setFormData({...formData, type: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Personal">Personal</SelectItem>
-                  <SelectItem value="Personal-Brother">Personal-Brother</SelectItem>
-                  <SelectItem value="Education-Brother">Education-Brother</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="borrower">Borrower</Label>
-              <Select value={formData.borrower} onValueChange={(value: any) => setFormData({...formData, borrower: value})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Me">Me</SelectItem>
-                  <SelectItem value="Brother">Brother</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="principal">Principal Amount (₹)</Label>
-                <Input
-                  id="principal"
-                  type="number"
-                  step="0.01"
-                  value={formData.principal}
-                  onChange={(e) => setFormData({...formData, principal: e.target.value})}
-                  required
-                />
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Select value={form.type} onValueChange={(v: any) => setForm(p => ({ ...p, type: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Personal" className="text-xs">Personal</SelectItem>
+                    <SelectItem value="Personal-Brother" className="text-xs">Personal-Brother</SelectItem>
+                    <SelectItem value="Education-Brother" className="text-xs">Education-Brother</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label htmlFor="roi">Interest Rate (%)</Label>
-                <Input
-                  id="roi"
-                  type="number"
-                  step="0.01"
-                  value={formData.roi}
-                  onChange={(e) => setFormData({...formData, roi: e.target.value})}
-                  required
-                />
+              <div className="space-y-1">
+                <Label className="text-xs">Borrower</Label>
+                <Select value={form.borrower} onValueChange={(v: any) => setForm(p => ({ ...p, borrower: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Me" className="text-xs">Me</SelectItem>
+                    <SelectItem value="Brother" className="text-xs">Brother</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="tenureMonths">Tenure (Months)</Label>
-                <Input
-                  id="tenureMonths"
-                  type="number"
-                  value={formData.tenureMonths}
-                  onChange={(e) => setFormData({...formData, tenureMonths: e.target.value})}
-                  required
-                />
+            {[
+              { id: 'principal',    label: 'Principal (₹)',   key: 'principal'    },
+              { id: 'roi',          label: 'Interest Rate %', key: 'roi'          },
+              { id: 'tenureMonths', label: 'Tenure (months)', key: 'tenureMonths' },
+              { id: 'emi',          label: 'EMI (₹)',          key: 'emi'          },
+              { id: 'outstanding',  label: 'Outstanding (₹)', key: 'outstanding'  },
+            ].map(({ id, label, key }) => (
+              <div key={id} className="space-y-1">
+                <Label htmlFor={id} className="text-xs">{label}</Label>
+                <Input id={id} type="number" step="0.01" value={(form as any)[key]} onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))} className="h-9 text-sm" required />
               </div>
-              <div>
-                <Label htmlFor="emi">EMI Amount (₹)</Label>
-                <Input
-                  id="emi"
-                  type="number"
-                  step="0.01"
-                  value={formData.emi}
-                  onChange={(e) => setFormData({...formData, emi: e.target.value})}
-                  required
-                />
-              </div>
+            ))}
+            <div className="space-y-1">
+              <Label htmlFor="startDate" className="text-xs">Start Date</Label>
+              <Input id="startDate" type="date" value={form.startDate} onChange={e => setForm(p => ({ ...p, startDate: e.target.value }))} className="h-9 text-sm" required />
             </div>
-
-            <div>
-              <Label htmlFor="outstanding">Outstanding Amount (₹)</Label>
-              <Input
-                id="outstanding"
-                type="number"
-                step="0.01"
-                value={formData.outstanding}
-                onChange={(e) => setFormData({...formData, outstanding: e.target.value})}
-                required
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="startDate">Start Date</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={(e) => setFormData({...formData, startDate: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => {
-                setShowAddModal(false);
-                setEditingLoan(null);
-                resetForm();
-              }}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingLoan ? 'Update' : 'Add'} Loan
-              </Button>
+            <div className="flex gap-2 pt-1">
+              <Button type="submit" size="sm" className="flex-1 h-9 text-xs">{editingLoan ? 'Update' : 'Add'}</Button>
+              <Button type="button" size="sm" variant="outline" className="flex-1 h-9 text-xs" onClick={() => { setShowModal(false); setEditingLoan(null); setForm({ ...emptyForm }); }}>Cancel</Button>
             </div>
           </form>
         </DialogContent>
