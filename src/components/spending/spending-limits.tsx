@@ -1,8 +1,8 @@
 /**
  * SpendingLimits — per-category monthly caps.
- * Auto-sums from expenses in current month and alerts at 80%.
+ * Auto-sums from expenses in current month and fires toast alert at configurable threshold.
  */
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,6 @@ import type { SpendingLimit } from '@/lib/db';
 import { SPENDING_LIMIT_CATEGORIES } from '@/lib/categories';
 
 const PRESET_CATEGORIES = SPENDING_LIMIT_CATEGORIES;
-
 
 const emptyForm = { category: '', monthlyCap: '', alertAt: '80' };
 
@@ -51,6 +50,28 @@ export function SpendingLimits() {
   monthExpenses.forEach(e => {
     spendByCategory[e.category] = (spendByCategory[e.category] || 0) + e.amount;
   });
+
+  // ── Threshold alert: fire toast when a category crosses its alertAt% ──────
+  // Track which limits have already been alerted this session to avoid repeats
+  const alertedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!limits.length || !monthExpenses.length) return;
+    limits.forEach(l => {
+      const spent = spendByCategory[l.category] || 0;
+      const threshold = l.alertAt || 80;
+      const pct = l.monthlyCap > 0 ? (spent / l.monthlyCap) * 100 : 0;
+      const key = `${l.id}-${Math.floor(pct / threshold)}`; // re-alerts if crosses next multiple
+      if (pct >= threshold && !alertedRef.current.has(key)) {
+        alertedRef.current.add(key);
+        if (pct >= 100) {
+          toast.error(`🚨 ${l.category} limit exceeded! Spent ${formatCurrency(spent)} of ${formatCurrency(l.monthlyCap)}`);
+        } else {
+          toast.warning(`⚠️ ${l.category} at ${pct.toFixed(0)}% — ${formatCurrency(Math.max(0, l.monthlyCap - spent))} remaining`, { duration: 6000 });
+        }
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monthExpenses]);
 
   const [showModal, setShowModal] = useState(false);
   const [editId,    setEditId]    = useState<string | null>(null);
