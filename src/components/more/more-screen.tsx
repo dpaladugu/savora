@@ -49,6 +49,7 @@ const modules: MoreModule[] = [
   { id: 'auto-goals',         title: 'Auto-Goal Engine',     description: '14 CFA rules · nudges · priority stack',          icon: Zap,         status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'tax-engine',         title: 'Tax Engine',           description: 'Advance tax reminders, regime compare, NPS 80CCD',icon: Calculator,  status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'insurance-gap',      title: 'Insurance Gap',        description: 'Term ≥ 10× income · Health ≥ 5× income',         icon: Shield,      status: 'available',    category: 'analysis',  priority: 'high' },
+  { id: 'budget-vs-actual',   title: 'Budget vs Actual',     description: 'Monthly spend vs limits with RAG status',         icon: BarChart3,   status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'will-estate',        title: 'Will & Estate',        description: 'Asset distribution, digital legacy & nominees',   icon: Scale,       status: 'available',    category: 'analysis',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'smart-goals',        title: 'Smart Goals',          description: 'Auto-generated goals from your profile',          icon: Target,      status: 'beta',         category: 'analysis',  priority: 'low' },
   { id: 'audit-log',          title: 'Audit Log',            description: 'ADMIN only — full create/update/delete trail',    icon: FileText,    status: 'available',    category: 'settings',  priority: 'high',  roleRequired: 'ADMIN' },

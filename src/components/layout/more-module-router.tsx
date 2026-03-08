@@ -107,6 +107,12 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <AuditLogViewer />;
       case 'insurance-gap':
         return <InsuranceGapAnalysis />;
+      case 'budget-vs-actual':
+        return <BudgetVsActual />;
+      case 'csv-import':
+        return <CsvImports />;
+      case 'recurring-transactions':
+        return <RecurringTransactionsPage />;
       default:
         return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
