@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GlobalSettingsManager } from './global-settings-manager';
 import { LLMSettingsForm } from './llm-settings-form';
 import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
 import { BackupRestore } from './backup-restore';
+import { BackupNudge } from './backup-nudge';
 import { Settings, Brain, Shield, User, Database } from 'lucide-react';
 
 const tabs = [
