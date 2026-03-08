@@ -109,6 +109,7 @@ const Index = () => {
         const startupChecks = await performStartupVerification();
         logStartupResults(startupChecks);
         await seedInitialData();
+        await processRecurringTransactions();
         const settings = await db.globalSettings.toArray();
         setHasExistingUser(settings.length > 0);
         setHasPin(false);
