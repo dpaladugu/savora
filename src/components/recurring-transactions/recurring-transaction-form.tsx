@@ -23,10 +23,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { CalendarIcon } from "@radix-ui/react-icons";
+import { Badge } from "@/components/ui/badge";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { DateRange } from "react-day-picker";
 import { RecurringTransactionRecord } from "@/types/recurring-transaction";
+import { useSIPPrefillStore } from "@/store/sipPrefillStore";
 
 interface RecurringTransactionFormProps {
   isOpen: boolean;
@@ -41,6 +44,8 @@ export function RecurringTransactionForm({
   onSubmit,
   initialData,
 }: RecurringTransactionFormProps) {
+  const { prefill, clearPrefill } = useSIPPrefillStore();
+
   const [formData, setFormData] = useState<Omit<RecurringTransactionRecord, 'id' | 'created_at' | 'updated_at'>>({
     user_id: '',
     amount: 0,
@@ -64,10 +69,11 @@ export function RecurringTransactionForm({
     to: initialData?.end_date ? new Date(initialData.end_date) : undefined,
   });
 
+  // 1️⃣ Populate from explicit initialData (edit mode)
   useEffect(() => {
     if (initialData) {
       setFormData({
-        user_id: initialData.user_id,
+        user_id: initialData.user_id ?? '',
         amount: initialData.amount,
         description: initialData.description,
         category: initialData.category,
@@ -87,6 +93,21 @@ export function RecurringTransactionForm({
     }
   }, [initialData]);
 
+  // 2️⃣ Populate from SIP prefill store (Smart Nudge / SIP Planner CTA)
+  useEffect(() => {
+    if (prefill && isOpen && !initialData) {
+      setFormData(prev => ({
+        ...prev,
+        description: prefill.description,
+        amount: prefill.amount,
+        category: prefill.category,
+        frequency: prefill.frequency,
+        type: prefill.type,
+        account: prefill.account ?? prev.account,
+      }));
+    }
+  }, [prefill, isOpen, initialData]);
+
   useEffect(() => {
     if (date?.from) {
       setFormData(prev => ({ ...prev, start_date: format(date.from as Date, 'yyyy-MM-dd') }));
@@ -100,20 +121,32 @@ export function RecurringTransactionForm({
 
   const frequency = formData.frequency;
 
-  if (!isOpen) {
-    return null;
-  }
+  if (!isOpen) return null;
 
   const handleSubmit = () => {
+    clearPrefill(); // consume the prefill once submitted
     onSubmit(formData);
+  };
+
+  const handleClose = () => {
+    clearPrefill();
+    onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 overflow-auto bg-black/50">
-      <div className="relative m-auto mt-20 w-full max-w-lg rounded-lg bg-white p-4">
+      <div className="relative m-auto mt-20 w-full max-w-lg rounded-lg bg-background p-4">
         <Card>
           <CardHeader>
-            <CardTitle>{initialData ? 'Edit Recurring Transaction' : 'Add Recurring Transaction'}</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              {initialData ? 'Edit Recurring Transaction' : 'Add Recurring Transaction'}
+              {prefill?.goalName && !initialData && (
+                <Badge className="text-[10px] gap-1 bg-primary/15 text-primary border-primary/30">
+                  <Sparkles className="h-3 w-3" />
+                  SIP for "{prefill.goalName}"
+                </Badge>
+              )}
+            </CardTitle>
             <CardDescription>Enter the details for the recurring transaction.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4">
@@ -145,7 +178,10 @@ export function RecurringTransactionForm({
 
             <div className="space-y-2">
               <Label htmlFor="frequency">Frequency</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, frequency: value as any })}>
+              <Select
+                value={formData.frequency}
+                onValueChange={(value) => setFormData({ ...formData, frequency: value as any })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select a frequency" />
                 </SelectTrigger>
@@ -204,7 +240,7 @@ export function RecurringTransactionForm({
               </Popover>
             </div>
 
-            {(frequency === 'monthly') && (
+            {frequency === 'monthly' && (
               <div className="space-y-2">
                 <Label htmlFor="day_of_month">Day of Month</Label>
                 <Select onValueChange={(value) => setFormData(prev => ({ ...prev, day_of_month: parseInt(value) }))}>
@@ -213,16 +249,14 @@ export function RecurringTransactionForm({
                   </SelectTrigger>
                   <SelectContent>
                     {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                      <SelectItem key={day} value={day.toString()}>
-                        {day}
-                      </SelectItem>
+                      <SelectItem key={day} value={day.toString()}>{day}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            {(frequency === 'weekly') && (
+            {frequency === 'weekly' && (
               <div className="space-y-2">
                 <Label htmlFor="day_of_week">Day of Week</Label>
                 <Select onValueChange={(value) => setFormData(prev => ({ ...prev, day_of_week: parseInt(value) }))}>
@@ -244,7 +278,10 @@ export function RecurringTransactionForm({
 
             <div className="space-y-2">
               <Label htmlFor="type">Type</Label>
-              <Select onValueChange={(value) => setFormData({ ...formData, type: value as any })}>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => setFormData({ ...formData, type: value as any })}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -274,7 +311,7 @@ export function RecurringTransactionForm({
             </div>
 
             <div className="flex justify-end space-x-2">
-              <Button type="button" variant="secondary" onClick={onClose}>
+              <Button type="button" variant="secondary" onClick={handleClose}>
                 Cancel
               </Button>
               <Button type="button" onClick={handleSubmit}>
