@@ -36,7 +36,7 @@ const modules: MoreModule[] = [
 
   // ── Asset & Expense Tracking ───────────────────────────────────
   { id: 'vehicles',        title: 'Vehicle Watchdog',       description: 'FZS oil alerts, Fuelio CSV sync, insurance',         icon: Bike,        status: 'available',    category: 'tracking',  priority: 'high' },
-  { id: 'property-engine', title: 'Guntur / Gorantla',      description: 'Waterfall allocation, Dwacra deduction, Care Fund',  icon: Building,    status: 'available',    category: 'tracking',  priority: 'high', roleBlocked: 'BROTHER' },
+  { id: 'property-engine', title: 'Guntur / Gorantla',      description: 'Waterfall allocation, Dwacra deduction, Care Fund',  icon: Building,    status: 'available',    category: 'tracking',  priority: 'high' },
   { id: 'enhanced-rentals',title: 'Rental Properties',      description: 'Rental income, expenses & tenant info',              icon: Home,        status: 'beta',         category: 'tracking',  priority: 'medium' },
   { id: 'insurance-manager',title: 'Insurance',             description: 'Policies, renewals, gap alerts',                     icon: Shield,      status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },
   { id: 'health-tracker',  title: 'Health Tracker',         description: 'Mother & Grandma — prescriptions, vitals, records',  icon: Heart,       status: 'available',    category: 'tracking',  priority: 'high',  roleBlocked: 'BROTHER' },

@@ -4,6 +4,10 @@ import { Home, Receipt, CreditCard, TrendingUp, MoreHorizontal } from "lucide-re
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { Logger } from "@/services/logger";
 import { MoreScreen } from "@/components/more/more-screen";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useRole } from "@/store/rbacStore";
+
 
 interface PersistentNavigationProps {
   activeTab: string;
@@ -26,8 +30,17 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
   onMoreNavigation,
 }: PersistentNavigationProps) {
   const [isMoreSheetOpen, setIsMoreSheetOpen] = React.useState(false);
-  // Track when we're closing the sheet due to a module selection (not user dismiss)
   const closingForModuleRef = React.useRef(false);
+  const role = useRole();
+
+  // Live pending-txn count — only ADMIN sees the badge
+  const pendingCount = useLiveQuery(async () => {
+    if (role !== 'ADMIN') return 0;
+    try {
+      return await (db as any).pendingTxns?.where('status').equals('pending').count() ?? 0;
+    } catch { return 0; }
+  }, [role]) ?? 0;
+
 
   React.useEffect(() => {
     if (activeTab !== "more") setIsMoreSheetOpen(false);
@@ -132,7 +145,7 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
               aria-expanded={isMoreSheetOpen}
               aria-controls="more-sheet"
               className={`
-                flex flex-col items-center justify-center gap-0.5
+                relative flex flex-col items-center justify-center gap-0.5
                 min-w-[60px] min-h-[56px] px-3 py-2 rounded-2xl
                 transition-all duration-200 ease-out focus-ring
                 ${isMoreActive
@@ -147,6 +160,12 @@ export const PersistentNavigation = React.memo(function PersistentNavigation({
                 strokeWidth={isMoreActive ? 2.5 : 1.8}
               />
               <span className="text-[10px] font-medium leading-none">More</span>
+              {/* Pending-txn badge (ADMIN only) */}
+              {pendingCount > 0 && (
+                <span className="absolute top-1.5 right-2 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-[9px] font-bold text-destructive-foreground leading-none">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
             </button>
           </SheetTrigger>
 
