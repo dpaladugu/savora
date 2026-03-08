@@ -22,6 +22,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { toast } from 'sonner';
 import type { EmergencyFund } from '@/types/financial';
 import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
+import { NetWorthWidget } from './net-worth-widget';
 
 
 
@@ -424,6 +425,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </div>
         <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
       </button>
+
+      {/* ── Net Worth Widget ── */}
+      <NetWorthWidget onNavigate={onMoreNavigation} />
 
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
