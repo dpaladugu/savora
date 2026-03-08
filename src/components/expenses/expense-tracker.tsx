@@ -120,7 +120,7 @@ export function ExpenseTracker() {
                   <Label className="text-xs">Category *</Label>
                   <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
                     <SelectTrigger className="h-10"><SelectValue placeholder="Category" /></SelectTrigger>
-                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    <SelectContent>{EXPENSE_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
