@@ -8,12 +8,14 @@ import React from "react";
 import {
   Home, Receipt, CreditCard, TrendingUp,
   ChevronDown, ChevronRight,
-  Repeat, Car, Shield, Heart, Coins,
-  Users2, Target, Brain, Settings, Sparkles,
-  Banknote, AlertCircle, Globe, Bike, Building, FileText,
+  Repeat, Shield, Coins,
+  Target, Brain, Settings, Sparkles,
+  Banknote, AlertCircle, Globe, Bike, Building,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRole } from "@/store/rbacStore";
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import type { NavigationTab } from "@/types/common";
 
 interface Props {
@@ -36,7 +38,7 @@ const moreModules = [
   { id: "emergency-fund",     label: "Emergency Fund",      icon: AlertCircle,roleBlocked: undefined,     roleRequired: undefined   },
   { id: "brother-global",     label: "Brother's US",        icon: Globe,      roleBlocked: undefined,     roleRequired: "BROTHER" as const },
   { id: "vehicles",           label: "Vehicle Watchdog",    icon: Bike,       roleBlocked: undefined,     roleRequired: undefined   },
-  { id: "property-engine",    label: "Guntur / Gorantla",   icon: Building,   roleBlocked: "BROTHER" as const, roleRequired: undefined },
+  { id: "property-engine",    label: "Guntur / Gorantla",   icon: Building,   roleBlocked: undefined,     roleRequired: undefined   },
   { id: "enhanced-rentals",   label: "Rentals",             icon: Home,       roleBlocked: undefined,     roleRequired: undefined   },
   { id: "insurance",          label: "Insurance",           icon: Shield,     roleBlocked: "BROTHER" as const, roleRequired: undefined },
   { id: "gold",               label: "Gold",                icon: Coins,      roleBlocked: "BROTHER" as const, roleRequired: undefined },
@@ -56,6 +58,10 @@ export function DesktopSidebar({ activeTab, onTabChange, activeMoreModule, onMor
   const [moreOpen, setMoreOpen] = React.useState(true);
   const role = useRole();
   const visibleModules = moreModules.filter((m) => isModuleVisible(m, role));
+  const pendingCount = useLiveQuery(
+    () => (role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0)),
+    [role]
+  ) ?? 0;
 
   return (
     <aside
@@ -97,7 +103,14 @@ export function DesktopSidebar({ activeTab, onTabChange, activeMoreModule, onMor
             aria-expanded={moreOpen}
             className="flex items-center justify-between w-full px-2 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors rounded-lg focus-ring"
           >
-            <span>More</span>
+            <span className="flex items-center gap-1.5">
+              More
+              {pendingCount > 0 && (
+                <span className="inline-flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
+                  {pendingCount}
+                </span>
+              )}
+            </span>
             {moreOpen
               ? <ChevronDown className="h-3 w-3" aria-hidden="true" />
               : <ChevronRight className="h-3 w-3" aria-hidden="true" />

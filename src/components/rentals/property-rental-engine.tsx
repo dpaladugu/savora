@@ -76,17 +76,16 @@ type ActivePage = 'gorantla' | 'guntur';
 
 export function PropertyRentalEngine() {
   const role = useRole();
-  // BROTHER only sees Guntur — Gorantla is private family income
   const isBrother = role === 'BROTHER';
   const [activePage, setActivePage] = React.useState<ActivePage>('guntur');
 
   return (
     <div className="p-4 space-y-4">
-      {/* Role info banner for BROTHER */}
+      {/* Read-only banner for BROTHER */}
       {isBrother && (
         <div className="flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/20 text-xs text-muted-foreground">
           <Home className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-          <span>You have <strong className="text-foreground">read-only access</strong> to Guntur Waterfall data. Gorantla (private family income) is restricted to ADMIN.</span>
+          <span>You have <strong className="text-foreground">read-only access</strong> to Guntur &amp; Gorantla data.</span>
         </div>
       )}
 
@@ -98,27 +97,24 @@ export function PropertyRentalEngine() {
         >
           Guntur Waterfall
         </Button>
-        {/* Gorantla tab hidden from BROTHER */}
-        {!isBrother && (
-          <Button
-            variant={activePage === 'gorantla' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setActivePage('gorantla')}
-          >
-            Gorantla (Nagaralu)
-          </Button>
-        )}
+        <Button
+          variant={activePage === 'gorantla' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActivePage('gorantla')}
+        >
+          Gorantla (Nagaralu)
+        </Button>
       </div>
 
-      {activePage === 'guntur' && <GunturWaterfallPage />}
-      {activePage === 'gorantla' && !isBrother && <GorantlaPage />}
+      {activePage === 'guntur' && <GunturWaterfallPage readOnly={isBrother} />}
+      {activePage === 'gorantla' && <GorantlaPage readOnly={isBrother} />}
     </div>
   );
 }
 
 // ─── GORANTLA PAGE ────────────────────────────────────────────────────────────
 
-function GorantlaPage() {
+function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const [rooms, setRooms] = useState<GorantlaRoom[]>(defaultGorantlaRooms);
   const [grandmaFund, setGrandmaFund] = useState(0);
 
@@ -159,14 +155,21 @@ function GorantlaPage() {
               </div>
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-sm">{formatCurrency(room.rent)}</span>
-                <Button
-                  size="sm"
-                  variant={room.paid ? 'default' : 'outline'}
-                  onClick={() => togglePaid(room.id)}
-                  className="h-7 text-xs"
-                >
-                  {room.paid ? '✓ Paid' : 'Mark Paid'}
-                </Button>
+                {!readOnly && (
+                  <Button
+                    size="sm"
+                    variant={room.paid ? 'default' : 'outline'}
+                    onClick={() => togglePaid(room.id)}
+                    className="h-7 text-xs"
+                  >
+                    {room.paid ? '✓ Paid' : 'Mark Paid'}
+                  </Button>
+                )}
+                {readOnly && (
+                  <Badge variant={room.paid ? 'default' : 'outline'} className="text-xs">
+                    {room.paid ? '✓ Paid' : 'Unpaid'}
+                  </Badge>
+                )}
               </div>
             </div>
           ))}
@@ -223,7 +226,7 @@ function GorantlaPage() {
 
 // ─── GUNTUR WATERFALL PAGE ────────────────────────────────────────────────────
 
-function GunturWaterfallPage() {
+function GunturWaterfallPage({ readOnly = false }: { readOnly?: boolean }) {
   const [shops, setShops] = useState<GunturShop[]>(defaultGunturShops);
   const [bucketProgress, setBucketProgress] = useState<Record<string, number>>({
     premium: 0, sinking: 0, household: 0, grandma: 0, debt: 0
