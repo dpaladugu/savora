@@ -55,12 +55,12 @@ async function encryptJSON(data: object, password: string): Promise<string> {
 }
 
 async function decryptJSON(base64: string, password: string): Promise<any> {
-  const raw  = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
-  const salt = raw.slice(0, 16);
-  const iv   = raw.slice(16, 28);
-  const ct   = raw.slice(28);
+  const raw  = Uint8Array.from(atob(base64), c => c.charCodeAt(0)) as Uint8Array<ArrayBuffer>;
+  const salt = raw.slice(0, 16) as Uint8Array<ArrayBuffer>;
+  const iv   = raw.slice(16, 28) as Uint8Array<ArrayBuffer>;
+  const ct   = raw.slice(28) as Uint8Array<ArrayBuffer>;
   const key  = await deriveKey(password, salt);
-  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, ct);
+  const pt   = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: iv as BufferSource }, key, ct as BufferSource);
   return JSON.parse(new TextDecoder().decode(pt));
 }
 
