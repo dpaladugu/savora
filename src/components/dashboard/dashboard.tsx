@@ -431,6 +431,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Net Worth Widget ── */}
       <NetWorthWidget onNavigate={onMoreNavigation} />
 
+      {/* ── Guntur Waterfall Card ── */}
+      <GunturWaterfallCard onNavigate={onMoreNavigation} />
+
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
