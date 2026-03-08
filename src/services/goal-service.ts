@@ -1,7 +1,6 @@
 
-import { db } from '@/db';
-import type { Goal, Dependent } from '@/db';
-import { db as mainDb } from '@/lib/db';
+import { db } from '@/lib/db';
+import type { Goal, Dependent } from '@/lib/db';
 import { Logger } from '@/services/logger';
 import { format, addYears, addDays } from 'date-fns';
 
@@ -9,17 +8,20 @@ export class GoalService {
   // Create goal with auto-generated slug
   static async createGoal(goalData: Omit<Goal, 'id' | 'slug' | 'currentAmount'>): Promise<Goal> {
     const id = crypto.randomUUID();
-    const slug = this.generateSlug(goalData.name, goalData.type);
-    
+    const slug = this.generateSlug(goalData.name, goalData.type || 'Short');
+    const now = new Date();
+
     const goal: Goal = {
       id,
       slug,
       currentAmount: 0,
+      createdAt: now,
+      updatedAt: now,
       ...goalData
     };
 
-    await db.goals.add(goal);
-    await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'goal', entityId: id, newValues: goal, timestamp: new Date() });
+    await db.goals.add(goal as any);
+    await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'goal', entityId: id, newValues: goal, timestamp: now });
     Logger.info('Goal created', { goalId: id, name: goalData.name });
     return goal;
   }
@@ -29,26 +31,21 @@ export class GoalService {
     try {
       const dependents = await this.getDependents();
       const investments = await db.investments.toArray();
-      const creditCards = await db.creditCards.toArray();
-      
+
       // Auto-create child education goals
       for (const dependent of dependents) {
-        if (dependent.relation === 'Child') {
-          await this.createChildEducationGoal(dependent);
+        if ((dependent as any).relation === 'Child') {
+          await this.createChildEducationGoal(dependent as any);
         }
       }
 
       // Auto-create NPS goals if NPS investments exist
       const hasNPST1 = investments.some(inv => inv.type === 'NPS-T1');
-      if (hasNPST1) {
-        await this.createNPSGoal();
-      }
+      if (hasNPST1) await this.createNPSGoal();
 
       // Auto-create PPF goal if PPF investments exist
       const hasPPF = investments.some(inv => inv.type === 'PPF');
-      if (hasPPF) {
-        await this.createPPFGoal();
-      }
+      if (hasPPF) await this.createPPFGoal();
 
       Logger.info('Auto-goals creation completed');
     } catch (error) {
@@ -56,13 +53,14 @@ export class GoalService {
     }
   }
 
-  private static async createChildEducationGoal(child: Dependent): Promise<void> {
-    const existingGoal = await db.goals.where('slug').equals(`kid-ug-18-${child.id}`).first();
-    if (existingGoal) return;
+  private static async createChildEducationGoal(child: any): Promise<void> {
+    const childId = child.id || child.name?.toLowerCase().replace(/\s+/g, '-');
+    const existingGoals = await db.goals.toArray();
+    if (existingGoals.some((g: any) => g.slug === `kid-ug-18-${childId}`)) return;
 
     const currentAge = this.calculateAge(child.dob);
     const yearsToEducation = Math.max(0, 18 - currentAge);
-    
+
     if (yearsToEducation > 0) {
       const targetDate = addYears(new Date(), yearsToEducation);
       const targetAmount = this.calculateEducationCorpus(yearsToEducation);
@@ -78,11 +76,11 @@ export class GoalService {
   }
 
   private static async createNPSGoal(): Promise<void> {
-    const existingGoal = await db.goals.where('slug').equals('nps-t1-80ccdb').first();
-    if (existingGoal) return;
+    const existingGoals = await db.goals.toArray();
+    if (existingGoals.some((g: any) => g.slug === 'nps-t1-80ccdb')) return;
 
     const currentFY = new Date().getFullYear();
-    const targetDate = new Date(currentFY + 1, 2, 31); // 31st March
+    const targetDate = new Date(currentFY + 1, 2, 31);
 
     await this.createGoal({
       name: 'NPS-T1 80CCD(1B)',
@@ -94,11 +92,11 @@ export class GoalService {
   }
 
   private static async createPPFGoal(): Promise<void> {
-    const existingGoal = await db.goals.where('slug').equals('ppf-annual').first();
-    if (existingGoal) return;
+    const existingGoals = await db.goals.toArray();
+    if (existingGoals.some((g: any) => g.slug === 'ppf-annual')) return;
 
     const currentFY = new Date().getFullYear();
-    const targetDate = new Date(currentFY + 1, 3, 5); // 5th April
+    const targetDate = new Date(currentFY + 1, 3, 5);
 
     await this.createGoal({
       name: 'PPF Annual Deposit',
@@ -124,18 +122,13 @@ export class GoalService {
     const birthDate = new Date(dob);
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
-    
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) age--;
     return age;
   }
 
   private static calculateEducationCorpus(years: number): number {
-    // PV calculation for ₹30L in future with 7% education inflation
-    const futureValue = 3000000; // ₹30L target
-    const inflationRate = 0.07; // 7% as per requirements
+    const futureValue = 3000000;
+    const inflationRate = 0.07;
     const presentValue = futureValue / Math.pow(1 + inflationRate, years);
     return Math.round(presentValue);
   }
@@ -143,7 +136,7 @@ export class GoalService {
   private static async getDependents(): Promise<Dependent[]> {
     try {
       const settings = await db.globalSettings.limit(1).first();
-      return settings?.dependents || [];
+      return (settings as any)?.dependents || [];
     } catch (error) {
       Logger.error('Error fetching dependents:', error);
       return [];
@@ -154,20 +147,20 @@ export class GoalService {
   static async updateGoalProgress(goalId: string, amount: number): Promise<void> {
     const goal = await db.goals.get(goalId);
     if (goal) {
-      const newAmount = goal.currentAmount + amount;
-      await db.goals.update(goalId, { currentAmount: newAmount });
-      await mainDb.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'goal', entityId: goalId, oldValues: { currentAmount: goal.currentAmount }, newValues: { currentAmount: newAmount }, timestamp: new Date() });
+      const newAmount = (goal.currentAmount || 0) + amount;
+      await db.goals.update(goalId, { currentAmount: newAmount } as any);
+      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'goal', entityId: goalId, oldValues: { currentAmount: goal.currentAmount }, newValues: { currentAmount: newAmount }, timestamp: new Date() });
       Logger.info('Goal progress updated', { goalId, newAmount });
     }
   }
 
   // Get all goals with progress
   static async getAllGoals(): Promise<Goal[]> {
-    return await db.goals.orderBy('targetDate').toArray();
+    return await db.goals.toArray() as any[];
   }
 
   // Get goals by type
-  static async getGoalsByType(type: Goal['type']): Promise<Goal[]> {
-    return await db.goals.where('type').equals(type).toArray();
+  static async getGoalsByType(type: string): Promise<Goal[]> {
+    return await db.goals.toArray().then(goals => goals.filter((g: any) => g.type === type)) as any[];
   }
 }

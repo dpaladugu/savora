@@ -18,15 +18,15 @@ export interface EmergencyFund {
 export interface Investment {
   id: string;
   name: string;
-  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB' | 'Others';
+  type: 'MF-Growth' | 'MF-Dividend' | 'Stocks' | 'Bonds' | 'FD' | 'RD' | 'Real Estate' | 'Gold' | 'PPF' | 'EPF' | 'NPS-T1' | 'SGB' | 'Others' | 'SIP' | 'NPS-T2' | 'Gold-ETF' | 'Gift-Card-Float';
   currentValue: number;
-  purchasePrice: number;
-  quantity: number;
-  purchaseDate: Date;
+  purchasePrice?: number;
+  quantity?: number;
+  purchaseDate?: Date;
   currentNav: number;
   units: number;
   investedValue: number;
-  startDate: Date;
+  startDate?: Date;
   maturityDate?: Date;
   expectedReturn?: number;
   // Extended fields
@@ -41,8 +41,8 @@ export interface Investment {
   interestRate?: number;
   interestCreditDate?: Date;
   frequency?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface DashboardData {
@@ -66,19 +66,19 @@ export interface DashboardData {
 export interface Goal {
   id: string;
   name: string;
-  title: string;
+  title?: string;          // optional alias for name
   targetAmount: number;
   currentAmount: number;
-  deadline: string;
-  category: string;
-  // Extended fields for AutoGoalEngine compatibility
+  deadline?: string;       // optional ISO string
+  category?: string;       // optional
+  // Extended fields
   slug?: string;
   type?: 'Short' | 'Medium' | 'Long';
   targetDate?: Date;
   notes?: string;
   priority?: number;
-  createdAt: Date;
-  updatedAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Transaction {

@@ -2,8 +2,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { DashboardData } from "@/types/dashboard";
 import { Logger } from "@/services/logger";
-import { db } from "@/db";
-import type { Expense, Income, Investment } from '@/db';
+import { db } from "@/lib/db";
+import type { Expense, Income } from '@/lib/db';
+import type { Investment } from '@/types/financial';
 import { format, parseISO, isValid } from 'date-fns';
 
 // Helper function to safely parse dates
@@ -76,8 +77,8 @@ async function fetchDashboardData(): Promise<DashboardData> {
 
     // Calculate investment metrics
     const totalInvestments = allInvestments.reduce((sum, inv) => {
-      const currentValue = Number(inv.current_value || inv.currentValue) || 0;
-      const investedValue = Number(inv.invested_value || inv.investedValue) || 0;
+      const currentValue = Number(inv.currentValue) || 0;
+      const investedValue = Number(inv.investedValue) || 0;
       return sum + Math.max(currentValue, investedValue);
     }, 0);
 

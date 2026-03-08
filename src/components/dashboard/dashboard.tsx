@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { MonthlySummaryCard } from './monthly-summary-card';
+import { MonthlySummaryDrilldown } from './monthly-summary-drilldown';
 import { GoalProgressRow } from './goal-progress-row';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
 import { TrendingUp, TrendingDown, Wallet, CreditCard, Plus, Target, Shield, Scale, AlertTriangle, PiggyBank, ChevronRight, BarChart3, Crosshair, Banknote, MessageCircle, ListChecks, ChevronDown, CheckCircle2 } from 'lucide-react';
@@ -246,6 +247,7 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
+  const [showMonthDrilldown, setShowMonthDrilldown] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
@@ -425,6 +427,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
 
+      {/* ── Monthly Summary Drilldown ── */}
+      <MonthlySummaryDrilldown open={showMonthDrilldown} onClose={() => setShowMonthDrilldown(false)} />
+
       {/* ── Onboarding Checklist (collapses once all items done) ── */}
       <OnboardingChecklist
         incomeCount={incomeCount}
@@ -437,8 +442,8 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Quick Actions ── */}
       <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
 
-      {/* ── Monthly Summary ── */}
-      <MonthlySummaryCard />
+      {/* ── Monthly Summary — tappable for drill-down ── */}
+      <MonthlySummaryCard onDrilldown={() => setShowMonthDrilldown(true)} />
 
       {/* ── Metric Cards ── */}
       <MetricSection title="Financial Overview" metrics={metrics} />

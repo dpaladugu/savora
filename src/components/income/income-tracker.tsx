@@ -68,11 +68,14 @@ export function IncomeTracker() {
       return;
     }
     try {
+      const now = new Date();
       const data: Omit<Income, 'id'> = {
         date: new Date(form.date),
         amount,
         category: form.category,
         description: form.description,
+        createdAt: now,
+        updatedAt: now,
       };
       if (editingIncome) {
         await db.incomes.update(editingIncome.id!, data);

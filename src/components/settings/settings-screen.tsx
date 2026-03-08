@@ -1,10 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { GlobalSettingsManager } from './global-settings-manager';
 import { LLMSettingsForm } from './llm-settings-form';
 import { ComprehensiveSettingsScreen } from './comprehensive-settings-screen';
 import { BackupRestore } from './backup-restore';
+import { BackupNudge } from './backup-nudge';
 import { Settings, Brain, Shield, User, Database } from 'lucide-react';
 
 const tabs = [
@@ -15,6 +16,7 @@ const tabs = [
 ] as const;
 
 export function SettingsScreen() {
+  const [activeTab, setActiveTab] = useState('user');
   return (
     <div className="w-full">
       {/* ── Page title ── */}
@@ -28,7 +30,7 @@ export function SettingsScreen() {
         </p>
       </div>
 
-      <Tabs defaultValue="user" className="space-y-4">
+      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
         {/*
           4 tabs at top-level. Use a 4-column grid so they never scroll or overlap.
           Each cell is equal-width. On 320px SE: 4×~72px = fine.
@@ -74,6 +76,7 @@ export function SettingsScreen() {
         </TabsContent>
 
         <TabsContent value="data">
+          <BackupNudge onGoToBackup={() => setActiveTab('data')} />
           <BackupRestore />
         </TabsContent>
       </Tabs>

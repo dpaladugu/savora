@@ -1,23 +1,30 @@
 /**
- * Processes all active recurring transactions whose next_date has passed.
- * - Handles catch-up: if multiple periods have elapsed, creates a txn for each.
- * - Returns a summary so the caller can show a toast.
- * - Idempotent: uses date check to avoid duplicates within the same day.
+ * RecurringTransactionProcessor — with idempotency guard.
+ * On each run we check globalSettings.lastAutoRunAt.
+ * If it equals today's date we skip processing entirely to prevent double-posting.
  */
 import { db } from '@/lib/db';
 import { RecurringTransactionService } from './RecurringTransactionService';
 
 export interface RecurringProcessResult {
-  processed: number;   // total txns created
-  items: string[];     // human-readable labels e.g. "EMI (×2)"
+  processed: number;
+  items: string[];
+  skipped?: boolean;
 }
 
 export async function processRecurringTransactions(): Promise<RecurringProcessResult> {
   const result: RecurringProcessResult = { processed: 0, items: [] };
 
   try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // ── Idempotency guard: only run once per calendar day ───────────────────────
+    const settings = await db.globalSettings.limit(1).first();
+    if (settings?.lastAutoRunAt === today) {
+      return { ...result, skipped: true };
+    }
+
     const records = await db.recurringTransactions.toArray();
-    const today   = new Date().toISOString().split('T')[0];
 
     for (const item of records) {
       if (!item.is_active) continue;
@@ -30,21 +37,34 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
       while (nextDate <= today) {
         if (item.end_date && nextDate > item.end_date) break;
 
-        await db.txns.add({
-          id: crypto.randomUUID(),
-          amount: item.type === 'income' ? Math.abs(item.amount) : -Math.abs(item.amount),
-          category: item.category,
-          note: `[Auto] ${item.description}`,
-          date: new Date(nextDate),
-          currency: 'INR',
-          tags: [],
-          isPartialRent: false,
-          paymentMix: [],
-          isSplit: false,
-          splitWith: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+        // Secondary idempotency: skip if a txn with this note+date already exists
+        const noteStr = `[Auto] ${item.description}`;
+        const targetDate = new Date(nextDate);
+        const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        const dayEnd   = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+
+        const existing = await db.txns
+          .where('date').between(dayStart, dayEnd, true, false)
+          .and(t => t.note === noteStr)
+          .count();
+
+        if (existing === 0) {
+          await db.txns.add({
+            id: crypto.randomUUID(),
+            amount: item.type === 'income' ? Math.abs(item.amount) : -Math.abs(item.amount),
+            category: item.category,
+            note: noteStr,
+            date: targetDate,
+            currency: 'INR',
+            tags: [],
+            isPartialRent: false,
+            paymentMix: [],
+            isSplit: false,
+            splitWith: [],
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
 
         nextDate = RecurringTransactionService.calcNextDate(
           nextDate,
@@ -52,13 +72,10 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
           item.interval,
         );
         count++;
-
-        // Safety cap: never auto-post more than 36 instances per item
-        if (count >= 36) break;
+        if (count >= 36) break; // safety cap
       }
 
       if (count > 0) {
-        // Persist the advanced next_date
         await db.recurringTransactions.update(item.id, {
           next_date: nextDate,
           updatedAt: new Date(),
@@ -66,6 +83,11 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
         result.processed += count;
         result.items.push(count > 1 ? `${item.description} (×${count})` : item.description);
       }
+    }
+
+    // Stamp today as processed
+    if (settings) {
+      await db.globalSettings.update(settings.id, { lastAutoRunAt: today } as any);
     }
   } catch (err) {
     console.warn('processRecurringTransactions error:', err);
