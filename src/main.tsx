@@ -3,14 +3,15 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
+import { seedVehiclesIfEmpty } from '@/lib/fleet-seed';
 
-// Ensure React is available globally before any components are rendered
 if (typeof window !== 'undefined') {
   (window as any).React = React;
 }
-
-// Also ensure React hooks are available
 Object.assign(globalThis, { React });
+
+// Seed fleet vehicles on first launch (no-op if already seeded)
+seedVehiclesIfEmpty();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
