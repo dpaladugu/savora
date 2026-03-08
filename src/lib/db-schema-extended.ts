@@ -246,6 +246,17 @@ export interface LLMPrompt {
   usedDate?: Date;
 }
 
+export interface PendingTxn {
+  id: string;
+  rawText: string;
+  amount: number;
+  category: string;
+  note: string;
+  source: 'telegram' | 'manual';
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: Date;
+}
+
 // Extended Database class
 export class ExtendedSavoraDB extends Dexie {
   // Existing tables
@@ -275,6 +286,7 @@ export class ExtendedSavoraDB extends Dexie {
   digitalAssets!: Table<DigitalAsset>;
   spendingLimits!: Table<SpendingLimit>;
   llmPrompts!: Table<LLMPrompt>;
+  pendingTxns!: Table<PendingTxn>;
 
   constructor() {
     super('SavoraDB');
@@ -307,6 +319,10 @@ export class ExtendedSavoraDB extends Dexie {
       digitalAssets: '++id, type, location, nominee',
       spendingLimits: '++id, category, monthlyCap',
       llmPrompts: '++id, promptType, createdDate'
+    });
+
+    this.version(3).stores({
+      pendingTxns: '++id, status, source, createdAt, category',
     });
   }
 }

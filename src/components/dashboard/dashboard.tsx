@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardCharts } from './dashboard-charts';
 import { MetricSection } from './metric-section';
 import { useDashboardData } from '@/hooks/use-dashboard-data';
@@ -11,6 +11,7 @@ import { Progress } from '@/components/ui/progress';
 import { useRole, usePermissions } from '@/store/rbacStore';
 import { MaskedValue } from '@/components/ui/masked-value';
 import { db } from '@/lib/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 import type { EmergencyFund } from '@/types/financial';
 
 
@@ -80,15 +81,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const role = useRole();
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
-  const [ef, setEf] = useState<EmergencyFund | null>(null);
-  const [userName, setUserName] = useState('Devavratha');
+
+  // Reactive: updates instantly when settings change in Settings page
+  const settings = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
+  const userName = settings?.userName || 'Devavratha';
+
+  const ef = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
 
   useEffect(() => {
     db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
-    db.emergencyFunds.limit(1).first().then(r => setEf(r ?? null)).catch(() => {});
-    db.globalSettings.limit(1).first()
-      .then(s => { if (s?.userName) setUserName(s.userName); })
-      .catch(() => {});
   }, []);
 
   const efPct = ef && ef.targetAmount > 0

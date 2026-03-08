@@ -33,6 +33,7 @@ import { BudgetVsActual } from '@/components/budget/budget-vs-actual';
 import { CSVImports } from '@/components/imports/csv-imports';
 import { RecurringTransactionsPage } from '@/components/recurring-transactions/recurring-transactions-page';
 import { DebtStrikeCalculator } from '@/components/debt/debt-strike-calculator';
+import { TelegramPendingTxns } from '@/components/telegram/telegram-pending-txns';
 import { useRole } from '@/store/rbacStore';
 import { Shield } from 'lucide-react';
 
@@ -142,6 +143,9 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
       case 'debt-strike':
         if (role === 'GUEST') return <AccessDenied reason="Sign in to view Debt Strike calculator." />;
         return <DebtStrikeCalculator />;
+      case 'telegram-pending':
+        if (role !== 'ADMIN') return <AccessDenied reason="Only ADMIN can review pending Telegram transactions." />;
+        return <TelegramPendingTxns />;
       default:
         return <div className="p-4 text-muted-foreground">Module not found</div>;
     }
