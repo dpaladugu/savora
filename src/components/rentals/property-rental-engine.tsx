@@ -103,10 +103,29 @@ export function PropertyRentalEngine() {
 function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const rooms = useLiveQuery(() => db.gorantlaRooms.toArray(), []) ?? [];
 
-  const totalRent      = rooms.reduce((s, r) => s + r.rent, 0);
+  // Persistent tax settings
+  const taxSetting = useLiveQuery(() => db.appSettings.get('gorantlaTaxSettings'), []);
+  const taxValues  = React.useMemo(() => {
+    try { return JSON.parse(taxSetting?.value ?? '{}'); } catch { return {}; }
+  }, [taxSetting]);
+  const [propertyTax, setPropertyTax] = React.useState(0);
+  const [waterTax, setWaterTax]       = React.useState(0);
+  React.useEffect(() => {
+    if (taxSetting) {
+      setPropertyTax(taxValues.propertyTax ?? 0);
+      setWaterTax(taxValues.waterTax ?? 0);
+    }
+  }, [taxSetting, taxValues]);
+  const saveTaxSettings = async (pt: number, wt: number) => {
+    await db.appSettings.put({ key: 'gorantlaTaxSettings', value: JSON.stringify({ propertyTax: pt, waterTax: wt }) });
+  };
+
+  const totalTaxDeduction = propertyTax + waterTax;
+  const grossRent      = rooms.reduce((s, r) => s + r.rent, 0);
   const collectedRent  = rooms.filter(r => r.paid).reduce((s, r) => s + r.rent, 0);
-  const netAfterDwacra = totalRent - DWACRA_DEDUCTION;
-  const surplus        = Math.max(0, collectedRent - DWACRA_DEDUCTION);
+  // All three deductions applied in order: P0 taxes → Dwacra → surplus
+  const netAfterAll    = Math.max(0, grossRent - totalTaxDeduction - DWACRA_DEDUCTION);
+  const surplus        = Math.max(0, collectedRent - totalTaxDeduction - DWACRA_DEDUCTION);
 
   const togglePaid = async (id: string, current: boolean) => {
     if (readOnly) return;
@@ -115,22 +134,19 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
   const handleCollectSurplus = async () => {
     if (surplus > 0) {
-      // Add to waterfall progress bucket "grandma"
       const existing = await db.waterfallProgress.where('bucketId').equals('grandma').first();
       if (existing) {
         await db.waterfallProgress.update(existing.id, { accumulated: existing.accumulated + surplus, updatedAt: new Date() });
       } else {
         await db.waterfallProgress.add({ id: crypto.randomUUID(), bucketId: 'grandma', accumulated: surplus, updatedAt: new Date() });
       }
-      // Reset paid flags for next month
       await db.gorantlaRooms.toCollection().modify({ paid: false, updatedAt: new Date() });
       toast.success(`₹${surplus.toLocaleString()} transferred to Grandma Care Fund`);
     }
   };
 
   const grandmaProgress = useLiveQuery(
-    () => db.waterfallProgress.where('bucketId').equals('grandma').first(),
-    []
+    () => db.waterfallProgress.where('bucketId').equals('grandma').first(), []
   );
   const grandmaFund = grandmaProgress?.accumulated ?? 0;
 
@@ -145,7 +161,7 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
               <Home className="w-4 h-4 text-primary" />
               Gorantla (Nagaralu) — 4 Rooms
             </span>
-            <Badge variant="outline">{formatCurrency(netAfterDwacra)}/mo net</Badge>
+            <Badge variant="outline">Gross: {formatCurrency(grossRent)}/mo</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -172,18 +188,45 @@ function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
 
           <Separator />
 
-          <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Rent</span>
-              <span className="font-medium">{formatCurrency(totalRent)}</span>
+          {/* ── P0: Systemic Tax Deductions ── */}
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+              <ArrowDown className="w-3 h-3 text-destructive" />
+              P0 — Systemic Deductions (Tax at Source)
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Property Tax /mo</label>
+                <Input type="number" disabled={readOnly} value={propertyTax}
+                  onChange={e => setPropertyTax(parseFloat(e.target.value) || 0)}
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
+                  className="h-7 text-xs" placeholder="₹0" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground">Water Tax /mo</label>
+                <Input type="number" disabled={readOnly} value={waterTax}
+                  onChange={e => setWaterTax(parseFloat(e.target.value) || 0)}
+                  onBlur={() => saveTaxSettings(propertyTax, waterTax)}
+                  className="h-7 text-xs" placeholder="₹0" />
+              </div>
             </div>
+          </div>
+
+          {/* ── Summary breakdown ── */}
+          <div className="space-y-2 text-sm">
+            {totalTaxDeduction > 0 && (
+              <div className="flex justify-between text-destructive">
+                <span>− Property &amp; Water Tax</span>
+                <span>−{formatCurrency(totalTaxDeduction)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-destructive">
-              <span>− Dwacra Loan Deduction</span>
+              <span>− Dwacra Loan (extra deduction)</span>
               <span>−{formatCurrency(DWACRA_DEDUCTION)}</span>
             </div>
             <div className="flex justify-between font-semibold border-t pt-2">
               <span>Net Available</span>
-              <span>{formatCurrency(netAfterDwacra)}</span>
+              <span className="text-primary">{formatCurrency(netAfterAll)}</span>
             </div>
           </div>
 
