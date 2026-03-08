@@ -381,7 +381,7 @@ export function CreditCardModule() {
                   className="text-2xl font-bold"
                 />
               </div>
-              <TrendingUp className="h-8 w-8 text-green-500" />
+              <TrendingUp className="h-8 w-8 text-success" />
             </div>
           </CardContent>
         </Card>
