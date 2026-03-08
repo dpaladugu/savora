@@ -31,43 +31,41 @@ export function MetricCard({
   className = "",
   loading = false
 }: MetricCardProps) {
+  const changeColor =
+    changeType === 'positive' ? 'value-positive' :
+    changeType === 'negative' ? 'value-negative' :
+    'value-neutral';
+
   const cardContent = (
-    <Card 
-      className={`metric-card cursor-pointer hover:shadow-lg transition-all duration-300 ${gradient || ''} ${className}`}
+    <Card
+      className={`metric-card ${onClick ? 'cursor-pointer' : ''} ${gradient || ''} ${className}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-center justify-between mb-2">
-          <h3 className="text-sm font-medium text-muted-foreground truncate">
+        <div className="flex items-start justify-between mb-3">
+          <p className="text-xs font-medium text-muted-foreground leading-tight pr-1">
             {title}
-          </h3>
+          </p>
           {Icon && (
-            <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <Icon className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
+            </div>
           )}
         </div>
-        
+
         {loading ? (
           <div className="space-y-2">
-            <div className="h-6 bg-muted rounded animate-pulse" />
+            <div className="h-7 bg-muted rounded-lg animate-pulse" />
             <div className="h-3 bg-muted rounded w-1/2 animate-pulse" />
           </div>
         ) : (
           <>
-            <div className="text-2xl font-bold text-foreground mb-1">
+            <div className="text-xl font-bold text-foreground leading-tight mb-1 tabular-nums">
               {value}
             </div>
             {(change || trend) && (
-              <div className={`text-xs flex items-center ${
-                changeType === 'positive' ? 'text-green-600' : 
-                changeType === 'negative' ? 'text-red-600' : 
-                'text-muted-foreground'
-              }`}>
-                {change && <span>{change}</span>}
-                {trend && !change && (
-                  <span>
-                    {trend.isPositive ? '+' : ''}{trend.value}%
-                  </span>
-                )}
+              <div className={`text-xs font-medium ${changeColor}`}>
+                {change ?? (trend ? `${trend.isPositive ? '+' : ''}${trend.value}%` : '')}
               </div>
             )}
           </>
@@ -79,9 +77,8 @@ export function MetricCard({
   if (onClick) {
     return (
       <motion.div
-        whileHover={{ scale: 1.02 }}
-        whileTap={{ scale: 0.98 }}
-        transition={{ duration: 0.2 }}
+        whileTap={{ scale: 0.97 }}
+        transition={{ duration: 0.15 }}
       >
         {cardContent}
       </motion.div>

@@ -6,7 +6,7 @@ import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker
 import { InvestmentsTracker } from '@/components/investments/investments-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
 import { SettingsScreen } from '@/components/settings/settings-screen';
-import { MoreScreen } from '@/components/more/more-screen';
+import { MoreModuleRouter } from '@/components/layout/more-module-router';
 import { NavigationTab, MoreModule } from '@/types/common';
 
 export interface MainContentRouterProps {
@@ -16,12 +16,22 @@ export interface MainContentRouterProps {
   onMoreNavigation: (moduleId: string) => void;
 }
 
-export function MainContentRouter({ 
-  activeTab, 
-  activeMoreModule, 
-  onTabChange, 
-  onMoreNavigation 
+export function MainContentRouter({
+  activeTab,
+  activeMoreModule,
+  onTabChange,
+  onMoreNavigation,
 }: MainContentRouterProps) {
+  // If a More sub-module is active, render it full-screen with its own scroll
+  if (activeMoreModule && activeTab !== 'dashboard' && activeTab !== 'expenses' &&
+      activeTab !== 'credit-cards' && activeTab !== 'investments') {
+    return (
+      <div className="min-h-[calc(100vh-7.5rem)] overflow-y-auto">
+        <MoreModuleRouter activeModule={activeMoreModule} />
+      </div>
+    );
+  }
+
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
@@ -36,15 +46,14 @@ export function MainContentRouter({
         return <GoalsManager />;
       case 'settings':
         return <SettingsScreen />;
-      case 'more':
-        return <MoreScreen />;
       default:
+        if (activeMoreModule) return <MoreModuleRouter activeModule={activeMoreModule} />;
         return <Dashboard onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} />;
     }
   };
 
   return (
-    <div className="flex-1 p-4 overflow-auto">
+    <div className="min-h-[calc(100vh-7.5rem)] overflow-y-auto">
       {renderContent()}
     </div>
   );
