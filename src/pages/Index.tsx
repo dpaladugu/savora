@@ -59,8 +59,8 @@ const MainApp = () => {
             tabIndex={-1}
             className="
               flex-1 min-w-0 overflow-y-auto
-              px-4 py-5
-              pb-[env(safe-area-inset-bottom,0px)]
+              px-3 sm:px-4 py-4
+              pb-[calc(80px+env(safe-area-inset-bottom,0px))]
               md:pb-[calc(80px+env(safe-area-inset-bottom,0px))]
               lg:pb-6 lg:px-8
               focus:outline-none
