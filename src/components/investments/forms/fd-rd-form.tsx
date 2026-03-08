@@ -15,20 +15,20 @@ import { CreditCard as FDIcon, X } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 
 const schema = z.object({
-  name:               z.string().min(1, 'Label required'),
-  fdType:             z.enum(['FD', 'RD']),
-  bankName:           z.string().min(1, 'Bank name required'),
-  accountNumber:      z.string().optional(),
-  fdPrincipal:        z.coerce.number().nonneg(),
-  fdRate:             z.coerce.number().nonneg().max(20),
-  fdTenureDays:       z.coerce.number().int().nonneg().optional(),
-  startDate:          z.string().optional(),
-  fdMaturityAmount:   z.coerce.number().nonneg().optional(),
-  rdMonthlyInstalment:z.coerce.number().nonneg().optional(),
-  fdTdsApplicable:    z.boolean().default(true),
-  fdAutoRenewal:      z.boolean().default(false),
-  familyMember:       z.string().default('Me'),
-  notes:              z.string().optional(),
+  name:                z.string().min(1, 'Label required'),
+  fdType:              z.enum(['FD', 'RD']),
+  bankName:            z.string().min(1, 'Bank name required'),
+  accountNumber:       z.string().optional(),
+  fdPrincipal:         z.coerce.number().nonnegative(),
+  fdRate:              z.coerce.number().nonnegative().max(20),
+  fdTenureDays:        z.coerce.number().int().nonnegative().optional(),
+  startDate:           z.string().optional(),
+  fdMaturityAmount:    z.coerce.number().nonnegative().optional(),
+  rdMonthlyInstalment: z.coerce.number().nonnegative().optional(),
+  fdTdsApplicable:     z.boolean().default(true),
+  fdAutoRenewal:       z.boolean().default(false),
+  familyMember:        z.string().default('Me'),
+  notes:               z.string().optional(),
 });
 type F = z.infer<typeof schema>;
 
@@ -38,35 +38,35 @@ export function FDRDForm({ initial, onDone }: Props) {
   const { register, watch, setValue, handleSubmit, formState: { errors, isSubmitting } } = useForm<F>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name || '',
+      name: initial?.name ?? '',
       fdType: (initial?.type === 'RD' ? 'RD' : 'FD') as 'FD' | 'RD',
-      bankName: initial?.bankName || '',
-      accountNumber: initial?.accountNumber || '',
-      fdPrincipal: initial?.fdPrincipal || initial?.investedValue || 0,
-      fdRate: initial?.fdRate || 0,
-      fdTenureDays: initial?.fdTenureDays,
-      startDate: initial?.startDate?.toISOString().split('T')[0] || '',
-      fdMaturityAmount: initial?.fdMaturityAmount,
-      rdMonthlyInstalment: initial?.rdMonthlyInstalment,
+      bankName: initial?.bankName ?? '',
+      accountNumber: initial?.accountNumber ?? '',
+      fdPrincipal: initial?.fdPrincipal ?? initial?.investedValue ?? 0,
+      fdRate: initial?.fdRate ?? 0,
+      fdTenureDays: initial?.fdTenureDays ?? undefined,
+      startDate: initial?.startDate ? new Date(initial.startDate).toISOString().split('T')[0] : '',
+      fdMaturityAmount: initial?.fdMaturityAmount ?? undefined,
+      rdMonthlyInstalment: initial?.rdMonthlyInstalment ?? undefined,
       fdTdsApplicable: initial?.fdTdsApplicable ?? true,
       fdAutoRenewal: initial?.fdAutoRenewal ?? false,
-      familyMember: initial?.familyMember || 'Me',
-      notes: initial?.notes || '',
+      familyMember: initial?.familyMember ?? 'Me',
+      notes: initial?.notes ?? '',
     },
   });
 
   const fdType    = watch('fdType');
-  const principal = watch('fdPrincipal') || 0;
-  const rate      = watch('fdRate')      || 0;
-  const tenure    = watch('fdTenureDays')|| 0;
-  const start     = watch('startDate');
+  const principal = Number(watch('fdPrincipal') ?? 0);
+  const rate      = Number(watch('fdRate')      ?? 0);
+  const tenure    = Number(watch('fdTenureDays') ?? 0);
+  const startStr  = watch('startDate');
 
-  // Simple maturity calc (simple interest for FD approximation)
+  // Quarterly compounding approximation
   const calcMaturity = principal > 0 && rate > 0 && tenure > 0
-    ? principal * Math.pow(1 + rate / 400, tenure / 91.25) // quarterly compounding approx
+    ? principal * Math.pow(1 + rate / 400, tenure / 91.25)
     : 0;
-  const maturityDate = start && tenure
-    ? new Date(new Date(start).getTime() + tenure * 86400000)
+  const maturityDate = startStr && tenure
+    ? new Date(new Date(startStr).getTime() + tenure * 86400000)
     : null;
 
   const onSubmit = async (data: F) => {
@@ -74,23 +74,40 @@ export function FDRDForm({ initial, onDone }: Props) {
     const matDate = data.startDate && data.fdTenureDays
       ? new Date(new Date(data.startDate).getTime() + data.fdTenureDays * 86400000)
       : undefined;
-    const record: Partial<Investment> = {
-      name: data.name, type: data.fdType,
-      bankName: data.bankName, accountNumber: data.accountNumber,
-      fdPrincipal: data.fdPrincipal, fdRate: data.fdRate,
-      fdTenureDays: data.fdTenureDays, fdMaturityAmount: data.fdMaturityAmount || calcMaturity || data.fdPrincipal,
+    const maturityAmt = data.fdMaturityAmount ?? (calcMaturity > 0 ? calcMaturity : data.fdPrincipal);
+
+    const record: Omit<Investment, 'id' | 'createdAt'> = {
+      name: data.name,
+      type: data.fdType,
+      bankName: data.bankName,
+      accountNumber: data.accountNumber,
+      fdPrincipal: data.fdPrincipal,
+      fdRate: data.fdRate,
+      fdTenureDays: data.fdTenureDays,
+      fdMaturityAmount: maturityAmt,
       rdMonthlyInstalment: data.rdMonthlyInstalment,
-      fdTdsApplicable: data.fdTdsApplicable, fdAutoRenewal: data.fdAutoRenewal,
+      fdTdsApplicable: data.fdTdsApplicable,
+      fdAutoRenewal: data.fdAutoRenewal,
       investedValue: data.fdPrincipal,
-      currentValue: data.fdMaturityAmount || calcMaturity || data.fdPrincipal,
-      maturityDate: matDate, startDate: data.startDate ? new Date(data.startDate) : undefined,
+      currentValue: maturityAmt,
+      maturityDate: matDate,
+      startDate: data.startDate ? new Date(data.startDate) : undefined,
       interestRate: data.fdRate,
-      currentNav: 0, units: 0, taxBenefit: false,
-      familyMember: data.familyMember, notes: data.notes,
-      frequency: data.fdType === 'RD' ? 'Monthly' : 'One-time', updatedAt: now,
+      currentNav: 0,
+      units: 0,
+      taxBenefit: false,
+      familyMember: data.familyMember,
+      notes: data.notes,
+      frequency: data.fdType === 'RD' ? 'Monthly' : 'One-time',
+      updatedAt: now,
     };
-    if (initial?.id) { await db.investments.update(initial.id, record); toast.success('Updated'); }
-    else { await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now } as Investment); toast.success('Added'); }
+    if (initial?.id) {
+      await db.investments.update(initial.id, record);
+      toast.success('Updated');
+    } else {
+      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
+      toast.success('Added');
+    }
     onDone();
   };
 
@@ -99,7 +116,8 @@ export function FDRDForm({ initial, onDone }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <FDIcon className="h-4 w-4 text-muted-foreground" />{initial ? 'Edit' : 'Add'} {watch('fdType') === 'RD' ? 'Recurring' : 'Fixed'} Deposit
+            <FDIcon className="h-4 w-4 text-muted-foreground" />
+            {initial ? 'Edit' : 'Add'} {watch('fdType') === 'RD' ? 'Recurring' : 'Fixed'} Deposit
           </CardTitle>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDone}><X className="h-4 w-4" /></Button>
         </div>
@@ -108,9 +126,20 @@ export function FDRDForm({ initial, onDone }: Props) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {calcMaturity > 0 && (
             <div className="p-3 rounded-xl border border-success/20 bg-success/5 text-xs space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Est. maturity value</span><span className="font-bold text-success">{formatCurrency(calcMaturity)}</span></div>
-              {maturityDate && <div className="flex justify-between"><span className="text-muted-foreground">Maturity date</span><span className="font-bold">{maturityDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span></div>}
-              <div className="flex justify-between"><span className="text-muted-foreground">Est. interest earned</span><span className="font-bold">{formatCurrency(calcMaturity - principal)}</span></div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Est. maturity value</span>
+                <span className="font-bold text-success">{formatCurrency(calcMaturity)}</span>
+              </div>
+              {maturityDate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Maturity date</span>
+                  <span className="font-bold">{maturityDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Est. interest earned</span>
+                <span className="font-bold">{formatCurrency(calcMaturity - principal)}</span>
+              </div>
             </div>
           )}
 
@@ -167,10 +196,10 @@ export function FDRDForm({ initial, onDone }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label>For</Label>
-              <Select defaultValue={initial?.familyMember || 'Me'} onValueChange={v => setValue('familyMember', v)}>
+              <Select defaultValue={initial?.familyMember ?? 'Me'} onValueChange={v => setValue('familyMember', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {['Me','Mother','Grandmother','Brother'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+                  {['Me', 'Mother', 'Grandmother', 'Brother'].map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -190,7 +219,9 @@ export function FDRDForm({ initial, onDone }: Props) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Saving…' : initial ? 'Update' : `Add ${fdType}`}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : initial ? 'Update' : `Add ${fdType}`}
+            </Button>
             <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
           </div>
         </form>

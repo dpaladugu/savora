@@ -12,14 +12,14 @@ import { toast } from 'sonner';
 import { Building2, X } from 'lucide-react';
 
 const schema = z.object({
-  name:                   z.string().min(1, 'Label required'),
-  uan:                    z.string().optional(),
-  establishmentCode:      z.string().optional(),
-  employeeContribution:   z.coerce.number().nonneg().optional(),
-  employerContribution:   z.coerce.number().nonneg().optional(),
-  investedValue:          z.coerce.number().nonneg(),
-  currentValue:           z.coerce.number().nonneg(),
-  notes:                  z.string().optional(),
+  name:                 z.string().min(1, 'Label required'),
+  uan:                  z.string().optional(),
+  establishmentCode:    z.string().optional(),
+  employeeContribution: z.coerce.number().nonnegative().optional(),
+  employerContribution: z.coerce.number().nonnegative().optional(),
+  investedValue:        z.coerce.number().nonnegative(),
+  currentValue:         z.coerce.number().nonnegative(),
+  notes:                z.string().optional(),
 });
 type F = z.infer<typeof schema>;
 
@@ -29,31 +29,43 @@ export function EPFForm({ initial, onDone }: Props) {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm<F>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name || 'My EPF',
-      uan: initial?.uan || '',
-      establishmentCode: initial?.establishmentCode || '',
-      employeeContribution: initial?.employeeContribution,
-      employerContribution: initial?.employerContribution,
-      investedValue: initial?.investedValue || 0,
-      currentValue: initial?.currentValue || 0,
-      notes: initial?.notes || '',
+      name: initial?.name ?? 'My EPF',
+      uan: initial?.uan ?? '',
+      establishmentCode: initial?.establishmentCode ?? '',
+      employeeContribution: initial?.employeeContribution ?? undefined,
+      employerContribution: initial?.employerContribution ?? undefined,
+      investedValue: initial?.investedValue ?? 0,
+      currentValue: initial?.currentValue ?? 0,
+      notes: initial?.notes ?? '',
     },
   });
 
   const onSubmit = async (data: F) => {
     const now = new Date();
-    const record: Partial<Investment> = {
-      name: data.name, type: 'EPF',
-      uan: data.uan, establishmentCode: data.establishmentCode,
+    const record: Omit<Investment, 'id' | 'createdAt'> = {
+      name: data.name,
+      type: 'EPF',
+      uan: data.uan,
+      establishmentCode: data.establishmentCode,
       employeeContribution: data.employeeContribution,
       employerContribution: data.employerContribution,
-      investedValue: data.investedValue, currentValue: data.currentValue,
-      currentNav: 0, units: 0,
-      taxBenefit: true, familyMember: 'Me',
-      notes: data.notes, frequency: 'Monthly', updatedAt: now,
+      investedValue: data.investedValue,
+      currentValue: data.currentValue,
+      currentNav: 0,
+      units: 0,
+      taxBenefit: true,
+      familyMember: 'Me',
+      notes: data.notes,
+      frequency: 'Monthly',
+      updatedAt: now,
     };
-    if (initial?.id) { await db.investments.update(initial.id, record); toast.success('Updated'); }
-    else { await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now } as Investment); toast.success('Added'); }
+    if (initial?.id) {
+      await db.investments.update(initial.id, record);
+      toast.success('Updated');
+    } else {
+      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
+      toast.success('Added');
+    }
     onDone();
   };
 
@@ -105,7 +117,9 @@ export function EPFForm({ initial, onDone }: Props) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add EPF'}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add EPF'}
+            </Button>
             <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
           </div>
         </form>

@@ -15,9 +15,9 @@ import { formatCurrency } from '@/lib/format-utils';
 const schema = z.object({
   name:             z.string().min(1, 'Label required'),
   sgbSeries:        z.string().optional(),
-  sgbUnits:         z.coerce.number().nonneg(),   // grams
-  sgbIssuePrice:    z.coerce.number().nonneg(),   // ₹/gram at issue
-  currentPricePerG: z.coerce.number().nonneg(),   // current MCX price/gram
+  sgbUnits:         z.coerce.number().nonnegative(),
+  sgbIssuePrice:    z.coerce.number().nonnegative(),
+  currentPricePerG: z.coerce.number().nonnegative(),
   sgbIssueDate:     z.string().optional(),
   sgbCouponAccount: z.string().default('SBI'),
   notes:            z.string().optional(),
@@ -30,46 +30,66 @@ export function SGBForm({ initial, onDone }: Props) {
   const { register, watch, handleSubmit, formState: { errors, isSubmitting } } = useForm<F>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name || 'SGB',
-      sgbSeries: initial?.sgbSeries || '',
-      sgbUnits: initial?.sgbUnits || 0,
-      sgbIssuePrice: initial?.sgbIssuePrice || 0,
-      currentPricePerG: initial?.currentValue && initial?.sgbUnits
+      name: initial?.name ?? 'SGB',
+      sgbSeries: initial?.sgbSeries ?? '',
+      sgbUnits: initial?.sgbUnits ?? 0,
+      sgbIssuePrice: initial?.sgbIssuePrice ?? 0,
+      currentPricePerG: (initial?.currentValue && initial?.sgbUnits)
         ? initial.currentValue / initial.sgbUnits : 0,
-      sgbIssueDate: initial?.sgbIssueDate?.toISOString().split('T')[0] || '',
-      sgbCouponAccount: initial?.sgbCouponAccount || 'SBI',
-      notes: initial?.notes || '',
+      sgbIssueDate: initial?.sgbIssueDate
+        ? new Date(initial.sgbIssueDate).toISOString().split('T')[0] : '',
+      sgbCouponAccount: initial?.sgbCouponAccount ?? 'SBI',
+      notes: initial?.notes ?? '',
     },
   });
 
-  const units    = watch('sgbUnits')         || 0;
-  const issue    = watch('sgbIssuePrice')    || 0;
-  const current  = watch('currentPricePerG') || 0;
+  const units    = Number(watch('sgbUnits')         ?? 0);
+  const issue    = Number(watch('sgbIssuePrice')    ?? 0);
+  const current  = Number(watch('currentPricePerG') ?? 0);
   const invested = units * issue;
   const currVal  = units * current;
   const annCoupon = currVal * 0.025;
   const issDate  = watch('sgbIssueDate');
-  const matDate  = issDate ? (() => { const d = new Date(issDate); d.setFullYear(d.getFullYear() + 8); return d; })() : null;
+  const matDate  = issDate
+    ? (() => { const d = new Date(issDate); d.setFullYear(d.getFullYear() + 8); return d; })()
+    : null;
 
   const onSubmit = async (data: F) => {
     const now = new Date();
-    const maturityDate = data.sgbIssueDate ? (() => { const d = new Date(data.sgbIssueDate!); d.setFullYear(d.getFullYear() + 8); return d; })() : undefined;
-    const record: Partial<Investment> = {
-      name: data.name, type: 'SGB',
-      sgbSeries: data.sgbSeries, sgbUnits: data.sgbUnits,
+    const investedVal = data.sgbUnits * data.sgbIssuePrice;
+    const currentVal  = data.sgbUnits * data.currentPricePerG;
+    const maturityDate = data.sgbIssueDate
+      ? (() => { const d = new Date(data.sgbIssueDate!); d.setFullYear(d.getFullYear() + 8); return d; })()
+      : undefined;
+
+    const record: Omit<Investment, 'id' | 'createdAt'> = {
+      name: data.name,
+      type: 'SGB',
+      sgbSeries: data.sgbSeries,
+      sgbUnits: data.sgbUnits,
       sgbIssuePrice: data.sgbIssuePrice,
       sgbIssueDate: data.sgbIssueDate ? new Date(data.sgbIssueDate) : undefined,
       sgbMaturityDate: maturityDate,
       maturityDate,
       sgbCouponRate: 2.5,
       sgbCouponAccount: data.sgbCouponAccount,
-      investedValue: invested, currentValue: currVal,
-      currentNav: data.currentPricePerG, units: data.sgbUnits,
-      taxBenefit: true, familyMember: 'Me',
-      notes: data.notes, frequency: 'One-time', updatedAt: now,
+      investedValue: investedVal,
+      currentValue: currentVal,
+      currentNav: data.currentPricePerG,
+      units: data.sgbUnits,
+      taxBenefit: true,
+      familyMember: 'Me',
+      notes: data.notes,
+      frequency: 'One-time',
+      updatedAt: now,
     };
-    if (initial?.id) { await db.investments.update(initial.id, record); toast.success('Updated'); }
-    else { await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now } as Investment); toast.success('Added'); }
+    if (initial?.id) {
+      await db.investments.update(initial.id, record);
+      toast.success('Updated');
+    } else {
+      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
+      toast.success('Added');
+    }
     onDone();
   };
 
@@ -85,13 +105,20 @@ export function SGBForm({ initial, onDone }: Props) {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Live calc banner */}
           {units > 0 && current > 0 && (
             <div className="p-3 rounded-xl border border-warning/20 bg-warning/5 space-y-1 text-xs">
               <div className="flex justify-between"><span className="text-muted-foreground">Invested</span><span className="font-bold">{formatCurrency(invested)}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Current value</span><span className="font-bold">{formatCurrency(currVal)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Annual coupon (2.5%) → {watch('sgbCouponAccount')}</span><span className="font-bold text-warning">{formatCurrency(annCoupon)}</span></div>
-              {matDate && <div className="flex justify-between"><span className="text-muted-foreground">Maturity</span><span className="font-bold">{matDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span></div>}
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Annual coupon (2.5%) → {watch('sgbCouponAccount')}</span>
+                <span className="font-bold text-warning">{formatCurrency(annCoupon)}</span>
+              </div>
+              {matDate && (
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Maturity</span>
+                  <span className="font-bold">{matDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -102,7 +129,7 @@ export function SGBForm({ initial, onDone }: Props) {
               {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label>Series</Label>
+              <Label>Series Name</Label>
               <Input placeholder="SGB 2022-23 Series VI" {...register('sgbSeries')} />
             </div>
             <div className="space-y-1.5">
@@ -116,12 +143,12 @@ export function SGBForm({ initial, onDone }: Props) {
             <div className="space-y-1.5">
               <Label>Current Gold Price (₹/gram)</Label>
               <Input type="number" step="1" placeholder="7500" {...register('currentPricePerG')} />
-              <p className="text-[10px] text-muted-foreground">MCX 24K spot</p>
+              <p className="text-[10px] text-muted-foreground">MCX 24K spot price</p>
             </div>
             <div className="space-y-1.5">
               <Label>Coupon Credited to</Label>
               <Input placeholder="SBI" {...register('sgbCouponAccount')} />
-              <p className="text-[10px] text-muted-foreground">Bank account where 2.5% interest goes</p>
+              <p className="text-[10px] text-muted-foreground">Bank account for 2.5% interest</p>
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Issue Date</Label>
@@ -136,7 +163,9 @@ export function SGBForm({ initial, onDone }: Props) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add SGB'}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add SGB'}
+            </Button>
             <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
           </div>
         </form>

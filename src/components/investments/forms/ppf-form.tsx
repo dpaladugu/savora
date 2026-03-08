@@ -17,10 +17,10 @@ const schema = z.object({
   ppfAccountNo:          z.string().optional(),
   ppfBank:               z.string().optional(),
   ppfOpenDate:           z.string().optional(),
-  ppfAnnualContribution: z.coerce.number().nonneg().max(150000, 'Max 80C limit is ₹1,50,000').optional(),
-  ppf80CUsed:            z.coerce.number().nonneg().optional(),
-  investedValue:         z.coerce.number().nonneg(),
-  currentValue:          z.coerce.number().nonneg(),
+  ppfAnnualContribution: z.coerce.number().nonnegative().max(150000, 'Max 80C limit is ₹1,50,000').optional(),
+  ppf80CUsed:            z.coerce.number().nonnegative().optional(),
+  investedValue:         z.coerce.number().nonnegative(),
+  currentValue:          z.coerce.number().nonnegative(),
   notes:                 z.string().optional(),
 });
 type F = z.infer<typeof schema>;
@@ -31,15 +31,15 @@ export function PPFForm({ initial, onDone }: Props) {
   const { register, setValue, handleSubmit, watch, formState: { errors, isSubmitting } } = useForm<F>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name || 'My PPF',
-      ppfAccountNo: initial?.ppfAccountNo || '',
-      ppfBank: initial?.ppfBank || 'SBI',
-      ppfOpenDate: initial?.ppfOpenDate?.toISOString().split('T')[0] || '',
-      ppfAnnualContribution: initial?.ppfAnnualContribution,
-      ppf80CUsed: initial?.ppf80CUsed,
-      investedValue: initial?.investedValue || 0,
-      currentValue: initial?.currentValue || 0,
-      notes: initial?.notes || '',
+      name: initial?.name ?? 'My PPF',
+      ppfAccountNo: initial?.ppfAccountNo ?? '',
+      ppfBank: initial?.ppfBank ?? 'SBI',
+      ppfOpenDate: initial?.ppfOpenDate ? new Date(initial.ppfOpenDate).toISOString().split('T')[0] : '',
+      ppfAnnualContribution: initial?.ppfAnnualContribution ?? undefined,
+      ppf80CUsed: initial?.ppf80CUsed ?? undefined,
+      investedValue: initial?.investedValue ?? 0,
+      currentValue: initial?.currentValue ?? 0,
+      notes: initial?.notes ?? '',
     },
   });
 
@@ -48,20 +48,36 @@ export function PPFForm({ initial, onDone }: Props) {
 
   const onSubmit = async (data: F) => {
     const now = new Date();
-    const matDate = data.ppfOpenDate ? (() => { const d = new Date(data.ppfOpenDate!); d.setFullYear(d.getFullYear() + 15); return d; })() : undefined;
-    const record: Partial<Investment> = {
-      name: data.name, type: 'PPF',
-      ppfAccountNo: data.ppfAccountNo, ppfBank: data.ppfBank,
+    const matDate = data.ppfOpenDate
+      ? (() => { const d = new Date(data.ppfOpenDate!); d.setFullYear(d.getFullYear() + 15); return d; })()
+      : undefined;
+    const record: Omit<Investment, 'id' | 'createdAt'> = {
+      name: data.name,
+      type: 'PPF',
+      ppfAccountNo: data.ppfAccountNo,
+      ppfBank: data.ppfBank,
       ppfOpenDate: data.ppfOpenDate ? new Date(data.ppfOpenDate) : undefined,
       ppfAnnualContribution: data.ppfAnnualContribution,
       ppf80CUsed: data.ppf80CUsed,
-      investedValue: data.investedValue, currentValue: data.currentValue,
-      maturityDate: matDate, lockInYears: 15,
-      currentNav: 0, units: 0, taxBenefit: true, familyMember: 'Me',
-      notes: data.notes, frequency: 'Yearly', updatedAt: now,
+      investedValue: data.investedValue,
+      currentValue: data.currentValue,
+      maturityDate: matDate,
+      lockInYears: 15,
+      currentNav: 0,
+      units: 0,
+      taxBenefit: true,
+      familyMember: 'Me',
+      notes: data.notes,
+      frequency: 'Yearly',
+      updatedAt: now,
     };
-    if (initial?.id) { await db.investments.update(initial.id, record); toast.success('Updated'); }
-    else { await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now } as Investment); toast.success('Added'); }
+    if (initial?.id) {
+      await db.investments.update(initial.id, record);
+      toast.success('Updated');
+    } else {
+      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
+      toast.success('Added');
+    }
     onDone();
   };
 
@@ -95,16 +111,16 @@ export function PPFForm({ initial, onDone }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label>Bank / Post Office</Label>
-              <Select defaultValue={initial?.ppfBank || 'SBI'} onValueChange={v => setValue('ppfBank', v)}>
+              <Select defaultValue={initial?.ppfBank ?? 'SBI'} onValueChange={v => setValue('ppfBank', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {['SBI','Post Office','HDFC','ICICI','Axis','BOI','PNB','Other'].map(b =>
+                  {['SBI', 'Post Office', 'HDFC', 'ICICI', 'Axis', 'BOI', 'PNB', 'Other'].map(b =>
                     <SelectItem key={b} value={b}>{b}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             <div className="col-span-2 space-y-1.5">
-              <Label>Account Opening Date (for maturity calc)</Label>
+              <Label>Account Opening Date (for 15-yr maturity calc)</Label>
               <Input type="date" {...register('ppfOpenDate')} />
             </div>
             <div className="space-y-1.5">
@@ -130,7 +146,9 @@ export function PPFForm({ initial, onDone }: Props) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add PPF'}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add PPF'}
+            </Button>
             <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
           </div>
         </form>

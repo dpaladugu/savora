@@ -14,19 +14,19 @@ import { toast } from 'sonner';
 import { Landmark, X, AlertCircle } from 'lucide-react';
 
 const schema = z.object({
-  name:          z.string().min(1, 'Label required'),
-  npsTier:       z.enum(['T1', 'T2']),
-  pran:          z.string().optional(),
-  npsEquityPct:  z.coerce.number().min(0).max(75),
-  npsCorpDebt:   z.coerce.number().min(0).max(100),
-  npsGovDebt:    z.coerce.number().min(0).max(100),
-  nps80CCDUsed:  z.coerce.number().nonneg().optional(),
-  investedValue: z.coerce.number().nonneg(),
-  currentValue:  z.coerce.number().nonneg(),
-  notes:         z.string().optional(),
-}).refine(d => d.npsEquityPct + d.npsCorpDebt + d.npsGovDebt === 100, {
+  name:         z.string().min(1, 'Label required'),
+  npsTier:      z.enum(['T1', 'T2']),
+  pran:         z.string().optional(),
+  npsEquity:    z.coerce.number().min(0).max(75),
+  npsCorpDebt:  z.coerce.number().min(0).max(100),
+  npsGovDebt:   z.coerce.number().min(0).max(100),
+  nps80CCDUsed: z.coerce.number().nonnegative().optional(),
+  investedValue:z.coerce.number().nonnegative(),
+  currentValue: z.coerce.number().nonnegative(),
+  notes:        z.string().optional(),
+}).refine(d => (d.npsEquity + d.npsCorpDebt + d.npsGovDebt) === 100, {
   message: 'E + C + G allocation must sum to 100%',
-  path: ['npsEquityPct'],
+  path: ['npsEquity'],
 });
 type F = z.infer<typeof schema>;
 
@@ -36,37 +36,55 @@ export function NPSForm({ initial, onDone }: Props) {
   const { register, setValue, watch, handleSubmit, formState: { errors, isSubmitting } } = useForm<F>({
     resolver: zodResolver(schema),
     defaultValues: {
-      name: initial?.name || 'My NPS T1',
-      npsTier: initial?.npsTier || 'T1',
-      pran: initial?.pran || '',
-      npsEquityPct: initial?.npsEquityPct ?? 75,
+      name: initial?.name ?? 'My NPS T1',
+      npsTier: initial?.npsTier ?? 'T1',
+      pran: initial?.pran ?? '',
+      npsEquity: initial?.npsEquityPct ?? 75,
       npsCorpDebt: initial?.npsCorpDebtPct ?? 15,
       npsGovDebt: initial?.npsGovDebtPct ?? 10,
-      nps80CCDUsed: initial?.nps80CCDUsed,
-      investedValue: initial?.investedValue || 0,
-      currentValue: initial?.currentValue || 0,
-      notes: initial?.notes || '',
+      nps80CCDUsed: initial?.nps80CCDUsed ?? undefined,
+      investedValue: initial?.investedValue ?? 0,
+      currentValue: initial?.currentValue ?? 0,
+      notes: initial?.notes ?? '',
     },
   });
 
-  const tier         = watch('npsTier');
-  const used80CCD    = watch('nps80CCDUsed') ?? 0;
-  const usedPct      = Math.min(100, (used80CCD / 50000) * 100);
-  const allocationSum = (watch('npsEquityPct') || 0) + (watch('npsCorpDebt') || 0) + (watch('npsGovDebt') || 0);
+  const tier          = watch('npsTier');
+  const used80CCD     = Number(watch('nps80CCDUsed') ?? 0);
+  const usedPct       = Math.min(100, (used80CCD / 50000) * 100);
+  const npsEquity     = Number(watch('npsEquity') ?? 0);
+  const npsCorpDebt   = Number(watch('npsCorpDebt') ?? 0);
+  const npsGovDebt    = Number(watch('npsGovDebt') ?? 0);
+  const allocationSum = npsEquity + npsCorpDebt + npsGovDebt;
 
   const onSubmit = async (data: F) => {
     const now = new Date();
-    const record: Partial<Investment> = {
-      name: data.name, type: data.npsTier === 'T1' ? 'NPS-T1' : 'NPS-T2',
-      npsTier: data.npsTier, pran: data.pran,
-      npsEquityPct: data.npsEquityPct, npsCorpDebtPct: data.npsCorpDebt, npsGovDebtPct: data.npsGovDebt,
+    const record: Omit<Investment, 'id' | 'createdAt'> = {
+      name: data.name,
+      type: data.npsTier === 'T1' ? 'NPS-T1' : 'NPS-T2',
+      npsTier: data.npsTier,
+      pran: data.pran,
+      npsEquityPct: data.npsEquity,
+      npsCorpDebtPct: data.npsCorpDebt,
+      npsGovDebtPct: data.npsGovDebt,
       nps80CCDUsed: data.nps80CCDUsed,
-      investedValue: data.investedValue, currentValue: data.currentValue,
-      currentNav: 0, units: 0, taxBenefit: true, familyMember: 'Me',
-      notes: data.notes, frequency: 'Monthly', updatedAt: now,
+      investedValue: data.investedValue,
+      currentValue: data.currentValue,
+      currentNav: 0,
+      units: 0,
+      taxBenefit: true,
+      familyMember: 'Me',
+      notes: data.notes,
+      frequency: 'Monthly',
+      updatedAt: now,
     };
-    if (initial?.id) { await db.investments.update(initial.id, record); toast.success('Updated'); }
-    else { await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now } as Investment); toast.success('Added'); }
+    if (initial?.id) {
+      await db.investments.update(initial.id, record);
+      toast.success('Updated');
+    } else {
+      await db.investments.add({ ...record, id: crypto.randomUUID(), createdAt: now });
+      toast.success('Added');
+    }
     onDone();
   };
 
@@ -86,10 +104,16 @@ export function NPSForm({ initial, onDone }: Props) {
             <div className="p-3 rounded-xl border border-primary/20 bg-primary/5 space-y-1.5">
               <div className="flex justify-between items-center">
                 <p className="text-xs font-semibold">80CCD(1B) Used this FY</p>
-                <p className="text-xs font-bold text-primary tabular-nums">₹{used80CCD.toLocaleString('en-IN')} / ₹50,000</p>
+                <p className="text-xs font-bold text-primary tabular-nums">
+                  ₹{used80CCD.toLocaleString('en-IN')} / ₹50,000
+                </p>
               </div>
               <Progress value={usedPct} className={usedPct >= 100 ? '[&>div]:bg-destructive' : '[&>div]:bg-primary'} />
-              {usedPct >= 100 && <p className="text-[10px] text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />Limit exhausted</p>}
+              {usedPct >= 100 && (
+                <p className="text-[10px] text-destructive flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />Limit exhausted
+                </p>
+              )}
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
@@ -100,7 +124,7 @@ export function NPSForm({ initial, onDone }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label>Tier</Label>
-              <Select defaultValue={initial?.npsTier || 'T1'} onValueChange={v => setValue('npsTier', v as 'T1' | 'T2')}>
+              <Select defaultValue={initial?.npsTier ?? 'T1'} onValueChange={v => setValue('npsTier', v as 'T1' | 'T2')}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="T1">Tier 1 (80CCD eligible)</SelectItem>
@@ -116,11 +140,13 @@ export function NPSForm({ initial, onDone }: Props) {
             {/* Allocation */}
             <div className="col-span-2 p-3 rounded-xl bg-muted/40 space-y-2">
               <p className="text-xs font-semibold">Asset Allocation (E + C + G = 100%)</p>
-              {allocationSum !== 100 && <p className="text-[10px] text-destructive">Currently sums to {allocationSum}%</p>}
+              {allocationSum !== 100 && (
+                <p className="text-[10px] text-destructive">Currently sums to {allocationSum}%</p>
+              )}
               <div className="grid grid-cols-3 gap-2">
                 <div className="space-y-1">
                   <Label className="text-[10px]">Equity (E) %</Label>
-                  <Input type="number" min="0" max="75" step="5" {...register('npsEquityPct')} />
+                  <Input type="number" min="0" max="75" step="5" {...register('npsEquity')} />
                   <p className="text-[9px] text-muted-foreground">Max 75%</p>
                 </div>
                 <div className="space-y-1">
@@ -132,7 +158,7 @@ export function NPSForm({ initial, onDone }: Props) {
                   <Input type="number" min="0" max="100" step="5" {...register('npsGovDebt')} />
                 </div>
               </div>
-              {errors.npsEquityPct && <p className="text-xs text-destructive">{errors.npsEquityPct.message}</p>}
+              {errors.npsEquity && <p className="text-xs text-destructive">{errors.npsEquity.message}</p>}
             </div>
 
             {tier === 'T1' && (
@@ -146,11 +172,9 @@ export function NPSForm({ initial, onDone }: Props) {
               <Label>Total Contributed (₹)</Label>
               <Input type="number" step="100" {...register('investedValue')} />
             </div>
-            <div className={tier === 'T1' ? '' : 'col-span-2'}>
-              <div className="space-y-1.5">
-                <Label>Current Corpus (₹) — from CRA statement</Label>
-                <Input type="number" step="100" {...register('currentValue')} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Current Corpus (₹) — from CRA statement</Label>
+              <Input type="number" step="100" {...register('currentValue')} />
             </div>
             <div className="col-span-2 space-y-1.5">
               <Label>Notes</Label>
@@ -158,7 +182,9 @@ export function NPSForm({ initial, onDone }: Props) {
             </div>
           </div>
           <div className="flex gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting} className="flex-1">{isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add NPS'}</Button>
+            <Button type="submit" disabled={isSubmitting} className="flex-1">
+              {isSubmitting ? 'Saving…' : initial ? 'Update' : 'Add NPS'}
+            </Button>
             <Button type="button" variant="outline" onClick={onDone}>Cancel</Button>
           </div>
         </form>
