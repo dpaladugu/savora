@@ -25,6 +25,7 @@ import { UpcomingRecurringStrip } from './upcoming-recurring-strip';
 import { NetWorthWidget } from './net-worth-widget';
 import { SmartNudgeEngine } from './smart-nudge-engine';
 import { GunturWaterfallCard } from './guntur-waterfall-card';
+import { DebtFreedomCountdown } from './debt-freedom-countdown';
 
 
 
@@ -433,6 +434,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
 
       {/* ── Guntur Waterfall Card ── */}
       <GunturWaterfallCard onNavigate={onMoreNavigation} />
+
+      {/* ── Debt-Free Countdown ── */}
+      <DebtFreedomCountdown onNavigate={onMoreNavigation} />
 
       {/* ── Income Quick-Add Dialog ── */}
       <IncomeQuickAdd open={showIncomeDialog} onClose={() => setShowIncomeDialog(false)} />
