@@ -80,10 +80,14 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const perms = usePermissions();
   const [hasWill, setHasWill] = useState<boolean | null>(null);
   const [ef, setEf] = useState<EmergencyFund | null>(null);
+  const [userName, setUserName] = useState('Devavratha');
 
   useEffect(() => {
     db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
     db.emergencyFunds.limit(1).first().then(r => setEf(r ?? null)).catch(() => {});
+    db.globalSettings.limit(1).first()
+      .then(s => { if (s?.userName) setUserName(s.userName); })
+      .catch(() => {});
   }, []);
 
   const efPct = ef && ef.targetAmount > 0
