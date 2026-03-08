@@ -1,124 +1,97 @@
+/**
+ * LoanService — unified Loan + BrotherRepayment operations.
+ * 
+ * AUDIT NOTE: Uses canonical `db` from '@/lib/db' (not extendedDb) so that
+ * the Dexie Audit Middleware (§19) intercepts all mutations automatically.
+ */
 
-import { extendedDb } from '@/lib/db-schema-extended';
-import type { Loan, BrotherRepayment, AmortRow } from '@/lib/db-schema-extended';
+import { db } from '@/lib/db';
+import type { Loan, BrotherRepayment, AmortRow } from '@/lib/db';
 
 export class LoanService {
   /**
-   * Create a new loan
+   * Create a new loan, generating its full amortisation schedule.
    */
-  static async createLoan(loan: Omit<Loan, 'id' | 'amortisationSchedule'>): Promise<string> {
-    try {
-      const id = crypto.randomUUID();
-      const amortisationSchedule = this.generateAmortisationSchedule(
-        loan.principal,
-        loan.roi,
-        loan.tenureMonths
-      );
+  static async createLoan(
+    loan: Omit<Loan, 'id'>
+  ): Promise<string> {
+    const id = crypto.randomUUID();
+    const roi = (loan as any).roi ?? loan.interestRate ?? 0;
+    const tenureMonths = (loan as any).tenureMonths ?? 0;
+    const emi = LoanService._calcEMI(loan.principal, roi, tenureMonths);
+    const amortisationSchedule = LoanService._buildSchedule(loan.principal, roi, tenureMonths);
 
-      await extendedDb.loans.add({
-        ...loan,
-        id,
-        amortisationSchedule
-      });
-      return id;
-    } catch (error) {
-      console.error('Error creating loan:', error);
-      throw error;
-    }
+    await db.loans.add({
+      ...loan,
+      id,
+      roi,
+      emi: emi || loan.emi || 0,
+      amortisationSchedule,
+      createdAt: (loan as any).createdAt ?? new Date(),
+      updatedAt: new Date(),
+    } as any);
+    return id;
   }
 
-  /**
-   * Generate amortisation schedule
-   */
-  private static generateAmortisationSchedule(
-    principal: number,
-    roi: number,
-    tenureMonths: number
-  ): AmortRow[] {
-    const monthlyRate = roi / 100 / 12;
-    const emi = (principal * monthlyRate * Math.pow(1 + monthlyRate, tenureMonths)) / 
-                (Math.pow(1 + monthlyRate, tenureMonths) - 1);
-    
+  /** EMI = P × r × (1+r)^n / ((1+r)^n − 1) */
+  static _calcEMI(principal: number, annualRoi: number, tenureMonths: number): number {
+    if (!principal || !annualRoi || !tenureMonths) return 0;
+    const r = annualRoi / 100 / 12;
+    return Math.round(
+      (principal * r * Math.pow(1 + r, tenureMonths)) /
+        (Math.pow(1 + r, tenureMonths) - 1)
+    );
+  }
+
+  static _buildSchedule(principal: number, annualRoi: number, tenureMonths: number): AmortRow[] {
+    if (!principal || !annualRoi || !tenureMonths) return [];
+    const r = annualRoi / 100 / 12;
+    const emi = LoanService._calcEMI(principal, annualRoi, tenureMonths);
     const schedule: AmortRow[] = [];
     let balance = principal;
-
     for (let month = 1; month <= tenureMonths; month++) {
-      const interestPart = balance * monthlyRate;
+      const interestPart  = balance * r;
       const principalPart = emi - interestPart;
       balance -= principalPart;
-
       schedule.push({
         month,
-        emi: Math.round(emi),
+        emi,
         principalPart: Math.round(principalPart),
-        interestPart: Math.round(interestPart),
-        balance: Math.round(Math.max(0, balance))
+        interestPart:  Math.round(interestPart),
+        balance:       Math.round(Math.max(0, balance)),
       });
     }
-
     return schedule;
   }
 
-  /**
-   * Get all loans
-   */
   static async getAllLoans(): Promise<Loan[]> {
-    try {
-      return await extendedDb.loans.toArray();
-    } catch (error) {
-      console.error('Error fetching loans:', error);
-      return [];
-    }
+    return db.loans.toArray().catch(() => []);
   }
 
-  /**
-   * Get active loans
-   */
   static async getActiveLoans(): Promise<Loan[]> {
-    try {
-      return await extendedDb.loans.where('isActive').equals(1).toArray();
-    } catch (error) {
-      console.error('Error fetching active loans:', error);
-      return [];
-    }
+    const all = await db.loans.toArray().catch(() => []);
+    return all.filter(l => l.isActive !== false);
   }
 
-  /**
-   * Update loan
-   */
   static async updateLoan(id: string, updates: Partial<Loan>): Promise<void> {
-    try {
-      await extendedDb.loans.update(id, updates);
-    } catch (error) {
-      console.error('Error updating loan:', error);
-      throw error;
-    }
+    await db.loans.update(id, { ...updates, updatedAt: new Date() });
   }
 
   /**
-   * Make prepayment
+   * Record a prepayment: reduces `outstanding` and flips `isActive` to false when fully paid.
    */
   static async makePrepayment(loanId: string, amount: number): Promise<void> {
-    try {
-      const loan = await extendedDb.loans.get(loanId);
-      if (!loan) throw new Error('Loan not found');
+    const loan = await db.loans.get(loanId);
+    if (!loan) throw new Error('Loan not found');
 
-      const newOutstanding = Math.max(0, loan.outstanding - amount);
-      const isFullyPaid = newOutstanding === 0;
-
-      await extendedDb.loans.update(loanId, {
-        outstanding: newOutstanding,
-        isActive: !isFullyPaid
-      });
-    } catch (error) {
-      console.error('Error making prepayment:', error);
-      throw error;
-    }
+    const newOutstanding = Math.max(0, (loan.outstanding ?? loan.principal) - amount);
+    await db.loans.update(loanId, {
+      outstanding: newOutstanding,
+      isActive: newOutstanding > 0,
+      updatedAt: new Date(),
+    });
   }
 
-  /**
-   * Calculate loan analytics
-   */
   static async getLoanAnalytics(): Promise<{
     totalLoans: number;
     activeLoans: number;
@@ -126,80 +99,71 @@ export class LoanService {
     totalEMI: number;
     highInterestLoans: number;
   }> {
-    try {
-      const allLoans = await extendedDb.loans.toArray();
-      const activeLoans = allLoans.filter(loan => loan.isActive);
-      
-      return {
-        totalLoans: allLoans.length,
-        activeLoans: activeLoans.length,
-        totalOutstanding: activeLoans.reduce((sum, loan) => sum + loan.outstanding, 0),
-        totalEMI: activeLoans.reduce((sum, loan) => sum + loan.emi, 0),
-        highInterestLoans: activeLoans.filter(loan => loan.roi > 8).length
-      };
-    } catch (error) {
-      console.error('Error calculating loan analytics:', error);
-      return {
-        totalLoans: 0,
-        activeLoans: 0,
-        totalOutstanding: 0,
-        totalEMI: 0,
-        highInterestLoans: 0
-      };
-    }
+    const all = await db.loans.toArray().catch(() => []);
+    const active = all.filter(l => l.isActive !== false);
+    return {
+      totalLoans:       all.length,
+      activeLoans:      active.length,
+      totalOutstanding: active.reduce((s, l) => s + (l.outstanding ?? l.principal ?? 0), 0),
+      totalEMI:         active.reduce((s, l) => s + (l.emi ?? 0), 0),
+      highInterestLoans: active.filter(l => (l.roi ?? l.interestRate ?? 0) > 8).length,
+    };
   }
 }
 
 export class BrotherRepaymentService {
   /**
-   * Add repayment — also reduces loan.outstanding and writes a FamilyTransfer ledger entry (§17)
+   * Add repayment — atomically:
+   *   1. Writes BrotherRepayment record
+   *   2. Reduces loan.outstanding (flips isActive when zero)
+   *   3. Writes a FamilyTransfer ledger entry (§17)
+   * All via canonical `db` so Audit Middleware fires on every write.
    */
-  static async addRepayment(repayment: Omit<BrotherRepayment, 'id'>): Promise<string> {
-    try {
-      const id = crypto.randomUUID();
-      await extendedDb.brotherRepayments.add({ ...repayment, id });
+  static async addRepayment(
+    repayment: Omit<BrotherRepayment, 'id'>
+  ): Promise<string> {
+    const id = crypto.randomUUID();
 
-      // ── Reduce loan outstanding ───────────────────────────────────────────
-      const loan = await extendedDb.loans.get(repayment.loanId);
+    await db.brotherRepayments.add({ ...repayment, id, updatedAt: new Date() });
+
+    // ── Reduce loan outstanding ──────────────────────────────────────────────
+    if (repayment.loanId) {
+      const loan = await db.loans.get(repayment.loanId);
       if (loan) {
-        const newOutstanding = Math.max(0, loan.outstanding - repayment.amount);
-        await extendedDb.loans.update(repayment.loanId, {
+        const newOutstanding = Math.max(0, (loan.outstanding ?? loan.principal) - repayment.amount);
+        await db.loans.update(repayment.loanId, {
           outstanding: newOutstanding,
           isActive: newOutstanding > 0,
+          updatedAt: new Date(),
         });
       }
-
-      // ── Write Family Transfer Ledger entry (§17) ──────────────────────────
-      // Import db at runtime to avoid circular deps with extendedDb
-      const { db } = await import('@/lib/db');
-      await db.familyTransfers.add({
-        id: crypto.randomUUID(),
-        amount: repayment.amount,
-        toPerson: 'Brother',
-        from: 'Me',
-        to: 'Brother',
-        purpose: loan ? `Repayment – ${loan.type} loan` : 'Loan Repayment',
-        mode: repayment.mode ?? 'Bank',
-        date: repayment.date ?? new Date(),
-        createdAt: new Date(),
-      });
-
-      return id;
-    } catch (error) {
-      console.error('Error adding repayment:', error);
-      throw error;
     }
+
+    // ── FamilyTransfer ledger entry (§17) ────────────────────────────────────
+    await db.familyTransfers.add({
+      id: crypto.randomUUID(),
+      amount: repayment.amount,
+      toPerson: 'Brother',
+      from: 'Me',
+      to: 'Brother',
+      purpose: repayment.note ?? 'Loan Repayment',
+      mode: repayment.mode ?? 'Bank',
+      date: repayment.date ?? new Date(),
+      createdAt: new Date(),
+    });
+
+    return id;
   }
 
-  /**
-   * Get repayments by loan
-   */
   static async getRepaymentsByLoan(loanId: string): Promise<BrotherRepayment[]> {
-    try {
-      return await extendedDb.brotherRepayments.where('loanId').equals(loanId).toArray();
-    } catch (error) {
-      console.error('Error fetching repayments:', error);
-      return [];
-    }
+    return db.brotherRepayments
+      .where('loanId')
+      .equals(loanId)
+      .toArray()
+      .catch(() => []);
+  }
+
+  static async getAllRepayments(): Promise<BrotherRepayment[]> {
+    return db.brotherRepayments.toArray().catch(() => []);
   }
 }

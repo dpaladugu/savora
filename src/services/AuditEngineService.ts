@@ -39,7 +39,10 @@ export function dirSignal(days: number): TrafficLight {
 }
 
 // ─── Guntur Waterfall constants (from property-rental-engine) ─────────────────
-const SINKING_FUND_MONTHLY = 5_400;  // priority bucket 2 deduction from rent
+const SINKING_FUND_MONTHLY    = 5_400;   // priority 2 — Sinking Fund
+const HOUSEHOLD_MONTHLY       = 45_000;  // priority 3 — Household Expenses
+const GRANDMA_SAFETY_NET_TARGET = 5_00_000; // priority 4 — Grandma Safety Net corpus
+const PREMIUM_RECOVERY_TARGET = 1_67_943;  // priority 1 — ICICI Premium Recovery
 
 // ─── Result Types ─────────────────────────────────────────────────────────────
 
@@ -149,16 +152,17 @@ export class AuditEngineService {
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
     const oneYearAgo    = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
 
-    const [allTxns, allIncomes] = await Promise.all([
+    const [allTxns, allIncomes, allExpenses] = await Promise.all([
       db.txns.toArray(),
       db.incomes ? db.incomes.toArray().catch(() => [] as any[]) : Promise.resolve([] as any[]),
+      db.expenses ? db.expenses.toArray().catch(() => [] as any[]) : Promise.resolve([] as any[]),
     ]);
 
     // ── 1. DSCR ──────────────────────────────────────────────────────────────
     const dscr = AuditEngineService._calcDSCR(loans, gunturShops);
 
     // ── 2. DIR ───────────────────────────────────────────────────────────────
-    const dir = AuditEngineService._calcDIR(allTxns, ninetyDaysAgo, investments, emergencyFunds, creditCards);
+    const dir = AuditEngineService._calcDIR(allTxns, allExpenses, ninetyDaysAgo, investments, emergencyFunds, creditCards);
 
     // ── 3. Debt-to-Freedom Velocity ──────────────────────────────────────────
     const debtFreedom = AuditEngineService._calcDebtFreedom(loans, creditCards);
@@ -168,9 +172,17 @@ export class AuditEngineService {
 
     // ── 5. Risk checklist ────────────────────────────────────────────────────
     const allPolicies = [...insurancePolicies, ...insurance];
+    // Deduplicate policies by id (InsuranceService mirrors writes to both tables)
+    const seenIds = new Set<string>();
+    const uniquePolicies = allPolicies.filter((p: any) => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+
     const annualIncome = AuditEngineService._calcAnnualIncome(allIncomes, allTxns, oneYearAgo);
     const risks = AuditEngineService._buildRisks({
-      policies: allPolicies,
+      policies: uniquePolicies,
       investments,
       emergencyFunds,
       dscr,
@@ -178,6 +190,8 @@ export class AuditEngineService {
       yieldCostSpread,
       debtFreedom,
       annualIncome,
+      gunturShops,
+      waterfallProgress,
     });
 
     // ── 6. Overall score (0-100) ─────────────────────────────────────────────
@@ -205,8 +219,9 @@ export class AuditEngineService {
       .filter((s: any) => s.status === 'Occupied')
       .reduce((sum: number, s: any) => sum + (s.rent || 0), 0);
 
-    // Fallback if gunturShops is empty: use constant from waterfall definition
-    const netGunturRent = occupiedShopRent > 0 ? occupiedShopRent : 19_600; // sum of defaults
+    // Only use real data — no hardcoded fallback. If shops haven't been added yet,
+    // the DSCR will be 0 (critical) which is the correct "unknown" posture.
+    const netGunturRent = occupiedShopRent;
 
     const totalMonthlyEMI = loans
       .filter((l: any) => l.isActive !== false)
@@ -215,7 +230,7 @@ export class AuditEngineService {
     const numerator = netGunturRent - SINKING_FUND_MONTHLY;
     const value = totalMonthlyEMI > 0
       ? +(numerator / totalMonthlyEMI).toFixed(3)
-      : 999; // no debt = infinite coverage
+      : netGunturRent > 0 ? 999 : 0; // no debt = infinite; no data = 0
 
     return {
       netGunturRent,
@@ -229,15 +244,28 @@ export class AuditEngineService {
   // ── DIR: Liquid Assets / Average Daily Expenses ────────────────────────────
   private static _calcDIR(
     allTxns: any[],
+    allExpenses: any[],
     since: Date,
     investments: any[],
     emergencyFunds: any[],
     creditCards: any[],
   ): DIRResult {
-    // Expenses in last 90 days
-    const recentExpenses = allTxns
+    // Pull trailing 90-day expenses from BOTH sources:
+    // 1. db.expenses (dedicated expenses table — positive amounts)
+    const recentFromExpenseTable = allExpenses
+      .filter((e: any) => new Date(e.date) >= since)
+      .reduce((s: number, e: any) => s + Math.abs(e.amount || 0), 0);
+
+    // 2. db.txns where amount < 0 (legacy expense txns recorded as negative)
+    const recentFromTxns = allTxns
       .filter((t: any) => t.amount < 0 && new Date(t.date) >= since)
       .reduce((s: number, t: any) => s + Math.abs(t.amount), 0);
+
+    // Use whichever source has data; if both have data sum them only if
+    // the amounts don't overlap (heuristic: prefer expenses table when non-zero)
+    const recentExpenses = recentFromExpenseTable > 0
+      ? recentFromExpenseTable
+      : recentFromTxns;
 
     const daysInWindow = 90;
     const avgDailyExpenses = recentExpenses / daysInWindow || 1; // avoid divide-by-zero
@@ -370,6 +398,8 @@ export class AuditEngineService {
     yieldCostSpread: YieldCostSpreadResult;
     debtFreedom: DebtFreedomResult;
     annualIncome: number;
+    gunturShops?: any[];
+    waterfallProgress?: any[];
   }): AuditRisk[] {
     const risks: AuditRisk[] = [];
 
@@ -486,6 +516,48 @@ export class AuditEngineService {
         ctaLabel: 'Increase Prepayment',
         ctaAction: 'debt-strike',
       });
+    }
+
+    // ── 5g. Guntur Waterfall Priority Sequence Validation ───────────────────
+    // Enforces: P1 Premium Recovery → P2 Sinking Fund → P3 Household →
+    //           P4 Grandma Safety Net → P5 Debt Strike
+    if (ctx.gunturShops && ctx.waterfallProgress) {
+      const totalOccupiedRent = ctx.gunturShops
+        .filter((s: any) => s.status === 'Occupied')
+        .reduce((sum: number, s: any) => sum + (s.rent || 0), 0);
+
+      const premiumBucket = ctx.waterfallProgress.find((b: any) => b.bucketId === 'premium-recovery');
+      const premiumAccumulated = premiumBucket?.accumulated ?? 0;
+      const premiumGap = Math.max(0, PREMIUM_RECOVERY_TARGET - premiumAccumulated);
+
+      // P1: Flag if Premium Recovery not yet complete and rent is positive
+      if (premiumGap > 0 && totalOccupiedRent > 0) {
+        risks.push({
+          id: 'waterfall-p1-incomplete',
+          category: 'liquidity',
+          severity: 'warning',
+          title: `Waterfall P1: ₹${(premiumGap / 1_000).toFixed(0)}k premium recovery pending`,
+          detail: `₹${(premiumAccumulated / 1_00_000).toFixed(1)}L of ₹1.68L recovered. All Guntur rent must flow to P1 before P2–P5.`,
+          ctaLabel: 'View Waterfall',
+          ctaAction: 'recurring-transactions',
+        });
+      }
+
+      // P3: Household expenses must be funded before Grandma net or debt strike
+      const grandmaBucket = ctx.waterfallProgress.find((b: any) => b.bucketId === 'grandma-safety-net');
+      const grandmaAccumulated = grandmaBucket?.accumulated ?? 0;
+      const availableAfterP1P2 = totalOccupiedRent - SINKING_FUND_MONTHLY - (premiumGap > 0 ? totalOccupiedRent : 0);
+      if (grandmaAccumulated > 0 && availableAfterP1P2 < HOUSEHOLD_MONTHLY && premiumGap > 0) {
+        risks.push({
+          id: 'waterfall-sequence-skip',
+          category: 'liquidity',
+          severity: 'critical',
+          title: 'Waterfall sequence broken: household underfunded',
+          detail: `₹${HOUSEHOLD_MONTHLY.toLocaleString('en-IN')}/mo household priority must be met before Grandma Safety Net. Verify allocation order.`,
+          ctaLabel: 'View Waterfall',
+          ctaAction: 'recurring-transactions',
+        });
+      }
     }
 
     return risks;

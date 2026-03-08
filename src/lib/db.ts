@@ -37,11 +37,19 @@ export interface Vehicle {
   updatedAt: Date;
 }
 
+export interface AmortRow {
+  month: number;
+  emi: number;
+  principalPart: number;
+  interestPart: number;
+  balance: number;
+}
+
 export interface Loan {
   id: string;
-  name: string;
+  name?: string;
   principal: number;
-  interestRate: number;
+  interestRate?: number;
   type?: 'Personal' | 'Personal-Brother' | 'Education-Brother';
   borrower?: 'Me' | 'Brother';
   roi?: number;
@@ -50,8 +58,10 @@ export interface Loan {
   outstanding?: number;
   startDate?: Date;
   isActive?: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  /** Generated amortisation schedule (stored inline) */
+  amortisationSchedule?: AmortRow[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Insurance {
