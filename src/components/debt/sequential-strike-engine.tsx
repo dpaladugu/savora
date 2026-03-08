@@ -535,6 +535,7 @@ export function SequentialStrikeEngine() {
           )}
         </CardContent>
       </Card>
+      <PrepaymentLogger open={showPrepayment} onClose={() => setShowPrepayment(false)} />
     </div>
   );
 }
