@@ -1,8 +1,8 @@
 
 import { db, type Subscription as DbSubscription } from '@/lib/db';
 
-// Extend the base subscription type with service-specific fields
-interface Subscription extends Omit<DbSubscription, 'nextBilling'> {
+// Service-level Subscription type (extends DB type)
+export interface Subscription extends Omit<DbSubscription, 'nextBilling'> {
   nextRenewal: Date;
   reminderEnabled: boolean;
 }
