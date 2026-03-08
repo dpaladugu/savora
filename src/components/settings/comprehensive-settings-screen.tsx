@@ -181,6 +181,49 @@ export function ComprehensiveSettingsScreen() {
 
   return (
     <div className="space-y-4">
+
+      {/* ── Profile ── */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-sm font-semibold">
+            <User className="h-4 w-4 text-primary" /> Profile
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label htmlFor="userName" className="text-xs text-muted-foreground">Your Name</Label>
+            <Input
+              id="userName"
+              value={userName}
+              onChange={e => setUserName(e.target.value)}
+              placeholder="Devavratha"
+              className="h-9 text-sm"
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="userMission" className="text-xs text-muted-foreground flex items-center gap-1">
+              <Target className="h-3 w-3" /> Mission Statement
+            </Label>
+            <Textarea
+              id="userMission"
+              value={userMission}
+              onChange={e => setUserMission(e.target.value)}
+              placeholder="Antifragile Debt-Freedom by 2029"
+              rows={2}
+              className="text-sm resize-none"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleSaveProfile}
+            disabled={profileSaving || !userName.trim()}
+            className="w-full h-9 text-xs"
+          >
+            {profileSaving ? 'Saving…' : 'Save Profile'}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Appearance */}
       <Card>
         <CardHeader className="pb-3">
