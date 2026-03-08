@@ -290,6 +290,7 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   spendingLimits: EntityTable<SpendingLimit, 'id'>;
   willRows: EntityTable<WillRow, 'id'>;
   digitalAssets: EntityTable<DigitalAsset, 'id'>;
+  recurringTransactions: EntityTable<RecurringTransaction, 'id'>;
 };
 
 db.version(1).stores({
