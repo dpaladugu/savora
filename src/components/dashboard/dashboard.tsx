@@ -184,6 +184,10 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
     [role]
   ) ?? 0;
 
+  useEffect(() => {
+    db.willRows.count().then(c => setHasWill(c > 0)).catch(() => setHasWill(true));
+  }, []);
+
   const efPct = ef && ef.targetAmount > 0
     ? Math.min(100, Math.round((ef.currentAmount / ef.targetAmount) * 100))
     : 0;
