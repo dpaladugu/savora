@@ -14,6 +14,10 @@ import { HealthTracker } from '@/components/health/health-tracker';
 import { SubscriptionManager } from '@/components/subscriptions/subscription-manager';
 import { SubscriptionTracker } from '@/components/subscriptions/subscription-tracker';
 import { FamilyBankManager } from '@/components/family/family-bank-manager';
+import { FamilyBankingManager } from '@/components/family/family-banking-manager';
+import { BrotherRepaymentTracker } from '@/components/family/brother-repayment-tracker';
+import { InsuranceManager } from '@/components/insurance/insurance-manager';
+import { SpendingLimits } from '@/components/spending/spending-limits';
 import { EmergencyFundDashboard } from '@/components/emergency-fund/emergency-fund-dashboard';
 import { CFARecommendationsDashboard } from '@/components/recommendations/cfa-recommendations-dashboard';
 import { RecommendationsEngine } from '@/components/recommendations/recommendations-engine';
@@ -58,6 +62,14 @@ export function MoreModuleRouter({ activeModule }: MoreModuleRouterProps) {
         return <SubscriptionTracker />;
       case 'family-banking':
         return <FamilyBankManager />;
+      case 'family-banking-v2':
+        return <FamilyBankingManager />;
+      case 'brother-repayment':
+        return <BrotherRepaymentTracker />;
+      case 'insurance-manager':
+        return <InsuranceManager />;
+      case 'spending-limits':
+        return <SpendingLimits />;
       case 'emergency-fund':
         return <EmergencyFundDashboard />;
       case 'cfa-recommendations':

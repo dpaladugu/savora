@@ -62,14 +62,28 @@ export interface Insurance {
   provider?: string;
   company?: string;
   policyNumber?: string;
+  policyNo?: string;
   sumAssured?: number;
-  sumInsured?: number;
+  sumInsured: number;
   premiumAmount?: number;
   premiumDueDate?: Date;
+  startDate?: Date;
   endDate?: Date;
   nominee?: string;
+  nomineeName?: string;
+  nomineeRelation?: string;
+  familyMember?: string;
   notes?: string;
   isActive?: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SpendingLimit {
+  id: string;
+  category: string;
+  monthlyCap: number;
+  alertAt: number;   // percentage, default 80
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,21 +126,21 @@ export interface BrotherRepayment {
   amount: number;
   date: Date;
   loanId?: string;
-  mode?: 'Cash' | 'Bank' | 'UPI';
+  mode?: string;
   note?: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface FamilyBankAccount {
   id: string;
-  name: string;
-  balance: number;
-  owner?: 'Mother' | 'Grandmother';
-  bankName?: string;
+  name?: string;
+  balance?: number;
+  owner: 'Mother' | 'Grandmother';
+  bankName: string;
   accountNo?: string;
-  type?: 'Savings' | 'Current' | 'FD';
-  currentBalance?: number;
+  type: string;
+  currentBalance: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -134,15 +148,15 @@ export interface FamilyBankAccount {
 export interface FamilyTransfer {
   id: string;
   amount: number;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   date: Date;
   fromAccountId?: string;
-  toPerson?: 'Mother' | 'Grandmother' | 'Brother';
-  purpose?: string;
-  mode?: 'Cash' | 'Bank' | 'UPI';
+  toPerson: 'Mother' | 'Grandmother' | 'Brother';
+  purpose: string;
+  mode: string;
   createdAt: Date;
-  updatedAt: Date;
+  updatedAt?: Date;
 }
 
 export interface AuditLog {
@@ -227,6 +241,8 @@ const db = new Dexie('SavoraDB') as typeof Dexie.prototype & {
   globalSettings: EntityTable<GlobalSettings, 'id'>;
   expenses: EntityTable<Expense, 'id'>;
   incomes: EntityTable<Income, 'id'>;
+  insurancePolicies: EntityTable<Insurance, 'id'>;
+  spendingLimits: EntityTable<SpendingLimit, 'id'>;
 };
 
 db.version(1).stores({
@@ -250,6 +266,12 @@ db.version(1).stores({
   globalSettings: '++id, failedPinAttempts, maxFailedAttempts, autoLockMinutes, taxRegime, privacyMask, darkMode, timeZone, isTest, theme, revealSecret',
   expenses: '++id, amount, date, category, description, createdAt, updatedAt',
   incomes: '++id, amount, date, category, sourceName, createdAt, updatedAt'
+});
+
+// Version 2: add insurancePolicies + spendingLimits
+db.version(2).stores({
+  insurancePolicies: '++id, type, provider, familyMember, endDate, createdAt, updatedAt',
+  spendingLimits: '++id, category, monthlyCap, alertAt, createdAt, updatedAt',
 });
 
 export { db };
