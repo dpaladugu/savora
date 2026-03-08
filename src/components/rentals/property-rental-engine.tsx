@@ -114,7 +114,7 @@ export function PropertyRentalEngine() {
 
 // ─── GORANTLA PAGE ────────────────────────────────────────────────────────────
 
-function GorantlaPage() {
+function GorantlaPage({ readOnly = false }: { readOnly?: boolean }) {
   const [rooms, setRooms] = useState<GorantlaRoom[]>(defaultGorantlaRooms);
   const [grandmaFund, setGrandmaFund] = useState(0);
 
