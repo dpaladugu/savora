@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/layout/page-header';
 import { MaskedAmount } from '@/components/ui/masked-value';
 import { formatCurrency } from '@/lib/format-utils';
 import { InsuranceGapAnalysis } from './insurance-gap-analysis';
+import { InsuranceSinkingFund } from './insurance-sinking-fund';
 import { toast } from 'sonner';
 import {
   Shield, Plus, Edit, Trash2, AlertTriangle,
