@@ -26,6 +26,9 @@ export class LoanService {
       id,
       roi,
       emi: emi || loan.emi || 0,
+      // Ensure `outstanding` is always set so AuditEngine never falls back to principal
+      outstanding: (loan as any).outstanding ?? loan.principal,
+      isActive: (loan as any).isActive ?? true,
       amortisationSchedule,
       createdAt: (loan as any).createdAt ?? new Date(),
       updatedAt: new Date(),

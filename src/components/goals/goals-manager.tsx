@@ -6,6 +6,7 @@ import { useState, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Target, Plus, Trash2, TrendingUp, CheckCircle2 } from 'lucide-react';
 import { db } from '@/lib/db';
+import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -139,14 +140,16 @@ export function GoalsManager({
     } catch { /* non-blocking */ }
   }, []);
 
+  const setGoalIdForPlanner = useSIPPrefillStore(s => s.setGoalIdForPlanner);
+
   const handlePlanSip = useCallback((goalId: string) => {
+    setGoalIdForPlanner(goalId);
     if (onNavigateToSip) {
       onNavigateToSip(goalId);
     } else {
-      // fallback: deep-link via global event
       window.dispatchEvent(new CustomEvent('navigate-to-module', { detail: 'sip-planner' }));
     }
-  }, [onNavigateToSip]);
+  }, [onNavigateToSip, setGoalIdForPlanner]);
 
   const active    = goals.filter((g) => pct(g.currentAmount ?? 0, g.targetAmount ?? 1) < 100);
   const longTerm  = active.filter((g) => g.category === 'long-term');

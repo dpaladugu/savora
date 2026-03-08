@@ -7,11 +7,12 @@
  * • Per-goal comparison table for all active goals
  * • One-tap "Start SIP" → creates recurring transaction
  */
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
 import { RecurringTransactionService } from '@/services/RecurringTransactionService';
+import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -226,6 +227,11 @@ function ProgressRing({
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export function SIPPlanner() {
+  const { goalIdForPlanner, clearGoalIdForPlanner } = useSIPPrefillStore(s => ({
+    goalIdForPlanner: s.goalIdForPlanner,
+    clearGoalIdForPlanner: s.clearGoalIdForPlanner,
+  }));
+
   const goals = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
   const activeGoals = useMemo(
     () => goals.filter((g) => (g.targetAmount ?? 0) > (g.currentAmount ?? 0)),
@@ -244,6 +250,15 @@ export function SIPPlanner() {
   const [starting, setStarting]     = useState(false);
   const [started, setStarted]       = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Consume goalIdForPlanner from store (set by GoalsManager "Plan SIP" CTA)
+  useEffect(() => {
+    if (goalIdForPlanner) {
+      setSelectedGoalId(goalIdForPlanner);
+      setTab('planner');
+      clearGoalIdForPlanner();
+    }
+  }, [goalIdForPlanner, clearGoalIdForPlanner]);
 
   const selectedGoal: Goal | null = selectedGoalId !== 'custom'
     ? (activeGoals.find((g) => g.id === selectedGoalId) ?? null)
