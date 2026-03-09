@@ -486,7 +486,12 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       />
 
       {/* ── Quick Actions ── */}
-      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
+      <QuickActions
+        onTabChange={onTabChange}
+        onMoreNavigation={onMoreNavigation}
+        onAddIncome={() => setShowIncomeDialog(true)}
+        onPrepay={() => onMoreNavigation('loans')}
+      />
 
       {/* ── Monthly Summary — tappable for drill-down ── */}
       <MonthlySummaryCard onDrilldown={() => setShowMonthDrilldown(true)} />
