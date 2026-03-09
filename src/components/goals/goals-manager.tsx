@@ -184,12 +184,14 @@ function GoalCard({
   onPlanSip,
   onContribute,
   onEdit,
+  committedSIP,
 }: {
   goal: Goal;
   onDelete: (id: string) => void;
   onPlanSip: (id: string) => void;
   onContribute: (goal: Goal) => void;
   onEdit: (goal: Goal) => void;
+  committedSIP: number;
 }) {
   const progress = pct(goal.currentAmount ?? 0, goal.targetAmount ?? 1);
   const done = progress >= 100;
