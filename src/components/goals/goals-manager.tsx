@@ -245,10 +245,22 @@ function GoalCard({
           </div>
         </div>
 
+        {/* SIP needed vs committed */}
         {!done && sipNeeded != null && sipNeeded > 0 && (
-          <p className="text-[10px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg">
-            💡 Need ~{fmt(sipNeeded)}/month to hit this goal on time
-          </p>
+          <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] ${
+            committedSIP >= sipNeeded
+              ? 'bg-success/10 text-success'
+              : committedSIP > 0
+              ? 'bg-warning/10 text-warning'
+              : 'bg-muted/40 text-muted-foreground'
+          }`}>
+            <span>
+              {committedSIP >= sipNeeded ? '✓ SIP on track' : committedSIP > 0 ? '⚠ SIP gap' : '💡 No SIP yet'}
+            </span>
+            <span className="tabular-nums font-semibold">
+              {fmt(committedSIP)}<span className="font-normal opacity-70"> committed · </span>{fmt(sipNeeded)}<span className="font-normal opacity-70">/mo needed</span>
+            </span>
+          </div>
         )}
 
         <div className="flex gap-2">
