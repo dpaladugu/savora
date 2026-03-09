@@ -24,6 +24,7 @@ import {
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { Insurance } from '@/lib/db';
+import { auditLog } from '@/components/audit/audit-log-viewer';
 
 const INSURANCE_TYPES = [
   // Personal policies
