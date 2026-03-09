@@ -413,9 +413,12 @@ export function LoanManager() {
         createdAt: new Date(), updatedAt: new Date(),
       };
       if (editingLoan) {
+        const old = await db.loans.get(editingLoan.id);
         await LoanService.updateLoan(editingLoan.id, data);
+        await auditLog('update', `Loan:${data.name}`, data, old);
       } else {
         await LoanService.createLoan(data);
+        await auditLog('create', `Loan:${data.name}`, data);
       }
       toast.success(editingLoan ? 'Loan updated' : 'Loan added');
       setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null);
