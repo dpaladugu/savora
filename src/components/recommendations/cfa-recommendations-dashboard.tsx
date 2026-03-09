@@ -419,6 +419,51 @@ export function CFARecommendationsDashboard() {
           })
         )}
       </div>
+
+      {/* Age-Based Glide Path */}
+      {glidePathData && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <PieChart className="h-4 w-4 text-primary" />
+              <p className="text-sm font-semibold">
+                Age-{glidePathData.age} Glide Path — CFA Target Allocation
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              At age {glidePathData.age}, CFA standard = <strong>{glidePathData.targetEquityPct}% equity / {glidePathData.targetDebtPct}% debt / {glidePathData.targetGoldPct}% gold</strong>. Higher equity tolerance early → taper as you approach retirement.
+            </p>
+            <div className="space-y-2">
+              {[
+                { label: 'Equity (Stocks/MF/SIP)', target: glidePathData.targetEquityPct, actual: glidePathData.actualEquityPct, color: 'bg-primary' },
+                { label: 'Debt (EPF/PPF/FD/NPS)',  target: glidePathData.targetDebtPct,   actual: glidePathData.actualDebtPct,   color: 'bg-success' },
+                { label: 'Gold (SGB/Gold-ETF)',     target: glidePathData.targetGoldPct,   actual: glidePathData.actualGoldPct,   color: 'bg-warning'  },
+              ].map(({ label, target, actual, color }) => {
+                const gap = Math.abs(actual - target);
+                const isOff = gap > 5;
+                return (
+                  <div key={label} className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">{label}</span>
+                      <span className={isOff ? 'text-warning font-semibold' : 'text-success font-semibold'}>
+                        {glidePathData.totalInvVal > 0 ? `${actual.toFixed(0)}%` : '—'} / target {target}%
+                        {isOff ? ` (${gap.toFixed(0)}% off)` : ' ✓'}
+                      </span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-muted/40 overflow-hidden relative">
+                      <div className={`h-full rounded-full ${color} opacity-70`} style={{ width: `${Math.min(100, actual)}%` }} />
+                      <div className="absolute top-0 h-full border-r-2 border-foreground/40" style={{ left: `${target}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            {glidePathData.totalInvVal === 0 && (
+              <p className="text-xs text-muted-foreground italic">Add investments to see your actual allocation vs the glide path.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
