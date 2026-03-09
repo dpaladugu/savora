@@ -27,6 +27,7 @@ import { NPSForm } from './forms/nps-form';
 import { SGBForm } from './forms/sgb-form';
 import { FDRDForm } from './forms/fd-rd-form';
 import { toast } from 'sonner';
+import { xirr } from '@/lib/xirr';
 
 type InstrumentTab = 'overview' | 'sip-mf' | 'epf' | 'ppf' | 'nps' | 'sgb' | 'fd-rd';
 
