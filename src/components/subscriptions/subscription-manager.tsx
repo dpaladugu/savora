@@ -156,6 +156,25 @@ export function SubscriptionManager() {
     toast.success('Subscription removed');
   };
 
+  // ── Renewal Calendar: 12 months of upcoming renewals ────────────────────────
+  const renewalCalendar = useMemo(() => {
+    const months: { label: string; date: Date; subs: { name: string; amount: number; cycle: string }[]; total: number }[] = [];
+    for (let m = 0; m < 12; m++) {
+      const d = addMonths(startOfMonth(new Date()), m);
+      const monthSubs = subs.filter(s => {
+        const due = nextDueDate(new Date(s.startDate), s.cycle);
+        return due.getFullYear() === d.getFullYear() && due.getMonth() === d.getMonth();
+      }).map(s => ({ name: s.name, amount: s.amount, cycle: s.cycle }));
+      months.push({
+        label: format(d, 'MMM yy'),
+        date: d,
+        subs: monthSubs,
+        total: monthSubs.reduce((s, x) => s + x.amount, 0),
+      });
+    }
+    return months;
+  }, [subs]);
+
   return (
     <div className="space-y-4">
       <PageHeader
