@@ -471,15 +471,24 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
             <p className="text-xs font-semibold text-foreground">Emergency Fund</p>
-            <span className={`text-xs font-bold tabular-nums ${efPct >= 100 ? 'text-success' : efPct >= 50 ? 'text-warning' : 'value-negative'}`}>
-              {ef ? `${efPct}%` : 'Not set up'}
+            <span className={`text-xs font-bold tabular-nums ${
+              !ef ? 'text-muted-foreground' :
+              efPct >= 100 ? 'text-success' :
+              efPct >= 50  ? 'text-warning'  : 'value-negative'
+            }`}>
+              {ef
+                ? (ef.targetAmount > 0 ? `${efPct}%` : 'Configure →')
+                : 'Not set up'}
             </span>
           </div>
           <Progress value={efPct} className="h-1.5" />
-          {ef && (
+          {ef && ef.targetAmount > 0 && (
             <p className="text-[10px] text-muted-foreground mt-1">
               ₹{ef.currentAmount.toLocaleString('en-IN')} of ₹{ef.targetAmount.toLocaleString('en-IN')} · {ef.targetMonths}-month target
             </p>
+          )}
+          {ef && ef.targetAmount === 0 && (
+            <p className="text-[10px] text-muted-foreground mt-1">Fund created — tap to set target amount →</p>
           )}
           {!ef && (
             <p className="text-[10px] text-muted-foreground mt-1">Tap to build your safety net →</p>
