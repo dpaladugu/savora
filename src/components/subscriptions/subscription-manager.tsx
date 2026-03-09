@@ -260,72 +260,112 @@ export function SubscriptionManager() {
         </Card>
       )}
 
-      {/* List */}
-      {subs.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center space-y-3">
-            <RefreshCw className="h-10 w-10 mx-auto text-muted-foreground/25" />
-            <p className="text-sm text-muted-foreground">No subscriptions yet</p>
-            <Button size="sm" variant="outline" className="h-9 text-xs rounded-xl gap-1.5" onClick={openAdd}>
-              <Plus className="h-3.5 w-3.5" /> Add first subscription
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {subs.map(sub => {
-            const Icon     = CATEGORY_ICONS[(sub as any).category ?? 'Other'] ?? RefreshCw;
-            const due      = nextDueDate(new Date(sub.startDate), sub.cycle);
-            const daysLeft = differenceInDays(due, new Date());
-            const isUrgent = daysLeft <= 7;
-            const monthly  = toMonthly(sub.amount, sub.cycle);
-            return (
-              <Card key={sub.id} className={`glass ${isUrgent ? 'border-warning/40' : 'border-border/40'}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
-                      <Icon className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-semibold truncate">{sub.name}</p>
-                        <Badge variant="outline" className="text-[10px] shrink-0">{sub.cycle}</Badge>
-                        {isUrgent && (
-                          <Badge className="text-[10px] bg-warning/15 text-warning border-warning/30 shrink-0">
-                            Due in {daysLeft}d
-                          </Badge>
-                        )}
+      {/* Tabs: List | Calendar */}
+      <Tabs defaultValue="list" className="space-y-3">
+        <TabsList className="grid grid-cols-2 w-full rounded-xl h-9">
+          <TabsTrigger value="list"     className="text-xs rounded-lg">Subscriptions</TabsTrigger>
+          <TabsTrigger value="calendar" className="text-xs rounded-lg flex items-center gap-1">
+            <Calendar className="h-3 w-3" /> Renewal Calendar
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── List tab ────────────────────────────────────────────── */}
+        <TabsContent value="list" className="space-y-3">
+          {subs.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center space-y-3">
+                <RefreshCw className="h-10 w-10 mx-auto text-muted-foreground/25" />
+                <p className="text-sm text-muted-foreground">No subscriptions yet</p>
+                <Button size="sm" variant="outline" className="h-9 text-xs rounded-xl gap-1.5" onClick={openAdd}>
+                  <Plus className="h-3.5 w-3.5" /> Add first subscription
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {subs.map(sub => {
+                const Icon     = CATEGORY_ICONS[(sub as any).category ?? 'Other'] ?? RefreshCw;
+                const due      = nextDueDate(new Date(sub.startDate), sub.cycle);
+                const daysLeft = differenceInDays(due, new Date());
+                const isUrgent = daysLeft <= 7;
+                const monthly  = toMonthly(sub.amount, sub.cycle);
+                return (
+                  <Card key={sub.id} className={`glass ${isUrgent ? 'border-warning/40' : 'border-border/40'}`}>
+                    <CardContent className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                          <Icon className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="text-sm font-semibold truncate">{sub.name}</p>
+                            <Badge variant="outline" className="text-[10px] shrink-0">{sub.cycle}</Badge>
+                            {isUrgent && (
+                              <Badge className="text-[10px] bg-warning/15 text-warning border-warning/30 shrink-0">
+                                Due in {daysLeft}d
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[11px]">
+                            <div>
+                              <span className="text-muted-foreground">Amount </span>
+                              <span className="font-medium">{formatCurrency(sub.amount)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">≈/mo </span>
+                              <span className="font-medium text-destructive">{formatCurrency(monthly)}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Next </span>
+                              <span className="font-medium">{format(due, 'd MMM')}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(sub)}>
+                            <Edit className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(sub.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[11px]">
-                        <div>
-                          <span className="text-muted-foreground">Amount </span>
-                          <span className="font-medium">{formatCurrency(sub.amount)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">≈/mo </span>
-                          <span className="font-medium text-destructive">{formatCurrency(monthly)}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Next </span>
-                          <span className="font-medium">{format(due, 'd MMM')}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(sub)}>
-                        <Edit className="h-3.5 w-3.5 text-muted-foreground" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(sub.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* ── Calendar tab ─────────────────────────────────────────── */}
+        <TabsContent value="calendar" className="space-y-2">
+          <p className="text-xs text-muted-foreground px-1">Next 12 months of upcoming renewals</p>
+          {renewalCalendar.map(({ label, subs: ms, total }) => (
+            <Card key={label} className={`glass ${ms.length > 0 ? 'border-border/60' : 'border-border/20 opacity-50'}`}>
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-xs font-semibold text-foreground">{label}</span>
+                  {total > 0 ? (
+                    <span className="text-xs font-bold text-destructive tabular-nums">{formatCurrency(total)}</span>
+                  ) : (
+                    <span className="text-[10px] text-muted-foreground">No renewals</span>
+                  )}
+                </div>
+                {ms.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {ms.map(s => (
+                      <span key={s.name} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        {s.name} · {formatCurrency(s.amount)}
+                      </span>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+      </Tabs>
 
       {/* Add/Edit Modal */}
       <Dialog open={showModal} onOpenChange={setShowModal}>
