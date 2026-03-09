@@ -145,6 +145,27 @@ export class ExpenseService {
     }
   }
 
+  static async getExpenseById(id: string): Promise<Expense | undefined> {
+    try {
+      const txn = await db.txns.get(id);
+      if (!txn || txn.amount >= 0) return undefined;
+      return {
+        id: txn.id,
+        date: txn.date instanceof Date ? txn.date.toISOString().split('T')[0] : String(txn.date).slice(0, 10),
+        amount: Math.abs(txn.amount),
+        description: txn.note || '',
+        category: txn.category || 'Other',
+        payment_method: txn.paymentMix?.[0]?.mode || 'Cash',
+        source: 'manual',
+        tags: txn.tags || [],
+        account: '',
+      };
+    } catch (error) {
+      console.error(`Error in ExpenseService.getExpenseById for id ${id}:`, error);
+      return undefined;
+    }
+  }
+
   static async getExpensesByCategory(category: string): Promise<Expense[]> {
     try {
       const txns = await db.txns
