@@ -353,9 +353,14 @@ export function AutoGoalEngine() {
                     <p className="text-xs text-muted-foreground truncate">{rule.description}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5">Trigger: {rule.trigger}</p>
                   </div>
-                  <div className="text-right shrink-0 space-y-1">
+                   <div className="text-right shrink-0 space-y-1">
                     <p className="text-xs font-bold text-foreground">₹{rule.targetAmount.toLocaleString('en-IN')}</p>
                     <p className="text-[10px] text-muted-foreground">{rule.horizonMonths}m horizon</p>
+                    {monthlyIncome > 0 && !done && (
+                      <p className="text-[10px] text-primary font-semibold">
+                        SIP: ₹{sipForRule(rule).toLocaleString('en-IN')}/mo
+                      </p>
+                    )}
                   </div>
                   {done ? (
                     <CheckCircle2 className="h-5 w-5 text-success shrink-0" />
