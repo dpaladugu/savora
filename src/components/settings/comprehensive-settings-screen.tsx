@@ -31,6 +31,8 @@ export function ComprehensiveSettingsScreen() {
   // Profile fields backed by db.globalSettings
   const [userName, setUserName] = useState('');
   const [userMission, setUserMission] = useState('');
+  const [annualIncome, setAnnualIncome] = useState('');
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
@@ -38,6 +40,8 @@ export function ComprehensiveSettingsScreen() {
     db.globalSettings.limit(1).first().then(s => {
       if (s?.userName)    setUserName(s.userName);
       if (s?.userMission) setUserMission(s.userMission);
+      if (s?.annualIncome) setAnnualIncome(String(s.annualIncome));
+      if (s?.dateOfBirth)  setDateOfBirth(s.dateOfBirth);
     }).catch(() => {});
   }, []);
 
