@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -90,6 +90,21 @@ export function RecurringTransactionsPage() {
   const paused  = items.filter(i => !i.is_active);
   const totalIn  = active.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
   const totalOut = active.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
+
+  // ── SIP / investment breakdown ────────────────────────────────────────────
+  const { sipTotal, emiTotal, billsTotal } = useMemo(() => {
+    const SIP_CATS = ['investment', 'sip', 'mf', 'nps', 'ppf', 'epf', 'gold'];
+    const EMI_CATS = ['emi', 'loan'];
+    const sipItems  = active.filter(i => i.type === 'expense' && SIP_CATS.some(k => (i.category ?? '').toLowerCase().includes(k) || (i.description ?? '').toLowerCase().includes(k)));
+    const emiItems  = active.filter(i => i.type === 'expense' && EMI_CATS.some(k => (i.category ?? '').toLowerCase().includes(k) || (i.description ?? '').toLowerCase().includes(k)));
+    const billItems = active.filter(i => i.type === 'expense' && !sipItems.includes(i) && !emiItems.includes(i));
+    return {
+      sipTotal:   sipItems.reduce((s, i) => s + i.amount, 0),
+      emiTotal:   emiItems.reduce((s, i) => s + i.amount, 0),
+      billsTotal: billItems.reduce((s, i) => s + i.amount, 0),
+    };
+  }, [active]);
+
 
   const handleSubmit = async (data: any) => {
     try {
@@ -188,6 +203,23 @@ export function RecurringTransactionsPage() {
             </div>
             <p className="text-lg font-bold text-destructive tabular-nums">{formatCurrency(totalOut)}</p>
           </div>
+        </div>
+      )}
+
+      {/* ── SIP / EMI / Bills breakdown strip ── */}
+      {active.length > 0 && (sipTotal > 0 || emiTotal > 0) && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'SIPs', value: sipTotal,   color: 'text-primary',     bg: 'bg-primary/8 border-primary/20' },
+            { label: 'EMIs', value: emiTotal,    color: 'text-warning',     bg: 'bg-warning/8 border-warning/20' },
+            { label: 'Bills', value: billsTotal, color: 'text-destructive', bg: 'bg-destructive/8 border-destructive/20' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`rounded-2xl border p-3 space-y-0.5 ${bg}`}>
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${color}`}>{label}</span>
+              <p className={`text-sm font-bold tabular-nums ${color}`}>{formatCurrency(value)}</p>
+              <span className="text-[9px] text-muted-foreground">/month</span>
+            </div>
+          ))}
         </div>
       )}
 
