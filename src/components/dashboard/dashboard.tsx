@@ -122,14 +122,19 @@ function IncomeQuickAdd({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-function QuickActions({ onTabChange, onMoreNavigation, onAddIncome }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void; onAddIncome: () => void }) {
+function QuickActions({ onTabChange, onMoreNavigation, onAddIncome, onPrepay }: {
+  onTabChange: (t: string) => void;
+  onMoreNavigation: (m: string) => void;
+  onAddIncome: () => void;
+  onPrepay: () => void;
+}) {
   const actions = [
     { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')                },
     { icon: Banknote,   label: 'Add Income',  onClick: onAddIncome                                  },
     { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards')            },
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
-    { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
     { icon: Crosshair,  label: 'Debt Strike',  onClick: () => onMoreNavigation('debt-strike')        },
+    { icon: BarChart3,  label: 'Prepayment',   onClick: onPrepay                                     },
   ];
   return (
     <div className="grid grid-cols-6 gap-2" role="group" aria-label="Quick actions">
