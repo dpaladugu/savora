@@ -296,6 +296,54 @@ export function CashflowAnalysis() {
               </table>
             </CardContent>
           </Card>
+
+          {/* ── 12-Month Projection Card ────────────────────────────────── */}
+          {(() => {
+            const activeMonths = monthData.filter(m => m.income > 0 || m.expenses > 0);
+            if (activeMonths.length === 0) return null;
+            const avgIncome   = activeMonths.reduce((s, m) => s + m.income, 0)   / activeMonths.length;
+            const avgExpenses = activeMonths.reduce((s, m) => s + m.expenses, 0) / activeMonths.length;
+            const avgSurplus  = Math.max(0, avgIncome - avgExpenses);
+            const projected12mSurplus = avgSurplus * 12;
+            const now2 = new Date();
+            const monthsRemaining = 12 - (now2.getMonth() + 1);
+            const projectedYearEnd = monthData
+              .filter(m => {
+                const idx = monthData.indexOf(m);
+                return idx >= 0;
+              })
+              .reduce((s, m) => s + m.net, 0) + avgSurplus * monthsRemaining;
+
+            return (
+              <Card className="glass border-primary/20 bg-primary/5">
+                <CardContent className="p-4 space-y-2">
+                  <p className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    📈 12-Month Projection
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="space-y-0.5">
+                      <p className="text-muted-foreground">Avg monthly surplus</p>
+                      <p className="font-bold text-success tabular-nums">{formatCurrency(avgSurplus)}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-muted-foreground">Projected surplus/yr</p>
+                      <p className="font-bold text-primary tabular-nums">{formatCurrency(projected12mSurplus)}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-muted-foreground">Months remaining</p>
+                      <p className="font-bold tabular-nums">{monthsRemaining}</p>
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-muted-foreground">Projected year-end</p>
+                      <p className={`font-bold tabular-nums ${projectedYearEnd >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {projectedYearEnd >= 0 ? '+' : ''}{formatCurrency(projectedYearEnd)}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
       </Tabs>
     </div>
