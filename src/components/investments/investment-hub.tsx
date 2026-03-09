@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import {
   TrendingUp, Plus, ChevronRight, Landmark, PiggyBank,
   Building2, Coins, BarChart3, CreditCard, Pencil, Trash2,
-  AlertCircle, CalendarClock, Info
+  AlertCircle, Info
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { SIPMFForm } from './forms/sip-mf-form';
 import { EPFForm } from './forms/epf-form';
 import { PPFForm } from './forms/ppf-form';
