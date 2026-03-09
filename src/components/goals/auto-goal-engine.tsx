@@ -208,13 +208,33 @@ export function AutoGoalEngine() {
   const [created, setCreated]   = useState<Set<string>>(new Set());
   const [loading, setLoading]   = useState(true);
 
+  // ── Pull annualIncome + salaryCreditDay from globalSettings ──────────────
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
+  const [salaryCreditDay, setSalaryCreditDay] = useState(1);
+
   useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
     try {
-      const g = await db.goals.toArray();
+      const [g, settings, incomes] = await Promise.all([
+        db.goals.toArray(),
+        db.globalSettings.limit(1).first(),
+        db.incomes.toArray(),
+      ]);
       setGoals(g);
+
+      // ── Resolve monthly income: settings.annualIncome → fallback to 6m avg ──
+      if (settings?.annualIncome && settings.annualIncome > 0) {
+        setMonthlyIncome(Math.round(settings.annualIncome / 12));
+        setSalaryCreditDay(settings.salaryCreditDay ?? 1);
+      } else {
+        const sixAgo = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 6);
+        const recent = incomes.filter(i => new Date(i.date) >= sixAgo);
+        const avg = recent.length ? recent.reduce((s, i) => s + i.amount, 0) / 6 : 0;
+        setMonthlyIncome(Math.round(avg));
+      }
+
       // Mark rules already converted to goals (by matching title prefix)
       const titles = new Set(g.map(x => x.name?.toLowerCase() ?? x.title?.toLowerCase() ?? ''));
       const matched = new Set(
@@ -223,6 +243,14 @@ export function AutoGoalEngine() {
       setCreated(matched);
     } catch (e) { console.error(e); }
     setLoading(false);
+  }
+
+  // ── SIP needed helper ──────────────────────────────────────────────────────
+  function sipForRule(rule: NudgeRule): number {
+    if (rule.horizonMonths <= 0) return 0;
+    const r = 0.01; // 1% monthly (12% annual)
+    const n = rule.horizonMonths;
+    return Math.ceil(rule.targetAmount / (((Math.pow(1 + r, n) - 1) / r) * (1 + r)));
   }
 
   async function createGoal(rule: NudgeRule) {
@@ -240,7 +268,7 @@ export function AutoGoalEngine() {
       updatedAt:     new Date(),
     } as any);
     setCreated(prev => new Set([...prev, rule.id]));
-    toast.success(`Goal "${rule.title}" created`);
+    toast.success(`Goal "${rule.title}" created — SIP needed: ₹${sipForRule(rule).toLocaleString('en-IN')}/mo`);
     load();
   }
 
@@ -248,6 +276,12 @@ export function AutoGoalEngine() {
     const pending = NUDGE_RULES.filter(r => r.priority === 'high' && !created.has(r.id));
     for (const r of pending) await createGoal(r);
     toast.success(`${pending.length} high-priority goals created`);
+  }
+
+  async function createAll() {
+    const pending = NUDGE_RULES.filter(r => !created.has(r.id));
+    for (const r of pending) await createGoal(r);
+    toast.success(`${pending.length} goals created`);
   }
 
   const notCreated = NUDGE_RULES.filter(r => !created.has(r.id));
@@ -262,16 +296,31 @@ export function AutoGoalEngine() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-foreground">Auto-Goal Engine</h1>
-          <p className="text-xs text-muted-foreground">14 CFA-aligned goal rules · §24.1 Nudge Engine</p>
+          <p className="text-xs text-muted-foreground">
+            14 CFA-aligned goal rules · §24.1 Nudge Engine
+            {monthlyIncome > 0 && (
+              <span className="ml-1 text-primary font-medium">
+                · Income: ₹{(monthlyIncome / 1000).toFixed(0)}k/mo
+              </span>
+            )}
+          </p>
         </div>
-        {highCount > 0 && (
-          <Button size="sm" className="gap-1.5" onClick={createAllHighPriority}>
-            <Zap className="h-3.5 w-3.5" />
-            Create {highCount} High-Priority
-          </Button>
-        )}
+        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+          {highCount > 0 && (
+            <Button size="sm" className="gap-1.5 text-xs h-8" onClick={createAllHighPriority}>
+              <Zap className="h-3.5 w-3.5" />
+              {highCount} High
+            </Button>
+          )}
+          {notCreated.length > 0 && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={createAll}>
+              <Plus className="h-3.5 w-3.5" />
+              All {notCreated.length}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="nudges">
@@ -304,9 +353,14 @@ export function AutoGoalEngine() {
                     <p className="text-xs text-muted-foreground truncate">{rule.description}</p>
                     <p className="text-[10px] text-muted-foreground/60 mt-0.5">Trigger: {rule.trigger}</p>
                   </div>
-                  <div className="text-right shrink-0 space-y-1">
+                   <div className="text-right shrink-0 space-y-1">
                     <p className="text-xs font-bold text-foreground">₹{rule.targetAmount.toLocaleString('en-IN')}</p>
                     <p className="text-[10px] text-muted-foreground">{rule.horizonMonths}m horizon</p>
+                    {monthlyIncome > 0 && !done && (
+                      <p className="text-[10px] text-primary font-semibold">
+                        SIP: ₹{sipForRule(rule).toLocaleString('en-IN')}/mo
+                      </p>
+                    )}
                   </div>
                   {done ? (
                     <CheckCircle2 className="h-5 w-5 text-success shrink-0" />

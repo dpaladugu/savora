@@ -80,8 +80,9 @@ export function VehicleManager() {
     e.preventDefault();
     try {
       const now = new Date();
+      const vehicleName = `${form.make} ${form.model}`.trim();
       const data = {
-        name: `${form.make} ${form.model}`.trim(),
+        name: vehicleName,
         year: form.purchaseDate ? new Date(form.purchaseDate).getFullYear() : now.getFullYear(),
         owner: form.owner, regNo: form.regNo, type: form.type,
         make: form.make, model: form.model, fuelType: form.fuelType,
@@ -97,14 +98,49 @@ export function VehicleManager() {
       };
       if (editingVehicle) {
         await VehicleService.updateVehicle(editingVehicle.id, data);
+        // ── Sync insurance expiry to InsuranceManager ─────────────────────
+        await syncVehicleInsurance(editingVehicle.id, vehicleName, data.insuranceExpiry, parseFloat(form.vehicleValue) || 0);
         toast.success('Vehicle updated');
       } else {
-        await VehicleService.addVehicle(data);
+        const newId = await VehicleService.addVehicle(data);
+        // ── Create matching insurance record for new vehicle ───────────────
+        await syncVehicleInsurance(String(newId ?? crypto.randomUUID()), vehicleName, data.insuranceExpiry, parseFloat(form.vehicleValue) || 0);
         toast.success('Vehicle added');
       }
       setForm({ ...emptyForm }); setShowModal(false); setEditingVehicle(null); load();
     } catch { toast.error('Failed to save vehicle'); }
   };
+
+  // ── Sync vehicle insurance expiry → db.insurance ─────────────────────────
+  async function syncVehicleInsurance(vehicleId: string, vehicleName: string, expiry: Date, vehicleValue: number) {
+    try {
+      const { db } = await import('@/lib/db');
+      const policyRef = `vehicle-${vehicleId}`;
+      const existing = await db.insurance.where('policyNo').equals(policyRef).first();
+      const now = new Date();
+      if (existing) {
+        await db.insurance.update(existing.id, { endDate: expiry, premiumDueDate: expiry, updatedAt: now });
+      } else {
+        await db.insurance.add({
+          id: crypto.randomUUID(),
+          name: `${vehicleName} Vehicle Insurance`,
+          type: 'Vehicle',
+          premium: 0,
+          sumInsured: vehicleValue,
+          policyNo: policyRef,
+          startDate: now,
+          endDate: expiry,
+          premiumDueDate: expiry,
+          isActive: true,
+          policySource: 'Personal',
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
+    } catch (err) {
+      console.warn('Vehicle insurance sync skipped:', err);
+    }
+  }
 
   const handleEdit = (v: Vehicle) => {
     setEditingVehicle(v);
