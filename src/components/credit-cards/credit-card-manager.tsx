@@ -57,6 +57,86 @@ const emptyForm = {
 
 type FormState = typeof emptyForm;
 
+// ─── Log Payment inline button ────────────────────────────────────────────────
+function LogPaymentButton({ card }: { card: CreditCard }) {
+  const [open, setOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const amt = parseFloat(amount);
+    if (!amt || amt <= 0) return;
+    setSaving(true);
+    try {
+      const newBal = Math.max(0, (card.currentBalance ?? 0) - amt);
+      await db.creditCards.update(card.id, { currentBalance: newBal, updatedAt: new Date() });
+      // Also add as an expense entry so balance sheet stays consistent
+      await db.expenses.add({
+        id: crypto.randomUUID(),
+        description: `CC Payment — ${card.name}`,
+        amount: amt,
+        category: 'Credit Card Payment',
+        date: new Date().toISOString().split('T')[0] as any,
+        payment_method: card.paymentMethod ?? 'Bank Transfer',
+        tags: [],
+        source: 'manual',
+        account: card.name,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      toast.success(`₹${amt.toLocaleString('en-IN')} payment logged for ${card.name}`);
+      setAmount('');
+      setOpen(false);
+    } catch (e: any) { toast.error(`Failed: ${e.message}`); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="w-full h-8 text-xs gap-1.5 border-success/30 text-success hover:bg-success/5"
+        onClick={() => setOpen(true)}
+      >
+        <CheckCircle2 className="h-3 w-3" /> Log Payment
+      </Button>
+      <Dialog open={open} onOpenChange={v => !v && setOpen(false)}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle className="text-sm flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              Log Payment — {card.name}
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handlePay} className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Payment Amount (₹)</Label>
+              <Input
+                type="number"
+                placeholder={`Outstanding: ₹${(card.currentBalance ?? 0).toLocaleString('en-IN')}`}
+                value={amount}
+                onChange={e => setAmount(e.target.value)}
+                autoFocus
+                className="h-10"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button type="submit" className="flex-1 h-9 text-xs" disabled={saving}>
+                {saving ? 'Saving…' : 'Log Payment'}
+              </Button>
+              <Button type="button" variant="outline" className="flex-1 h-9 text-xs" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 export function CreditCardManager() {
   const cards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
