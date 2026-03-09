@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle, ChevronLeft, ChevronRight, BarChart3, Sparkles } from 'lucide-react';
 import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
@@ -15,6 +15,7 @@ import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { suggestCategory } from '@/lib/expense-autocategory';
 
 // ─── Month nav helpers ────────────────────────────────────────────────────────
 function monthLabel(y: number, m: number) {
@@ -238,7 +239,29 @@ export function ExpenseTracker() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Description *</Label>
-                <Input placeholder="What was this for?" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required className="h-10" />
+                <div className="relative">
+                  <Input
+                    placeholder="What was this for?"
+                    value={form.description}
+                    onChange={e => {
+                      const desc = e.target.value;
+                      const suggested = suggestCategory(desc);
+                      setForm(f => ({
+                        ...f,
+                        description: desc,
+                        // Auto-fill category only if not already set by user
+                        category: f.category || suggested,
+                      }));
+                    }}
+                    required
+                    className="h-10"
+                  />
+                  {form.description.length >= 3 && suggestCategory(form.description) && !form.category && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] text-primary font-medium pointer-events-none">
+                      <Sparkles className="h-2.5 w-2.5" /> auto
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">

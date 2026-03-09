@@ -17,8 +17,9 @@ import { cn } from '@/lib/utils';
 import {
   TrendingUp, Plus, ChevronRight, Landmark, PiggyBank,
   Building2, Coins, BarChart3, CreditCard, Pencil, Trash2,
-  AlertCircle, CalendarClock, Info
+  AlertCircle, Info
 } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { SIPMFForm } from './forms/sip-mf-form';
 import { EPFForm } from './forms/epf-form';
 import { PPFForm } from './forms/ppf-form';
@@ -193,6 +194,66 @@ function EmptyInstrument({ label, onAdd }: { label: string; onAdd: () => void })
   );
 }
 
+// ── Allocation Donut ──────────────────────────────────────────────────────────
+const DONUT_COLORS: Record<string, string> = {
+  'sip-mf': 'hsl(var(--primary))',
+  'epf':    'hsl(var(--success))',
+  'ppf':    'hsl(var(--warning))',
+  'nps':    'hsl(280 65% 60%)',
+  'sgb':    'hsl(48 90% 50%)',
+  'fd-rd':  'hsl(var(--muted-foreground))',
+};
+const DONUT_LABELS: Record<string, string> = {
+  'sip-mf': 'SIP/MF', 'epf': 'EPF', 'ppf': 'PPF', 'nps': 'NPS', 'sgb': 'SGB', 'fd-rd': 'FD/RD',
+};
+
+function AllocationDonut({ groups, total }: { groups: Record<string, Investment[]>; total: number }) {
+  const data = Object.entries(groups)
+    .filter(([k]) => k !== 'other')
+    .map(([key, list]) => ({ name: DONUT_LABELS[key] ?? key, value: totalOf(list).current, color: DONUT_COLORS[key] }))
+    .filter(d => d.value > 0);
+
+  if (data.length === 0) return null;
+
+  return (
+    <Card className="glass border-border/40">
+      <CardContent className="p-4">
+        <p className="text-xs font-semibold text-foreground mb-3">Portfolio Allocation</p>
+        <div className="flex items-center gap-4">
+          <div className="shrink-0" style={{ width: 100, height: 100 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={data} cx="50%" cy="50%" innerRadius={28} outerRadius={46} dataKey="value" strokeWidth={1}>
+                  {data.map((d, i) => <Cell key={i} fill={d.color} />)}
+                </Pie>
+                <Tooltip
+                  formatter={(v: number) => [formatCurrency(v), '']}
+                  contentStyle={{ fontSize: 10, borderRadius: 6, border: '1px solid hsl(var(--border))' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex-1 space-y-1.5">
+            {data.map(d => (
+              <div key={d.name} className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="h-2 w-2 rounded-full shrink-0" style={{ background: d.color }} />
+                  <span className="text-[11px] text-muted-foreground truncate">{d.name}</span>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[11px] font-semibold text-foreground tabular-nums">
+                    {total > 0 ? Math.round((d.value / total) * 100) : 0}%
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── NPS 80CCD(1B) usage bar ───────────────────────────────────────────────────
 function NPS80CCDBar({ npsList }: { npsList: Investment[] }) {
   const used = npsList.reduce((s, i) => s + (i.nps80CCDUsed || 0), 0);
@@ -354,6 +415,8 @@ export function InvestmentHub() {
 
         {/* ── Overview ─────────────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-3 mt-3">
+          {/* Allocation donut */}
+          {totalPortfolio.current > 0 && <AllocationDonut groups={groups} total={totalPortfolio.current} />}
           <div className="grid grid-cols-2 gap-3">
             <SummaryTile label="SIP / MF" icon={TrendingUp} color="bg-primary/10 text-primary"
               current={totalOf(groups['sip-mf']).current} invested={totalOf(groups['sip-mf']).invested}
