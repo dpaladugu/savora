@@ -131,30 +131,61 @@ export function TelegramPendingTxns() {
     setPaymentMode('UPI'); setNote('');
   };
 
+  const approveSingle = async (p: PendingTxn) => {
+    const isIncome = ['income', 'salary', 'rental income', 'bonus', 'dividend']
+      .some(kw => (p.category || '').toLowerCase().includes(kw) || (p.note || '').toLowerCase().includes(kw));
+    const now = new Date();
+    await db.txns.add({
+      id: crypto.randomUUID(),
+      date: now,
+      amount: isIncome ? Math.abs(p.amount) : -Math.abs(p.amount),
+      currency: 'INR',
+      category: p.category,
+      note: p.note || p.rawText,
+      tags: ['telegram'],
+      isPartialRent: false,
+      paymentMix: [{ mode: (['Cash','Card','UPI','Bank'].includes(p.paymentMode ?? '') ? p.paymentMode : 'UPI') as 'Cash'|'Card'|'UPI'|'Bank', amount: Math.abs(p.amount) }],
+      isSplit: false,
+      splitWith: [],
+      createdAt: now,
+      updatedAt: now,
+    });
+    // ── Dual-write to income ledger for salary/income items ─────────────────
+    if (isIncome) {
+      await db.incomes.add({
+        id: crypto.randomUUID(),
+        amount: Math.abs(p.amount),
+        category: p.category,
+        description: p.note || p.rawText || p.category,
+        date: now,
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+    await (db as any).pendingTxns?.update(p.id, { status: 'approved' });
+  };
+
   const handleApprove = async (p: PendingTxn) => {
     if (role !== 'ADMIN') { toast.error('Only ADMIN can approve'); return; }
     try {
-      const isIncome = (p.category || '').toLowerCase().includes('income') ||
-                       (p.note || '').toLowerCase().includes('salary');
-      await db.txns.add({
-        id: crypto.randomUUID(),
-        date: new Date(),
-        amount: isIncome ? Math.abs(p.amount) : -Math.abs(p.amount),
-        currency: 'INR',
-        category: p.category,
-        note: p.note || p.rawText,
-        tags: ['telegram'],
-        isPartialRent: false,
-        paymentMix: [{ mode: (p.paymentMode === 'Cash' || p.paymentMode === 'Card' || p.paymentMode === 'UPI' || p.paymentMode === 'Bank' ? p.paymentMode : 'UPI') as 'Cash' | 'Card' | 'UPI' | 'Bank', amount: Math.abs(p.amount) }],
-        isSplit: false,
-        splitWith: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      await (db as any).pendingTxns?.update(p.id, { status: 'approved' });
-      toast.success(`✅ ₹${p.amount.toLocaleString('en-IN')} → ${isIncome ? 'income' : 'expense'} ledger`);
+      const isIncome = ['income', 'salary', 'rental income', 'bonus', 'dividend']
+        .some(kw => (p.category || '').toLowerCase().includes(kw) || (p.note || '').toLowerCase().includes(kw));
+      await approveSingle(p);
+      toast.success(`✅ ₹${p.amount.toLocaleString('en-IN')} → ${isIncome ? 'income + txn' : 'expense'} ledger`);
     } catch {
       toast.error('Approval failed');
+    }
+  };
+
+  const handleApproveAll = async () => {
+    if (role !== 'ADMIN') { toast.error('Only ADMIN can approve'); return; }
+    const pending = (allPending || []).filter(p => p.status === 'pending');
+    if (!pending.length) { toast.info('No pending transactions'); return; }
+    try {
+      for (const p of pending) await approveSingle(p);
+      toast.success(`✅ ${pending.length} transaction${pending.length > 1 ? 's' : ''} approved`);
+    } catch {
+      toast.error('Bulk approval failed');
     }
   };
 
