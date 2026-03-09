@@ -256,6 +256,37 @@ export function CFARecommendationsDashboard() {
     return list.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]);
   }, [loans, investments, insurance, expenses, incomes, goals, ef, shops, rooms, settings, refreshKey]);
 
+  // ── Age-based glide path ─────────────────────────────────────────────────
+  const glidePathData = useMemo(() => {
+    const dob = settings?.dateOfBirth;
+    const annualInc = (settings as any)?.annualIncome ?? 0;
+    if (!dob) return null;
+    const age = Math.floor((Date.now() - new Date(dob).getTime()) / (365.25 * 24 * 3600 * 1000));
+    if (age <= 0 || age > 80) return null;
+
+    // CFA glide path: equity starts high, tapers with age
+    const targetEquityPct  = Math.max(20, Math.min(80, 100 - age));
+    const targetDebtPct    = Math.round((100 - targetEquityPct) * 0.7);
+    const targetGoldPct    = 100 - targetEquityPct - targetDebtPct;
+
+    // Actual allocation from investments
+    const totalInvVal = investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+    const equityVal   = investments.filter(i => ['MF', 'SIP', 'Equity', 'SGB', 'Stocks', 'MF-Growth', 'MF-Dividend'].some(k => (i.type || '').includes(k)))
+      .reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+    const debtVal     = investments.filter(i => ['EPF', 'PPF', 'FD', 'RD', 'Bonds', 'NPS'].some(k => (i.type || '').includes(k)))
+      .reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+    const goldVal     = investments.filter(i => ['SGB', 'Gold-ETF'].some(k => (i.type || '').includes(k)))
+      .reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+
+    const actualEquityPct = totalInvVal > 0 ? (equityVal / totalInvVal) * 100 : 0;
+    const actualDebtPct   = totalInvVal > 0 ? (debtVal  / totalInvVal) * 100 : 0;
+    const actualGoldPct   = totalInvVal > 0 ? (goldVal  / totalInvVal) * 100 : 0;
+
+    return { age, targetEquityPct, targetDebtPct, targetGoldPct, actualEquityPct, actualDebtPct, actualGoldPct, totalInvVal, annualInc };
+  }, [settings, investments]);
+
+
+
   const filtered = selectedType === 'all' ? recs : recs.filter(r => r.type === selectedType);
 
   const highCount   = recs.filter(r => r.priority === 'High').length;
