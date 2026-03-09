@@ -34,6 +34,8 @@ export class GlobalSettingsService {
         theme: 'light',
         deviceThemes: {},
         revealSecret: '',
+        annualIncome: 0,
+        dateOfBirth: '',
       };
 
       await db.globalSettings.add(defaultSettings);
