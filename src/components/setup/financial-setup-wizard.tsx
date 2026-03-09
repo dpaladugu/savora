@@ -125,11 +125,13 @@ export function FinancialSetupWizard({ onComplete }: Props) {
       }
 
       if (stepDef.id === 'emergency') {
-        const corpus   = parseFloat(form.efCurrentCorpus);
-        const expenses = parseFloat(form.efMonthlyExpenses);
+        const corpus   = parseFloat(form.efCurrentCorpus) || 0;
+        const expenses = parseFloat(form.efMonthlyExpenses) || 0;
         const months   = parseInt(form.efTargetMonths) || 12;
         if (corpus > 0 || expenses > 0) {
-          const target = expenses * months;
+          // Use corpus as proxy for expenses if expenses not entered (target = corpus / months * months = corpus)
+          const effectiveExpenses = expenses > 0 ? expenses : corpus / months;
+          const target = Math.round(effectiveExpenses * months) || corpus;
           // Upsert: remove any existing EF and create fresh
           const existing = await db.emergencyFunds.toArray();
           if (existing.length > 0) {
