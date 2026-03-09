@@ -18,6 +18,7 @@ import { useLiveQuery } from "dexie-react-hooks";
 import { processRecurringTransactions } from "@/services/RecurringTransactionProcessor";
 import { toast } from "sonner";
 import { FinancialSetupWizard } from "@/components/setup/financial-setup-wizard";
+import { FabAddExpense } from "@/components/layout/fab-add-expense";
 
 const MainApp = () => {
   let isUnlocked = false;
