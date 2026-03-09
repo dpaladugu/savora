@@ -270,6 +270,27 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
   const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
 
+  // Salary credit day — count this-month salary entries
+  const now = new Date();
+  const thisMonthSalaryCount = useLiveQuery(() =>
+    db.incomes
+      .where('date').between(
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        true, false
+      )
+      .and(i => (i.category === 'Salary' || (i.description ?? '').toLowerCase().includes('salary')))
+      .count().catch(() => 0),
+  []) ?? 0;
+  const salaryCreditDay = settings?.salaryCreditDay ?? 0;
+  const todayDate = now.getDate();
+  const showSalaryNudge = role !== 'BROTHER' && role !== 'GUEST'
+    && incomeCount > 0
+    && salaryCreditDay > 0
+    && todayDate >= salaryCreditDay
+    && todayDate <= salaryCreditDay + 5
+    && thisMonthSalaryCount === 0;
+
   // ── Show Setup Wizard on first launch (no income + no globalSettings userName) ──
   useEffect(() => {
     if (incomeCount === 0 && settings !== undefined && !settings?.userName) {
