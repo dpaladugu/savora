@@ -105,19 +105,27 @@ export function SubscriptionManager() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const startDate = new Date(form.startDate);
+    const amt = parseFloat(form.amount);
+    const nd = nextDueDate(startDate, form.cycle);
+    const now = new Date();
     const data = {
       name: form.name,
-      amount: parseFloat(form.amount),
+      cost: amt,
+      billingCycle: form.cycle,
+      nextBilling: nd,
+      amount: amt,
       cycle: form.cycle,
       category: form.category,
       startDate,
-      nextDue: nextDueDate(startDate, form.cycle),
+      nextDue: nd,
       reminderDays: parseInt(form.reminderDays) || 3,
       isActive: true,
+      createdAt: now,
+      updatedAt: now,
     };
     try {
       if (editId) {
-        await db.subscriptions?.update(editId, data);
+        await db.subscriptions?.update(editId, { ...data, updatedAt: now });
         toast.success('Subscription updated');
       } else {
         await db.subscriptions?.add({ id: crypto.randomUUID(), ...data });
