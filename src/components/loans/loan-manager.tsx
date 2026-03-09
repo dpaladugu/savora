@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
+import { auditLog } from '@/components/audit/audit-log-viewer';
 import { formatCurrency } from '@/lib/format-utils';
 import { format, addMonths } from 'date-fns';
 import { db } from '@/lib/db';

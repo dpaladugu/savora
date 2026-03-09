@@ -150,11 +150,14 @@ export function InsuranceManager() {
     };
     try {
       if (editingId) {
+        const old = await db.insurancePolicies?.get(editingId);
         await db.insurancePolicies?.update(editingId, { ...data, updatedAt: new Date() });
+        await auditLog('update', `Insurance:${data.type}`, data, old);
         toast.success('Policy updated');
       } else {
         const newId = crypto.randomUUID();
         await db.insurancePolicies?.add({ id: newId, ...data });
+        await auditLog('create', `Insurance:${data.type}`, { id: newId, ...data });
         toast.success('Policy added');
       }
       setShowModal(false);
@@ -165,7 +168,9 @@ export function InsuranceManager() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this policy?')) return;
+    const old = await db.insurancePolicies?.get(id);
     await db.insurancePolicies?.delete(id);
+    await auditLog('delete', `Insurance:${old?.type ?? 'Policy'}`, undefined, old);
     toast.success('Policy deleted');
   };
 
