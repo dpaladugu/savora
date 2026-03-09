@@ -71,7 +71,42 @@ const seedInsurance = async () => {
   }
 };
 
+// ── Seed Guntur shops & Gorantla rooms (first-launch only) ───────────────────
+const seedRentalUnits = async () => {
+  const shopCount = await db.gunturShops.count().catch(() => 0);
+  if (shopCount > 0) return;
+
+  const now = new Date();
+  // 6 Guntur shops — default rent ₹3,000/mo each
+  for (let i = 1; i <= 6; i++) {
+    await db.gunturShops.add({
+      id: `shop-${i}`,
+      name: `Shop ${i}`,
+      tenant: '',
+      rent: 3000,
+      status: 'Occupied' as any,
+      paid: false,
+      dueDay: 1,
+      createdAt: now,
+      updatedAt: now,
+    } as any);
+  }
+  // 4 Gorantla rooms — default rent ₹2,000/mo each
+  for (let i = 1; i <= 4; i++) {
+    await db.gorantlaRooms.add({
+      id: `room-${i}`,
+      roomNumber: `R${i}`,
+      tenant: '',
+      rent: 2000,
+      paid: false,
+      createdAt: now,
+      updatedAt: now,
+    } as any);
+  }
+};
+
 export const seedInitialData = async () => {
   await seedGlobalSettings();
   await seedInsurance();
+  await seedRentalUnits();
 };

@@ -108,6 +108,7 @@ export function MoreScreen({
   onClose?: () => void;
 }) {
   const role = useRole();
+  const [query, setQuery] = React.useState('');
 
   const handleClick = (moduleId: string, status: string) => {
     if (status === 'coming-soon') return;
@@ -117,10 +118,31 @@ export function MoreScreen({
 
   const cats = ['financial', 'tracking', 'analysis', 'settings'] as const;
 
+  const q = query.trim().toLowerCase();
+
   return (
-    <div className="px-4 pb-6 space-y-5 animate-fade-in">
+    <div className="px-4 pb-6 space-y-4 animate-fade-in">
+      {/* ── Search box ─────────────────────────────────────────────────── */}
+      <div className="relative">
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search modules…"
+          className="w-full h-10 pl-9 pr-3 rounded-2xl border border-border/60 bg-muted/40 text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-primary transition-colors"
+        />
+        <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        {query && (
+          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M18 6L6 18M6 6l12 12"/></svg>
+          </button>
+        )}
+      </div>
+
       {cats.map((cat) => {
-        const items = modules.filter((m) => m.category === cat && isVisible(m, role));
+        const items = modules.filter((m) => m.category === cat && isVisible(m, role) && (
+          !q || m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || cat.toLowerCase().includes(q)
+        ));
         if (items.length === 0) return null;
         const { label, icon: Icon } = categoryMeta[cat];
         return (
@@ -172,6 +194,16 @@ export function MoreScreen({
           </div>
         );
       })}
+
+      {/* No-results state when searching */}
+      {q && cats.every(cat => modules.filter(m => m.category === cat && isVisible(m, role) && (
+        m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || cat.toLowerCase().includes(q)
+      )).length === 0) && (
+        <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+          <p className="text-sm font-medium text-foreground">No modules found</p>
+          <p className="text-xs text-muted-foreground">Try a different keyword</p>
+        </div>
+      )}
     </div>
   );
 }
