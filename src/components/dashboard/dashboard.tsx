@@ -433,6 +433,28 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       {/* ── Net Worth Widget ── */}
       <NetWorthWidget onNavigate={onMoreNavigation} />
 
+      {/* ── Quick-link cards: Cashflow · Budget · Insurance Gap ── */}
+      {role !== 'GUEST' && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { id: 'cashflow',       label: 'Cashflow',       icon: BarChart3,  color: 'bg-primary/10 text-primary'     },
+            { id: 'budget-vs-actual', label: 'Budget',       icon: ListChecks, color: 'bg-warning/10 text-warning'     },
+            { id: 'insurance-gap',  label: 'Ins. Gap',       icon: Shield,     color: 'bg-success/10 text-success'     },
+          ].map(({ id, label, icon: Icon, color }) => (
+            <button
+              key={id}
+              onClick={() => onMoreNavigation(id)}
+              className="flex flex-col items-center gap-1.5 p-3 rounded-2xl border border-border/60 bg-card/60 hover:bg-card hover:border-primary/30 active:scale-[0.97] transition-all"
+            >
+              <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${color}`}>
+                <Icon className="h-4 w-4" />
+              </div>
+              <span className="text-[10px] font-semibold text-foreground leading-tight text-center">{label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Data Health Widget (disappears once all buckets filled) ── */}
       <DataHealthWidget onNavigate={onMoreNavigation} />
 

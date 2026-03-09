@@ -2,6 +2,7 @@
 import { db } from "@/lib/db";
 import type { Txn } from '@/lib/db';
 import { checkSpendingLimitAfterExpense } from '@/lib/spending-limit-checker';
+import { auditLog } from '@/components/audit/audit-log-viewer';
 
 // Expense type for backward compatibility
 export interface Expense {
@@ -45,6 +46,14 @@ export class ExpenseService {
       
       await db.txns.add(txnData);
 
+      // ── Audit log ────────────────────────────────────────────────────────
+      await auditLog('create', `Expense:${expenseData.category}`, {
+        amount: expenseData.amount,
+        category: expenseData.category,
+        description: expenseData.description,
+        date: expenseData.date,
+      });
+
       // ── Spending-limit check (non-blocking) ─────────────────────────────
       checkSpendingLimitAfterExpense(expenseData.category, expenseData.amount, expenseData.date);
 
@@ -57,6 +66,7 @@ export class ExpenseService {
 
   static async updateExpense(id: string, updates: Partial<Expense>): Promise<number> {
     try {
+      const old = await db.txns.get(id);
       const txnUpdates: Partial<Txn> = {};
       
       if (updates.date) txnUpdates.date = new Date(updates.date);
@@ -66,6 +76,9 @@ export class ExpenseService {
       if (updates.tags) txnUpdates.tags = updates.tags;
       
       const updatedCount = await db.txns.update(id, txnUpdates);
+
+      await auditLog('update', `Expense:${updates.category ?? old?.category}`, txnUpdates, old);
+
       return updatedCount;
     } catch (error) {
       console.error(`Error in ExpenseService.updateExpense for id ${id}:`, error);
@@ -80,23 +93,19 @@ export class ExpenseService {
         id: expense.id || self.crypto.randomUUID(),
         date: new Date(expense.date),
         amount: -Math.abs(expense.amount),
-        currency: 'INR',
+        currency: 'INR' as const,
         category: expense.category,
         note: expense.description,
-        tags: expense.tags,
-        paymentMix: [{
-          mode: expense.payment_method as any,
-          amount: expense.amount
-        }],
+        tags: expense.tags || [],
+        paymentMix: expense.payment_method ? [{ mode: expense.payment_method as any, amount: expense.amount }] : [],
         splitWith: [],
         isPartialRent: false,
         isSplit: false,
         createdAt: now,
         updatedAt: now,
       }));
-      
       await db.txns.bulkAdd(txns);
-      console.log(`Bulk added ${expensesData.length} expenses.`);
+      await auditLog('create', `Expense:BulkImport`, { count: txns.length });
     } catch (error) {
       console.error("Error in ExpenseService.bulkAddExpenses:", error);
       throw error;
@@ -105,33 +114,34 @@ export class ExpenseService {
 
   static async deleteExpense(id: string): Promise<void> {
     try {
+      const old = await db.txns.get(id);
       await db.txns.delete(id);
+      await auditLog('delete', `Expense`, undefined, old);
     } catch (error) {
       console.error(`Error in ExpenseService.deleteExpense for id ${id}:`, error);
       throw error;
     }
   }
 
-  static async getExpenses(): Promise<Expense[]> {
+  static async getExpenses(limit?: number): Promise<Expense[]> {
     try {
-      const txns = await db.txns.toArray();
-      // Convert transactions to expense format (only negative amounts)
-      return txns
-        .filter(txn => txn.amount < 0)
-        .map(txn => ({
-          id: txn.id,
-          date: txn.date.toISOString().split('T')[0],
-          amount: Math.abs(txn.amount),
-          description: txn.note,
-          category: txn.category,
-          payment_method: txn.paymentMix[0]?.mode || 'Cash',
-          source: 'manual',
-          tags: txn.tags,
-          account: '',
-        }));
+      let query = db.txns.where('amount').below(0).reverse();
+      const txns = limit ? await query.limit(limit).toArray() : await query.toArray();
+      
+      return txns.map(txn => ({
+        id: txn.id,
+        date: txn.date instanceof Date ? txn.date.toISOString().split('T')[0] : String(txn.date).slice(0, 10),
+        amount: Math.abs(txn.amount),
+        description: txn.note || '',
+        category: txn.category || 'Other',
+        payment_method: txn.paymentMix?.[0]?.mode || 'Cash',
+        source: 'manual',
+        tags: txn.tags || [],
+        account: '',
+      }));
     } catch (error) {
-      console.error(`Error in ExpenseService.getExpenses:`, error);
-      throw error;
+      console.error("Error in ExpenseService.getExpenses:", error);
+      return [];
     }
   }
 
@@ -139,21 +149,44 @@ export class ExpenseService {
     try {
       const txn = await db.txns.get(id);
       if (!txn || txn.amount >= 0) return undefined;
-      
       return {
         id: txn.id,
-        date: txn.date.toISOString().split('T')[0],
+        date: txn.date instanceof Date ? txn.date.toISOString().split('T')[0] : String(txn.date).slice(0, 10),
         amount: Math.abs(txn.amount),
-        description: txn.note,
-        category: txn.category,
-        payment_method: txn.paymentMix[0]?.mode || 'Cash',
+        description: txn.note || '',
+        category: txn.category || 'Other',
+        payment_method: txn.paymentMix?.[0]?.mode || 'Cash',
         source: 'manual',
-        tags: txn.tags,
+        tags: txn.tags || [],
         account: '',
       };
     } catch (error) {
       console.error(`Error in ExpenseService.getExpenseById for id ${id}:`, error);
-      throw error;
+      return undefined;
+    }
+  }
+
+  static async getExpensesByCategory(category: string): Promise<Expense[]> {
+    try {
+      const txns = await db.txns
+        .where('category').equals(category)
+        .and(t => t.amount < 0)
+        .toArray();
+      
+      return txns.map(txn => ({
+        id: txn.id,
+        date: txn.date instanceof Date ? txn.date.toISOString().split('T')[0] : String(txn.date).slice(0, 10),
+        amount: Math.abs(txn.amount),
+        description: txn.note || '',
+        category: txn.category || 'Other',
+        payment_method: txn.paymentMix?.[0]?.mode || 'Cash',
+        source: 'manual',
+        tags: txn.tags || [],
+        account: '',
+      }));
+    } catch (error) {
+      console.error(`Error in ExpenseService.getExpensesByCategory for ${category}:`, error);
+      return [];
     }
   }
 }

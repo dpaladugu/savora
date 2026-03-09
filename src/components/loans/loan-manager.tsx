@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
+import { auditLog } from '@/components/audit/audit-log-viewer';
 import { formatCurrency } from '@/lib/format-utils';
 import { format, addMonths } from 'date-fns';
 import { db } from '@/lib/db';
@@ -412,9 +413,12 @@ export function LoanManager() {
         createdAt: new Date(), updatedAt: new Date(),
       };
       if (editingLoan) {
+        const old = await db.loans.get(editingLoan.id);
         await LoanService.updateLoan(editingLoan.id, data);
+        await auditLog('update', `Loan:${data.name}`, data, old);
       } else {
         await LoanService.createLoan(data);
+        await auditLog('create', `Loan:${data.name}`, data);
       }
       toast.success(editingLoan ? 'Loan updated' : 'Loan added');
       setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null);
@@ -437,7 +441,9 @@ export function LoanManager() {
   const handleDelete = async (id: string) => {
     if (!confirm('Mark loan as inactive?')) return;
     try {
+      const old = await db.loans.get(id);
       await LoanService.updateLoan(id, { isActive: false });
+      await auditLog('delete', `Loan:${old?.name ?? 'Loan'}`, { isActive: false }, old);
       toast.success('Loan marked inactive');
     } catch { toast.error('Failed to update loan'); }
   };
