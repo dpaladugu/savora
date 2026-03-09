@@ -47,6 +47,37 @@ export function RecurringTransactionsPage() {
   const [editing, setEditing] = useState<RecurringTransaction | null>(null);
   const [running, setRunning] = useState(false);
 
+  // ── Auto-seed EMI entries if no EMI-type recurring entries exist ───────────
+  useEffect(() => {
+    (async () => {
+      try {
+        const all = await db.recurringTransactions.toArray().catch(() => []);
+        const hasEMI = all.some(r => r.category?.toLowerCase().includes('emi') || r.description?.toLowerCase().includes('emi') || r.description?.toLowerCase().includes('incred') || r.description?.toLowerCase().includes('icici'));
+        if (hasEMI) return;
+        const loans = await db.loans.toArray().catch(() => []);
+        const now = new Date();
+        const nextMonth1 = new Date(now.getFullYear(), now.getMonth() + 1, 5).toISOString().split('T')[0];
+        for (const loan of loans.filter(l => l.isActive && (l.emi ?? 0) > 0)) {
+          await db.recurringTransactions.add({
+            id: crypto.randomUUID(),
+            amount: loan.emi ?? 0,
+            description: `${loan.name ?? loan.type ?? 'Loan'} EMI`,
+            category: 'EMI',
+            frequency: 'monthly',
+            interval: 1,
+            start_date: nextMonth1,
+            next_date: nextMonth1,
+            is_active: true,
+            type: 'expense',
+            day_of_month: 5,
+            created_at: now,
+            updated_at: now,
+          } as any);
+        }
+      } catch { /* silent */ }
+    })();
+  }, []);
+
   // Auto-open form with pre-fill when navigated from a nudge CTA
   useEffect(() => {
     if (prefill) {

@@ -27,6 +27,7 @@ import { SmartNudgeEngine } from './smart-nudge-engine';
 import { GunturWaterfallCard } from './guntur-waterfall-card';
 import { DebtFreedomCountdown } from './debt-freedom-countdown';
 import { DataHealthWidget } from './data-health-widget';
+import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
 
 
 
@@ -122,14 +123,19 @@ function IncomeQuickAdd({ open, onClose }: { open: boolean; onClose: () => void 
 }
 
 // ── Quick Actions ─────────────────────────────────────────────────────────────
-function QuickActions({ onTabChange, onMoreNavigation, onAddIncome }: { onTabChange: (t: string) => void; onMoreNavigation: (m: string) => void; onAddIncome: () => void }) {
+function QuickActions({ onTabChange, onMoreNavigation, onAddIncome, onPrepay }: {
+  onTabChange: (t: string) => void;
+  onMoreNavigation: (m: string) => void;
+  onAddIncome: () => void;
+  onPrepay: () => void;
+}) {
   const actions = [
     { icon: Plus,       label: 'Add Expense', onClick: () => onTabChange('expenses')                },
     { icon: Banknote,   label: 'Add Income',  onClick: onAddIncome                                  },
     { icon: CreditCard, label: 'Cards',        onClick: () => onTabChange('credit-cards')            },
     { icon: Target,     label: 'Goals',        onClick: () => onTabChange('goals')                   },
-    { icon: BarChart3,  label: 'Budget',       onClick: () => onMoreNavigation('budget-vs-actual')   },
     { icon: Crosshair,  label: 'Debt Strike',  onClick: () => onMoreNavigation('debt-strike')        },
+    { icon: BarChart3,  label: 'Prepayment',   onClick: onPrepay                                     },
   ];
   return (
     <div className="grid grid-cols-6 gap-2" role="group" aria-label="Quick actions">
@@ -254,12 +260,21 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const [hasWill, setHasWill] = useState<boolean | null>(null);
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [showMonthDrilldown, setShowMonthDrilldown] = useState(false);
+  const [showPrepayDialog, setShowPrepayDialog] = useState(false);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
   const userName    = settings?.userName || 'Devavratha';
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
   const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
+
+  // ── Show Setup Wizard on first launch (no income + no globalSettings userName) ──
+  useEffect(() => {
+    if (incomeCount === 0 && settings !== undefined && !settings?.userName) {
+      setShowSetupWizard(true);
+    }
+  }, [incomeCount, settings]);
   const pendingCount = useLiveQuery(
     () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
     [role]
@@ -480,7 +495,12 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
       />
 
       {/* ── Quick Actions ── */}
-      <QuickActions onTabChange={onTabChange} onMoreNavigation={onMoreNavigation} onAddIncome={() => setShowIncomeDialog(true)} />
+      <QuickActions
+        onTabChange={onTabChange}
+        onMoreNavigation={onMoreNavigation}
+        onAddIncome={() => setShowIncomeDialog(true)}
+        onPrepay={() => onMoreNavigation('loans')}
+      />
 
       {/* ── Monthly Summary — tappable for drill-down ── */}
       <MonthlySummaryCard onDrilldown={() => setShowMonthDrilldown(true)} />
@@ -539,6 +559,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ── Financial Setup Wizard (first-launch) ── */}
+      {showSetupWizard && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <FinancialSetupWizard onComplete={() => setShowSetupWizard(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

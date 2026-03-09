@@ -47,16 +47,34 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
       return d >= prevBounds.start && d < prevBounds.end;
     }), [allIncomes, prevBounds.start.getTime(), prevBounds.end.getTime()]);
 
+  // ── All expenses in current month (db.expenses table) ─────────────────────
+  const allDbExpenses = useLiveQuery(() => db.expenses.toArray().catch(() => []), []) ?? [];
+  const currentDbExp = useMemo(() =>
+    allDbExpenses.filter(e => {
+      const d = e.date instanceof Date ? e.date : new Date(e.date as any);
+      return d >= thisBounds.start && d < thisBounds.end;
+    }), [allDbExpenses, thisBounds.start.getTime(), thisBounds.end.getTime()]);
+  const prevDbExp = useMemo(() =>
+    allDbExpenses.filter(e => {
+      const d = e.date instanceof Date ? e.date : new Date(e.date as any);
+      return d >= prevBounds.start && d < prevBounds.end;
+    }), [allDbExpenses, prevBounds.start.getTime(), prevBounds.end.getTime()]);
+
   const { income, expenses, surplus, prevExpenses, prevIncome } = useMemo(() => {
     const income   = currentIncomes.reduce((s, i) => s + i.amount, 0);
-    const expenses = currentTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    // Union db.txns negative + db.expenses for full spend picture
+    const txnSpend = currentTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const dbSpend  = currentDbExp.reduce((s, e) => s + Math.abs(e.amount), 0);
+    const expenses = txnSpend + dbSpend;
     const surplus  = Math.max(0, income - expenses);
 
-    const prevExpenses = prevTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const prevTxnSpend = prevTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const prevDbSpend  = prevDbExp.reduce((s, e) => s + Math.abs(e.amount), 0);
+    const prevExpenses = prevTxnSpend + prevDbSpend;
     const prevIncome   = prevIncomes.reduce((s, i) => s + i.amount, 0);
 
     return { income, expenses, surplus, prevExpenses, prevIncome };
-  }, [currentTxns, prevTxns, currentIncomes, prevIncomes]);
+  }, [currentTxns, prevTxns, currentIncomes, prevIncomes, currentDbExp, prevDbExp]);
 
   // Trend calculation
   const expenseDelta = prevExpenses > 0 ? ((expenses - prevExpenses) / prevExpenses) * 100 : null;

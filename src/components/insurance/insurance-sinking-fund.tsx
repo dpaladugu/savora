@@ -78,7 +78,7 @@ function sourceTag(p: any) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function InsuranceSinkingFund() {
-  const policies       = useLiveQuery(() => db.insurancePolicies?.toArray() ?? Promise.resolve([]), []) ?? [];
+  const policies       = useLiveQuery(() => db.insurance?.toArray().catch(() => []) ?? Promise.resolve([]), []) ?? [];
   const goals          = useLiveQuery(() => db.goals.toArray(), []) ?? [];
   const globalSettings = useLiveQuery(() => db.globalSettings.limit(1).first().catch(() => undefined), []);
 

@@ -2,7 +2,7 @@
  * SpendingLimits — per-category monthly caps.
  * Auto-sums from expenses in current month and fires toast alert at configurable threshold.
  */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,14 +37,26 @@ function limitColor(pct: number): string {
 }
 
 export function SpendingLimits() {
-  const limits = useLiveQuery(() => db.spendingLimits?.toArray() ?? Promise.resolve([])) || [];
+  const limits = useLiveQuery(() => db.spendingLimits?.toArray().catch(() => []) ?? Promise.resolve([])) || [];
 
-  // Live month expenses
+  // Live month expenses — union db.expenses (Date objects) + db.txns (negative amounts)
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthExpenses = useLiveQuery(() =>
-    db.expenses?.where('date').aboveOrEqual(monthStart.toISOString().split('T')[0]).toArray() ?? Promise.resolve([])
-  ) || [];
+
+  const allExpenses = useLiveQuery(() => db.expenses?.toArray().catch(() => []) ?? Promise.resolve([])) || [];
+  const allTxns     = useLiveQuery(() => db.txns?.toArray().catch(() => []) ?? Promise.resolve([])) || [];
+
+  const monthExpenses = useMemo(() => {
+    const expRows = allExpenses.filter(e => {
+      const d = e.date instanceof Date ? e.date : new Date(e.date as any);
+      return d >= monthStart;
+    });
+    const txnRows = allTxns
+      .filter(t => t.amount < 0 && (() => { const d = t.date instanceof Date ? t.date : new Date(t.date as any); return d >= monthStart; })())
+      .map(t => ({ category: t.category, amount: Math.abs(t.amount) }));
+    return [...expRows, ...txnRows];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allExpenses, allTxns, monthStart.getTime()]);
 
   const spendByCategory: Record<string, number> = {};
   monthExpenses.forEach(e => {
