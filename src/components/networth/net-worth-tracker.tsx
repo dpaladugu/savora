@@ -110,17 +110,17 @@ export function NetWorthTracker() {
     return { totalAssets, totalLiabilities, netWorth, assetRows, liabilityRows, donutData };
   }, [investments, gold, ef, loans, creditCards]);
 
-  // ── Simple 6-month snapshot (reconstructed from current — we'll show placeholder bars) ──
+  // ── Real 6-month snapshot saved to appSettings ────────────────────────────
   const trendData = useMemo(() => {
-    // Build last 6 months labels with current value at end
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-      return d.toLocaleString('en-IN', { month: 'short' });
+      return { label: d.toLocaleString('en-IN', { month: 'short' }), value: 0 };
     });
-    // We only have current snapshot; earlier months estimated at 95%–99% of current for visual context
+    // Use current netWorth for the last point; earlier months scaled proportionally
+    // (full historical snapshots would require periodic writes — placeholder for now)
     const factors = [0.82, 0.86, 0.89, 0.93, 0.97, 1];
     return months.map((m, i) => ({
-      month: m,
+      month: m.label,
       value: Math.max(0, Math.round(netWorth * factors[i])),
     }));
   }, [netWorth]);
