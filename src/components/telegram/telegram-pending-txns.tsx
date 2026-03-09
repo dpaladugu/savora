@@ -214,9 +214,16 @@ export function TelegramPendingTxns() {
         subtitle="§23 · Bot queue → one-tap confirm"
         icon={MessageCircle}
         action={
-          <Button size="sm" onClick={() => setShowAdd(true)} className="h-9 text-xs gap-1 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Capture
-          </Button>
+          <div className="flex items-center gap-1.5">
+            {counts.pending > 0 && role === 'ADMIN' && (
+              <Button size="sm" variant="outline" onClick={handleApproveAll} className="h-9 text-xs gap-1 rounded-xl border-success/40 text-success hover:bg-success/10">
+                <CheckCircle2 className="h-3.5 w-3.5" /> Approve All ({counts.pending})
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setShowAdd(true)} className="h-9 text-xs gap-1 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> Capture
+            </Button>
+          </div>
         }
       />
 

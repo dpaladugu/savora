@@ -208,13 +208,33 @@ export function AutoGoalEngine() {
   const [created, setCreated]   = useState<Set<string>>(new Set());
   const [loading, setLoading]   = useState(true);
 
+  // ── Pull annualIncome + salaryCreditDay from globalSettings ──────────────
+  const [monthlyIncome, setMonthlyIncome] = useState(0);
+  const [salaryCreditDay, setSalaryCreditDay] = useState(1);
+
   useEffect(() => { load(); }, []);
 
   async function load() {
     setLoading(true);
     try {
-      const g = await db.goals.toArray();
+      const [g, settings, incomes] = await Promise.all([
+        db.goals.toArray(),
+        db.globalSettings.limit(1).first(),
+        db.incomes.toArray(),
+      ]);
       setGoals(g);
+
+      // ── Resolve monthly income: settings.annualIncome → fallback to 6m avg ──
+      if (settings?.annualIncome && settings.annualIncome > 0) {
+        setMonthlyIncome(Math.round(settings.annualIncome / 12));
+        setSalaryCreditDay(settings.salaryCreditDay ?? 1);
+      } else {
+        const sixAgo = new Date(); sixAgo.setMonth(sixAgo.getMonth() - 6);
+        const recent = incomes.filter(i => new Date(i.date) >= sixAgo);
+        const avg = recent.length ? recent.reduce((s, i) => s + i.amount, 0) / 6 : 0;
+        setMonthlyIncome(Math.round(avg));
+      }
+
       // Mark rules already converted to goals (by matching title prefix)
       const titles = new Set(g.map(x => x.name?.toLowerCase() ?? x.title?.toLowerCase() ?? ''));
       const matched = new Set(
@@ -223,6 +243,14 @@ export function AutoGoalEngine() {
       setCreated(matched);
     } catch (e) { console.error(e); }
     setLoading(false);
+  }
+
+  // ── SIP needed helper ──────────────────────────────────────────────────────
+  function sipForRule(rule: NudgeRule): number {
+    if (rule.horizonMonths <= 0) return 0;
+    const r = 0.01; // 1% monthly (12% annual)
+    const n = rule.horizonMonths;
+    return Math.ceil(rule.targetAmount / (((Math.pow(1 + r, n) - 1) / r) * (1 + r)));
   }
 
   async function createGoal(rule: NudgeRule) {
@@ -240,7 +268,7 @@ export function AutoGoalEngine() {
       updatedAt:     new Date(),
     } as any);
     setCreated(prev => new Set([...prev, rule.id]));
-    toast.success(`Goal "${rule.title}" created`);
+    toast.success(`Goal "${rule.title}" created — SIP needed: ₹${sipForRule(rule).toLocaleString('en-IN')}/mo`);
     load();
   }
 
@@ -248,6 +276,12 @@ export function AutoGoalEngine() {
     const pending = NUDGE_RULES.filter(r => r.priority === 'high' && !created.has(r.id));
     for (const r of pending) await createGoal(r);
     toast.success(`${pending.length} high-priority goals created`);
+  }
+
+  async function createAll() {
+    const pending = NUDGE_RULES.filter(r => !created.has(r.id));
+    for (const r of pending) await createGoal(r);
+    toast.success(`${pending.length} goals created`);
   }
 
   const notCreated = NUDGE_RULES.filter(r => !created.has(r.id));
