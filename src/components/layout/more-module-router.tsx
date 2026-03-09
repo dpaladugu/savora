@@ -36,6 +36,7 @@ import { RecurringTransactionsPage } from '@/components/recurring-transactions/r
 import { DebtStrikeCalculator } from '@/components/debt/debt-strike-calculator';
 import { NetWorthTracker } from '@/components/networth/net-worth-tracker';
 import { SIPPlanner } from '@/components/goals/sip-planner';
+import { CashflowAnalysis } from '@/components/cashflow/cashflow-analysis';
 import { TelegramPendingTxns } from '@/components/telegram/telegram-pending-txns';
 import { useRole } from '@/store/rbacStore';
 import { Shield } from 'lucide-react';
