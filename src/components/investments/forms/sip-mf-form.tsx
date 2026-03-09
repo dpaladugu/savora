@@ -173,7 +173,7 @@ export function SIPMFForm({ initial, onDone }: Props) {
             <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
               <div className="space-y-1.5">
                 <Label>Monthly SIP Amount (₹)</Label>
-                <Input type="number" step="500" placeholder="5000" {...register('sipAmount')} />
+                <Input type="number" step="1" min="1" placeholder="5000" {...register('sipAmount')} />
               </div>
               <div className="space-y-1.5">
                 <Label>Debit Day of Month</Label>
