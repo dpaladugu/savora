@@ -559,16 +559,15 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
           </CardContent>
         </Card>
       </div>
-    </div>
 
-    {/* ── Financial Setup Wizard (first-launch) ── */}
-    {showSetupWizard && (
-      <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center p-4">
-        <div className="w-full max-w-md">
-          <FinancialSetupWizard onComplete={() => setShowSetupWizard(false)} />
+      {/* ── Financial Setup Wizard (first-launch) ── */}
+      {showSetupWizard && (
+        <div className="fixed inset-0 z-50 bg-background/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md">
+            <FinancialSetupWizard onComplete={() => setShowSetupWizard(false)} />
+          </div>
         </div>
-      </div>
-    )}
-  </div>
+      )}
+    </div>
   );
 }
