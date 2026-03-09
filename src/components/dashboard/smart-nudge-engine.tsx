@@ -79,9 +79,8 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
   const setPrefill = useSIPPrefillStore(s => s.setPrefill);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-  const goals       = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
-  const recurring   = useLiveQuery(() => db.recurringTransactions.toArray().catch(() => []), []) ?? [];
-  const loans       = useLiveQuery(() => db.loans.toArray().catch(() => []), []) ?? [];
+    // ── 6. Insurance renewal within 30 days ─────────────────────────────────
+    const insurance = useLiveQuery(() => db.insurance.toArray().catch(() => []), []) ?? [];
   const investments = useLiveQuery(() => db.investments.toArray().catch(() => []), []) ?? [];
   const creditCards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first().catch(() => undefined), []);
