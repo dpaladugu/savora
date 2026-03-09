@@ -27,7 +27,7 @@ export function DataHealthWidget({ onNavigate }: Props) {
   // Live counts from all key tables
   const incomeCount      = useLiveQuery(() => db.incomes.count().catch(() => 0), []);
   const investmentCount  = useLiveQuery(() => db.investments.count().catch(() => 0), []);
-  const insuranceCount   = useLiveQuery(() => db.insurancePolicies.count().catch(() => 0), []);
+  const insuranceCount   = useLiveQuery(() => db.insurance.count().catch(() => 0), []);
   const loanCount        = useLiveQuery(() => db.loans.where('isActive').equals(1).count().catch(() => db.loans.count().catch(() => 0)), []);
   const shopCount        = useLiveQuery(() => db.gunturShops.where('status').equals('Occupied').count().catch(() => 0), []);
   const roomCount        = useLiveQuery(() => db.gorantlaRooms.count().catch(() => 0), []);
