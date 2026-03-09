@@ -324,6 +324,45 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       });
     }
 
+    // ── NPS 80CCD(1B) contribution gap nudge ────────────────────────────────
+    const investments = (settings as any)?._investments ?? [];
+    // Check NPS from db directly via useLiveQuery in the next data pull
+    const npsInvestments = investments.filter((i: any) => ['NPS-T1', 'NPS-T2'].includes(i.type ?? ''));
+    const npsThisFY = npsInvestments.reduce((s: number, i: any) => s + (i.investedValue ?? i.amount ?? 0), 0);
+    if (npsThisFY < 50_000) {
+      const annualIncome = settings?.annualIncome ?? 0;
+      if (annualIncome > 600_000) { // Only nudge if income above basic slab
+        list.push({
+          id: 'nps-gap',
+          icon: <TrendingDown className="h-4 w-4" />,
+          title: 'NPS 80CCD(1B) gap this FY',
+          body: `Max ₹50,000 deduction available. Only ₹${npsThisFY.toLocaleString('en-IN')} contributed so far — add ${formatCurrency(50_000 - npsThisFY)} more before 31 Mar to save tax.`,
+          ctaLabel: 'Open NPS →',
+          ctaAction: () => onMoreNavigation('auto-goals'),
+          priority: 2,
+          color: 'warning',
+        });
+      }
+    }
+
+    // ── Health insurance gap nudge (benchmark ₹15L total) ───────────────────
+    const healthPolicies = insurance.filter(ins =>
+      ins.isActive !== false && ((ins.type ?? '').toLowerCase().includes('health') || (ins.name ?? '').toLowerCase().includes('health') || (ins.name ?? '').toLowerCase().includes('mediclaim'))
+    );
+    const totalHealthCover = healthPolicies.reduce((s, p) => s + ((p as any).sumAssured ?? (p as any).coverAmount ?? 0), 0);
+    if (totalHealthCover > 0 && totalHealthCover < 15_00_000) {
+      list.push({
+        id: 'health-cover-gap',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: `Health cover ₹${(totalHealthCover / 1_00_000).toFixed(1)}L — below ₹15L target`,
+        body: `CFA benchmark is ₹15L total health cover per family. You're ₹${((15_00_000 - totalHealthCover) / 1_00_000).toFixed(1)}L short. Consider a top-up super top-up plan.`,
+        ctaLabel: 'View Insurance Gap →',
+        ctaAction: () => onMoreNavigation('insurance-gap'),
+        priority: 2,
+        color: 'warning',
+      });
+    }
+
     // Sort by priority, cap at 3
     return list.sort((a, b) => a.priority - b.priority).slice(0, 3);
   }, [activeGoals, recurring, loans, investments, creditCards, ef, settings, shops, rooms, insurance, incomes]);

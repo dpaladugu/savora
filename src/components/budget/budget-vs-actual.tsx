@@ -82,15 +82,15 @@ export function BudgetVsActual({ onNavigateToLimits }: { onNavigateToLimits?: ()
   // Pull from both txns (negative = expense) and expenses table (positive amounts)
   const txns = useLiveQuery(() =>
     db.txns.filter(t => {
-      const d = t.date instanceof Date ? t.date.toISOString().split('T')[0] : String(t.date).slice(0, 10);
-      return d >= monthStart && t.amount < 0;
+      const d = t.date instanceof Date ? t.date : new Date(t.date as any);
+      return d >= new Date(now.getFullYear(), now.getMonth(), 1) && t.amount < 0;
     }).toArray()
   ) ?? [];
 
   const expenseRows = useLiveQuery(() =>
     db.expenses.filter(e => {
-      const d = e.date instanceof Date ? e.date.toISOString().split('T')[0] : String(e.date).slice(0, 10);
-      return d >= monthStart;
+      const d = e.date instanceof Date ? e.date : new Date(e.date as any);
+      return d >= new Date(now.getFullYear(), now.getMonth(), 1);
     }).toArray()
   ) ?? [];
 

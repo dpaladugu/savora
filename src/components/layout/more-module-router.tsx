@@ -106,7 +106,7 @@ export function MoreModuleRouter({ activeModule, onMoreNavigation }: MoreModuleR
       case 'health-tracker':
         return <HealthTracker />;
       case 'subscriptions':
-        return <SubscriptionTracker />;
+        return <SubscriptionManager />;
       case 'family-banking':
         return <FamilyBankManager />;
       case 'family-banking-v2':
