@@ -111,13 +111,25 @@ export function NetWorthTracker() {
   }, [investments, gold, ef, loans, creditCards]);
 
   // ── Real 6-month snapshot saved to appSettings ────────────────────────────
+  // Save today's snapshot so the trend becomes real over time
+  React.useEffect(() => {
+    if (netWorth === 0 && totalAssets === 0) return;
+    const key = new Date().toISOString().slice(0, 7); // YYYY-MM
+    db.appSettings.get('nw-snapshots').then(rec => {
+      const snapshots: Record<string, number> = rec?.value ? JSON.parse(rec.value) : {};
+      snapshots[key] = netWorth;
+      // Keep only 12 months
+      const keys = Object.keys(snapshots).sort();
+      if (keys.length > 12) delete snapshots[keys[0]];
+      db.appSettings.put({ id: 'nw-snapshots', value: JSON.stringify(snapshots) });
+    }).catch(() => {});
+  }, [netWorth, totalAssets]);
+
   const trendData = useMemo(() => {
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-      return { label: d.toLocaleString('en-IN', { month: 'short' }), value: 0 };
+      return { label: d.toLocaleString('en-IN', { month: 'short' }), key: d.toISOString().slice(0, 7) };
     });
-    // Use current netWorth for the last point; earlier months scaled proportionally
-    // (full historical snapshots would require periodic writes — placeholder for now)
     const factors = [0.82, 0.86, 0.89, 0.93, 0.97, 1];
     return months.map((m, i) => ({
       month: m.label,
