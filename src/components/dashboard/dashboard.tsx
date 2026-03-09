@@ -27,6 +27,7 @@ import { SmartNudgeEngine } from './smart-nudge-engine';
 import { GunturWaterfallCard } from './guntur-waterfall-card';
 import { DebtFreedomCountdown } from './debt-freedom-countdown';
 import { DataHealthWidget } from './data-health-widget';
+import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
 
 
 
