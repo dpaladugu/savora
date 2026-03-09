@@ -206,6 +206,23 @@ export function RecurringTransactionsPage() {
         </div>
       )}
 
+      {/* ── SIP / EMI / Bills breakdown strip ── */}
+      {active.length > 0 && (sipTotal > 0 || emiTotal > 0) && (
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            { label: 'SIPs', value: sipTotal,   color: 'text-primary',     bg: 'bg-primary/8 border-primary/20' },
+            { label: 'EMIs', value: emiTotal,    color: 'text-warning',     bg: 'bg-warning/8 border-warning/20' },
+            { label: 'Bills', value: billsTotal, color: 'text-destructive', bg: 'bg-destructive/8 border-destructive/20' },
+          ].map(({ label, value, color, bg }) => (
+            <div key={label} className={`rounded-2xl border p-3 space-y-0.5 ${bg}`}>
+              <span className={`text-[10px] font-semibold uppercase tracking-wide ${color}`}>{label}</span>
+              <p className={`text-sm font-bold tabular-nums ${color}`}>{formatCurrency(value)}</p>
+              <span className="text-[9px] text-muted-foreground">/month</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Form ── */}
       {showForm && (
         <RecurringTransactionForm
