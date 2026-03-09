@@ -1,5 +1,6 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -9,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Target, TrendingDown, Calendar, Zap, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
 import { SequentialStrikeEngine } from './sequential-strike-engine';
+import { subMonths, startOfMonth } from 'date-fns';
 
 interface DebtItem {
   name: string;
@@ -30,10 +32,9 @@ interface StrikeResult {
   totalInterestSaved: number;
 }
 
-// ── Interest-aware avalanche amortisation ─────────────────────────────────────
+// ── Avalanche amortisation ─────────────────────────────────────────────────────
 function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): StrikeResult {
   const totalDebt = debtItems.reduce((s, d) => s + d.outstanding, 0);
-  // Avalanche: highest-rate first (minimises total interest paid)
   const avalancheOrder = [...debtItems].sort((a, b) => b.interestRate - a.interestRate);
 
   if (monthlyCapacity <= 0 || totalDebt <= 0) {
@@ -45,37 +46,25 @@ function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): Strike
     };
   }
 
-  // ── Month-by-month compound simulation ────────────────────────────────────
-  // Each debt accrues interest at its own rate.
-  // Minimum payments are applied first; remaining capacity snowballs into the top-priority debt.
-  let balances   = avalancheOrder.map(d => d.outstanding);
-  const rates    = avalancheOrder.map(d => d.interestRate / 100 / 12);
-  const minPay   = avalancheOrder.map(d => d.monthlyPayment);
+  let balances = avalancheOrder.map(d => d.outstanding);
+  const rates  = avalancheOrder.map(d => d.interestRate / 100 / 12);
+  const minPay = avalancheOrder.map(d => d.monthlyPayment);
 
-  let month = 0;
-  let totalInterestPaid = 0;
-  // Simple baseline: what would total interest be paying only minimums forever?
-  let baselineInterest = 0;
+  let month = 0, totalInterestPaid = 0, baselineInterest = 0;
   const MAX_MONTHS = 600;
 
   while (balances.some(b => b > 0.01) && month < MAX_MONTHS) {
     month++;
     let remaining = monthlyCapacity;
-
-    // Accrue interest & apply minimums
     for (let i = 0; i < balances.length; i++) {
       if (balances[i] <= 0) continue;
       const interest = balances[i] * rates[i];
       totalInterestPaid += interest;
       balances[i] += interest;
-
-      // Apply minimum payment (or full balance if smaller)
       const pay = Math.min(balances[i], Math.max(minPay[i] || 0, 0));
       balances[i] -= pay;
       remaining -= pay;
     }
-
-    // Extra capacity → avalanche target (first non-zero balance)
     if (remaining > 0) {
       for (let i = 0; i < balances.length; i++) {
         if (balances[i] <= 0) continue;
@@ -85,12 +74,9 @@ function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): Strike
         if (remaining <= 0) break;
       }
     }
-
-    // Floor tiny rounding errors
     balances = balances.map(b => (b < 0.01 ? 0 : b));
   }
 
-  // Rough "minimum-only" interest estimate for interest saved calc
   const minOnlyMonths = Math.ceil(totalDebt / Math.max(1, debtItems.reduce((s, d) => s + d.monthlyPayment, 0)));
   avalancheOrder.forEach(d => {
     baselineInterest += d.outstanding * (d.interestRate / 100 / 12) * minOnlyMonths;
@@ -99,10 +85,8 @@ function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): Strike
 
   const freedomDate = new Date();
   freedomDate.setMonth(freedomDate.getMonth() + month);
-  const deadline2029   = new Date('2029-12-31');
-  const onTrackFor2029 = freedomDate <= deadline2029;
-  const monthlyDebtPayments = debtItems.reduce((s, d) => s + d.monthlyPayment, 0);
-  const surplusAfterDebt    = Math.max(0, monthlyCapacity - monthlyDebtPayments);
+  const onTrackFor2029 = freedomDate <= new Date('2029-12-31');
+  const surplusAfterDebt = Math.max(0, monthlyCapacity - debtItems.reduce((s, d) => s + d.monthlyPayment, 0));
 
   return {
     totalDebt, monthlyCapacity, monthsToFreedom: month,
@@ -112,101 +96,72 @@ function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): Strike
 }
 
 export function DebtStrikeCalculator() {
-  const [result, setResult] = useState<StrikeResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [monthlyIncome, setMonthlyIncome] = useState(0);
-  const [monthlyExpenses, setMonthlyExpenses] = useState(0);
+  // ── Live data ────────────────────────────────────────────────────────────────
+  const loans       = useLiveQuery(() => db.loans.toArray().catch(() => []),   []) ?? [];
+  const cards       = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
+  const incomes     = useLiveQuery(() => db.incomes.toArray().catch(() => []), []) ?? [];
+  const txns        = useLiveQuery(() => db.txns.toArray().catch(() => []),    []) ?? [];
+  const expenses    = useLiveQuery(() => db.expenses.toArray().catch(() => []), []) ?? [];
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [loans, cards, incomes, txns, expenses] = await Promise.all([
-          db.loans.toArray(),
-          db.creditCards.toArray(),
-          db.incomes.toArray(),
-          db.txns.toArray(),
-          db.expenses.toArray().catch(() => []),
-        ]);
+  const { result, monthlyIncome, monthlyExpenses } = useMemo(() => {
+    const monthStart = startOfMonth(new Date());
+    const sixMonthsAgo = startOfMonth(subMonths(new Date(), 5));
 
-        const monthStart = new Date();
-        monthStart.setDate(1);
-        monthStart.setHours(0, 0, 0, 0);
+    // ── Monthly income: current month or 6-month average ─────────────────────
+    const currentMonthIncome = incomes
+      .filter(i => new Date(i.date) >= monthStart)
+      .reduce((s, i) => s + i.amount, 0);
 
-        // Monthly income
-        const monthlyIncomeTxns = incomes.filter(i => {
-          const d = i.date instanceof Date ? i.date : new Date(i.date);
-          return d >= monthStart;
+    const income6m = incomes
+      .filter(i => new Date(i.date) >= sixMonthsAgo)
+      .reduce((s, i) => s + i.amount, 0);
+    const income6mMonths = new Set(
+      incomes.filter(i => new Date(i.date) >= sixMonthsAgo)
+        .map(i => new Date(i.date).toISOString().slice(0, 7))
+    ).size;
+    const avgMonthlyIncome = income6mMonths > 0 ? income6m / income6mMonths : 0;
+    const monthlyIncome = currentMonthIncome || avgMonthlyIncome;
+
+    // ── Monthly expenses: current month from txns + expenses table ────────────
+    const expTxns = txns
+      .filter(t => t.amount < 0 && new Date(t.date) >= monthStart)
+      .reduce((s, t) => s + Math.abs(t.amount), 0);
+    const expRows = expenses
+      .filter(e => new Date(e.date) >= monthStart)
+      .reduce((s, e) => s + e.amount, 0);
+    const monthlyExpenses = expTxns + expRows;
+
+    const surplus = Math.max(0, monthlyIncome - monthlyExpenses);
+
+    // ── Debt items ────────────────────────────────────────────────────────────
+    const debtItems: DebtItem[] = [];
+    loans.forEach((l: any) => {
+      const outstanding = l.outstanding ?? l.principal ?? 0;
+      if (outstanding > 0 && l.isActive !== false) {
+        debtItems.push({
+          name: l.name ?? 'Loan',
+          outstanding,
+          monthlyPayment: l.emi ?? 0,
+          interestRate: l.roi ?? l.interestRate ?? 0,
+          type: 'loan',
         });
-        const income = monthlyIncomeTxns.reduce((s, i) => s + i.amount, 0)
-          || incomes.reduce((s, i) => s + i.amount, 0) / Math.max(1, new Set(incomes.map(i => {
-            const d = i.date instanceof Date ? i.date : new Date(i.date);
-            return d.toISOString().slice(0, 7);
-          })).size);
-
-        // Monthly expenses: union of negative txns + db.expenses
-        const expenseTxns = txns.filter(t => t.amount < 0 && new Date(t.date) >= monthStart);
-        const expenseDbRows = expenses.filter(e => {
-          const d = e.date instanceof Date ? e.date : new Date(e.date);
-          return d >= monthStart;
-        });
-        const expenseTotal = expenseTxns.reduce((s, t) => s + Math.abs(t.amount), 0)
-                           + expenseDbRows.reduce((s, e) => s + e.amount, 0);
-
-        setMonthlyIncome(income);
-        setMonthlyExpenses(expenseTotal);
-
-        const surplus = Math.max(0, income - expenseTotal);
-
-        // Build debt items from loans
-        const debtItems: DebtItem[] = [];
-        loans.forEach((l: any) => {
-          const outstanding = l.outstanding ?? l.principal ?? 0;
-          if (outstanding > 0) {
-            debtItems.push({
-              name: l.name ?? 'Loan',
-              outstanding,
-              monthlyPayment: l.emi ?? 0,
-              interestRate: l.roi ?? l.interestRate ?? 0,
-              type: 'loan',
-            });
-          }
-        });
-
-        // Credit card balances
-        cards.forEach((c: any) => {
-          const bal = c.currentBalance ?? c.balance ?? 0;
-          if (bal > 0) {
-            debtItems.push({
-              name: c.name ?? `${c.bankName} Card`,
-              outstanding: bal,
-              monthlyPayment: 0,
-              interestRate: c.interestRate ?? 36, // ~3%/month default
-              type: 'card',
-            });
-          }
-        });
-
-        setResult(calcDebtFreedom(debtItems, surplus));
-      } catch (e) {
-        console.warn('DebtStrike load error:', e);
-      } finally {
-        setLoading(false);
       }
-    }
-    load();
-  }, []);
+    });
+    cards.forEach((c: any) => {
+      const bal = c.currentBalance ?? c.balance ?? 0;
+      if (bal > 0) {
+        debtItems.push({
+          name: c.name ?? `${c.bankName ?? 'CC'} Card`,
+          outstanding: bal,
+          monthlyPayment: 0,
+          interestRate: c.interestRate ?? 36,
+          type: 'card',
+        });
+      }
+    });
 
-  if (loading) {
-    return (
-      <div className="space-y-4 animate-pulse p-4">
-        <div className="h-8 bg-muted rounded-xl w-2/3" />
-        <div className="h-32 bg-muted rounded-2xl" />
-        <div className="h-24 bg-muted rounded-2xl" />
-      </div>
-    );
-  }
-
-  if (!result) return null;
+    return { result: calcDebtFreedom(debtItems, surplus), monthlyIncome, monthlyExpenses };
+  }, [loans, cards, incomes, txns, expenses]);
 
   const { totalDebt, monthlyCapacity, monthsToFreedom, freedomDate, onTrackFor2029, avalancheOrder, surplusAfterDebt, totalInterestSaved } = result;
 
@@ -215,7 +170,9 @@ export function DebtStrikeCalculator() {
   const deadline2029 = new Date('2029-12-31');
   const msTo2029   = deadline2029.getTime() - Date.now();
   const months2029 = Math.max(0, Math.ceil(msTo2029 / (1000 * 60 * 60 * 24 * 30.4)));
-  const progressPct = months2029 > 0 ? Math.min(100, Math.round(((months2029 - monthsToFreedom) / months2029) * 100)) : 100;
+  const progressPct = months2029 > 0
+    ? Math.min(100, Math.round(((months2029 - monthsToFreedom) / months2029) * 100))
+    : 100;
 
   return (
     <Tabs defaultValue="sequential" className="w-full">
@@ -230,15 +187,15 @@ export function DebtStrikeCalculator() {
         </TabsList>
       </div>
 
-      {/* ── Sequential Strike Engine (Primary) ── */}
+      {/* Sequential Strike Engine */}
       <TabsContent value="sequential" className="m-0">
         <SequentialStrikeEngine />
       </TabsContent>
 
-      {/* ── Classic Overview ── */}
+      {/* Overview */}
       <TabsContent value="overview" className="m-0">
         <div className="p-4 space-y-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Badge variant={onTrackFor2029 ? 'default' : 'destructive'}>
               {onTrackFor2029 ? '✓ On Track for 2029' : '⚠ Behind Target'}
             </Badge>
@@ -249,7 +206,7 @@ export function DebtStrikeCalculator() {
             )}
           </div>
 
-          {/* ── Hero card ── */}
+          {/* Hero card */}
           <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
             <CardContent className="pt-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -272,7 +229,7 @@ export function DebtStrikeCalculator() {
                       {totalDebt === 0
                         ? '🎉 Already Free!'
                         : monthlyCapacity === 0
-                        ? 'Add income first'
+                        ? 'Add income to calculate'
                         : `${freedomDate.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} · ${yearsLeft > 0 ? `${yearsLeft}y ` : ''}${moLeft}m`}
                     </p>
                   </div>
@@ -282,10 +239,9 @@ export function DebtStrikeCalculator() {
                   : <AlertTriangle className="h-8 w-8 text-warning" />
                 }
               </div>
-              {/* Progress toward 2029 */}
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>Progress toward 2029 goal</span>
+                  <span>Progress toward Dec 2029 goal</span>
                   <span>{progressPct}%</span>
                 </div>
                 <Progress value={progressPct} className="h-2.5" />
@@ -294,7 +250,7 @@ export function DebtStrikeCalculator() {
             </CardContent>
           </Card>
 
-          {/* ── Income vs Expenses ── */}
+          {/* Income vs Expenses */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-semibold">This Month's Capacity</CardTitle>
@@ -322,7 +278,7 @@ export function DebtStrikeCalculator() {
             </CardContent>
           </Card>
 
-          {/* ── Avalanche order ── */}
+          {/* Avalanche order */}
           {avalancheOrder.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
@@ -333,7 +289,6 @@ export function DebtStrikeCalculator() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {avalancheOrder.map((d, i) => {
-                  // Per-debt months: interest-aware single-debt amortisation
                   const r = d.interestRate / 100 / 12;
                   let months = 0;
                   if (monthlyCapacity > 0 && d.outstanding > 0) {
