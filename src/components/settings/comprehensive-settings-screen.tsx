@@ -223,6 +223,29 @@ export function ComprehensiveSettingsScreen() {
               className="text-sm resize-none"
             />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="annualIncome" className="text-xs text-muted-foreground">Annual Income (₹)</Label>
+              <Input
+                id="annualIncome"
+                type="number"
+                value={annualIncome}
+                onChange={e => setAnnualIncome(e.target.value)}
+                placeholder="1200000"
+                className="h-9 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="dateOfBirth" className="text-xs text-muted-foreground">Date of Birth</Label>
+              <Input
+                id="dateOfBirth"
+                type="date"
+                value={dateOfBirth}
+                onChange={e => setDateOfBirth(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
           <Button
             size="sm"
             onClick={handleSaveProfile}
