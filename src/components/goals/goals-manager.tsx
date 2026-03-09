@@ -1,10 +1,11 @@
 /**
  * GoalsManager — live Dexie data, per-goal contributions, inline edit, "Plan SIP" deep-link
+ * Shows SIP needed vs committed from recurring transactions for each goal.
  */
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit2, PlusCircle, MinusCircle, X } from 'lucide-react';
+import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit2, PlusCircle, MinusCircle, X, AlertCircle } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import { Button } from '@/components/ui/button';
