@@ -207,9 +207,14 @@ export function CreditCardManager() {
         subtitle={`${activeCards.length} cards · ${formatCurrency(totalLimit)} total limit`}
         icon={CreditCardIcon}
         action={
-          <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Add Card
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={handleSyncBalances} disabled={syncing} className="h-9 text-xs gap-1 rounded-xl">
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} /> Sync
+            </Button>
+            <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> Add Card
+            </Button>
+          </div>
         }
       />
 
