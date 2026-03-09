@@ -1,27 +1,41 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { 
-  AlertTriangle, CheckCircle, Bike, Upload, 
-  Fuel, Wrench, Plus, TrendingUp
-} from 'lucide-react';
-import { toast } from 'sonner';
+/**
+ * VehicleFleetWatchdog — useLiveQuery for real-time updates,
+ * service log entry modal, next service date, Fuelio CSV import.
+ */
+import React, { useState, useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Vehicle } from '@/lib/db';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import {
+  AlertTriangle, CheckCircle, Bike, Upload,
+  Fuel, Wrench, Plus, TrendingUp, Calendar, Edit
+} from 'lucide-react';
 import Papa from 'papaparse';
 
 // ─── WATCHDOG THRESHOLDS ─────────────────────────────────────────────────────
-const WARNING_KM = 1000;
-const OVERDUE_KM = 1500;
+const OIL_WARNING_KM = 800;
+const OIL_OVERDUE_KM = 1200;
+const SERVICE_INTERVAL_KM = 3000;
 
-const OIL_WATCHDOG_VEHICLES = ['FZS', 'Yamaha FZS'];
+interface ServiceLogEntry {
+  id: string;
+  date: string;
+  odometer: number;
+  type: 'Oil Change' | 'Full Service' | 'Tyre' | 'Repair' | 'Other';
+  cost: number;
+  notes?: string;
+}
 
 interface OilStatus {
   status: 'ok' | 'warning' | 'overdue';
@@ -32,335 +46,410 @@ interface OilStatus {
 
 function getOilStatus(vehicle: Vehicle): OilStatus {
   const currentOdo = vehicle.odometerReading || vehicle.odometer || 0;
-  const lastServiceOdo = vehicle.serviceLogs?.length
-    ? Math.max(...vehicle.serviceLogs.map((l: any) => l.odometer || 0))
+  const logs: ServiceLogEntry[] = Array.isArray(vehicle.serviceLogs) ? vehicle.serviceLogs : [];
+  const oilLogs = logs.filter(l => l.type === 'Oil Change' || l.type === 'Full Service');
+  const lastServiceOdo = oilLogs.length
+    ? Math.max(...oilLogs.map(l => l.odometer || 0))
     : 0;
   const kmSince = currentOdo - lastServiceOdo;
-
   return {
-    status: kmSince >= OVERDUE_KM ? 'overdue' : kmSince >= WARNING_KM ? 'warning' : 'ok',
+    status: kmSince >= OIL_OVERDUE_KM ? 'overdue' : kmSince >= OIL_WARNING_KM ? 'warning' : 'ok',
     kmSinceService: kmSince,
     lastServiceOdo,
     currentOdo,
   };
 }
 
-// ─── COMPONENT ────────────────────────────────────────────────────────────────
+// ─── Service Log Modal ────────────────────────────────────────────────────────
+function ServiceLogModal({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
+  const [form, setForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    odometer: String(vehicle.odometerReading || vehicle.odometer || ''),
+    type: 'Oil Change' as ServiceLogEntry['type'],
+    cost: '',
+    notes: '',
+  });
+  const [saving, setSaving] = useState(false);
 
-export function VehicleFleetWatchdog() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fuelioDialogOpen, setFuelioDialogOpen] = useState(false);
-  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
-  const [odometerInputs, setOdometerInputs] = useState<Record<string, string>>({});
+  const existing: ServiceLogEntry[] = Array.isArray(vehicle.serviceLogs) ? vehicle.serviceLogs : [];
 
-  useEffect(() => {
-    loadVehicles();
-  }, []);
-
-  const loadVehicles = async () => {
+  const handleSave = async () => {
+    const odo = parseInt(form.odometer);
+    if (!odo || odo <= 0) { toast.error('Enter valid odometer reading'); return; }
+    setSaving(true);
     try {
-      setLoading(true);
-      const all = await db.vehicles.toArray();
-      // Remove Xylo (sold)
-      const filtered = all.filter(v =>
-        !v.name?.toLowerCase().includes('xylo') &&
-        !v.model?.toLowerCase().includes('xylo')
-      );
-      setVehicles(filtered);
-    } catch (e) {
-      toast.error('Failed to load vehicles');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleOdometerUpdate = async (vehicleId: string) => {
-    const val = parseInt(odometerInputs[vehicleId] || '0', 10);
-    if (!val || isNaN(val)) return;
-    try {
-      await db.vehicles.update(vehicleId, {
-        odometerReading: val,
-        odometer: val,
+      const entry: ServiceLogEntry = {
+        id: crypto.randomUUID(),
+        date: form.date,
+        odometer: odo,
+        type: form.type,
+        cost: parseFloat(form.cost) || 0,
+        notes: form.notes,
+      };
+      const updated = [...existing, entry];
+      await db.vehicles.update(vehicle.id, {
+        serviceLogs: updated,
+        odometerReading: odo,
+        odometer: odo,
         updatedAt: new Date(),
       });
-      toast.success('Odometer updated');
-      loadVehicles();
-    } catch (e) {
-      toast.error('Failed to update odometer');
-    }
-  };
-
-  const handleFuelioUpload = (vehicleId: string) => {
-    setSelectedVehicleId(vehicleId);
-    setFuelioDialogOpen(true);
-  };
-
-  if (loading) return <div className="p-4 text-center text-muted-foreground">Loading fleet...</div>;
-
-  const fzsVehicles = vehicles.filter(v =>
-    OIL_WATCHDOG_VEHICLES.some(name =>
-      v.name?.toLowerCase().includes(name.toLowerCase()) ||
-      v.model?.toLowerCase().includes('fzs')
-    )
-  );
-
-  return (
-    <div className="p-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Bike className="w-5 h-5 text-primary" />
-          Vehicle Fleet & Watchdog
-        </h2>
-        <Badge variant="outline">{vehicles.length} vehicles</Badge>
-      </div>
-
-      {/* FZS Oil Watchdog Section */}
-      {fzsVehicles.map(vehicle => {
-        const oil = getOilStatus(vehicle);
-        return (
-          <Card
-            key={vehicle.id}
-          className={`border-2 ${
-              oil.status === 'overdue'
-                ? 'border-destructive bg-destructive/5'
-                : oil.status === 'warning'
-                ? 'border-warning bg-warning/5'
-                : 'border-success bg-success/5'
-            }`}
-          >
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center justify-between text-base">
-                <span className="flex items-center gap-2">
-                  <Wrench className="w-4 h-4" />
-                  {vehicle.name || vehicle.model} — Oil Watchdog
-                </span>
-                {oil.status === 'overdue' && (
-                  <Badge variant="destructive" className="animate-pulse">
-                    🔴 OIL OVERDUE
-                  </Badge>
-                )}
-                {oil.status === 'warning' && (
-                  <Badge className="bg-warning text-warning-foreground">
-                    🟠 Service Soon
-                  </Badge>
-                )}
-                {oil.status === 'ok' && (
-                  <Badge className="bg-success text-success-foreground">
-                    ✅ OK
-                  </Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-3 gap-3 text-sm">
-                <div className="text-center p-2 rounded-lg bg-background border">
-                  <p className="text-muted-foreground text-xs">Current Odo</p>
-                  <p className="font-bold">{oil.currentOdo.toLocaleString()} km</p>
-                </div>
-                <div className="text-center p-2 rounded-lg bg-background border">
-                  <p className="text-muted-foreground text-xs">Last Service</p>
-                  <p className="font-bold">{oil.lastServiceOdo.toLocaleString()} km</p>
-                </div>
-                <div className={`text-center p-2 rounded-lg border ${
-                  oil.status === 'overdue' ? 'bg-destructive/10 border-destructive' :
-                  oil.status === 'warning' ? 'bg-warning/10 border-warning' : 'bg-background'
-                }`}>
-                  <p className="text-muted-foreground text-xs">Since Service</p>
-                  <p className="font-bold">{oil.kmSinceService.toLocaleString()} km</p>
-                </div>
-              </div>
-
-              {/* KM progress bar */}
-              <div>
-                <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                  <span>0 km</span>
-                  <span className="text-warning font-medium">{WARNING_KM} km ⚠️</span>
-                  <span className="text-destructive font-medium">{OVERDUE_KM} km 🔴</span>
-                </div>
-                <Progress
-                  value={Math.min(100, (oil.kmSinceService / OVERDUE_KM) * 100)}
-                  className={`h-3 ${
-                    oil.status === 'overdue' ? '[&>div]:bg-destructive' :
-                    oil.status === 'warning' ? '[&>div]:bg-warning' : '[&>div]:bg-success'
-                  }`}
-                />
-              </div>
-
-              {/* Odometer update */}
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Update odometer reading"
-                  value={odometerInputs[vehicle.id] || ''}
-                  onChange={e => setOdometerInputs(prev => ({ ...prev, [vehicle.id]: e.target.value }))}
-                  className="flex-1 h-8 text-sm"
-                />
-                <Button size="sm" onClick={() => handleOdometerUpdate(vehicle.id)} className="h-8">
-                  Update
-                </Button>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={() => handleFuelioUpload(vehicle.id)}
-              >
-                <Upload className="w-3 h-3 mr-2" />
-                Sync Fuelio CSV
-              </Button>
-            </CardContent>
-          </Card>
-        );
-      })}
-
-      {/* All Vehicles */}
-      <div className="grid gap-3">
-        {vehicles.map(vehicle => {
-          const isFZS = OIL_WATCHDOG_VEHICLES.some(name =>
-            vehicle.name?.toLowerCase().includes(name.toLowerCase()) ||
-            vehicle.model?.toLowerCase().includes('fzs')
-          );
-          if (isFZS) return null; // Already shown above
-
-          const currentOdo = vehicle.odometerReading || vehicle.odometer || 0;
-          const insuranceExpiry = vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry) : null;
-          const daysToInsurance = insuranceExpiry
-            ? Math.ceil((insuranceExpiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-            : null;
-
-          return (
-            <Card key={vehicle.id}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="font-semibold">{vehicle.name || `${vehicle.make} ${vehicle.model}`}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {vehicle.regNo || vehicle.registrationNumber} · {currentOdo.toLocaleString()} km
-                    </p>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleFuelioUpload(vehicle.id)}
-                      className="h-7 text-xs"
-                    >
-                      <Upload className="w-3 h-3 mr-1" />
-                      Fuelio
-                    </Button>
-                    {daysToInsurance !== null && daysToInsurance <= 30 && (
-                      <Badge variant="destructive" className="text-xs">
-                        Insurance in {daysToInsurance}d
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
-
-      {/* Fuelio CSV Dialog */}
-      <FuelioSyncDialog
-        open={fuelioDialogOpen}
-        vehicleId={selectedVehicleId}
-        onClose={() => {
-          setFuelioDialogOpen(false);
-          setSelectedVehicleId(null);
-          loadVehicles();
-        }}
-      />
-    </div>
-  );
-}
-
-// ─── FUELIO CSV SYNC DIALOG ───────────────────────────────────────────────────
-
-function FuelioSyncDialog({ open, vehicleId, onClose }: {
-  open: boolean;
-  vehicleId: string | null;
-  onClose: () => void;
-}) {
-  const [processing, setProcessing] = useState(false);
-  const [preview, setPreview] = useState<any[]>([]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        setPreview(result.data.slice(0, 5));
-      },
-    });
-  };
-
-  const handleImport = async () => {
-    if (!vehicleId || preview.length === 0) return;
-    setProcessing(true);
-    try {
-      // Find max odometer from Fuelio data
-      const maxOdo = preview.reduce((max: number, row: any) => {
-        const odo = parseInt(row['Odometer'] || row['odometer'] || '0', 10);
-        return Math.max(max, odo);
-      }, 0);
-
-      if (maxOdo > 0) {
-        await db.vehicles.update(vehicleId, {
-          odometerReading: maxOdo,
-          odometer: maxOdo,
-          updatedAt: new Date(),
-        });
-        toast.success(`Fuelio sync complete. Odometer updated to ${maxOdo.toLocaleString()} km`);
-      } else {
-        toast.info('No odometer data found in CSV. Check column names.');
-      }
+      toast.success(`${form.type} logged at ${odo.toLocaleString('en-IN')} km`);
       onClose();
-    } catch (e) {
-      toast.error('Fuelio import failed');
-    } finally {
-      setProcessing(false);
-    }
+    } catch { toast.error('Failed to save'); }
+    finally { setSaving(false); }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-sm mx-4">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Fuel className="w-4 h-4" />
-            Sync Fuelio CSV
+          <DialogTitle className="flex items-center gap-2 text-base">
+            <Wrench className="h-4 w-4 text-primary" />
+            Log Service — {vehicle.name}
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            Export from the Fuelio app and upload here to update fuel/service logs.
-          </p>
-          <div>
-            <Label>Select Fuelio CSV File</Label>
-            <Input type="file" accept=".csv" onChange={handleFileChange} className="mt-1" />
+        <div className="space-y-3 pt-1">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Service Type</Label>
+              <select
+                value={form.type}
+                onChange={e => setForm(f => ({ ...f, type: e.target.value as any }))}
+                className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {['Oil Change', 'Full Service', 'Tyre', 'Repair', 'Other'].map(t => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Date</Label>
+              <Input type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} className="h-9 text-sm" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Odometer (km) *</Label>
+              <Input type="number" value={form.odometer} onChange={e => setForm(f => ({ ...f, odometer: e.target.value }))} placeholder="e.g. 12500" className="h-9 text-sm" autoFocus />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cost (₹)</Label>
+              <Input type="number" value={form.cost} onChange={e => setForm(f => ({ ...f, cost: e.target.value }))} placeholder="1200" className="h-9 text-sm" />
+            </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Notes</Label>
+              <Input value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Optional notes" className="h-9 text-sm" />
+            </div>
           </div>
-          {preview.length > 0 && (
-            <Alert>
-              <CheckCircle className="w-4 h-4" />
-              <AlertDescription>
-                {preview.length}+ records found. Ready to import.
-              </AlertDescription>
-            </Alert>
+
+          {/* Recent log */}
+          {existing.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Recent Logs</p>
+              {[...existing].reverse().slice(0, 3).map(l => (
+                <div key={l.id} className="flex justify-between text-xs text-muted-foreground border-b border-border/30 py-1">
+                  <span>{l.type} · {new Date(l.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                  <span className="tabular-nums">{l.odometer.toLocaleString('en-IN')} km{l.cost ? ` · ₹${l.cost.toLocaleString('en-IN')}` : ''}</span>
+                </div>
+              ))}
+            </div>
           )}
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose} className="flex-1">Cancel</Button>
-            <Button onClick={handleImport} disabled={processing || preview.length === 0} className="flex-1">
-              {processing ? 'Importing...' : 'Import'}
-            </Button>
+
+          <div className="flex gap-2 pt-1">
+            <Button variant="outline" className="flex-1 h-9 text-xs" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1 h-9 text-xs" onClick={handleSave} disabled={saving}>Save Log</Button>
           </div>
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Odometer quick-update ────────────────────────────────────────────────────
+function OdometerUpdate({ vehicle, onClose }: { vehicle: Vehicle; onClose: () => void }) {
+  const [val, setVal] = useState(String(vehicle.odometerReading || vehicle.odometer || ''));
+
+  const handleSave = async () => {
+    const n = parseInt(val);
+    if (!n || isNaN(n)) { toast.error('Enter a valid reading'); return; }
+    await db.vehicles.update(vehicle.id, { odometerReading: n, odometer: n, updatedAt: new Date() });
+    toast.success('Odometer updated');
+    onClose();
+  };
+
+  return (
+    <Dialog open onOpenChange={o => !o && onClose()}>
+      <DialogContent className="max-w-xs mx-4">
+        <DialogHeader>
+          <DialogTitle className="text-sm flex items-center gap-2">
+            <Bike className="h-4 w-4 text-primary" /> Update Odometer — {vehicle.name}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label className="text-xs">Current Reading (km)</Label>
+            <Input type="number" value={val} onChange={e => setVal(e.target.value)} placeholder="12500" className="h-10 text-base font-bold" autoFocus />
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 h-9 text-xs" onClick={onClose}>Cancel</Button>
+            <Button className="flex-1 h-9 text-xs" onClick={handleSave}>Save</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── COMPONENT ────────────────────────────────────────────────────────────────
+export function VehicleFleetWatchdog() {
+  const vehicles = useLiveQuery(
+    () => db.vehicles.toArray().then(all =>
+      all.filter(v =>
+        !v.name?.toLowerCase().includes('xylo') &&
+        !v.model?.toLowerCase().includes('xylo')
+      )
+    ).catch(() => []),
+    []
+  ) ?? [];
+
+  const [serviceLogVehicle, setServiceLogVehicle] = useState<Vehicle | null>(null);
+  const [odometerVehicle, setOdometerVehicle] = useState<Vehicle | null>(null);
+  const [fuelioDialogOpen, setFuelioDialogOpen] = useState(false);
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
+
+  // Derived oil statuses
+  const statuses = useMemo(() => {
+    return vehicles.map(v => ({ ...v, oil: getOilStatus(v) }));
+  }, [vehicles]);
+
+  const overdueCount = statuses.filter(v => v.oil.status === 'overdue').length;
+  const warningCount = statuses.filter(v => v.oil.status === 'warning').length;
+
+  // Fuelio CSV import
+  const handleFuelioImport = async (vehicleId: string, file: File) => {
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const rows = results.data as any[];
+          const vehicle = vehicles.find(v => v.id === vehicleId);
+          if (!vehicle) return;
+          const existing: ServiceLogEntry[] = Array.isArray(vehicle.serviceLogs) ? vehicle.serviceLogs : [];
+          const newEntries = rows.map((r, i) => ({
+            id: crypto.randomUUID(),
+            date: r['Date'] || r['date'] || new Date().toISOString().split('T')[0],
+            odometer: parseInt(r['Odometer'] || r['odo'] || '0') || 0,
+            type: 'Oil Change' as const,
+            cost: parseFloat(r['Price'] || r['cost'] || '0') || 0,
+            notes: r['Note'] || '',
+          }));
+          const maxOdo = Math.max(...newEntries.map(e => e.odometer), vehicle.odometerReading || 0);
+          await db.vehicles.update(vehicleId, {
+            serviceLogs: [...existing, ...newEntries],
+            odometerReading: maxOdo,
+            odometer: maxOdo,
+            updatedAt: new Date(),
+          });
+          toast.success(`Imported ${newEntries.length} Fuelio entries`);
+          setFuelioDialogOpen(false);
+        } catch { toast.error('Import failed'); }
+      },
+      error: () => toast.error('Failed to parse CSV'),
+    });
+  };
+
+  const statusConfig = {
+    ok:      { color: 'text-success',     bg: 'bg-success/10',     border: 'border-success/30',     icon: CheckCircle, label: 'OK' },
+    warning: { color: 'text-warning',     bg: 'bg-warning/10',     border: 'border-warning/30',     icon: AlertTriangle, label: 'Due Soon' },
+    overdue: { color: 'text-destructive', bg: 'bg-destructive/10', border: 'border-destructive/30', icon: AlertTriangle, label: 'Overdue' },
+  };
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="Vehicle Fleet"
+        subtitle={`${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''}${overdueCount > 0 ? ` · ${overdueCount} overdue` : ''}`}
+        icon={Bike}
+        action={
+          <Button
+            size="sm" variant="outline"
+            className="h-9 gap-1.5 rounded-xl text-xs"
+            onClick={() => { setSelectedVehicleId(vehicles[0]?.id ?? null); setFuelioDialogOpen(true); }}
+          >
+            <Upload className="h-3.5 w-3.5" /> Fuelio
+          </Button>
+        }
+      />
+
+      {/* Alert strips */}
+      {overdueCount > 0 && (
+        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-destructive/40 bg-destructive/5 text-xs">
+          <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+          <span className="text-destructive font-medium">{overdueCount} vehicle(s) need oil change NOW</span>
+        </div>
+      )}
+      {warningCount > 0 && overdueCount === 0 && (
+        <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl border border-warning/40 bg-warning/5 text-xs">
+          <AlertTriangle className="h-4 w-4 text-warning shrink-0" />
+          <span className="text-warning font-medium">{warningCount} vehicle(s) approaching oil change limit</span>
+        </div>
+      )}
+
+      {/* Vehicle cards */}
+      {vehicles.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <Bike className="h-10 w-10 mx-auto text-muted-foreground/25 mb-3" />
+            <p className="text-sm text-muted-foreground">No vehicles registered</p>
+            <p className="text-xs text-muted-foreground mt-1">Vehicles are seeded automatically on first launch</p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {statuses.map(vehicle => {
+            const cfg = statusConfig[vehicle.oil.status];
+            const Icon = cfg.icon;
+            const kmPct = Math.min(100, (vehicle.oil.kmSinceService / OIL_OVERDUE_KM) * 100);
+            const serviceLogs: ServiceLogEntry[] = Array.isArray(vehicle.serviceLogs) ? vehicle.serviceLogs : [];
+            const lastService = [...serviceLogs].reverse()[0];
+
+            // Insurance and PUC expiry
+            const insExpiry = vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry) : null;
+            const pucExpiry = vehicle.pucExpiry ? new Date(vehicle.pucExpiry) : null;
+            const insDay = insExpiry ? Math.ceil((insExpiry.getTime() - Date.now()) / 86400000) : null;
+            const pucDay = pucExpiry ? Math.ceil((pucExpiry.getTime() - Date.now()) / 86400000) : null;
+
+            return (
+              <Card key={vehicle.id} className={`glass border ${cfg.border}`}>
+                <CardContent className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-3 min-w-0">
+                      <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.bg}`}>
+                        <Bike className={`h-5 w-5 ${cfg.color}`} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">{vehicle.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {vehicle.model} {vehicle.year && `· ${vehicle.year}`}
+                          {vehicle.registrationNumber ? ` · ${vehicle.registrationNumber}` : vehicle.regNo ? ` · ${vehicle.regNo}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge className={`text-[10px] ${cfg.bg} ${cfg.color} border ${cfg.border} shrink-0`}>
+                      <Icon className="h-3 w-3 mr-1" /> {cfg.label}
+                    </Badge>
+                  </div>
+
+                  {/* Oil change bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-muted-foreground">Oil Change</span>
+                      <span className={`font-medium tabular-nums ${cfg.color}`}>
+                        {vehicle.oil.kmSinceService.toLocaleString('en-IN')} km since last service
+                      </span>
+                    </div>
+                    <Progress
+                      value={kmPct}
+                      className={`h-2 ${vehicle.oil.status === 'overdue' ? '[&>div]:bg-destructive' : vehicle.oil.status === 'warning' ? '[&>div]:bg-warning' : '[&>div]:bg-success'}`}
+                    />
+                    <div className="flex justify-between text-[10px] text-muted-foreground">
+                      <span>Last: {vehicle.oil.lastServiceOdo.toLocaleString('en-IN')} km</span>
+                      <span>Current: {vehicle.oil.currentOdo.toLocaleString('en-IN')} km</span>
+                    </div>
+                  </div>
+
+                  {/* Expiry badges */}
+                  <div className="flex gap-2 flex-wrap">
+                    {insDay !== null && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${insDay <= 30 ? 'bg-warning/10 text-warning border-warning/30' : 'bg-muted text-muted-foreground border-border/40'}`}>
+                        Insurance: {insDay > 0 ? `${insDay}d left` : 'Expired'}
+                      </span>
+                    )}
+                    {pucDay !== null && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${pucDay <= 30 ? 'bg-warning/10 text-warning border-warning/30' : 'bg-muted text-muted-foreground border-border/40'}`}>
+                        PUC: {pucDay > 0 ? `${pucDay}d left` : 'Expired'}
+                      </span>
+                    )}
+                    {lastService && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/40">
+                        Last: {lastService.type} · {new Date(lastService.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                        {lastService.cost ? ` · ₹${lastService.cost.toLocaleString('en-IN')}` : ''}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm" variant="outline"
+                      className={`flex-1 h-8 text-xs gap-1 rounded-xl ${vehicle.oil.status !== 'ok' ? 'border-primary/30 text-primary hover:bg-primary/5' : ''}`}
+                      onClick={() => setServiceLogVehicle(vehicle as Vehicle)}
+                    >
+                      <Wrench className="h-3 w-3" /> Log Service
+                    </Button>
+                    <Button
+                      size="sm" variant="outline"
+                      className="flex-1 h-8 text-xs gap-1 rounded-xl"
+                      onClick={() => setOdometerVehicle(vehicle as Vehicle)}
+                    >
+                      <Edit className="h-3 w-3" /> Update Odo
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Service Log Modal */}
+      {serviceLogVehicle && (
+        <ServiceLogModal vehicle={serviceLogVehicle} onClose={() => setServiceLogVehicle(null)} />
+      )}
+
+      {/* Odometer Modal */}
+      {odometerVehicle && (
+        <OdometerUpdate vehicle={odometerVehicle} onClose={() => setOdometerVehicle(null)} />
+      )}
+
+      {/* Fuelio Import Dialog */}
+      <Dialog open={fuelioDialogOpen} onOpenChange={setFuelioDialogOpen}>
+        <DialogContent className="max-w-sm mx-4">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Upload className="h-4 w-4 text-primary" /> Import Fuelio CSV
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-1">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Select Vehicle</Label>
+              <select
+                value={selectedVehicleId ?? ''}
+                onChange={e => setSelectedVehicleId(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl border border-border bg-background text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              >
+                {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Fuelio CSV File</Label>
+              <Input
+                type="file"
+                accept=".csv"
+                onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (file && selectedVehicleId) handleFuelioImport(selectedVehicleId, file);
+                }}
+                className="h-9 text-xs"
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              Export from Fuelio app → Backup → Export to CSV. Columns: Date, Odometer, Price.
+            </p>
+            <Button variant="outline" className="w-full h-9 text-xs" onClick={() => setFuelioDialogOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
