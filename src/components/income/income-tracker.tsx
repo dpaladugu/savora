@@ -136,19 +136,42 @@ export function IncomeTracker() {
   const [form, setForm] = useState<IncomeFormData>(initialForm);
   const [showChart, setShowChart] = useState(false);
 
+  const realNow    = new Date();
+  // Month navigation
+  const [viewYear,  setViewYear]  = useState(realNow.getFullYear());
+  const [viewMonth, setViewMonth] = useState(realNow.getMonth());
+
+  const prevMonthNav = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonthNav = () => {
+    const isCurrent = viewYear === realNow.getFullYear() && viewMonth === realNow.getMonth();
+    if (isCurrent) return;
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+  const isCurrentMonth = viewYear === realNow.getFullYear() && viewMonth === realNow.getMonth();
+  const viewMonthLabel = new Date(viewYear, viewMonth, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+
   const incomes = useLiveQuery(() => db.incomes.orderBy('date').reverse().toArray(), []) ?? [];
 
   const now        = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthStart = new Date(viewYear, viewMonth, 1);
+  const monthEnd   = new Date(viewYear, viewMonth + 1, 1);
 
-  const thisMonthIncomes = incomes.filter(i => new Date(i.date) >= monthStart);
+  const thisMonthIncomes = incomes.filter(i => {
+    const d = i.date instanceof Date ? i.date : new Date(i.date as any);
+    return d >= monthStart && d < monthEnd;
+  });
   const thisMonth   = thisMonthIncomes.reduce((s, i) => s + i.amount, 0);
   const totalIncome = incomes.reduce((s, i) => s + i.amount, 0);
 
-  // MoM comparison
-  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  // MoM comparison (vs previous month relative to view)
+  const prevMonthStart = new Date(viewYear, viewMonth - 1, 1);
+  const prevMonthEnd   = new Date(viewYear, viewMonth, 1);
   const prevMonth = incomes
-    .filter(i => { const d = new Date(i.date); return d >= prevMonthStart && d < monthStart; })
+    .filter(i => { const d = i.date instanceof Date ? i.date : new Date(i.date as any); return d >= prevMonthStart && d < prevMonthEnd; })
     .reduce((s, i) => s + i.amount, 0);
   const momDelta = prevMonth > 0 ? ((thisMonth - prevMonth) / prevMonth) * 100 : 0;
 
