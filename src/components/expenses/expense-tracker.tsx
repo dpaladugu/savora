@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
+import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle, ChevronLeft, ChevronRight, BarChart3, Sparkles } from 'lucide-react';
 import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
@@ -15,6 +15,7 @@ import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { suggestCategory } from '@/lib/expense-autocategory';
 
 // ─── Month nav helpers ────────────────────────────────────────────────────────
 function monthLabel(y: number, m: number) {
