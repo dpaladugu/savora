@@ -62,15 +62,42 @@ export function EmergencyFundDashboard() {
     try {
       setLoading(true);
       const f = await getOrCreate();
+
+      // Auto-pull actual avg monthly expenses from last 3 months to set a realistic target
+      try {
+        const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 3);
+        const [txns, expRows] = await Promise.all([
+          db.txns.toArray(),
+          db.expenses.toArray(),
+        ]);
+        const totalExp = [
+          ...txns.filter(t => t.amount < 0 && new Date(t.date) >= cutoff).map(t => Math.abs(t.amount)),
+          ...expRows.filter(e => new Date(e.date) >= cutoff).map(e => Math.abs(e.amount)),
+        ].reduce((s, a) => s + a, 0);
+        const avgMonthly = Math.round(totalExp / 3);
+        if (avgMonthly > 0 && f.targetAmount === DEFAULT_MONTHLY * DEFAULT_MONTHS) {
+          // Only auto-update if still at default
+          const newTarget = avgMonthly * (f.targetMonths || DEFAULT_MONTHS);
+          await db.emergencyFunds.put({ ...f, targetAmount: newTarget, updatedAt: new Date() });
+          const updated = { ...f, targetAmount: newTarget };
+          setFund(updated);
+          setEditForm({
+            monthlyExpenses: avgMonthly.toString(),
+            targetMonths: f.targetMonths?.toString() || DEFAULT_MONTHS.toString(),
+            medicalSubBucket: (f.medicalSubBucket || 100000).toString(),
+          });
+          return;
+        }
+      } catch { /* non-critical */ }
+
       setFund(f);
-      // pre-fill edit form
       const implied = f.targetAmount / (f.targetMonths || DEFAULT_MONTHS);
       setEditForm({
         monthlyExpenses: Math.round(implied).toString(),
         targetMonths: f.targetMonths?.toString() || DEFAULT_MONTHS.toString(),
         medicalSubBucket: (f.medicalSubBucket || 100000).toString(),
       });
-    } catch (e) { toast.error('Failed to load emergency fund'); }
+    } catch { toast.error('Failed to load emergency fund'); }
     finally { setLoading(false); }
   };
 
