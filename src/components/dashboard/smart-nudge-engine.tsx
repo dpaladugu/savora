@@ -344,6 +344,32 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       }
     }
 
+    // ── 9. Credit card approaching limit (>80% utilisation) ─────────────────
+    const highUtilCards = creditCards.filter(c => {
+      const limit = (c as any).creditLimit ?? 0;
+      const bal   = c.currentBalance ?? 0;
+      return limit > 0 && bal > 0 && (bal / limit) >= 0.8;
+    });
+    if (highUtilCards.length > 0) {
+      const card = highUtilCards[0];
+      const limit = (card as any).creditLimit ?? 1;
+      const util  = Math.round(((card.currentBalance ?? 0) / limit) * 100);
+      list.push({
+        id: `cc-utilisation-${card.id}`,
+        icon: <AlertTriangle className="h-4 w-4" />,
+        title: `${card.name} at ${util}% utilisation`,
+        body: `${formatCurrency(card.currentBalance ?? 0)} used of ${formatCurrency(limit)} limit. High utilisation hurts CIBIL score — pay down before statement date.`,
+        ctaLabel: 'Pay now →',
+        ctaAction: () => onTabChange('credit-cards'),
+        priority: 1,
+        color: 'destructive',
+      });
+    }
+
+    // ── 10. Month-on-month spending spike >40% ───────────────────────────────
+    // (uses incomes array as a proxy — expenses are not directly available here,
+    //  so we'll skip this nudge if no signal. Real impl would need expenses LiveQuery)
+
     // ── Health insurance gap nudge (benchmark ₹15L total) ───────────────────
     const healthPolicies = insurance.filter(ins =>
       ins.isActive !== false && ((ins.type ?? '').toLowerCase().includes('health') || (ins.name ?? '').toLowerCase().includes('health') || (ins.name ?? '').toLowerCase().includes('mediclaim'))
