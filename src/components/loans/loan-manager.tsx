@@ -10,9 +10,11 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Plus, Edit, Trash2, Banknote, AlertTriangle,
   TableIcon, TrendingDown, Calendar, Target, Zap, ChevronDown, ChevronUp,
+  PlusCircle, History,
 } from 'lucide-react';
 import { LoanService } from '@/services/LoanService';
 import { toast } from 'sonner';
@@ -21,10 +23,10 @@ import { format, addMonths } from 'date-fns';
 import { db } from '@/lib/db';
 import type { Loan, AmortRow } from '@/lib/db';
 import { MaskedAmount } from '@/components/ui/masked-value';
+import { useLiveQuery } from 'dexie-react-hooks';
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-/** Re-run schedule from current outstanding with optional extra monthly prepayment */
 function buildLiveSchedule(
   outstanding: number,
   annualRoi: number,
@@ -63,51 +65,159 @@ function buildLiveSchedule(
 const fmt = (d: Date) => format(d, 'MMM yyyy');
 const feb2029 = new Date(2029, 1, 1);
 
-// ─── AMORTISATION MODAL ───────────────────────────────────────────────────────
-interface AmortModalProps {
-  loan: Loan;
-  onClose: () => void;
+// ─── PREPAYMENT LOG ───────────────────────────────────────────────────────────
+interface PrepayEntry {
+  id: string;
+  loanId: string;
+  loanName: string;
+  amount: number;
+  date: Date;
+  note?: string;
 }
 
-function AmortModal({ loan, onClose }: AmortModalProps) {
+function PrepaymentLogModal({ loan, onClose }: { loan: Loan; onClose: () => void }) {
+  const [amount,  setAmount]  = useState('');
+  const [date,    setDate]    = useState(new Date().toISOString().split('T')[0]);
+  const [note,    setNote]    = useState('');
+  const [saving,  setSaving]  = useState(false);
+
+  const historyRow = useLiveQuery(() => db.appSettings.get('prepaymentHistory'), []);
+  const history: PrepayEntry[] = useMemo(() => {
+    if (!historyRow) return [];
+    try { return (historyRow.value as PrepayEntry[]).filter(p => p.loanId === loan.id); }
+    catch { return []; }
+  }, [historyRow, loan.id]);
+
+  const handleSave = async () => {
+    const val = parseFloat(amount);
+    if (!val || val <= 0) { toast.error('Enter a valid amount'); return; }
+    setSaving(true);
+    try {
+      // Update outstanding on the loan
+      const current = await db.loans.get(loan.id);
+      if (current) {
+        const newOutstanding = Math.max(0, (current.outstanding ?? current.principal) - val);
+        await db.loans.update(loan.id, { outstanding: newOutstanding, updatedAt: new Date() });
+      }
+
+      // Append to prepayment history in appSettings
+      const existingRow = await db.appSettings.get('prepaymentHistory');
+      const prev: PrepayEntry[] = existingRow?.value ?? [];
+      const newEntry: PrepayEntry = {
+        id: crypto.randomUUID(),
+        loanId: loan.id,
+        loanName: loan.name ?? loan.type ?? 'Loan',
+        amount: val,
+        date: new Date(date),
+        note: note || undefined,
+      };
+      await db.appSettings.put({ key: 'prepaymentHistory', value: [newEntry, ...prev].slice(0, 100) });
+
+      toast.success(`₹${val.toLocaleString('en-IN')} prepayment logged`);
+      setAmount(''); setNote('');
+    } catch { toast.error('Failed to log prepayment'); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Dialog open onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            <PlusCircle className="h-4 w-4 text-primary" />
+            Log Prepayment — {loan.name ?? loan.type}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pb-2">
+          <div className="p-3 rounded-xl bg-muted/40 border border-border/30 text-xs space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Current Outstanding</span>
+              <span className="font-semibold text-destructive">{formatCurrency(loan.outstanding ?? loan.principal)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Rate / EMI</span>
+              <span className="font-medium">{loan.roi}% · {formatCurrency(loan.emi ?? 0)}</span>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Amount (₹) *</Label>
+                <Input type="number" placeholder="25000" value={amount} onChange={e => setAmount(e.target.value)} className="h-10" autoFocus />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={date} onChange={e => setDate(e.target.value)} className="h-10" />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Note (optional)</Label>
+              <Input placeholder="e.g. Bonus surplus — P1 strike" value={note} onChange={e => setNote(e.target.value)} className="h-10" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1 h-9 text-xs" onClick={onClose}>Cancel</Button>
+              <Button className="flex-1 h-9 text-xs" onClick={handleSave} disabled={saving}>
+                {saving ? 'Saving…' : 'Log Prepayment'}
+              </Button>
+            </div>
+          </div>
+
+          {/* History */}
+          {history.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                <History className="w-3 h-3" /> Prepayment History
+              </p>
+              <div className="space-y-1.5">
+                {history.map(p => (
+                  <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 border border-border/30 text-xs">
+                    <div>
+                      <p className="font-semibold text-foreground">{formatCurrency(p.amount)}</p>
+                      <p className="text-muted-foreground">{p.note ?? '—'}</p>
+                    </div>
+                    <p className="text-muted-foreground tabular-nums">
+                      {new Date(p.date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: '2-digit' })}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── AMORTISATION MODAL ───────────────────────────────────────────────────────
+function AmortModal({ loan, onClose }: { loan: Loan; onClose: () => void }) {
   const [monthlyPrepay, setMonthlyPrepay] = useState(0);
-  const [showFullTable, setShowFullTable] = useState(false);
+  const [showFullTable,  setShowFullTable]  = useState(false);
 
   const roi         = loan.roi ?? loan.interestRate ?? 0;
   const outstanding = loan.outstanding ?? loan.principal;
   const emi         = loan.emi ?? 0;
-  const startDate   = loan.startDate ? new Date(loan.startDate) : new Date();
 
-  // Base schedule (no prepay)
-  const base = useMemo(
-    () => buildLiveSchedule(outstanding, roi, emi, 0),
-    [outstanding, roi, emi]
-  );
-
-  // Simulated schedule (with prepay)
-  const sim = useMemo(
-    () => buildLiveSchedule(outstanding, roi, emi, monthlyPrepay),
-    [outstanding, roi, emi, monthlyPrepay]
-  );
+  const base = useMemo(() => buildLiveSchedule(outstanding, roi, emi, 0),             [outstanding, roi, emi]);
+  const sim  = useMemo(() => buildLiveSchedule(outstanding, roi, emi, monthlyPrepay), [outstanding, roi, emi, monthlyPrepay]);
 
   const baseFreedomDate = base.rows.length > 0 ? base.rows[base.rows.length - 1].date : null;
-  const simFreedomDate  = sim.rows.length > 0  ? sim.rows[sim.rows.length - 1].date  : null;
+  const simFreedomDate  = sim.rows.length  > 0 ? sim.rows[sim.rows.length  - 1].date  : null;
 
-  const monthsSaved     = base.rows.length - sim.rows.length;
-  const interestSaved   = base.totalInterest - sim.totalInterest;
-  const baseOnTrack     = baseFreedomDate ? baseFreedomDate <= feb2029 : false;
-  const simOnTrack      = simFreedomDate  ? simFreedomDate  <= feb2029 : false;
+  const monthsSaved   = base.rows.length - sim.rows.length;
+  const interestSaved = base.totalInterest - sim.totalInterest;
+  const baseOnTrack   = baseFreedomDate ? baseFreedomDate <= feb2029 : false;
+  const simOnTrack    = simFreedomDate  ? simFreedomDate  <= feb2029 : false;
 
-  const paidOff         = Math.max(0, loan.principal - outstanding);
-  const paidPct         = loan.principal > 0 ? Math.round((paidOff / loan.principal) * 100) : 0;
+  const paidOff  = Math.max(0, loan.principal - outstanding);
+  const paidPct  = loan.principal > 0 ? Math.round((paidOff / loan.principal) * 100) : 0;
 
-  // Months remaining to Feb 2029
   const now = new Date();
   const monthsTo2029 = Math.max(0,
     (feb2029.getFullYear() - now.getFullYear()) * 12 + (feb2029.getMonth() - now.getMonth())
   );
 
-  // How much extra prepay needed to hit Feb 2029 — binary search
   const prepayNeededFor2029 = useMemo(() => {
     if (baseOnTrack) return 0;
     let lo = 0, hi = outstanding;
@@ -128,13 +238,11 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base">
             <TrendingDown className="w-4 h-4 text-primary" />
-            {loan.type} Loan — Amortisation Schedule
+            {loan.name ?? loan.type} — Amortisation Schedule
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pb-2">
-
-          {/* ── Summary Strip ── */}
           <div className="grid grid-cols-3 gap-2 text-xs">
             <div className="p-2 rounded-lg bg-destructive/5 border border-destructive/20 space-y-0.5">
               <p className="text-muted-foreground">Outstanding</p>
@@ -150,7 +258,6 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
             </div>
           </div>
 
-          {/* ── Payoff Progress ── */}
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Paid off: {formatCurrency(paidOff)} ({paidPct}%)</span>
@@ -163,7 +270,6 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
             </div>
           </div>
 
-          {/* ── Feb 2029 Status ── */}
           {!baseOnTrack && (
             <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs">
               <AlertTriangle className="w-4 h-4 text-warning shrink-0 mt-0.5" />
@@ -184,25 +290,19 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
 
           <Separator />
 
-          {/* ── Prepayment Simulator ── */}
           <div className="space-y-3">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-              <Zap className="w-3 h-3 text-primary" />Prepayment Simulator (P4 Waterfall Boost)
+              <Zap className="w-3 h-3 text-primary" />Prepayment Simulator
             </p>
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
                 <label className="text-muted-foreground">Extra monthly prepayment</label>
                 <span className="font-semibold text-primary">{monthlyPrepay > 0 ? formatCurrency(monthlyPrepay) : 'None'}</span>
               </div>
-              <Slider
-                min={0} max={30000} step={500}
-                value={[monthlyPrepay]}
-                onValueChange={([v]) => setMonthlyPrepay(v)}
-              />
+              <Slider min={0} max={30000} step={500} value={[monthlyPrepay]} onValueChange={([v]) => setMonthlyPrepay(v)} />
               <div className="grid grid-cols-4 gap-1">
                 {[0, 5000, 10000, 20000].map(v => (
-                  <Button key={v} size="sm" variant={monthlyPrepay === v ? 'default' : 'outline'}
-                    className="h-6 text-xs" onClick={() => setMonthlyPrepay(v)}>
+                  <Button key={v} size="sm" variant={monthlyPrepay === v ? 'default' : 'outline'} className="h-6 text-xs" onClick={() => setMonthlyPrepay(v)}>
                     {v === 0 ? 'None' : `+${formatCurrency(v)}`}
                   </Button>
                 ))}
@@ -227,7 +327,6 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
 
           <Separator />
 
-          {/* ── Month-by-Month Table ── */}
           <div className="space-y-2">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
               <TableIcon className="w-3 h-3" />Month-by-Month Schedule
@@ -251,9 +350,7 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
                       <React.Fragment key={row.month}>
                         {isFeb2029Row && (
                           <tr className="bg-warning/10">
-                            <td colSpan={monthlyPrepay > 0 ? 5 : 4} className="p-1.5 text-center text-warning font-semibold text-xs">
-                              ── Feb 2029 deadline ──
-                            </td>
+                            <td colSpan={monthlyPrepay > 0 ? 5 : 4} className="p-1.5 text-center text-warning font-semibold text-xs">── Feb 2029 deadline ──</td>
                           </tr>
                         )}
                         <tr className={`border-t ${row.balance === 0 ? 'bg-success/5' : ''}`}>
@@ -270,8 +367,7 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
               </table>
             </div>
             {sim.rows.length > 24 && (
-              <Button variant="ghost" size="sm" className="w-full h-7 text-xs gap-1"
-                onClick={() => setShowFullTable(v => !v)}>
+              <Button variant="ghost" size="sm" className="w-full h-7 text-xs gap-1" onClick={() => setShowFullTable(v => !v)}>
                 {showFullTable ? <><ChevronUp className="w-3 h-3" />Show less</> : <><ChevronDown className="w-3 h-3" />Show all {sim.rows.length} months</>}
               </Button>
             )}
@@ -286,36 +382,34 @@ function AmortModal({ loan, onClose }: AmortModalProps) {
 const emptyForm = {
   type: 'Personal' as 'Personal' | 'Personal-Brother' | 'Education-Brother',
   borrower: 'Me' as 'Me' | 'Brother',
+  name: '',
   principal: '', roi: '', tenureMonths: '', emi: '', outstanding: '',
   startDate: new Date().toISOString().split('T')[0],
 };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 export function LoanManager() {
-  const [loans,        setLoans]        = useState<Loan[]>([]);
-  const [showModal,    setShowModal]    = useState(false);
-  const [editingLoan,  setEditingLoan]  = useState<Loan | null>(null);
-  const [amortLoan,    setAmortLoan]    = useState<Loan | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [form,         setForm]         = useState({ ...emptyForm });
+  const [showModal,   setShowModal]   = useState(false);
+  const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
+  const [amortLoan,   setAmortLoan]   = useState<Loan | null>(null);
+  const [prepayLoan,  setPrepayLoan]  = useState<Loan | null>(null);
+  const [form,        setForm]        = useState({ ...emptyForm });
 
-  useEffect(() => { load(); }, []);
-
-  const load = async () => {
-    try { setLoading(true); setLoans(await LoanService.getAllLoans()); }
-    catch { toast.error('Failed to load loans'); }
-    finally { setLoading(false); }
-  };
+  // Live reactive
+  const loans   = useLiveQuery(() => db.loans.toArray().catch(() => []), []) ?? [];
+  const loading = loans === undefined;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const data = {
+        name: form.name || form.type,
         type: form.type, borrower: form.borrower,
         principal: +form.principal, roi: +form.roi,
         tenureMonths: +form.tenureMonths, emi: +form.emi,
         outstanding: +form.outstanding,
         startDate: new Date(form.startDate), isActive: true,
+        createdAt: new Date(), updatedAt: new Date(),
       };
       if (editingLoan) {
         await LoanService.updateLoan(editingLoan.id, data);
@@ -323,13 +417,14 @@ export function LoanManager() {
         await LoanService.createLoan(data);
       }
       toast.success(editingLoan ? 'Loan updated' : 'Loan added');
-      setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null); load();
+      setForm({ ...emptyForm }); setShowModal(false); setEditingLoan(null);
     } catch { toast.error('Failed to save loan'); }
   };
 
   const handleEdit = (loan: Loan) => {
     setEditingLoan(loan);
     setForm({
+      name: loan.name ?? '',
       type: loan.type, borrower: loan.borrower,
       principal: loan.principal.toString(), roi: loan.roi.toString(),
       tenureMonths: loan.tenureMonths.toString(), emi: loan.emi.toString(),
@@ -343,25 +438,19 @@ export function LoanManager() {
     if (!confirm('Mark loan as inactive?')) return;
     try {
       await LoanService.updateLoan(id, { isActive: false });
-      toast.success('Loan marked inactive'); load();
+      toast.success('Loan marked inactive');
     } catch { toast.error('Failed to update loan'); }
   };
 
-  const active    = loans.filter(l => l.isActive);
-  const totalOut  = active.reduce((s, l) => s + (l.outstanding ?? 0), 0);
-  const totalEMI  = active.reduce((s, l) => s + (l.emi ?? 0), 0);
-  const hiCount   = active.filter(l => (l.roi ?? 0) > 12).length;
-
-  if (loading) return (
-    <div className="space-y-3 animate-pulse">
-      {[...Array(3)].map((_, i) => <div key={i} className="h-20 bg-muted rounded-2xl" />)}
-    </div>
-  );
+  const active   = loans.filter(l => l.isActive);
+  const totalOut = active.reduce((s, l) => s + (l.outstanding ?? 0), 0);
+  const totalEMI = active.reduce((s, l) => s + (l.emi ?? 0), 0);
+  const hiCount  = active.filter(l => (l.roi ?? 0) > 12).length;
 
   return (
     <div className="space-y-4">
-      {/* Amortisation Modal */}
-      {amortLoan && <AmortModal loan={amortLoan} onClose={() => setAmortLoan(null)} />}
+      {amortLoan  && <AmortModal         loan={amortLoan}  onClose={() => setAmortLoan(null)}  />}
+      {prepayLoan && <PrepaymentLogModal loan={prepayLoan} onClose={() => setPrepayLoan(null)} />}
 
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
@@ -414,21 +503,27 @@ export function LoanManager() {
             <CardContent className="p-4">
               <div className="flex items-start justify-between gap-2 mb-2">
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
-                  <h3 className="text-sm font-semibold text-foreground">{loan.type} Loan</h3>
+                  <h3 className="text-sm font-semibold text-foreground">{loan.name ?? loan.type} Loan</h3>
                   <Badge variant={loan.isActive ? 'default' : 'secondary'} className="text-[10px]">{loan.isActive ? 'Active' : 'Closed'}</Badge>
                   <Badge variant="outline" className="text-[10px]">{loan.borrower}</Badge>
                   {(loan.roi ?? 0) > 12 && (
                     <Badge variant="destructive" className="text-[10px] gap-0.5">
-                      <AlertTriangle className="h-2.5 w-2.5" /> High
+                      <AlertTriangle className="h-2.5 w-2.5" /> High Rate
                     </Badge>
                   )}
                 </div>
                 <div className="flex gap-1 shrink-0">
                   {loan.isActive && (
-                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-primary hover:bg-primary/10"
-                      onClick={() => setAmortLoan(loan)} title="View amortisation schedule">
-                      <TableIcon className="h-3.5 w-3.5" />
-                    </Button>
+                    <>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-success hover:bg-success/10"
+                        onClick={() => setPrepayLoan(loan)} title="Log prepayment">
+                        <PlusCircle className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-primary hover:bg-primary/10"
+                        onClick={() => setAmortLoan(loan)} title="Amortisation schedule">
+                        <TableIcon className="h-3.5 w-3.5" />
+                      </Button>
+                    </>
                   )}
                   <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => handleEdit(loan)}><Edit className="h-3.5 w-3.5" /></Button>
                   <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(loan.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -436,9 +531,9 @@ export function LoanManager() {
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
                 {[
-                  { label: 'Principal',   val: formatCurrency(loan.principal)   },
-                  { label: 'Rate',        val: `${loan.roi ?? 0}%`              },
-                  { label: 'EMI',         val: formatCurrency(loan.emi ?? 0)    },
+                  { label: 'Principal',   val: formatCurrency(loan.principal)        },
+                  { label: 'Rate',        val: `${loan.roi ?? 0}%`                   },
+                  { label: 'EMI',         val: formatCurrency(loan.emi ?? 0)         },
                   { label: 'Outstanding', val: formatCurrency(loan.outstanding ?? 0) },
                 ].map(({ label, val }) => (
                   <div key={label}>
@@ -447,7 +542,6 @@ export function LoanManager() {
                   </div>
                 ))}
               </div>
-              {/* Quick freedom date preview */}
               {loan.isActive && loan.outstanding && loan.roi && loan.emi && (() => {
                 const s = buildLiveSchedule(loan.outstanding, loan.roi, loan.emi, 0);
                 const fd = s.rows.length > 0 ? s.rows[s.rows.length - 1].date : null;
@@ -459,9 +553,8 @@ export function LoanManager() {
                       <Calendar className="w-3 h-3" />
                       Debt-free: {fmt(fd)} {onTrack ? '✓' : '⚠'}
                     </span>
-                    <Button size="sm" variant="outline" className="h-6 text-xs gap-1"
-                      onClick={() => setAmortLoan(loan)}>
-                      <TableIcon className="w-3 h-3" />Schedule
+                    <Button size="sm" variant="outline" className="h-6 text-[10px] gap-1" onClick={() => setPrepayLoan(loan)}>
+                      <PlusCircle className="w-3 h-3" /> Prepay
                     </Button>
                   </div>
                 );
@@ -478,6 +571,10 @@ export function LoanManager() {
             <DialogTitle className="text-base">{editingLoan ? 'Edit Loan' : 'Add Loan'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Loan Name</Label>
+              <Input placeholder="e.g. InCred Education Loan" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} className="h-9 text-sm" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Type</Label>

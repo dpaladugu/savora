@@ -239,6 +239,9 @@ export interface GlobalSettings {
   // Phase 2: data-safety
   lastBackupAt?: number;       // epoch ms
   lastAutoRunAt?: string;      // ISO date string YYYY-MM-DD
+  // Phase 3: downstream CFA modules
+  annualIncome?: number;       // manual override for income (₹ p.a.) used by tax & insurance gap calc
+  dateOfBirth?: string;        // ISO date YYYY-MM-DD — drives age-based glide paths
 }
 
 export interface Expense {
@@ -670,6 +673,139 @@ db.version(18).stores({}).upgrade(async tx => {
       s.medicalInflationRate = 0.14;
     }
   });
+});
+
+// v19 — Add annualIncome + dateOfBirth defaults to globalSettings;
+//        Seed 8 real insurance policies if table is empty.
+db.version(19).stores({}).upgrade(async tx => {
+  // Patch globalSettings with new fields
+  await tx.table('globalSettings').toCollection().modify((s: any) => {
+    if (s.annualIncome === undefined) s.annualIncome = 0;
+    if (s.dateOfBirth === undefined)  s.dateOfBirth  = '';
+  });
+
+  // Seed 8 insurance policies
+  const insCount = await tx.table('insurance').count();
+  if (insCount === 0) {
+    const now = new Date();
+    await tx.table('insurance').bulkAdd([
+      {
+        id: 'ins-hdfc-self-health',
+        name: 'HDFC Ergo Self Health',
+        type: 'Health',
+        premium: 11000,
+        premiumTermYears: 1,
+        provider: 'HDFC Ergo',
+        company: 'HDFC Ergo',
+        sumInsured: 500000,
+        policySource: 'Personal',
+        isActive: true,
+        notes: 'Individual health cover for self — ₹5L sum insured',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-icici-mother-health',
+        name: 'ICICI Lombard Mother Health',
+        type: 'Health',
+        premium: 10000, // ₹30k / 3 years = ~₹10k/yr
+        premiumTermYears: 3,
+        provider: 'ICICI Lombard',
+        company: 'ICICI Lombard',
+        sumInsured: 500000,
+        policySource: 'Personal',
+        isActive: true,
+        familyMember: 'Mother',
+        notes: '3-year policy ₹30,000 total — expires in ~2yrs. Covers Mother.',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-icici-term',
+        name: 'ICICI Pru iProtect Smart Term',
+        type: 'Term Life',
+        premium: 18000,
+        premiumTermYears: 1,
+        provider: 'ICICI Prudential',
+        company: 'ICICI Prudential',
+        sumInsured: 10000000, // ₹1 Cr
+        policySource: 'Personal',
+        isActive: true,
+        notes: 'Pure term — ₹1 Cr sum assured. Nominee: TBD',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-corporate-group-health',
+        name: 'Employer Group Health',
+        type: 'Health',
+        premium: 0,
+        premiumTermYears: 1,
+        provider: 'Employer',
+        company: 'Corporate',
+        sumInsured: 500000,
+        policySource: 'Corporate / Employer',
+        isActive: true,
+        isCorporate: true,
+        notes: 'Employer group cover — ₹5L. Lapses on job change. Job-risk flagged.',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-ap-aarogya-sri',
+        name: 'AP Aarogya Sri',
+        type: 'Health',
+        premium: 0,
+        premiumTermYears: 1,
+        provider: 'Government of Andhra Pradesh',
+        company: 'AP Government',
+        sumInsured: 500000,
+        policySource: 'Government Scheme',
+        isActive: true,
+        familyMember: 'Mother',
+        notes: 'Free government scheme for AP residents. Covers Mother & family.',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-pmjjby',
+        name: 'PM Jeevan Jyoti Bima Yojana (PMJJBY)',
+        type: 'Term Life',
+        premium: 436,
+        premiumTermYears: 1,
+        provider: 'Government of India',
+        company: 'India Post / Bank',
+        sumInsured: 200000,
+        policySource: 'Government Scheme',
+        isActive: true,
+        notes: 'Auto-debited ₹436/yr. ₹2L death benefit. Covers self.',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-pmsby',
+        name: 'PM Suraksha Bima Yojana (PMSBY)',
+        type: 'Personal Accident',
+        premium: 20,
+        premiumTermYears: 1,
+        provider: 'Government of India',
+        company: 'India Post / Bank',
+        sumInsured: 200000,
+        policySource: 'Government Scheme',
+        isActive: true,
+        notes: '₹20/yr personal accident cover. ₹2L accidental death benefit.',
+        createdAt: now, updatedAt: now,
+      },
+      {
+        id: 'ins-vehicle-bike',
+        name: 'Two-Wheeler Insurance',
+        type: 'Vehicle',
+        premium: 3500,
+        premiumTermYears: 1,
+        provider: 'TBD',
+        company: 'TBD',
+        sumInsured: 80000,
+        policySource: 'Personal',
+        isActive: true,
+        notes: 'Comprehensive bike insurance. Renew annually.',
+        createdAt: now, updatedAt: now,
+      },
+    ]);
+  }
 });
 
 // ─── Install Audit Middleware (§19) — auto-logs all mutations ─────────────────
