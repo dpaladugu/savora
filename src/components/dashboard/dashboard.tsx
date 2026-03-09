@@ -261,12 +261,20 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const [showIncomeDialog, setShowIncomeDialog] = useState(false);
   const [showMonthDrilldown, setShowMonthDrilldown] = useState(false);
   const [showPrepayDialog, setShowPrepayDialog] = useState(false);
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
 
   // Reactive: updates instantly when settings change in Settings page
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first(), []);
   const userName    = settings?.userName || 'Devavratha';
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
   const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
+
+  // ── Show Setup Wizard on first launch (no income + no globalSettings userName) ──
+  useEffect(() => {
+    if (incomeCount === 0 && settings !== undefined && !settings?.userName) {
+      setShowSetupWizard(true);
+    }
+  }, [incomeCount, settings]);
   const pendingCount = useLiveQuery(
     () => role === 'ADMIN' ? (db as any).pendingTxns?.count().catch(() => 0) ?? Promise.resolve(0) : Promise.resolve(0),
     [role]
