@@ -58,6 +58,8 @@ export function ComprehensiveSettingsScreen() {
         userMission: userMission.trim(),
         annualIncome: annualIncome ? parseFloat(annualIncome) : 0,
         dateOfBirth: dateOfBirth || '',
+        salaryCreditDay: parseInt(salaryCreditDay) || 15,
+        annualBonus: annualBonus ? parseFloat(annualBonus) : 0,
       };
       if (existing) {
         await db.globalSettings.update(existing.id, profilePatch);
