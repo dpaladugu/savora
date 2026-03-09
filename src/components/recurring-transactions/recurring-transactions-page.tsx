@@ -91,6 +91,21 @@ export function RecurringTransactionsPage() {
   const totalIn  = active.filter(i => i.type === 'income').reduce((s, i) => s + i.amount, 0);
   const totalOut = active.filter(i => i.type === 'expense').reduce((s, i) => s + i.amount, 0);
 
+  // ── SIP / investment breakdown ────────────────────────────────────────────
+  const { sipTotal, emiTotal, billsTotal } = useMemo(() => {
+    const SIP_CATS = ['investment', 'sip', 'mf', 'nps', 'ppf', 'epf', 'gold'];
+    const EMI_CATS = ['emi', 'loan'];
+    const sipItems  = active.filter(i => i.type === 'expense' && SIP_CATS.some(k => (i.category ?? '').toLowerCase().includes(k) || (i.description ?? '').toLowerCase().includes(k)));
+    const emiItems  = active.filter(i => i.type === 'expense' && EMI_CATS.some(k => (i.category ?? '').toLowerCase().includes(k) || (i.description ?? '').toLowerCase().includes(k)));
+    const billItems = active.filter(i => i.type === 'expense' && !sipItems.includes(i) && !emiItems.includes(i));
+    return {
+      sipTotal:   sipItems.reduce((s, i) => s + i.amount, 0),
+      emiTotal:   emiItems.reduce((s, i) => s + i.amount, 0),
+      billsTotal: billItems.reduce((s, i) => s + i.amount, 0),
+    };
+  }, [active]);
+
+
   const handleSubmit = async (data: any) => {
     try {
       if (editing) {
