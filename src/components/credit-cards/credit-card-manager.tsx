@@ -80,7 +80,6 @@ function LogPaymentButton({ card }: { card: CreditCard }) {
         date: new Date() as any,
         paymentMethod: card.paymentMethod ?? 'Bank Transfer',
         tags: [],
-        source: 'manual',
         account: card.name,
         createdAt: new Date(),
         updatedAt: new Date(),

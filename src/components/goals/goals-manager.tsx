@@ -255,12 +255,17 @@ function GoalCard({
   return (
     <Card className={`glass ${done ? 'border-success/40 bg-success/3' : ''}`}>
       <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0 flex-1">
+        {/* Header row: icon + ring */}
+        <div className="flex items-start gap-3">
+          {/* Progress ring */}
+          <ProgressRing pct={progress} done={done} />
+
+          {/* Name / meta */}
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-base" role="img" aria-label="goal icon">{goalIcon(goal.name)}</span>
               <h4 className="text-sm font-semibold text-foreground truncate">{goal.name}</h4>
               {done && <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0" />}
-              <Badge variant="outline" className="text-[10px] h-4 px-1.5">{goal.category}</Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">Target: {fmt(goal.targetAmount ?? 0)}</p>
             {goal.deadline && (
@@ -277,6 +282,12 @@ function GoalCard({
               <Trash2 className="h-3 w-3" />
             </Button>
           </div>
+        </div>
+
+        {/* Saved / to-go summary */}
+        <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
+          <span>Saved: <span className="text-foreground font-semibold">{fmt(goal.currentAmount ?? 0)}</span></span>
+          <span>{done ? '✓ Complete!' : `${fmt(remaining)} to go`}</span>
         </div>
 
         {/* Celebration banner for 100% completed goals */}
@@ -296,18 +307,6 @@ function GoalCard({
             </Button>
           </motion.div>
         )}
-
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-xs">
-            <span className="text-muted-foreground">Progress</span>
-            <span className={`font-semibold tabular-nums ${done ? 'text-success' : 'text-foreground'}`}>{progress.toFixed(1)}%</span>
-          </div>
-          <Progress value={progress} className={`h-2 ${done ? '[&>div]:bg-success' : ''}`} />
-          <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
-            <span>{fmt(goal.currentAmount ?? 0)}</span>
-            <span>{done ? 'Complete!' : `${fmt(remaining)} to go`}</span>
-          </div>
-        </div>
 
         {/* SIP needed vs committed */}
         {!done && sipNeeded != null && sipNeeded > 0 && (
