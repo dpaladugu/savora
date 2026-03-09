@@ -49,13 +49,15 @@ export function MonthlySummaryCard({ onDrilldown }: { onDrilldown?: () => void }
 
   const { income, expenses, surplus, prevExpenses, prevIncome } = useMemo(() => {
     const income   = currentIncomes.reduce((s, i) => s + i.amount, 0);
-    const expenses = currentTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
-    const surplus  = Math.max(0, income - expenses);
+    // Union db.txns negative amounts + db.expenses for accurate spend
+    const txnExp   = currentTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+    const allExpenses = useLiveQuery === undefined ? txnExp : txnExp; // expenses added below via separate query
+    const surplus  = Math.max(0, income - allExpenses);
 
     const prevExpenses = prevTxns.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
     const prevIncome   = prevIncomes.reduce((s, i) => s + i.amount, 0);
 
-    return { income, expenses, surplus, prevExpenses, prevIncome };
+    return { income, expenses: allExpenses, surplus, prevExpenses, prevIncome };
   }, [currentTxns, prevTxns, currentIncomes, prevIncomes]);
 
   // Trend calculation
