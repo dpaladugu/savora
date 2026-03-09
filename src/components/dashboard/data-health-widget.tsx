@@ -39,7 +39,7 @@ export function DataHealthWidget({ onNavigate }: Props) {
       label: 'Monthly Income',
       count: incomeCount,
       navTarget: 'income',
-      emptyTip: 'Run Setup Wizard in Settings → enter salary',
+      emptyTip: 'Tap to add salary — unlocks Monthly Surplus & savings rate',
       icon: '💰',
       critical: true,
     },
