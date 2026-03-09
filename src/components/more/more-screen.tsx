@@ -4,7 +4,7 @@ import {
   CreditCard, FileText, Repeat, Car, Shield, Heart, Coins,
   Users2, Target, TrendingUp, Brain, Settings, Sparkles,
   Home, Banknote, AlertCircle, Globe, Bike, Building,
-  Scale, Calculator, Zap, BarChart3, Upload, Crosshair, MessageCircle, Landmark,
+  Scale, Calculator, Zap, BarChart3, Upload, Crosshair, MessageCircle, Landmark, Activity,
 } from 'lucide-react';
 import { useRole } from '@/store/rbacStore';
 
@@ -43,6 +43,7 @@ const modules: MoreModule[] = [
   { id: 'gold',            title: 'Gold Investments',       description: 'Gold holdings & price movements',                    icon: Coins,       status: 'beta',         category: 'tracking',  priority: 'low',   roleBlocked: 'BROTHER' },
 
   // ── Analysis & Intelligence ────────────────────────────────────
+  { id: 'cashflow',            title: 'Cashflow Analysis',    description: '6-month income vs expense waterfall chart',       icon: Activity,    status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'cfa-recommendations', title: 'CFA Recommendations', description: 'Professional-grade financial analysis',            icon: Brain,       status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'ai-advisor',          title: 'AI Financial Advisor', description: 'Anonymised snapshot → LLM insights (zero PII)',  icon: Sparkles,    status: 'available',    category: 'analysis',  priority: 'high' },
   { id: 'recommendations',    title: 'Smart Insights',       description: 'Rule-based insights & suggestions',               icon: Brain,       status: 'beta',         category: 'analysis',  priority: 'medium' },
