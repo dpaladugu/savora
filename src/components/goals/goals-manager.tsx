@@ -386,6 +386,7 @@ export function GoalsManager({ onNavigateToSip }: { onNavigateToSip?: (goalId: s
               onPlanSip={handlePlanSip}
               onContribute={setContributeGoal}
               onEdit={setEditGoal}
+              committedSIP={sipCommittedByGoal[g.id] ?? 0}
             />
           </motion.div>
         ))}
