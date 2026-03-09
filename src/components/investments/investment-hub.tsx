@@ -2,7 +2,7 @@
  * InvestmentHub — tabbed instrument-aware investment tracker
  * Tabs: Overview | SIP/MF | EPF | PPF | NPS | SGB | FD/RD
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Investment } from '@/lib/db';
