@@ -29,7 +29,6 @@ export function FabAddExpense() {
         category,
         description: description || category,
         date: now,
-        type: 'expense',
         createdAt: now,
         updatedAt: now,
       });
