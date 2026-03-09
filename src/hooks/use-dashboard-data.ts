@@ -42,42 +42,57 @@ const EMPTY: DashboardData = {
 
 export function useDashboardData() {
   // ── Live reactive queries ──────────────────────────────────────────────────
-  const txns         = useLiveQuery(() => db.txns.toArray(),         []) ?? [];
-  const incomes      = useLiveQuery(() => db.incomes.toArray(),      []) ?? [];
-  const investments  = useLiveQuery(() => db.investments.toArray(),  []) ?? [];
-  const creditCards  = useLiveQuery(() => db.creditCards.toArray(),  []) ?? [];
+  const txns           = useLiveQuery(() => db.txns.toArray(),         []) ?? [];
+  // Pull from db.expenses (positive amounts) for richer coverage
+  const dbExpenses     = useLiveQuery(() => db.expenses.toArray().catch(() => []), []) ?? [];
+  const incomes        = useLiveQuery(() => db.incomes.toArray(),      []) ?? [];
+  const investments    = useLiveQuery(() => db.investments.toArray(),  []) ?? [];
+  const creditCards    = useLiveQuery(() => db.creditCards.toArray(),  []) ?? [];
   const emergencyFunds = useLiveQuery(() => db.emergencyFunds.toArray(), []) ?? [];
-  const goals        = useLiveQuery(() => db.goals.toArray(),        []) ?? [];
+  const goals          = useLiveQuery(() => db.goals.toArray(),        []) ?? [];
 
   // ── Derived data — recomputed whenever any table changes ──────────────────
   const dashboardData = useMemo<DashboardData>(() => {
     const monthStart = new Date();
     monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
 
-    // Expenses (negative txns)
+    // ── Expenses: union of negative txns + db.expenses (positive amounts) ──
+    // Negative txns
     const expenseTxns  = txns.filter(t => t.amount < 0);
     const monthlyTxns  = expenseTxns.filter(t => new Date(t.date) >= monthStart);
-    const totalExpenses   = expenseTxns.reduce((s, t) => s + Math.abs(t.amount), 0);
-    const monthlyExpenses = monthlyTxns.reduce((s, t) => s + Math.abs(t.amount), 0);
 
-    // Monthly income — strictly this month
-    const monthlyIncomeTxns = incomes.filter(i => new Date(i.date) >= monthStart);
+    // db.expenses (positive amounts, already positive)
+    const monthlyDbExp = dbExpenses.filter(e => {
+      const d = e.date instanceof Date ? e.date : new Date(e.date);
+      return d >= monthStart;
+    });
+
+    const totalExpenses   = expenseTxns.reduce((s, t) => s + Math.abs(t.amount), 0)
+                          + dbExpenses.reduce((s, e) => s + e.amount, 0);
+    const monthlyExpenses = monthlyTxns.reduce((s, t) => s + Math.abs(t.amount), 0)
+                          + monthlyDbExp.reduce((s, e) => s + e.amount, 0);
+
+    // ── Monthly income — strictly this month ──────────────────────────────
+    const monthlyIncomeTxns = incomes.filter(i => {
+      const d = i.date instanceof Date ? i.date : new Date(i.date);
+      return d >= monthStart;
+    });
     const monthlyIncome = monthlyIncomeTxns.reduce((s, i) => s + i.amount, 0);
 
-    // Investments
+    // ── Investments ────────────────────────────────────────────────────────
     const totalInvestments = investments.reduce((s, inv: any) =>
       s + (inv.currentValue || inv.investedValue || inv.amount || 0), 0);
 
-    // Credit card debt
+    // ── Credit card debt ───────────────────────────────────────────────────
     const creditCardDebt = creditCards.reduce((s, c: any) =>
       s + (c.currentBalance || c.balance || 0), 0);
 
-    // Emergency fund
+    // ── Emergency fund ─────────────────────────────────────────────────────
     const ef = emergencyFunds[0];
     const emergencyFundCurrent = ef?.currentAmount ?? 0;
     const emergencyFundTarget  = ef?.targetAmount  ?? 0;
 
-    // Goals
+    // ── Goals ──────────────────────────────────────────────────────────────
     const now = new Date();
     const goalsMapped = goals.map((g: any) => ({
       id: g.id,
@@ -91,7 +106,7 @@ export function useDashboardData() {
       updatedAt: g.updatedAt ?? now,
     }));
 
-    // Recent transactions (expense txns, latest 10)
+    // ── Recent transactions (expense txns, latest 10) ──────────────────────
     const recentTransactions: Transaction[] = [...expenseTxns]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10)
@@ -104,11 +119,15 @@ export function useDashboardData() {
         type: 'expense' as const,
       }));
 
-    // Category breakdown (current month)
-    const catTotals = monthlyTxns.reduce<Record<string, number>>((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + Math.abs(t.amount);
-      return acc;
-    }, {});
+    // ── Category breakdown (union: txns + db.expenses, current month) ──────
+    const catTotals: Record<string, number> = {};
+    monthlyTxns.forEach(t => {
+      catTotals[t.category] = (catTotals[t.category] || 0) + Math.abs(t.amount);
+    });
+    monthlyDbExp.forEach(e => {
+      catTotals[e.category] = (catTotals[e.category] || 0) + e.amount;
+    });
+
     const categoryBreakdown: CategoryBreakdown[] = Object.entries(catTotals)
       .sort(([, a], [, b]) => b - a)
       .map(([category, amount], idx) => ({
@@ -118,14 +137,14 @@ export function useDashboardData() {
         color: stableColor(category, idx),
       }));
 
-    // Savings rate
+    // ── Savings rate ────────────────────────────────────────────────────────
     const savingsRate = monthlyIncome > 0
       ? Math.max(0, ((monthlyIncome - monthlyExpenses) / monthlyIncome) * 100)
       : 0;
 
     return {
       totalExpenses, monthlyExpenses, totalInvestments,
-      expenseCount: expenseTxns.length,
+      expenseCount: expenseTxns.length + dbExpenses.length,
       investmentCount: investments.length,
       emergencyFundTarget, emergencyFundCurrent,
       monthlyIncome, savingsRate,
@@ -133,8 +152,8 @@ export function useDashboardData() {
       creditCardDebt, emergencyFund: emergencyFundCurrent,
       goals: goalsMapped, recentTransactions, categoryBreakdown,
     };
-  }, [txns, incomes, investments, creditCards, emergencyFunds, goals]);
+  }, [txns, dbExpenses, incomes, investments, creditCards, emergencyFunds, goals]);
 
-  const loading = false; // useLiveQuery handles loading via undefined check
+  const loading = false;
   return { dashboardData, loading, error: null, refresh: () => {} };
 }

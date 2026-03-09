@@ -14,6 +14,7 @@ interface DebtItem {
   name: string;
   outstanding: number;
   monthlyPayment: number;
+  interestRate: number;
   type: 'loan' | 'card';
 }
 
@@ -25,52 +26,88 @@ interface StrikeResult {
   onTrackFor2029: boolean;
   debtItems: DebtItem[];
   surplusAfterDebt: number;
-  snowballOrder: DebtItem[];
+  avalancheOrder: DebtItem[];
+  totalInterestSaved: number;
 }
 
+// ── Interest-aware avalanche amortisation ─────────────────────────────────────
 function calcDebtFreedom(debtItems: DebtItem[], monthlyCapacity: number): StrikeResult {
   const totalDebt = debtItems.reduce((s, d) => s + d.outstanding, 0);
-
-  // Snowball: sort smallest outstanding first for psychological wins
-  const snowballOrder = [...debtItems].sort((a, b) => a.outstanding - b.outstanding);
-
-  let months = 0;
-  let remaining = totalDebt;
+  // Avalanche: highest-rate first (minimises total interest paid)
+  const avalancheOrder = [...debtItems].sort((a, b) => b.interestRate - a.interestRate);
 
   if (monthlyCapacity <= 0 || totalDebt <= 0) {
     return {
-      totalDebt,
-      monthlyCapacity,
-      monthsToFreedom: 0,
-      freedomDate: new Date(),
-      onTrackFor2029: true,
-      debtItems,
-      surplusAfterDebt: monthlyCapacity,
-      snowballOrder,
+      totalDebt, monthlyCapacity, monthsToFreedom: 0,
+      freedomDate: new Date(), onTrackFor2029: true,
+      debtItems, surplusAfterDebt: monthlyCapacity,
+      avalancheOrder, totalInterestSaved: 0,
     };
   }
 
-  // Simple simulation: apply full capacity each month, no interest compounding for MVP
-  months = Math.ceil(totalDebt / monthlyCapacity);
+  // ── Month-by-month compound simulation ────────────────────────────────────
+  // Each debt accrues interest at its own rate.
+  // Minimum payments are applied first; remaining capacity snowballs into the top-priority debt.
+  let balances   = avalancheOrder.map(d => d.outstanding);
+  const rates    = avalancheOrder.map(d => d.interestRate / 100 / 12);
+  const minPay   = avalancheOrder.map(d => d.monthlyPayment);
+
+  let month = 0;
+  let totalInterestPaid = 0;
+  // Simple baseline: what would total interest be paying only minimums forever?
+  let baselineInterest = 0;
+  const MAX_MONTHS = 600;
+
+  while (balances.some(b => b > 0.01) && month < MAX_MONTHS) {
+    month++;
+    let remaining = monthlyCapacity;
+
+    // Accrue interest & apply minimums
+    for (let i = 0; i < balances.length; i++) {
+      if (balances[i] <= 0) continue;
+      const interest = balances[i] * rates[i];
+      totalInterestPaid += interest;
+      balances[i] += interest;
+
+      // Apply minimum payment (or full balance if smaller)
+      const pay = Math.min(balances[i], Math.max(minPay[i] || 0, 0));
+      balances[i] -= pay;
+      remaining -= pay;
+    }
+
+    // Extra capacity → avalanche target (first non-zero balance)
+    if (remaining > 0) {
+      for (let i = 0; i < balances.length; i++) {
+        if (balances[i] <= 0) continue;
+        const extra = Math.min(remaining, balances[i]);
+        balances[i] -= extra;
+        remaining -= extra;
+        if (remaining <= 0) break;
+      }
+    }
+
+    // Floor tiny rounding errors
+    balances = balances.map(b => (b < 0.01 ? 0 : b));
+  }
+
+  // Rough "minimum-only" interest estimate for interest saved calc
+  const minOnlyMonths = Math.ceil(totalDebt / Math.max(1, debtItems.reduce((s, d) => s + d.monthlyPayment, 0)));
+  avalancheOrder.forEach(d => {
+    baselineInterest += d.outstanding * (d.interestRate / 100 / 12) * minOnlyMonths;
+  });
+  const totalInterestSaved = Math.max(0, baselineInterest - totalInterestPaid);
 
   const freedomDate = new Date();
-  freedomDate.setMonth(freedomDate.getMonth() + months);
-
-  const deadline2029 = new Date('2029-12-31');
+  freedomDate.setMonth(freedomDate.getMonth() + month);
+  const deadline2029   = new Date('2029-12-31');
   const onTrackFor2029 = freedomDate <= deadline2029;
-
   const monthlyDebtPayments = debtItems.reduce((s, d) => s + d.monthlyPayment, 0);
-  const surplusAfterDebt = Math.max(0, monthlyCapacity - monthlyDebtPayments);
+  const surplusAfterDebt    = Math.max(0, monthlyCapacity - monthlyDebtPayments);
 
   return {
-    totalDebt,
-    monthlyCapacity,
-    monthsToFreedom: months,
-    freedomDate,
-    onTrackFor2029,
-    debtItems,
-    surplusAfterDebt,
-    snowballOrder,
+    totalDebt, monthlyCapacity, monthsToFreedom: month,
+    freedomDate, onTrackFor2029, debtItems, surplusAfterDebt,
+    avalancheOrder, totalInterestSaved,
   };
 }
 
@@ -83,11 +120,12 @@ export function DebtStrikeCalculator() {
   useEffect(() => {
     async function load() {
       try {
-        const [loans, cards, incomes, txns] = await Promise.all([
+        const [loans, cards, incomes, txns, expenses] = await Promise.all([
           db.loans.toArray(),
           db.creditCards.toArray(),
           db.incomes.toArray(),
           db.txns.toArray(),
+          db.expenses.toArray().catch(() => []),
         ]);
 
         const monthStart = new Date();
@@ -95,29 +133,40 @@ export function DebtStrikeCalculator() {
         monthStart.setHours(0, 0, 0, 0);
 
         // Monthly income
-        const monthlyIncomeTxns = incomes.filter(i => new Date(i.date) >= monthStart);
+        const monthlyIncomeTxns = incomes.filter(i => {
+          const d = i.date instanceof Date ? i.date : new Date(i.date);
+          return d >= monthStart;
+        });
         const income = monthlyIncomeTxns.reduce((s, i) => s + i.amount, 0)
-          || incomes.reduce((s, i) => s + i.amount, 0) / Math.max(1, new Set(incomes.map(i => new Date(i.date).toISOString().slice(0, 7))).size);
+          || incomes.reduce((s, i) => s + i.amount, 0) / Math.max(1, new Set(incomes.map(i => {
+            const d = i.date instanceof Date ? i.date : new Date(i.date);
+            return d.toISOString().slice(0, 7);
+          })).size);
 
-        // Monthly expenses
+        // Monthly expenses: union of negative txns + db.expenses
         const expenseTxns = txns.filter(t => t.amount < 0 && new Date(t.date) >= monthStart);
-        const expenses = expenseTxns.reduce((s, t) => s + Math.abs(t.amount), 0);
+        const expenseDbRows = expenses.filter(e => {
+          const d = e.date instanceof Date ? e.date : new Date(e.date);
+          return d >= monthStart;
+        });
+        const expenseTotal = expenseTxns.reduce((s, t) => s + Math.abs(t.amount), 0)
+                           + expenseDbRows.reduce((s, e) => s + e.amount, 0);
 
         setMonthlyIncome(income);
-        setMonthlyExpenses(expenses);
+        setMonthlyExpenses(expenseTotal);
 
-        const surplus = Math.max(0, income - expenses);
+        const surplus = Math.max(0, income - expenseTotal);
 
         // Build debt items from loans
         const debtItems: DebtItem[] = [];
-
         loans.forEach((l: any) => {
           const outstanding = l.outstanding ?? l.principal ?? 0;
           if (outstanding > 0) {
             debtItems.push({
-              name: l.name,
+              name: l.name ?? 'Loan',
               outstanding,
               monthlyPayment: l.emi ?? 0,
+              interestRate: l.roi ?? l.interestRate ?? 0,
               type: 'loan',
             });
           }
@@ -131,6 +180,7 @@ export function DebtStrikeCalculator() {
               name: c.name ?? `${c.bankName} Card`,
               outstanding: bal,
               monthlyPayment: 0,
+              interestRate: c.interestRate ?? 36, // ~3%/month default
               type: 'card',
             });
           }
@@ -158,12 +208,12 @@ export function DebtStrikeCalculator() {
 
   if (!result) return null;
 
-  const { totalDebt, monthlyCapacity, monthsToFreedom, freedomDate, onTrackFor2029, snowballOrder, surplusAfterDebt } = result;
+  const { totalDebt, monthlyCapacity, monthsToFreedom, freedomDate, onTrackFor2029, avalancheOrder, surplusAfterDebt, totalInterestSaved } = result;
 
-  const yearsLeft = Math.floor(monthsToFreedom / 12);
-  const moLeft = monthsToFreedom % 12;
+  const yearsLeft  = Math.floor(monthsToFreedom / 12);
+  const moLeft     = monthsToFreedom % 12;
   const deadline2029 = new Date('2029-12-31');
-  const msTo2029 = deadline2029.getTime() - Date.now();
+  const msTo2029   = deadline2029.getTime() - Date.now();
   const months2029 = Math.max(0, Math.ceil(msTo2029 / (1000 * 60 * 60 * 24 * 30.4)));
   const progressPct = months2029 > 0 ? Math.min(100, Math.round(((months2029 - monthsToFreedom) / months2029) * 100)) : 100;
 
@@ -189,11 +239,14 @@ export function DebtStrikeCalculator() {
       <TabsContent value="overview" className="m-0">
         <div className="p-4 space-y-4">
           <div className="flex items-center gap-2">
-            <Badge
-              variant={onTrackFor2029 ? 'default' : 'destructive'}
-            >
+            <Badge variant={onTrackFor2029 ? 'default' : 'destructive'}>
               {onTrackFor2029 ? '✓ On Track for 2029' : '⚠ Behind Target'}
             </Badge>
+            {totalInterestSaved > 0 && (
+              <Badge variant="outline" className="text-xs border-success/40 text-success">
+                💰 Saves {formatCurrency(totalInterestSaved)} interest
+              </Badge>
+            )}
           </div>
 
           {/* ── Hero card ── */}
@@ -202,25 +255,19 @@ export function DebtStrikeCalculator() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Debt</p>
-                  <p className="text-2xl font-bold text-destructive tabular-nums">
-                    {formatCurrency(totalDebt)}
-                  </p>
+                  <p className="text-2xl font-bold text-destructive tabular-nums">{formatCurrency(totalDebt)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Monthly Strike Capacity</p>
-                  <p className="text-2xl font-bold text-success tabular-nums">
-                    {formatCurrency(monthlyCapacity)}
-                  </p>
+                  <p className="text-2xl font-bold text-success tabular-nums">{formatCurrency(monthlyCapacity)}</p>
                 </div>
               </div>
-
               <Separator />
-
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
                   <div>
-                    <p className="text-xs text-muted-foreground">Debt-Free Date</p>
+                    <p className="text-xs text-muted-foreground">Debt-Free Date (Avalanche)</p>
                     <p className="text-sm font-semibold">
                       {totalDebt === 0
                         ? '🎉 Already Free!'
@@ -230,13 +277,11 @@ export function DebtStrikeCalculator() {
                     </p>
                   </div>
                 </div>
-                {onTrackFor2029 ? (
-                  <CheckCircle2 className="h-8 w-8 text-success" />
-                ) : (
-                  <AlertTriangle className="h-8 w-8 text-warning" />
-                )}
+                {onTrackFor2029
+                  ? <CheckCircle2 className="h-8 w-8 text-success" />
+                  : <AlertTriangle className="h-8 w-8 text-warning" />
+                }
               </div>
-
               {/* Progress toward 2029 */}
               <div>
                 <div className="flex justify-between text-xs text-muted-foreground mb-1">
@@ -244,9 +289,7 @@ export function DebtStrikeCalculator() {
                   <span>{progressPct}%</span>
                 </div>
                 <Progress value={progressPct} className="h-2.5" />
-                <p className="text-xs text-muted-foreground mt-1">
-                  {months2029} months remaining to Dec 2029 deadline
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{months2029} months remaining to Dec 2029 deadline</p>
               </div>
             </CardContent>
           </Card>
@@ -268,9 +311,7 @@ export function DebtStrikeCalculator() {
               <Separator />
               <div className="flex justify-between font-semibold">
                 <span>Strike Capacity (Surplus)</span>
-                <span className={monthlyCapacity > 0 ? 'text-success' : 'text-destructive'}>
-                  {formatCurrency(monthlyCapacity)}
-                </span>
+                <span className={monthlyCapacity > 0 ? 'text-success' : 'text-destructive'}>{formatCurrency(monthlyCapacity)}</span>
               </div>
               {surplusAfterDebt > 0 && (
                 <div className="flex justify-between text-xs text-muted-foreground">
@@ -281,43 +322,48 @@ export function DebtStrikeCalculator() {
             </CardContent>
           </Card>
 
-          {/* ── Snowball order ── */}
-          {snowballOrder.length > 0 && (
+          {/* ── Avalanche order ── */}
+          {avalancheOrder.length > 0 && (
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-semibold flex items-center gap-2">
                   <Zap className="h-4 w-4 text-warning" />
-                  Snowball Attack Order
+                  Avalanche Attack Order (Highest Rate First)
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
-                {snowballOrder.map((d, i) => {
-                  const monthsToKill = monthlyCapacity > 0 ? Math.ceil(d.outstanding / monthlyCapacity) : 0;
+                {avalancheOrder.map((d, i) => {
+                  // Per-debt months: interest-aware single-debt amortisation
+                  const r = d.interestRate / 100 / 12;
+                  let months = 0;
+                  if (monthlyCapacity > 0 && d.outstanding > 0) {
+                    if (r === 0) {
+                      months = Math.ceil(d.outstanding / monthlyCapacity);
+                    } else {
+                      let bal = d.outstanding;
+                      while (bal > 0 && months < 600) {
+                        months++;
+                        bal += bal * r;
+                        bal -= Math.min(bal, monthlyCapacity);
+                      }
+                    }
+                  }
                   return (
                     <div key={d.name + i} className="flex items-center justify-between py-2 border-b border-border/40 last:border-0">
                       <div className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">
-                          {i + 1}
-                        </span>
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold">{i + 1}</span>
                         <div>
                           <p className="text-sm font-medium">{d.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{d.type}</p>
+                          <p className="text-xs text-muted-foreground capitalize">{d.type} · {d.interestRate}% p.a.</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-semibold text-destructive tabular-nums">{formatCurrency(d.outstanding)}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {monthsToKill > 0 ? `~${monthsToKill}mo` : '—'}
-                        </p>
+                        <p className="text-xs text-muted-foreground">{months > 0 ? `~${months}mo` : '—'}</p>
                       </div>
                     </div>
                   );
                 })}
-                {snowballOrder.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    🎉 No active debts found!
-                  </p>
-                )}
               </CardContent>
             </Card>
           )}
