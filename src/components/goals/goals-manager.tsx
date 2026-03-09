@@ -177,6 +177,46 @@ function EditGoalDialog({
   );
 }
 
+// ── SVG Progress Ring ─────────────────────────────────────────────────────────
+function ProgressRing({ pct: progress, size = 56, strokeWidth = 5, done }: { pct: number; size?: number; strokeWidth?: number; done?: boolean }) {
+  const r = (size - strokeWidth) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (Math.min(progress, 100) / 100) * circ;
+  const color = done ? 'hsl(var(--success))' : progress >= 75 ? 'hsl(var(--primary))' : progress >= 40 ? 'hsl(var(--warning))' : 'hsl(var(--muted-foreground) / 0.4)';
+  return (
+    <svg width={size} height={size} className="shrink-0 -rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="hsl(var(--muted))" strokeWidth={strokeWidth} />
+      <circle
+        cx={size / 2} cy={size / 2} r={r} fill="none"
+        stroke={color} strokeWidth={strokeWidth}
+        strokeDasharray={circ} strokeDashoffset={offset}
+        strokeLinecap="round"
+        style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+      />
+      <text x={size / 2} y={size / 2} textAnchor="middle" dominantBaseline="central"
+        fill="hsl(var(--foreground))" fontSize={size * 0.22} fontWeight="700"
+        style={{ transform: 'rotate(90deg)', transformOrigin: `${size / 2}px ${size / 2}px` }}
+      >
+        {done ? '✓' : `${Math.round(progress)}%`}
+      </text>
+    </svg>
+  );
+}
+
+// ── Goal type icon map ─────────────────────────────────────────────────────────
+function goalIcon(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('house') || n.includes('home') || n.includes('flat')) return '🏠';
+  if (n.includes('car') || n.includes('vehicle') || n.includes('bike')) return '🚗';
+  if (n.includes('education') || n.includes('study') || n.includes('college')) return '🎓';
+  if (n.includes('retire') || n.includes('pension')) return '🌅';
+  if (n.includes('travel') || n.includes('trip') || n.includes('vacation')) return '✈️';
+  if (n.includes('emergency') || n.includes('safety') || n.includes('fund')) return '🛡️';
+  if (n.includes('wedding') || n.includes('marriage')) return '💍';
+  if (n.includes('baby') || n.includes('child') || n.includes('kid')) return '👶';
+  return '🎯';
+}
+
 // ── Goal Card ─────────────────────────────────────────────────────────────────
 function GoalCard({
   goal,

@@ -301,7 +301,7 @@ export function CreditCardManager() {
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Badge variant="outline" className={`text-[10px] ${utilizationColor(util)} border-current/40`}>
                         {util}% used
                       </Badge>
@@ -357,6 +357,11 @@ export function CreditCardManager() {
                       />
                       <p className="text-[10px] text-muted-foreground">{card.feeWaiverRule}</p>
                     </div>
+                  )}
+
+                  {/* Log Payment button */}
+                  {bal > 0 && (
+                    <LogPaymentButton card={card} />
                   )}
                 </CardContent>
               </Card>
