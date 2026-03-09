@@ -22,7 +22,7 @@ import {
   BarChart3, RefreshCw, Rss, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { addMonths, addQuarters, addYears, differenceInDays, format, getDaysInMonth, startOfMonth } from 'date-fns';
+import { addMonths, addQuarters, addYears, differenceInDays, format, startOfMonth } from 'date-fns';
 import type { Subscription } from '@/lib/db';
 
 // ── Category icons ──────────────────────────────────────────────────────────────
