@@ -239,7 +239,29 @@ export function ExpenseTracker() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Description *</Label>
-                <Input placeholder="What was this for?" value={form.description} onChange={e => setForm({...form, description: e.target.value})} required className="h-10" />
+                <div className="relative">
+                  <Input
+                    placeholder="What was this for?"
+                    value={form.description}
+                    onChange={e => {
+                      const desc = e.target.value;
+                      const suggested = suggestCategory(desc);
+                      setForm(f => ({
+                        ...f,
+                        description: desc,
+                        // Auto-fill category only if not already set by user
+                        category: f.category || suggested,
+                      }));
+                    }}
+                    required
+                    className="h-10"
+                  />
+                  {form.description.length >= 3 && suggestCategory(form.description) && !form.category && (
+                    <span className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 text-[10px] text-primary font-medium pointer-events-none">
+                      <Sparkles className="h-2.5 w-2.5" /> auto
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
