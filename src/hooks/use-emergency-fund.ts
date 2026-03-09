@@ -124,7 +124,7 @@ export const useEmergencyFund = (): UseEmergencyFundReturn => {
         .reduce((s, i) => s + (i.premium ?? i.premiumAmount ?? 0), 0);
 
       // ── Rental income ─────────────────────────────────────────────────────
-      const rentalIncome = rentalRows.reduce((s: number, r: any) => s + (r.monthlyRent ?? r.rent ?? 0), 0);
+      const rentalIncome = (rentalRows as any[]).reduce((s: number, r: any) => s + (r.monthlyRent ?? r.rent ?? 0), 0);
 
       // ── Emergency fund corpus ─────────────────────────────────────────────
       const savings = efData.reduce((s, f) => s + f.currentAmount, 0);
