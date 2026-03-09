@@ -136,9 +136,9 @@ export function FinancialSetupWizard({ onComplete }: Props) {
           const existing = await db.emergencyFunds.toArray();
           if (existing.length > 0) {
             await db.emergencyFunds.update(existing[0].id, {
-              currentAmount: corpus || existing[0].currentAmount,
-              targetAmount:  target || existing[0].targetAmount,
-              monthlyExpenses: expenses || existing[0].monthlyExpenses,
+              currentAmount: corpus > 0 ? corpus : existing[0].currentAmount,
+              targetAmount:  target > 0 ? target : existing[0].targetAmount,
+              monthlyExpenses: effectiveExpenses > 0 ? effectiveExpenses : existing[0].monthlyExpenses,
               targetMonths: months,
               updatedAt: now,
             });
