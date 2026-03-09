@@ -89,6 +89,9 @@ const MainApp = () => {
           activeMoreModule={activeMoreModule}
           onMoreNavigation={handleMoreNavigation}
         />
+
+        {/* ── Floating Add Expense button (mobile only) ── */}
+        <FabAddExpense />
       </div>
     </GlobalErrorBoundary>
   );
