@@ -1,216 +1,176 @@
-
-import React, { useState, useEffect } from 'react';
+/**
+ * EnhancedRentalManager — migrated to useLiveQuery for real-time reactivity.
+ * Shows live property/tenant data from db.rentalProperties and db.tenants.
+ */
+import React, { useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Building, Users, AlertTriangle, TrendingUp, Calendar, IndianRupee } from 'lucide-react';
-import { RentalPropertyService } from '@/services/RentalPropertyService';
-import { TenantService } from '@/services/TenantService';
-import { toast } from 'sonner';
+import { Building, Users, AlertTriangle, TrendingUp, IndianRupee, Home } from 'lucide-react';
 import { formatCurrency } from '@/lib/format-utils';
-import type { RentalProperty, Tenant } from '@/lib/db-schema-extended';
 
 export function EnhancedRentalManager() {
-  const [properties, setProperties] = useState<RentalProperty[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [analytics, setAnalytics] = useState({
-    totalProperties: 0,
-    totalMonthlyIncome: 0,
-    totalAnnualTax: 0,
-    avgRentPerProperty: 0,
-    propertiesWithOverdueRent: 0
-  });
-  const [loading, setLoading] = useState(true);
+  const properties = useLiveQuery(
+    () => db.rentalProperties?.toArray().catch(() => []) ?? Promise.resolve([]),
+    [],
+  ) ?? [];
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  const tenants = useLiveQuery(
+    () => db.tenants?.toArray().catch(() => []) ?? Promise.resolve([]),
+    [],
+  ) ?? [];
 
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      const [propertiesData, tenantsData, analyticsData] = await Promise.all([
-        RentalPropertyService.getAllProperties(),
-        TenantService.getAllTenants(),
-        RentalPropertyService.getRentalAnalytics()
-      ]);
-      
-      setProperties(propertiesData);
-      setTenants(tenantsData);
-      setAnalytics(analyticsData);
-    } catch (error) {
-      toast.error('Failed to load rental data');
-      console.error('Error loading rental data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const today = new Date();
 
-  const getPropertyTenants = (propertyId: string) => {
-    return tenants.filter(tenant => tenant.propertyId === propertyId && (!tenant.endDate || tenant.endDate > new Date()));
-  };
+  const activeTenants = useMemo(
+    () => tenants.filter((t: any) => !t.endDate || new Date(t.endDate) > today),
+    [tenants],
+  );
 
-  const getOverdueRent = () => {
-    const today = new Date();
-    const currentDay = today.getDate();
-    
-    return properties.filter(property => currentDay > property.dueDay + 5); // 5 days grace period
-  };
+  const analytics = useMemo(() => {
+    const totalMonthlyIncome = (properties as any[]).reduce((s, p) => s + (p.monthlyRent ?? 0), 0);
+    const totalAnnualTax     = (properties as any[]).reduce((s, p) => s + (p.propertyTaxAnnual ?? 0) + (p.waterTaxAnnual ?? 0), 0);
+    const overdue = (properties as any[]).filter(p => today.getDate() > (p.dueDay ?? 5) + 5);
+    return {
+      totalProperties:              properties.length,
+      totalMonthlyIncome,
+      totalAnnualTax,
+      avgRentPerProperty:           properties.length > 0 ? Math.round(totalMonthlyIncome / properties.length) : 0,
+      propertiesWithOverdueRent:    overdue.length,
+      overdueProperties:            overdue,
+    };
+  }, [properties, today]);
 
-  const overdueProperties = getOverdueRent();
+  const getPropertyTenants = (propertyId: string) =>
+    activeTenants.filter((t: any) => t.propertyId === propertyId);
 
-  if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading rental management...</div>;
+  if (!properties) {
+    return <div className="flex justify-center items-center h-32 text-muted-foreground text-sm">Loading…</div>;
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
+          <Home className="h-5 w-5 text-primary" />
+        </div>
         <div>
-          <h1 className="text-2xl font-bold">Enhanced Rental Management</h1>
-          <p className="text-muted-foreground">Comprehensive rental property and tenant management</p>
+          <h1 className="text-xl font-bold">Rental Management</h1>
+          <p className="text-xs text-muted-foreground">Live from IndexedDB · properties &amp; tenants</p>
         </div>
       </div>
 
-      {/* Overdue Rent Alert */}
-      {overdueProperties.length > 0 && (
+      {/* Overdue alert */}
+      {analytics.overdueProperties.length > 0 && (
         <Alert className="border-destructive/30 bg-destructive/5">
           <AlertTriangle className="h-4 w-4 text-destructive" />
-          <AlertDescription className="text-destructive">
-            {overdueProperties.length} property(ies) have overdue rent. Please follow up with tenants.
+          <AlertDescription className="text-destructive text-xs">
+            {analytics.overdueProperties.length} property rent overdue — please follow up with tenants.
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Analytics Dashboard */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Building className="w-4 h-4" />
-              Total Properties
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analytics.totalProperties}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <IndianRupee className="w-4 h-4" />
-              Monthly Income
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analytics.totalMonthlyIncome)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
-              Annual Tax
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(analytics.totalAnnualTax)}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              Active Tenants
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{tenants.filter(t => !t.endDate || t.endDate > new Date()).length}</div>
-          </CardContent>
-        </Card>
+      {/* Analytics strip */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          { icon: Building,     label: 'Properties',       value: analytics.totalProperties },
+          { icon: IndianRupee,  label: 'Monthly Income',   value: formatCurrency(analytics.totalMonthlyIncome) },
+          { icon: TrendingUp,   label: 'Annual Taxes',     value: formatCurrency(analytics.totalAnnualTax) },
+          { icon: Users,        label: 'Active Tenants',   value: activeTenants.length },
+        ].map(({ icon: Icon, label, value }) => (
+          <Card key={label} className="glass">
+            <CardHeader className="pb-1 pt-3 px-3">
+              <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                <Icon className="h-3.5 w-3.5" /> {label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-3 px-3">
+              <p className="text-lg font-bold text-foreground">{value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      {/* Properties List */}
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">Properties Overview</h2>
+      {/* Properties list */}
+      <div className="space-y-3">
+        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Properties</h2>
+
         {properties.length === 0 ? (
           <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No rental properties found. Add your first property to get started!</p>
+            <CardContent className="py-10 text-center">
+              <Building className="h-10 w-10 mx-auto text-muted-foreground/25 mb-2" />
+              <p className="text-sm text-muted-foreground">No rental properties yet.</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Use the Property Rental Engine to add Guntur / Gorantla units.
+              </p>
             </CardContent>
           </Card>
         ) : (
-          properties.map((property) => {
-            const propertyTenants = getPropertyTenants(property.id);
-            const isOverdue = overdueProperties.some(p => p.id === property.id);
-            const occupancyRate = propertyTenants.length > 0 ? 100 : 0;
+          (properties as any[]).map(property => {
+            const pts      = getPropertyTenants(property.id);
+            const isOverdue = analytics.overdueProperties.some((p: any) => p.id === property.id);
 
             return (
-              <Card key={property.id} className={isOverdue ? 'border-destructive/40' : ''}>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-lg">{property.address}</h3>
-                        <Badge variant="outline">{property.type}</Badge>
-                        <Badge variant="outline">{property.owner}</Badge>
-                        {isOverdue && <Badge variant="destructive">Rent Overdue</Badge>}
+              <Card key={property.id} className={`glass ${isOverdue ? 'border-destructive/40' : 'border-border/40'}`}>
+                <CardContent className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h3 className="text-sm font-semibold text-foreground truncate">{property.address}</h3>
+                        <Badge variant="outline" className="text-[10px]">{property.type}</Badge>
+                        {property.owner && <Badge variant="outline" className="text-[10px]">{property.owner}</Badge>}
+                        {isOverdue && <Badge variant="destructive" className="text-[10px]">Rent Overdue</Badge>}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-2">
-                        {property.squareYards} sq yards | Due: {property.dueDay}th of every month
-                      </p>
+                      {property.squareYards && (
+                        <p className="text-xs text-muted-foreground">
+                          {property.squareYards} sq yds · Due: {property.dueDay}th of month
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                    <div>
-                      <span className="text-muted-foreground text-sm">Monthly Rent:</span>
-                      <p className="font-medium">{formatCurrency(property.monthlyRent)}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-sm">Property Tax:</span>
-                      <p className="font-medium">{formatCurrency(property.propertyTaxAnnual)}/year</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-sm">Water Tax:</span>
-                      <p className="font-medium">{formatCurrency(property.waterTaxAnnual)}/year</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-sm">Occupancy:</span>
-                      <p className="font-medium">{occupancyRate}%</p>
-                    </div>
+                  {/* Key metrics */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                    {[
+                      { label: 'Monthly Rent',   value: formatCurrency(property.monthlyRent ?? 0) },
+                      { label: 'Property Tax',   value: `${formatCurrency(property.propertyTaxAnnual ?? 0)}/yr` },
+                      { label: 'Water Tax',      value: `${formatCurrency(property.waterTaxAnnual ?? 0)}/yr` },
+                      { label: 'Maintenance',    value: formatCurrency(property.maintenanceReserve ?? 0) },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-muted/30 rounded-lg p-2">
+                        <p className="text-[10px] text-muted-foreground">{label}</p>
+                        <p className="font-semibold text-foreground tabular-nums">{value}</p>
+                      </div>
+                    ))}
                   </div>
 
                   {/* Tenants */}
-                  {propertyTenants.length > 0 && (
-                    <div className="mt-4 p-4 bg-muted/40 rounded-lg">
-                      <h4 className="font-medium mb-2">Current Tenants:</h4>
-                      {propertyTenants.map(tenant => (
-                        <div key={tenant.id} className="flex justify-between items-center py-2">
+                  {pts.length > 0 && (
+                    <div className="bg-muted/20 rounded-lg p-3 space-y-2">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Tenants ({pts.length})
+                      </p>
+                      {pts.map((tenant: any) => (
+                        <div key={tenant.id} className="flex items-center justify-between text-xs">
                           <div>
-                            <span className="font-medium">{tenant.tenantName}</span>
-                            <span className="text-sm text-muted-foreground ml-2">Room: {tenant.roomNo}</span>
+                            <span className="font-medium text-foreground">{tenant.tenantName}</span>
+                            {tenant.roomNo && <span className="text-muted-foreground ml-1.5">Room {tenant.roomNo}</span>}
                           </div>
                           <div className="text-right">
-                            <p className="text-sm">Rent: {formatCurrency(tenant.monthlyRent)}</p>
-                            <p className="text-xs text-muted-foreground">
-                              Joined: {tenant.joinDate.toLocaleDateString()}
-                            </p>
+                            <p className="font-medium tabular-nums">{formatCurrency(tenant.monthlyRent ?? 0)}/mo</p>
+                            {tenant.joinDate && (
+                              <p className="text-muted-foreground text-[10px]">
+                                Since {new Date(tenant.joinDate).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
+                              </p>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
                   )}
-
-                  {/* Maintenance Reserve */}
-                  <div className="mt-4 flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Maintenance Reserve:</span>
-                    <span className="font-medium">{formatCurrency(property.maintenanceReserve)}</span>
-                  </div>
                 </CardContent>
               </Card>
             );

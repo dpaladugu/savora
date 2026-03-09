@@ -205,29 +205,47 @@ export function TaxEngine() {
   const [loading,      setLoading]      = useState(true);
   const [autoLoaded,   setAutoLoaded]   = useState(false);
 
+  // ── FY helpers ────────────────────────────────────────────────────────────────
+  const fyStart = new Date(
+    new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1, 3, 1
+  );
+  const fyEnd = new Date(fyStart.getFullYear() + 1, 2, 31);
+  const fyMonthsElapsed = Math.max(1,
+    Math.round((Date.now() - fyStart.getTime()) / (1000 * 60 * 60 * 24 * 30.4))
+  );
+  const fyProgressPct = Math.min(100, Math.round((fyMonthsElapsed / 12) * 100));
+
   useEffect(() => {
     async function loadData() {
       try {
-        // Verify user is on New Regime (save if not set)
         const s = await GlobalSettingsService.getGlobalSettings();
+        // Enforce New Regime
         if (s && s.taxRegime !== 'New') {
           await GlobalSettingsService.updateGlobalSettings({ taxRegime: 'New' });
         }
 
-        // Auto-pull gross income from last 12 months
-        const cutoff = new Date();
-        cutoff.setFullYear(cutoff.getFullYear() - 1);
-        const incomes = await db.incomes.toArray();
-        const annualIncome = incomes
-          .filter((i: any) => new Date(i.date) >= cutoff)
-          .reduce((s: number, i: any) => s + (i.amount ?? 0), 0);
-        if (annualIncome > 0) setGrossIncome(Math.round(annualIncome));
+        // 1. Priority: annualIncome from globalSettings (set by user in profile)
+        const settingsIncome = (s as any)?.annualIncome ?? 0;
 
-        // Auto-pull 80C for comparison display only (EPF, PPF, ELSS, SIP this FY)
-        const fyStart = new Date(
-          new Date().getMonth() >= 3 ? new Date().getFullYear() : new Date().getFullYear() - 1,
-          3, 1
-        );
+        // 2. Fallback: sum FY income from db.incomes
+        const incomes = await db.incomes.toArray();
+        const fyIncome = incomes
+          .filter((i: any) => {
+            const d = new Date(i.date);
+            return d >= fyStart && d <= fyEnd;
+          })
+          .reduce((sum: number, i: any) => sum + (i.amount ?? 0), 0);
+
+        // 3. Last resort: trailing 12-month income from DB
+        const cutoff = new Date(); cutoff.setFullYear(cutoff.getFullYear() - 1);
+        const ttmIncome = incomes
+          .filter((i: any) => new Date(i.date) >= cutoff)
+          .reduce((sum: number, i: any) => sum + (i.amount ?? 0), 0);
+
+        const resolvedIncome = settingsIncome || fyIncome || ttmIncome;
+        if (resolvedIncome > 0) setGrossIncome(Math.round(resolvedIncome));
+
+        // Auto-pull 80C (comparison only)
         const investments = await db.investments.toArray();
         const c80 = investments
           .filter((inv: any) => {
@@ -237,7 +255,7 @@ export function TaxEngine() {
           .reduce((s: number, inv: any) => s + (inv.investedValue ?? inv.amount ?? 0), 0);
         if (c80 > 0) setDeductions80C(Math.min(150_000, Math.round(c80)));
 
-        // Auto-pull 80D for comparison display only
+        // Auto-pull 80D (comparison only)
         const policies = await db.insurancePolicies?.toArray() ?? [];
         const d80 = policies
           .filter((p: any) => {
@@ -255,10 +273,11 @@ export function TaxEngine() {
         if (npsEmp > 0) setEmployerNPS(Math.min(Math.round(grossIncome * 0.10), Math.round(npsEmp)));
 
         setAutoLoaded(true);
-      } catch {}
+      } catch (e) { console.warn('TaxEngine load error:', e); }
       setLoading(false);
     }
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Tax calculations ─────────────────────────────────────────────────────────
@@ -306,9 +325,32 @@ export function TaxEngine() {
       {autoLoaded && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/8 border border-success/20 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          Auto-loaded income from DB · 80C/80D shown for comparison only (not deducted in New Regime)
+          Auto-loaded from DB · Settings income priority → FY income → trailing 12M
         </div>
       )}
+
+      {/* ── FY progress bar ── */}
+      <Card className="glass border-border/40">
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-medium">FY 2025-26 Progress</span>
+            <span className="tabular-nums font-semibold">{fyProgressPct}% elapsed</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-700"
+              style={{ width: `${fyProgressPct}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Apr 2025</span>
+            <span className="font-medium text-foreground">
+              ₹{(grossIncome / 1_00_000).toFixed(1)}L income · ₹{(newTax / 1000).toFixed(0)}k tax
+            </span>
+            <span>Mar 2026</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="advance">
         <TabsList className="w-full">

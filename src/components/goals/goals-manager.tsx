@@ -1,10 +1,11 @@
 /**
  * GoalsManager — live Dexie data, per-goal contributions, inline edit, "Plan SIP" deep-link
+ * Shows SIP needed vs committed from recurring transactions for each goal.
  */
 import { motion, AnimatePresence } from 'framer-motion';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit2, PlusCircle, MinusCircle, X } from 'lucide-react';
+import { Target, Plus, Trash2, TrendingUp, CheckCircle2, Edit2, PlusCircle, MinusCircle, X, AlertCircle } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useSIPPrefillStore } from '@/store/sipPrefillStore';
 import { Button } from '@/components/ui/button';
@@ -183,12 +184,14 @@ function GoalCard({
   onPlanSip,
   onContribute,
   onEdit,
+  committedSIP,
 }: {
   goal: Goal;
   onDelete: (id: string) => void;
   onPlanSip: (id: string) => void;
   onContribute: (goal: Goal) => void;
   onEdit: (goal: Goal) => void;
+  committedSIP: number;
 }) {
   const progress = pct(goal.currentAmount ?? 0, goal.targetAmount ?? 1);
   const done = progress >= 100;
@@ -242,10 +245,22 @@ function GoalCard({
           </div>
         </div>
 
+        {/* SIP needed vs committed */}
         {!done && sipNeeded != null && sipNeeded > 0 && (
-          <p className="text-[10px] text-muted-foreground bg-muted/40 px-2 py-1 rounded-lg">
-            💡 Need ~{fmt(sipNeeded)}/month to hit this goal on time
-          </p>
+          <div className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-[10px] ${
+            committedSIP >= sipNeeded
+              ? 'bg-success/10 text-success'
+              : committedSIP > 0
+              ? 'bg-warning/10 text-warning'
+              : 'bg-muted/40 text-muted-foreground'
+          }`}>
+            <span>
+              {committedSIP >= sipNeeded ? '✓ SIP on track' : committedSIP > 0 ? '⚠ SIP gap' : '💡 No SIP yet'}
+            </span>
+            <span className="tabular-nums font-semibold">
+              {fmt(committedSIP)}<span className="font-normal opacity-70"> committed · </span>{fmt(sipNeeded)}<span className="font-normal opacity-70">/mo needed</span>
+            </span>
+          </div>
         )}
 
         <div className="flex gap-2">
@@ -275,13 +290,40 @@ function GoalCard({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function GoalsManager({ onNavigateToSip }: { onNavigateToSip?: (goalId: string) => void }) {
-  const goals = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const goals     = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const recurring = useLiveQuery(() => db.recurringTransactions.toArray().catch(() => []), []) ?? [];
   const [isAdding, setIsAdding] = useState(false);
   const [contributeGoal, setContributeGoal] = useState<Goal | null>(null);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [newGoal, setNewGoal] = useState({
     name: '', targetAmount: '', endDate: '', category: 'short-term' as 'short-term' | 'long-term',
   });
+
+  // Build a map: goal name → monthly committed SIP from recurring transactions
+  const sipCommittedByGoal = useMemo(() => {
+    const map: Record<string, number> = {};
+    const activeSIPs = recurring.filter(r => r.is_active && r.type === 'expense');
+    goals.forEach(g => {
+      const name = (g.name ?? '').toLowerCase();
+      const matched = activeSIPs.filter(r =>
+        r.description.toLowerCase().includes(name.slice(0, 5)) ||
+        r.description.toLowerCase().includes('sip') ||
+        r.category === 'Investment'
+      );
+      // Only count SIPs whose description references this goal
+      const goalSIPs = activeSIPs.filter(r =>
+        r.description.toLowerCase().includes(name.slice(0, 4))
+      );
+      map[g.id] = goalSIPs.reduce((s, r) => {
+        const amt = Math.abs(r.amount);
+        if (r.frequency === 'monthly') return s + amt;
+        if (r.frequency === 'quarterly') return s + amt / 3;
+        if (r.frequency === 'yearly') return s + amt / 12;
+        return s + amt;
+      }, 0);
+    });
+    return map;
+  }, [goals, recurring]);
 
   const handleAdd = useCallback(async () => {
     if (!newGoal.name || !newGoal.targetAmount || !newGoal.endDate) {
@@ -344,6 +386,7 @@ export function GoalsManager({ onNavigateToSip }: { onNavigateToSip?: (goalId: s
               onPlanSip={handlePlanSip}
               onContribute={setContributeGoal}
               onEdit={setEditGoal}
+              committedSIP={sipCommittedByGoal[g.id] ?? 0}
             />
           </motion.div>
         ))}

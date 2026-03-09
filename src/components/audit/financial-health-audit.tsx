@@ -184,6 +184,9 @@ export function FinancialHealthAudit({ onMoreNavigation }: Props) {
     }
   }, []);
 
+  // Auto-run on first mount
+  React.useEffect(() => { runAudit(); }, []);
+
   const handleCTA = useCallback((action: string) => {
     onMoreNavigation?.(action);
   }, [onMoreNavigation]);

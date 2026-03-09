@@ -88,6 +88,8 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first().catch(() => undefined), []);
   const shops       = useLiveQuery(() => db.gunturShops.toArray().catch(() => []), []) ?? [];
   const rooms       = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
+  const insurance   = useLiveQuery(() => db.insurance.toArray().catch(() => []), []) ?? [];
+  const incomes     = useLiveQuery(() => db.incomes.toArray().catch(() => []), []) ?? [];
 
   const activeGoals = goals.filter(g => (g.targetAmount ?? 0) > (g.currentAmount ?? 0));
 
@@ -263,7 +265,50 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
       }
     }
 
-    // ── 6. Backup overdue ────────────────────────────────────────────────────
+    // ── 6. Insurance renewals within 30 days ────────────────────────────────
+    const renewingSoon = insurance.filter(ins => {
+      if (ins.isActive === false) return false;
+      const due = ins.premiumDueDate ?? ins.endDate;
+      if (!due) return false;
+      const daysAway = Math.ceil((new Date(due).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return daysAway >= 0 && daysAway <= 30;
+    });
+    if (renewingSoon.length > 0) {
+      const first = renewingSoon[0];
+      const daysAway = Math.ceil(
+        (new Date(first.premiumDueDate ?? first.endDate!).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+      );
+      list.push({
+        id: 'insurance-renewal',
+        icon: <ShieldAlert className="h-4 w-4" />,
+        title: `${renewingSoon.length} insurance renewal${renewingSoon.length > 1 ? 's' : ''} due`,
+        body: `"${first.name}" premium due in ${daysAway} day${daysAway !== 1 ? 's' : ''}. Ensure premium is ready to avoid lapse.`,
+        ctaLabel: 'View insurance →',
+        ctaAction: () => onMoreNavigation('insurance'),
+        priority: 1,
+        color: 'destructive',
+      });
+    }
+
+    // ── 7. No salary recorded this month ─────────────────────────────────────
+    const monthStart  = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const salaryThisMonth = incomes.filter(i =>
+      new Date(i.date) >= monthStart && (i.category === 'Salary' || i.category === 'salary')
+    );
+    if (salaryThisMonth.length === 0 && new Date().getDate() > 10) {
+      list.push({
+        id: 'no-salary',
+        icon: <AlertTriangle className="h-4 w-4" />,
+        title: 'No salary recorded this month',
+        body: `It's the ${new Date().getDate()}th and no salary entry found for ${new Date().toLocaleString('en-IN', { month: 'long' })}. Log your salary to keep Dashboard surplus accurate.`,
+        ctaLabel: 'Add income →',
+        ctaAction: () => onTabChange('income'),
+        priority: 2,
+        color: 'warning',
+      });
+    }
+
+    // ── 8. Backup overdue ────────────────────────────────────────────────────
     const lastBackupMs = DataSafetyService.getLastBackupMs();
     if (lastBackupMs !== null && DataSafetyService.shouldNudgeBackup()) {
       const days = Math.floor(lastBackupMs / (1000 * 60 * 60 * 24));
@@ -281,7 +326,7 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
 
     // Sort by priority, cap at 3
     return list.sort((a, b) => a.priority - b.priority).slice(0, 3);
-  }, [activeGoals, recurring, loans, investments, creditCards, ef, settings, shops, rooms]);
+  }, [activeGoals, recurring, loans, investments, creditCards, ef, settings, shops, rooms, insurance, incomes]);
 
   const visible = nudges.filter(n => !dismissed.has(n.id));
   if (visible.length === 0) return null;

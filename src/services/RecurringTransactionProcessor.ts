@@ -2,6 +2,10 @@
  * RecurringTransactionProcessor — with idempotency guard.
  * On each run we check globalSettings.lastAutoRunAt.
  * If it equals today's date we skip processing entirely to prevent double-posting.
+ *
+ * INCOME DEDUP FIX: for income items we also check db.incomes for an existing
+ * entry with the same date+description+amount before dual-writing, preventing
+ * duplicate salary entries when a user re-opens the app on the same day.
  */
 import { db } from '@/lib/db';
 import { RecurringTransactionService } from './RecurringTransactionService';
@@ -37,46 +41,53 @@ export async function processRecurringTransactions(): Promise<RecurringProcessRe
       while (nextDate <= today) {
         if (item.end_date && nextDate > item.end_date) break;
 
-        // Secondary idempotency: skip if a txn with this note+date already exists
-        const noteStr = `[Auto] ${item.description}`;
+        const noteStr    = `[Auto] ${item.description}`;
         const targetDate = new Date(nextDate);
-        const dayStart = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
-        const dayEnd   = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
+        const dayStart   = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+        const dayEnd     = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate() + 1);
 
-        const existing = await db.txns
+        // ── Txn dedup ─────────────────────────────────────────────────────────
+        const txnExists = await db.txns
           .where('date').between(dayStart, dayEnd, true, false)
           .and(t => t.note === noteStr)
           .count();
 
-        if (existing === 0) {
+        if (txnExists === 0) {
           const now = new Date();
-          // Always write to txns for activity feed
           await db.txns.add({
-            id: crypto.randomUUID(),
-            amount: item.type === 'income' ? Math.abs(item.amount) : -Math.abs(item.amount),
-            category: item.category,
-            note: noteStr,
-            date: targetDate,
-            currency: 'INR',
-            tags: [],
+            id:           crypto.randomUUID(),
+            amount:       item.type === 'income' ? Math.abs(item.amount) : -Math.abs(item.amount),
+            category:     item.category,
+            note:         noteStr,
+            date:         targetDate,
+            currency:     'INR',
+            tags:         [],
             isPartialRent: false,
-            paymentMix: [],
-            isSplit: false,
-            splitWith: [],
-            createdAt: now,
-            updatedAt: now,
+            paymentMix:   [],
+            isSplit:      false,
+            splitWith:    [],
+            createdAt:    now,
+            updatedAt:    now,
           });
-          // Additionally write income entries to db.incomes so Monthly Surplus is accurate
+
+          // Dual-write to db.incomes with additional dedup check
           if (item.type === 'income') {
-            await db.incomes.add({
-              id: crypto.randomUUID(),
-              amount: Math.abs(item.amount),
-              category: item.category,
-              description: noteStr,
-              date: targetDate,
-              createdAt: now,
-              updatedAt: now,
-            });
+            const incomeExists = await db.incomes
+              .where('date').between(dayStart, dayEnd, true, false)
+              .and(i => (i.description ?? '') === noteStr && Math.abs(i.amount - Math.abs(item.amount)) < 1)
+              .count();
+
+            if (incomeExists === 0) {
+              await db.incomes.add({
+                id:          crypto.randomUUID(),
+                amount:      Math.abs(item.amount),
+                category:    item.category,
+                description: noteStr,
+                date:        targetDate,
+                createdAt:   now,
+                updatedAt:   now,
+              });
+            }
           }
         }
 
