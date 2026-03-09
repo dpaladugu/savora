@@ -296,16 +296,31 @@ export function AutoGoalEngine() {
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Zap className="h-5 w-5 text-primary" />
         </div>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <h1 className="text-lg font-bold text-foreground">Auto-Goal Engine</h1>
-          <p className="text-xs text-muted-foreground">14 CFA-aligned goal rules · §24.1 Nudge Engine</p>
+          <p className="text-xs text-muted-foreground">
+            14 CFA-aligned goal rules · §24.1 Nudge Engine
+            {monthlyIncome > 0 && (
+              <span className="ml-1 text-primary font-medium">
+                · Income: ₹{(monthlyIncome / 1000).toFixed(0)}k/mo
+              </span>
+            )}
+          </p>
         </div>
-        {highCount > 0 && (
-          <Button size="sm" className="gap-1.5" onClick={createAllHighPriority}>
-            <Zap className="h-3.5 w-3.5" />
-            Create {highCount} High-Priority
-          </Button>
-        )}
+        <div className="flex gap-1.5 shrink-0 flex-wrap justify-end">
+          {highCount > 0 && (
+            <Button size="sm" className="gap-1.5 text-xs h-8" onClick={createAllHighPriority}>
+              <Zap className="h-3.5 w-3.5" />
+              {highCount} High
+            </Button>
+          )}
+          {notCreated.length > 0 && (
+            <Button size="sm" variant="outline" className="gap-1.5 text-xs h-8" onClick={createAll}>
+              <Plus className="h-3.5 w-3.5" />
+              All {notCreated.length}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs defaultValue="nudges">
