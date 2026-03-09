@@ -400,6 +400,37 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </button>
       )}
 
+      {/* ── Salary credit day nudge ── */}
+      {role !== 'BROTHER' && role !== 'GUEST' && incomeCount > 0 && settings?.salaryCreditDay && (() => {
+        const today = new Date().getDate();
+        const creditDay = settings.salaryCreditDay;
+        // Show nudge if today is >= salaryCreditDay and <= creditDay + 5
+        const inWindow = today >= creditDay && today <= creditDay + 5;
+        const thisMonthSalary = (useLiveQuery(() => {
+          const now2 = new Date();
+          return db.incomes
+            .where('date').between(new Date(now2.getFullYear(), now2.getMonth(), 1), new Date(now2.getFullYear(), now2.getMonth() + 1, 1), true, false)
+            .and(i => (i.category === 'Salary' || (i.description ?? '').toLowerCase().includes('salary')))
+            .count().catch(() => 0);
+        }, [settings?.salaryCreditDay]) ?? 0);
+        if (!inWindow || thisMonthSalary > 0) return null;
+        return (
+          <button
+            onClick={() => setShowIncomeDialog(true)}
+            className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-success/40 bg-success/5 hover:bg-success/10 active:scale-[0.98] transition-all text-left"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15">
+              <Banknote className="h-4 w-4 text-success" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground">Salary credited? 💰</p>
+              <p className="text-xs text-muted-foreground">Your salary credit day was the {creditDay}{creditDay === 1 ? 'st' : creditDay === 2 ? 'nd' : creditDay === 3 ? 'rd' : 'th'}. Confirm it was received →</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+          </button>
+        );
+      })()}
+
       {/* ── Salary nudge (show only when no income recorded yet) ── */}
       {role !== 'BROTHER' && role !== 'GUEST' && incomeCount === 0 && (
         <button
