@@ -325,18 +325,17 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
     }
 
     // ── NPS 80CCD(1B) contribution gap nudge ────────────────────────────────
-    const investments = (settings as any)?._investments ?? [];
-    // Check NPS from db directly via useLiveQuery in the next data pull
+    // Use the already-loaded `investments` array from useLiveQuery above
     const npsInvestments = investments.filter((i: any) => ['NPS-T1', 'NPS-T2'].includes(i.type ?? ''));
     const npsThisFY = npsInvestments.reduce((s: number, i: any) => s + (i.investedValue ?? i.amount ?? 0), 0);
     if (npsThisFY < 50_000) {
       const annualIncome = settings?.annualIncome ?? 0;
-      if (annualIncome > 600_000) { // Only nudge if income above basic slab
+      if (annualIncome > 600_000) {
         list.push({
           id: 'nps-gap',
           icon: <TrendingDown className="h-4 w-4" />,
           title: 'NPS 80CCD(1B) gap this FY',
-          body: `Max ₹50,000 deduction available. Only ₹${npsThisFY.toLocaleString('en-IN')} contributed so far — add ${formatCurrency(50_000 - npsThisFY)} more before 31 Mar to save tax.`,
+          body: `Max ₹50,000 deduction available. Only ₹${npsThisFY.toLocaleString('en-IN')} contributed — add ${formatCurrency(50_000 - npsThisFY)} more before 31 Mar to save tax.`,
           ctaLabel: 'Open NPS →',
           ctaAction: () => onMoreNavigation('auto-goals'),
           priority: 2,
