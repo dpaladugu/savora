@@ -49,8 +49,14 @@ export function ComprehensiveSettingsScreen() {
     setProfileSaving(true);
     try {
       const existing = await db.globalSettings.limit(1).first();
+      const profilePatch = {
+        userName: userName.trim(),
+        userMission: userMission.trim(),
+        annualIncome: annualIncome ? parseFloat(annualIncome) : 0,
+        dateOfBirth: dateOfBirth || '',
+      };
       if (existing) {
-        await db.globalSettings.update(existing.id, { userName: userName.trim(), userMission: userMission.trim() });
+        await db.globalSettings.update(existing.id, profilePatch);
       } else {
         await db.globalSettings.add({
           id: crypto.randomUUID(),
