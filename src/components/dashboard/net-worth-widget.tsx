@@ -2,19 +2,21 @@
  * NetWorthWidget — compact Dashboard card showing net worth summary.
  * Assets: investments + physical gold + EF corpus + rental property implied value
  * Liabilities: loans outstanding + credit card balances
+ * Shows MoM delta badge by persisting last snapshot in appSettings.
  */
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
-import { Landmark, TrendingUp, TrendingDown, ChevronRight } from 'lucide-react';
+import { Landmark, TrendingUp, TrendingDown, ChevronRight, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 
 interface Props { onNavigate: (m: string) => void; }
 
-// Rental yield multiplier — Indian tier-2 city commercial/residential typical gross yield ~8%
-// Implied capital value = annual rent / 0.08 (i.e. × 12.5)
 const RENTAL_YIELD = 0.08;
+const SNAPSHOT_KEY = 'nw-snapshot';
+
+interface NWSnapshot { netWorth: number; savedAt: string; }
 
 export function NetWorthWidget({ onNavigate }: Props) {
   const investments  = useLiveQuery(() => db.investments.toArray().catch(() => []), []) ?? [];
@@ -24,19 +26,19 @@ export function NetWorthWidget({ onNavigate }: Props) {
   const creditCards  = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
   const shops        = useLiveQuery(() => db.gunturShops.toArray().catch(() => []), []) ?? [];
   const rooms        = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
+  const snapshotRow  = useLiveQuery(() => db.appSettings.get(SNAPSHOT_KEY), []);
 
   // ── Assets ────────────────────────────────────────────────────────────────
   const investmentTotal = investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
 
   const goldTotal = gold.reduce((s, g) => {
     const w     = (g as any).netWeight ?? (g as any).weight ?? 0;
-    const price = (g as any).currentMcxPrice ?? 8_500; // approx ₹8,500/gram fallback
+    const price = (g as any).currentMcxPrice ?? 8_500;
     return s + price * w;
   }, 0);
 
   const efCorpus = ef?.currentAmount ?? 0;
 
-  // Rental property implied market value: annual gross rent / yield
   const annualShopRent = shops
     .filter(s => s.status === 'Occupied')
     .reduce((s, sh) => s + (sh.rent ?? 0), 0) * 12;
@@ -56,7 +58,30 @@ export function NetWorthWidget({ onNavigate }: Props) {
   const isPositive = netWorth >= 0;
   const debtPct    = totalAssets > 0 ? Math.min(100, (totalLiabilities / totalAssets) * 100) : 0;
 
-  // If no data at all, render nothing
+  // ── Month-over-month delta ─────────────────────────────────────────────────
+  const prevSnapshot: NWSnapshot | null = snapshotRow?.value ?? null;
+  const savedThisMonth = useRef(false);
+
+  useEffect(() => {
+    if (totalAssets === 0 || savedThisMonth.current) return;
+    const now = new Date();
+    const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    // Only update snapshot once per calendar month
+    if (!prevSnapshot || !prevSnapshot.savedAt.startsWith(monthKey)) {
+      savedThisMonth.current = true;
+      db.appSettings.put({
+        key: SNAPSHOT_KEY,
+        value: { netWorth, savedAt: now.toISOString() } satisfies NWSnapshot,
+      }).catch(() => {});
+    }
+  }, [netWorth, totalAssets]);
+
+  const momDelta = prevSnapshot ? netWorth - prevSnapshot.netWorth : null;
+  const momPct   = prevSnapshot && prevSnapshot.netWorth !== 0
+    ? (momDelta! / Math.abs(prevSnapshot.netWorth)) * 100
+    : null;
+
   if (totalAssets === 0 && totalLiabilities === 0) return null;
 
   return (
@@ -71,9 +96,29 @@ export function NetWorthWidget({ onNavigate }: Props) {
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center justify-between">
           <p className="text-xs font-semibold text-foreground">Net Worth</p>
-          <span className={`text-sm font-black tabular-nums ${isPositive ? 'text-success' : 'text-destructive'}`}>
-            {isPositive ? '' : '−'}{formatCurrency(Math.abs(netWorth))}
-          </span>
+          <div className="flex items-center gap-1.5">
+            {/* MoM delta badge */}
+            {momDelta !== null && momPct !== null && Math.abs(momDelta) > 100 && (
+              <span className={`flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                momDelta > 0
+                  ? 'bg-success/10 text-success'
+                  : 'bg-destructive/10 text-destructive'
+              }`}>
+                {momDelta > 0
+                  ? <ArrowUpRight className="h-2.5 w-2.5" />
+                  : <ArrowDownRight className="h-2.5 w-2.5" />}
+                {Math.abs(momPct).toFixed(1)}% MoM
+              </span>
+            )}
+            {momDelta !== null && Math.abs(momDelta) <= 100 && (
+              <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted/50">
+                <Minus className="h-2.5 w-2.5" /> Flat MoM
+              </span>
+            )}
+            <span className={`text-sm font-black tabular-nums ${isPositive ? 'text-success' : 'text-destructive'}`}>
+              {isPositive ? '' : '−'}{formatCurrency(Math.abs(netWorth))}
+            </span>
+          </div>
         </div>
         <Progress
           value={debtPct}
