@@ -94,20 +94,56 @@ function InvestmentCard({ inv, onEdit, onDelete }: {
   const ret  = (inv.currentValue || 0) - (inv.investedValue || 0);
   const retP = (inv.investedValue || 0) > 0 ? (ret / (inv.investedValue || 0)) * 100 : 0;
 
-  // ── XIRR calculation ──────────────────────────────────────────────────────
-  // Simple: two cash-flows: -investedValue at purchaseDate, +currentValue today
-  const xirrPct = useMemo(() => {
+  /**
+   * For SIP investments: compute true XIRR from reconstructed monthly cashflows.
+   *   Each monthly SIP = negative outflow from sipStartDate to today.
+   *   Current value = positive inflow today.
+   *
+   * For lump-sum investments: CAGR = XIRR (same formula, single cashflow pair).
+   *   (currentValue / investedValue)^(1/years) - 1
+   */
+  const { returnPct, returnLabel } = useMemo(() => {
     const invested = inv.investedValue || 0;
     const current  = inv.currentValue  || 0;
-    if (invested <= 0 || current <= 0) return null;
-    const purchaseDate = inv.purchaseDate instanceof Date ? inv.purchaseDate : new Date(inv.purchaseDate);
-    const yearsHeld = Math.max(0.01, (Date.now() - purchaseDate.getTime()) / (365.25 * 24 * 3600 * 1000));
-    // Simple CAGR formula: (currentValue / investedValue)^(1/years) - 1
-    const cagr = Math.pow(current / invested, 1 / yearsHeld) - 1;
-    return isFinite(cagr) ? cagr * 100 : null;
-  }, [inv.investedValue, inv.currentValue, inv.purchaseDate]);
+    if (invested <= 0 || current <= 0) return { returnPct: null, returnLabel: 'CAGR' };
 
-  // Extra info chips based on type
+    const today = new Date();
+
+    // ── SIP: reconstruct monthly cash flows for true XIRR ──────────────────
+    if (inv.isSIP && inv.sipAmount && inv.sipAmount > 0 && inv.sipStartDate) {
+      const startDate = inv.sipStartDate instanceof Date ? inv.sipStartDate : new Date(inv.sipStartDate);
+      const monthlyAmt = inv.sipAmount;
+
+      const cashflows: { date: Date; amount: number }[] = [];
+      const cursor = new Date(startDate);
+      // Walk month-by-month from start → today, adding -sipAmount each month
+      while (cursor <= today) {
+        cashflows.push({ date: new Date(cursor), amount: -monthlyAmt });
+        cursor.setMonth(cursor.getMonth() + 1);
+      }
+      // Final inflow = current portfolio value
+      cashflows.push({ date: today, amount: current });
+
+      if (cashflows.length >= 2) {
+        try {
+          const rate = xirr(cashflows);
+          if (!isNaN(rate) && isFinite(rate)) {
+            return { returnPct: rate * 100, returnLabel: 'XIRR' };
+          }
+        } catch { /* fall through to CAGR */ }
+      }
+    }
+
+    // ── Lump-sum / fallback: CAGR ───────────────────────────────────────────
+    const purchaseDate = inv.purchaseDate instanceof Date ? inv.purchaseDate
+      : inv.startDate instanceof Date ? inv.startDate
+      : new Date(inv.purchaseDate ?? Date.now());
+    const yearsHeld = Math.max(0.01, (today.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 3600 * 1000));
+    const cagr = Math.pow(current / invested, 1 / yearsHeld) - 1;
+    return { returnPct: isFinite(cagr) ? cagr * 100 : null, returnLabel: 'CAGR' };
+  }, [inv.investedValue, inv.currentValue, inv.purchaseDate, inv.startDate, inv.isSIP, inv.sipAmount, inv.sipStartDate]);
+
+  // Extra info chips
   const chips: string[] = [];
   if (inv.isSIP && inv.sipAmount) chips.push(`SIP ₹${inv.sipAmount.toLocaleString('en-IN')}/mo`);
   if (inv.uan) chips.push(`UAN: ${inv.uan}`);
@@ -120,7 +156,6 @@ function InvestmentCard({ inv, onEdit, onDelete }: {
   if (inv.npsEquityPct !== undefined) chips.push(`E:${inv.npsEquityPct}% C:${inv.npsCorpDebtPct ?? 0}% G:${inv.npsGovDebtPct ?? 0}%`);
   if (inv.sgbCouponAccount) chips.push(`Coupon → ${inv.sgbCouponAccount}`);
 
-  // 80C/NPS limit warnings
   const warn80C = inv.type === 'PPF' && inv.ppfAnnualContribution && inv.ppfAnnualContribution > 150000;
   const warnNPS = (inv.type === 'NPS-T1') && inv.nps80CCDUsed && inv.nps80CCDUsed > 50000;
 
@@ -145,19 +180,19 @@ function InvestmentCard({ inv, onEdit, onDelete }: {
         <div className="space-y-1.5 text-xs">
           {[
             { label: 'Current Value', val: formatCurrency(inv.currentValue || 0), cls: 'text-foreground' },
-            { label: 'Invested',       val: formatCurrency(inv.investedValue  || 0), cls: 'text-foreground' },
-            { label: 'Returns',        val: `${formatCurrency(ret)} (${retP.toFixed(1)}%)`, cls: ret >= 0 ? 'text-success' : 'text-destructive' },
+            { label: 'Invested',      val: formatCurrency(inv.investedValue  || 0), cls: 'text-foreground' },
+            { label: 'Returns',       val: `${formatCurrency(ret)} (${retP.toFixed(1)}%)`, cls: ret >= 0 ? 'text-success' : 'text-destructive' },
           ].map(({ label, val, cls }) => (
             <div key={label} className="flex justify-between">
               <span className="text-muted-foreground">{label}</span>
               <span className={cn('font-medium tabular-nums', cls)}>{val}</span>
             </div>
           ))}
-          {xirrPct !== null && (
-            <div className="flex justify-between">
-              <span className="text-muted-foreground">CAGR</span>
-              <span className={cn('font-semibold tabular-nums', xirrPct >= 0 ? 'text-success' : 'text-destructive')}>
-                {xirrPct >= 0 ? '+' : ''}{xirrPct.toFixed(1)}% p.a.
+          {returnPct !== null && (
+            <div className="flex justify-between border-t border-border/30 pt-1.5 mt-1">
+              <span className="text-muted-foreground font-medium">{returnLabel}</span>
+              <span className={cn('font-bold tabular-nums', returnPct >= 0 ? 'text-success' : 'text-destructive')}>
+                {returnPct >= 0 ? '+' : ''}{returnPct.toFixed(2)}% p.a.
               </span>
             </div>
           )}
