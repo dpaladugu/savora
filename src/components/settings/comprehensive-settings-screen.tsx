@@ -29,19 +29,23 @@ export function ComprehensiveSettingsScreen() {
   const { logout } = useAuth();
 
   // Profile fields backed by db.globalSettings
-  const [userName, setUserName] = useState('');
-  const [userMission, setUserMission] = useState('');
-  const [annualIncome, setAnnualIncome] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [userName, setUserName]           = useState('');
+  const [userMission, setUserMission]     = useState('');
+  const [annualIncome, setAnnualIncome]   = useState('');
+  const [dateOfBirth, setDateOfBirth]     = useState('');
+  const [salaryCreditDay, setSalaryCreditDay] = useState('15');
+  const [annualBonus, setAnnualBonus]     = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
     loadSettings();
     db.globalSettings.limit(1).first().then(s => {
-      if (s?.userName)    setUserName(s.userName);
-      if (s?.userMission) setUserMission(s.userMission);
-      if (s?.annualIncome) setAnnualIncome(String(s.annualIncome));
-      if (s?.dateOfBirth)  setDateOfBirth(s.dateOfBirth);
+      if (s?.userName)       setUserName(s.userName);
+      if (s?.userMission)    setUserMission(s.userMission);
+      if (s?.annualIncome)   setAnnualIncome(String(s.annualIncome));
+      if (s?.dateOfBirth)    setDateOfBirth(s.dateOfBirth);
+      if (s?.salaryCreditDay) setSalaryCreditDay(String(s.salaryCreditDay));
+      if (s?.annualBonus)    setAnnualBonus(String(s.annualBonus));
     }).catch(() => {});
   }, []);
 
