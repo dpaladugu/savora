@@ -290,13 +290,40 @@ function GoalCard({
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export function GoalsManager({ onNavigateToSip }: { onNavigateToSip?: (goalId: string) => void }) {
-  const goals = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const goals     = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const recurring = useLiveQuery(() => db.recurringTransactions.toArray().catch(() => []), []) ?? [];
   const [isAdding, setIsAdding] = useState(false);
   const [contributeGoal, setContributeGoal] = useState<Goal | null>(null);
   const [editGoal, setEditGoal] = useState<Goal | null>(null);
   const [newGoal, setNewGoal] = useState({
     name: '', targetAmount: '', endDate: '', category: 'short-term' as 'short-term' | 'long-term',
   });
+
+  // Build a map: goal name → monthly committed SIP from recurring transactions
+  const sipCommittedByGoal = useMemo(() => {
+    const map: Record<string, number> = {};
+    const activeSIPs = recurring.filter(r => r.is_active && r.type === 'expense');
+    goals.forEach(g => {
+      const name = (g.name ?? '').toLowerCase();
+      const matched = activeSIPs.filter(r =>
+        r.description.toLowerCase().includes(name.slice(0, 5)) ||
+        r.description.toLowerCase().includes('sip') ||
+        r.category === 'Investment'
+      );
+      // Only count SIPs whose description references this goal
+      const goalSIPs = activeSIPs.filter(r =>
+        r.description.toLowerCase().includes(name.slice(0, 4))
+      );
+      map[g.id] = goalSIPs.reduce((s, r) => {
+        const amt = Math.abs(r.amount);
+        if (r.frequency === 'monthly') return s + amt;
+        if (r.frequency === 'quarterly') return s + amt / 3;
+        if (r.frequency === 'yearly') return s + amt / 12;
+        return s + amt;
+      }, 0);
+    });
+    return map;
+  }, [goals, recurring]);
 
   const handleAdd = useCallback(async () => {
     if (!newGoal.name || !newGoal.targetAmount || !newGoal.endDate) {
