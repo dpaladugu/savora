@@ -115,13 +115,13 @@ export function NetWorthTracker() {
   React.useEffect(() => {
     if (netWorth === 0 && totalAssets === 0) return;
     const key = new Date().toISOString().slice(0, 7); // YYYY-MM
-    db.appSettings.get('nw-snapshots').then(rec => {
-      const snapshots: Record<string, number> = rec?.value ? JSON.parse(rec.value) : {};
+      db.appSettings.get('nw-snapshots').then(rec => {
+      const snapshots: Record<string, number> = rec?.value ? JSON.parse(rec.value as string) : {};
       snapshots[key] = netWorth;
       // Keep only 12 months
       const keys = Object.keys(snapshots).sort();
       if (keys.length > 12) delete snapshots[keys[0]];
-      db.appSettings.put({ id: 'nw-snapshots', value: JSON.stringify(snapshots) });
+      db.appSettings.put({ key: 'nw-snapshots', value: JSON.stringify(snapshots) });
     }).catch(() => {});
   }, [netWorth, totalAssets]);
 
