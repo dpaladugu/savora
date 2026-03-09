@@ -325,9 +325,32 @@ export function TaxEngine() {
       {autoLoaded && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-success/8 border border-success/20 text-xs text-success">
           <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-          Auto-loaded income from DB · 80C/80D shown for comparison only (not deducted in New Regime)
+          Auto-loaded from DB · Settings income priority → FY income → trailing 12M
         </div>
       )}
+
+      {/* ── FY progress bar ── */}
+      <Card className="glass border-border/40">
+        <CardContent className="p-3 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground font-medium">FY 2025-26 Progress</span>
+            <span className="tabular-nums font-semibold">{fyProgressPct}% elapsed</span>
+          </div>
+          <div className="h-2 rounded-full bg-muted/40 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-primary transition-all duration-700"
+              style={{ width: `${fyProgressPct}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>Apr 2025</span>
+            <span className="font-medium text-foreground">
+              ₹{(grossIncome / 1_00_000).toFixed(1)}L income · ₹{(newTax / 1000).toFixed(0)}k tax
+            </span>
+            <span>Mar 2026</span>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="advance">
         <TabsList className="w-full">
