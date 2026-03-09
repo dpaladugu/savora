@@ -441,7 +441,9 @@ export function LoanManager() {
   const handleDelete = async (id: string) => {
     if (!confirm('Mark loan as inactive?')) return;
     try {
+      const old = await db.loans.get(id);
       await LoanService.updateLoan(id, { isActive: false });
+      await auditLog('delete', `Loan:${old?.name ?? 'Loan'}`, { isActive: false }, old);
       toast.success('Loan marked inactive');
     } catch { toast.error('Failed to update loan'); }
   };
