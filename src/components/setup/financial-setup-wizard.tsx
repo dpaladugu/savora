@@ -149,7 +149,7 @@ export function FinancialSetupWizard({ onComplete }: Props) {
               currentAmount: corpus,
               targetAmount: target,
               targetMonths: months,
-              monthlyExpenses: expenses,
+              monthlyExpenses: effectiveExpenses,
               lastReviewDate: now,
               status: corpus >= target ? 'Achieved' : corpus >= target * 0.5 ? 'OnTrack' : 'Under-Target',
               medicalSubBucket: 0,
