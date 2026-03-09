@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,7 +11,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
-import { TrendingUp, X } from 'lucide-react';
+import { TrendingUp, X, Sparkles } from 'lucide-react';
+import { formatCurrency } from '@/lib/format-utils';
 
 const MF_TYPES = ['MF-Growth', 'MF-Dividend', 'SIP', 'Stocks'] as const;
 type MFType = typeof MF_TYPES[number];
@@ -23,6 +24,7 @@ const schema = z.object({
   currentValue:  z.coerce.number().nonnegative(),
   units:         z.coerce.number().nonnegative().optional(),
   currentNav:    z.coerce.number().nonnegative().optional(),
+  purchaseNav:   z.coerce.number().nonnegative().optional(),
   folioNo:       z.string().optional(),
   amcName:       z.string().optional(),
   schemeCode:    z.string().optional(),
@@ -52,6 +54,7 @@ export function SIPMFForm({ initial, onDone }: Props) {
       currentValue: initial?.currentValue  ?? 0,
       units:        initial?.units,
       currentNav:   initial?.currentNav,
+      purchaseNav:  (initial as any)?.purchaseNav,
       folioNo:      initial?.folioNo ?? '',
       amcName:      initial?.amcName ?? '',
       schemeCode:   initial?.schemeCode ?? '',
@@ -65,6 +68,30 @@ export function SIPMFForm({ initial, onDone }: Props) {
     },
   });
   const isSIP = watch('isSIP');
+
+  // ── Auto-calc: units × currentNav → currentValue ──────────────────────────
+  const units      = watch('units');
+  const currentNav = watch('currentNav');
+  const purchaseNav = watch('purchaseNav');
+
+  useEffect(() => {
+    if (units && units > 0 && currentNav && currentNav > 0) {
+      setValue('currentValue', parseFloat((units * currentNav).toFixed(2)));
+    }
+  }, [units, currentNav, setValue]);
+
+  // Auto-calc invested value from purchaseNav × units
+  useEffect(() => {
+    if (units && units > 0 && purchaseNav && purchaseNav > 0) {
+      setValue('investedValue', parseFloat((units * purchaseNav).toFixed(2)));
+    }
+  }, [units, purchaseNav, setValue]);
+
+  // Live gain/loss preview
+  const investedValue = watch('investedValue');
+  const currentValue  = watch('currentValue');
+  const gain = (currentValue || 0) - (investedValue || 0);
+  const gainPct = (investedValue || 0) > 0 ? (gain / (investedValue || 0)) * 100 : 0;
 
   const onSubmit = async (data: F) => {
     const now = new Date();
@@ -88,7 +115,8 @@ export function SIPMFForm({ initial, onDone }: Props) {
       taxBenefit:    false,
       frequency:     data.isSIP ? 'Monthly' : 'One-time',
       updatedAt:     now,
-    };
+      purchaseNav:   data.purchaseNav,
+    } as any;
     if (initial?.id) {
       await db.investments.update(initial.id, record);
       toast.success('Updated');
@@ -142,23 +170,51 @@ export function SIPMFForm({ initial, onDone }: Props) {
               <Label>AMFI / Scheme Code</Label>
               <Input placeholder="120503" {...register('schemeCode')} />
             </div>
+
+            {/* ── NAV + Units auto-calc row ───────────────────────────────── */}
+            <div className="space-y-1.5">
+              <Label>Units Held</Label>
+              <Input type="number" step="0.001" placeholder="e.g. 245.532" {...register('units')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                Current NAV (₹)
+                <Sparkles className="h-3 w-3 text-primary" title="Auto-computes Current Value" />
+              </Label>
+              <Input type="number" step="0.0001" placeholder="e.g. 58.42" {...register('currentNav')} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1">
+                Purchase NAV (₹)
+                <Sparkles className="h-3 w-3 text-primary" title="Auto-computes Invested Value" />
+              </Label>
+              <Input type="number" step="0.0001" placeholder="e.g. 42.10" {...register('purchaseNav')} />
+            </div>
+
+            {/* Computed / manual override fields */}
             <div className="space-y-1.5">
               <Label>Amount Invested (₹)</Label>
               <Input type="number" step="1" {...register('investedValue')} />
+              <p className="text-[10px] text-muted-foreground">Auto = Units × Purchase NAV</p>
             </div>
             <div className="space-y-1.5">
               <Label>Current Value (₹)</Label>
               <Input type="number" step="1" {...register('currentValue')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Units Held</Label>
-              <Input type="number" step="0.001" {...register('units')} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>Current NAV (₹)</Label>
-              <Input type="number" step="0.0001" {...register('currentNav')} />
+              <p className="text-[10px] text-muted-foreground">Auto = Units × Current NAV</p>
             </div>
           </div>
+
+          {/* Live P&L preview */}
+          {investedValue > 0 && currentValue > 0 && (
+            <div className={`flex items-center justify-between px-3 py-2 rounded-xl border text-xs font-medium ${
+              gain >= 0 ? 'bg-success/5 border-success/20 text-success' : 'bg-destructive/5 border-destructive/20 text-destructive'
+            }`}>
+              <span>Unrealised {gain >= 0 ? 'Gain' : 'Loss'}</span>
+              <span className="tabular-nums font-bold">
+                {gain >= 0 ? '+' : ''}{formatCurrency(gain)} ({gainPct >= 0 ? '+' : ''}{gainPct.toFixed(2)}%)
+              </span>
+            </div>
+          )}
 
           {/* SIP toggle */}
           <div className="flex items-center justify-between rounded-xl border border-border/60 p-3">
@@ -173,7 +229,7 @@ export function SIPMFForm({ initial, onDone }: Props) {
             <div className="grid grid-cols-2 gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
               <div className="space-y-1.5">
                 <Label>Monthly SIP Amount (₹)</Label>
-                <Input type="number" step="1" min="1" placeholder="5000" {...register('sipAmount')} />
+                <Input type="number" step="1" min="1" placeholder="e.g. 7300" {...register('sipAmount')} />
               </div>
               <div className="space-y-1.5">
                 <Label>Debit Day of Month</Label>
