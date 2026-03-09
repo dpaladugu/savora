@@ -40,7 +40,7 @@ export function FamilyFinancialDashboard() {
   const grandmaRecords = healthRecords.filter(r => r.familyMember === 'Grandmother' || r.familyMember === 'Grandma');
 
   const totalDebt    = loans.reduce((s, l) => s + (l.outstanding ?? l.principal), 0);
-  const totalAssets  = investments.reduce((s, i) => s + (i.currentValue ?? i.amount), 0);
+  const totalAssets  = investments.reduce((s, i) => s + (i.currentValue ?? i.investedValue ?? 0), 0);
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
