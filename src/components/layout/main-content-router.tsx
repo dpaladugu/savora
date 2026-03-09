@@ -1,9 +1,8 @@
 
-
 import React from 'react';
 import { Dashboard } from '@/components/dashboard/dashboard';
 import { ExpenseTracker } from '@/components/expenses/expense-tracker';
-import { CreditCardTracker } from '@/components/credit-cards/credit-card-tracker';
+import { CreditCardManager } from '@/components/credit-cards/credit-card-manager';
 import { InvestmentHub } from '@/components/investments/investment-hub';
 import { IncomeTracker } from '@/components/income/income-tracker';
 import { GoalsManager } from '@/components/goals/goals-manager';
@@ -41,7 +40,8 @@ export function MainContentRouter({
     case 'expenses':
       return <ExpenseTracker />;
     case 'credit-cards':
-      return <CreditCardTracker />;
+      // Full 3-tab CreditCardManager (Statements, Rewards, Due Calendar)
+      return <CreditCardManager />;
     case 'investments':
       return <InvestmentHub />;
     case 'income':
