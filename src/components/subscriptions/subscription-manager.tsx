@@ -1,6 +1,6 @@
 /**
  * SubscriptionManager — with category breakdown, annual totals,
- * renewal alerts and monthly burn chart.
+ * renewal alerts, monthly burn chart and renewal calendar.
  */
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
 import {
@@ -21,7 +22,7 @@ import {
   BarChart3, RefreshCw, Rss, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { addMonths, addQuarters, addYears, differenceInDays, format } from 'date-fns';
+import { addMonths, addQuarters, addYears, differenceInDays, format, getDaysInMonth, startOfMonth } from 'date-fns';
 import type { Subscription } from '@/lib/db';
 
 // ── Category icons ──────────────────────────────────────────────────────────────
