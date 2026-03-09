@@ -176,7 +176,7 @@ export function FamilyFinancialDashboard() {
               { label: 'Grandma', count: grandmaRecords.length, icon: Activity },
             ].map(({ label, count, icon: Icon }) => (
               <div key={label} className="p-3 rounded-xl bg-muted/30 border border-border/30 flex items-center gap-2">
-                <Icon className="h-4 w-4 text-pink-500 shrink-0" />
+                <Icon className="h-4 w-4 text-destructive/70 shrink-0" />
                 <div>
                   <p className="text-xs font-semibold text-foreground">{label}</p>
                   <p className="text-[10px] text-muted-foreground">{count} record{count !== 1 ? 's' : ''}</p>
