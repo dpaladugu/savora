@@ -1,35 +1,36 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle } from 'lucide-react';
+import { Trash2, Edit3, Plus, Receipt, X, AlertTriangle, ChevronLeft, ChevronRight, BarChart3 } from 'lucide-react';
 import { ExpenseService, type Expense } from '@/services/ExpenseService';
 import { useToast } from '@/hooks/use-toast';
 import { formatCurrency } from '@/lib/format-utils';
 import { PageHeader } from '@/components/layout/page-header';
 import { EXPENSE_CATEGORIES, PAYMENT_METHODS } from '@/lib/categories';
-import { checkSpendingLimitAfterExpense } from '@/lib/spending-limit-checker';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+
+// ─── Month nav helpers ────────────────────────────────────────────────────────
+function monthLabel(y: number, m: number) {
+  return new Date(y, m, 1).toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+}
 
 // ─── Spending Limits Bar ──────────────────────────────────────────────────────
 function SpendingLimitsBar({ monthlyTotal }: { monthlyTotal: number }) {
   const limits = useLiveQuery(() => db.spendingLimits.toArray().catch(() => []), []) ?? [];
   if (!limits.length) return null;
-
-  // Aggregate all limits vs monthly total (simplified: overall cap)
   const totalCap = limits.reduce((s, l) => s + l.monthlyCap, 0);
   if (totalCap === 0) return null;
-
   const pct = Math.min(100, Math.round((monthlyTotal / totalCap) * 100));
   const alertPct = Math.min(...limits.map(l => l.alertAt ?? 80));
   const isWarning = pct >= alertPct;
   const isOver    = pct >= 100;
-
   return (
     <div className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-xs ${
       isOver    ? 'border-destructive/40 bg-destructive/5'
@@ -45,37 +46,102 @@ function SpendingLimitsBar({ monthlyTotal }: { monthlyTotal: number }) {
           <span className="text-muted-foreground tabular-nums">{formatCurrency(monthlyTotal)} / {formatCurrency(totalCap)}</span>
         </div>
         <div className="h-1.5 rounded-full bg-muted/50 overflow-hidden">
-          <div
-            className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-destructive' : isWarning ? 'bg-warning' : 'bg-primary'}`}
-            style={{ width: `${pct}%` }}
-          />
+          <div className={`h-full rounded-full transition-all duration-500 ${isOver ? 'bg-destructive' : isWarning ? 'bg-warning' : 'bg-primary'}`}
+            style={{ width: `${pct}%` }} />
         </div>
       </div>
     </div>
   );
 }
 
+// ─── Category breakdown mini chart ───────────────────────────────────────────
+function CategoryChart({ expenses }: { expenses: Expense[] }) {
+  const data = useMemo(() => {
+    const totals: Record<string, number> = {};
+    expenses.forEach(e => { totals[e.category] = (totals[e.category] || 0) + e.amount; });
+    return Object.entries(totals)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 8)
+      .map(([name, value]) => ({ name, value }));
+  }, [expenses]);
+
+  if (data.length === 0) return null;
+
+  const COLORS = [
+    'hsl(var(--primary))', 'hsl(var(--accent))', 'hsl(var(--success))',
+    'hsl(24 90% 55%)', 'hsl(280 65% 60%)', 'hsl(48 90% 50%)',
+    'hsl(173 58% 40%)', 'hsl(350 75% 55%)',
+  ];
+
+  return (
+    <Card className="glass border-border/40">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xs flex items-center gap-2">
+          <BarChart3 className="h-3.5 w-3.5 text-primary" /> By Category
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="p-3 pt-0">
+        <ResponsiveContainer width="100%" height={120}>
+          <BarChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+            <XAxis dataKey="name" tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
+              tickFormatter={v => v.length > 8 ? v.slice(0, 7) + '…' : v} />
+            <YAxis tick={{ fontSize: 9 }} tickLine={false} axisLine={false}
+              tickFormatter={v => `₹${v >= 1000 ? Math.round(v/1000) + 'k' : v}`} />
+            <Tooltip
+              formatter={(v: number) => [formatCurrency(v), 'Spent']}
+              contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid hsl(var(--border))' }}
+            />
+            <Bar dataKey="value" radius={[3, 3, 0, 0]}>
+              {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ExpenseTracker() {
-  const [expenses, setExpenses] = useState<Expense[]>([]);
-  const [showForm, setShowForm]     = useState(false);
+  const now = new Date();
+  const [viewYear,  setViewYear]  = useState(now.getFullYear());
+  const [viewMonth, setViewMonth] = useState(now.getMonth());
+  const [showForm, setShowForm]   = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [showChart, setShowChart] = useState(false);
   const { toast } = useToast();
 
-  const emptyForm = { amount: '', description: '', category: '', date: new Date().toISOString().split('T')[0], tags: '', paymentMethod: 'UPI' };
+  const emptyForm = { amount: '', description: '', category: '', date: now.toISOString().split('T')[0], tags: '', paymentMethod: 'UPI' };
   const [form, setForm] = useState(emptyForm);
 
-  useEffect(() => { load(); }, []);
+  // Live reactive query for expenses
+  const allExpenses = useLiveQuery(
+    () => ExpenseService.getExpenses().catch(() => []),
+    []
+  ) ?? [];
 
-  const load = async () => {
-    try {
-      setLoading(true);
-      const data = await ExpenseService.getExpenses();
-      setExpenses(data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
-    } catch {
-      toast({ title: 'Error', description: 'Failed to load expenses', variant: 'destructive' });
-    } finally { setLoading(false); }
+  const monthStr = `${viewYear}-${String(viewMonth + 1).padStart(2, '0')}`;
+  const expenses = useMemo(
+    () => allExpenses
+      .filter(e => e.date.startsWith(monthStr))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+    [allExpenses, monthStr]
+  );
+
+  const monthlyTotal = expenses.reduce((s, e) => s + e.amount, 0);
+
+  // Month navigation
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
   };
+  const nextMonth = () => {
+    const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
+    if (isCurrentMonth) return;
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+  const isCurrentMonth = viewYear === now.getFullYear() && viewMonth === now.getMonth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,18 +155,14 @@ export function ExpenseTracker() {
         tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
         payment_method: form.paymentMethod, source: 'manual', account: 'default',
       };
-      const { db } = await import('@/lib/db');
       if (editingExpense) {
         await ExpenseService.updateExpense(editingExpense.id, payload);
-        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'update', entity: 'expense', entityId: editingExpense.id, oldValues: editingExpense, newValues: payload, timestamp: new Date() });
         toast({ title: 'Expense updated' });
       } else {
         await ExpenseService.addExpense(payload);
-        await db.auditLogs.add({ id: crypto.randomUUID(), action: 'create', entity: 'expense', entityId: crypto.randomUUID(), newValues: payload, timestamp: new Date() });
         toast({ title: 'Expense added' });
-        // Spending-limit check fires automatically inside ExpenseService.addExpense
       }
-      setForm(emptyForm); setShowForm(false); setEditingExpense(null); load();
+      setForm(emptyForm); setShowForm(false); setEditingExpense(null);
     } catch { toast({ title: 'Failed to save', variant: 'destructive' }); }
   };
 
@@ -113,38 +175,47 @@ export function ExpenseTracker() {
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this expense?')) return;
     try {
-      const old = expenses.find(e => e.id === id);
       await ExpenseService.deleteExpense(id);
-      const { db } = await import('@/lib/db');
-      await db.auditLogs.add({ id: crypto.randomUUID(), action: 'delete', entity: 'expense', entityId: id, oldValues: old, timestamp: new Date() });
-      toast({ title: 'Deleted' }); load();
-    }
-    catch { toast({ title: 'Failed to delete', variant: 'destructive' }); }
+      toast({ title: 'Deleted' });
+    } catch { toast({ title: 'Failed to delete', variant: 'destructive' }); }
   };
-
-  const monthlyTotal = expenses
-    .filter(e => e.date.startsWith(new Date().toISOString().slice(0, 7)))
-    .reduce((s, e) => s + e.amount, 0);
-
-  if (loading) return <div className="space-y-3 animate-pulse">{[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted rounded-2xl" />)}</div>;
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Expenses"
-        subtitle={`This month: ${formatCurrency(monthlyTotal)}`}
+        subtitle={`${monthLabel(viewYear, viewMonth)}: ${formatCurrency(monthlyTotal)}`}
         icon={Receipt}
         action={
-          <Button size="sm" onClick={() => setShowForm(true)} className="h-9 gap-1.5 rounded-xl text-xs">
-            <Plus className="h-3.5 w-3.5" /> Add
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="icon" variant="ghost" className="h-8 w-8 rounded-xl" onClick={() => setShowChart(s => !s)} aria-label="Toggle chart">
+              <BarChart3 className="h-4 w-4" />
+            </Button>
+            <Button size="sm" onClick={() => setShowForm(true)} className="h-9 gap-1.5 rounded-xl text-xs">
+              <Plus className="h-3.5 w-3.5" /> Add
+            </Button>
+          </div>
         }
       />
 
-      {/* Spending Limits Bar — shows only when limits are configured */}
-      <SpendingLimitsBar monthlyTotal={monthlyTotal} />
+      {/* Month navigator */}
+      <div className="flex items-center justify-between bg-muted/40 rounded-xl px-3 py-2 border border-border/30">
+        <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={prevMonth}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm font-semibold text-foreground">{monthLabel(viewYear, viewMonth)}</span>
+        <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={nextMonth} disabled={isCurrentMonth}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
 
-      {/* Add / Edit Form — inline, not a modal */}
+      {/* Spending Limits Bar */}
+      {isCurrentMonth && <SpendingLimitsBar monthlyTotal={monthlyTotal} />}
+
+      {/* Category chart (toggle) */}
+      {showChart && <CategoryChart expenses={expenses} />}
+
+      {/* Add / Edit Form */}
       {showForm && (
         <Card className="glass border-primary/20">
           <CardContent className="p-4">
@@ -203,10 +274,12 @@ export function ExpenseTracker() {
         <Card>
           <CardContent className="text-center py-12">
             <Receipt className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-            <p className="text-sm text-muted-foreground">No expenses yet</p>
-            <Button size="sm" onClick={() => setShowForm(true)} className="mt-3 h-9 text-xs rounded-xl gap-1.5">
-              <Plus className="h-3.5 w-3.5" /> Add your first expense
-            </Button>
+            <p className="text-sm text-muted-foreground">No expenses in {monthLabel(viewYear, viewMonth)}</p>
+            {isCurrentMonth && (
+              <Button size="sm" onClick={() => setShowForm(true)} className="mt-3 h-9 text-xs rounded-xl gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Add your first expense
+              </Button>
+            )}
           </CardContent>
         </Card>
       ) : (

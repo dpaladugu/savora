@@ -1,8 +1,9 @@
 /**
  * Health Tracker — Mother & Grandma medical records, prescriptions, vitals
- * Full CRUD with per-person tabs, refill alerts, and vital trend indicators.
+ * Full CRUD backed by IndexedDB (appSettings key) — no localStorage.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { toast } from 'sonner';
 import { formatCurrency } from '@/lib/format-utils';
@@ -17,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Heart, Plus, Activity, Pill, Stethoscope,
-  AlertTriangle, Trash2, Edit, Users
+  AlertTriangle, Trash2, Users, TrendingUp, TrendingDown
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -57,17 +58,36 @@ interface MedRecord {
   notes?: string;
 }
 
-// ─── LocalStorage-backed store (no schema change needed) ─────────────────────
-const STORE_KEY = 'savora-health-v1';
-
-function loadStore(): { prescriptions: Prescription[]; vitals: Vital[]; records: MedRecord[] } {
-  try {
-    return JSON.parse(localStorage.getItem(STORE_KEY) || 'null') || { prescriptions: [], vitals: [], records: [] };
-  } catch { return { prescriptions: [], vitals: [], records: [] }; }
+interface HealthStore {
+  prescriptions: Prescription[];
+  vitals: Vital[];
+  records: MedRecord[];
 }
 
-function saveStore(data: ReturnType<typeof loadStore>) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(data));
+const HEALTH_KEY = 'health-store-v1';
+const EMPTY_STORE: HealthStore = { prescriptions: [], vitals: [], records: [] };
+
+// ─── Dexie persistence helpers ────────────────────────────────────────────────
+async function loadHealthStore(): Promise<HealthStore> {
+  try {
+    const row = await db.appSettings.get(HEALTH_KEY);
+    if (row?.value) return JSON.parse(row.value as string) as HealthStore;
+  } catch { /* first run */ }
+  // Migrate from localStorage if exists
+  try {
+    const legacy = localStorage.getItem('savora-health-v1');
+    if (legacy) {
+      const parsed = JSON.parse(legacy) as HealthStore;
+      await persistHealthStore(parsed);
+      localStorage.removeItem('savora-health-v1');
+      return parsed;
+    }
+  } catch { /* ignore */ }
+  return EMPTY_STORE;
+}
+
+async function persistHealthStore(store: HealthStore): Promise<void> {
+  await db.appSettings.put({ key: HEALTH_KEY, value: JSON.stringify(store) });
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -77,34 +97,76 @@ function daysUntilRefill(rx: Prescription) {
   return Math.ceil((d.getTime() - Date.now()) / 86400000);
 }
 
+function today() { return new Date().toISOString().split('T')[0]; }
+
 const PERSONS: ('Mother' | 'Grandma')[] = ['Mother', 'Grandma'];
+
+// ─── Vital Trend indicator ────────────────────────────────────────────────────
+function BpTrend({ vitals, person }: { vitals: Vital[]; person: string }) {
+  const personVitals = vitals
+    .filter(v => v.person === person && v.bpSystolic)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(-5);
+  if (personVitals.length < 2) return null;
+  const latest = personVitals[personVitals.length - 1].bpSystolic!;
+  const prev   = personVitals[personVitals.length - 2].bpSystolic!;
+  const diff   = latest - prev;
+  if (Math.abs(diff) < 3) return null;
+  return diff > 0
+    ? <TrendingUp   className="h-3 w-3 text-destructive" />
+    : <TrendingDown className="h-3 w-3 text-success" />;
+}
+
+// ─── Monthly spend on medicines ───────────────────────────────────────────────
+function MonthlyMedSpend({ prescriptions }: { prescriptions: Prescription[] }) {
+  const monthStr = new Date().toISOString().slice(0, 7);
+  const total = prescriptions
+    .filter(rx => rx.date.startsWith(monthStr))
+    .reduce((s, rx) => s + rx.amount, 0);
+  if (total === 0) return null;
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/40 border border-border/30 text-xs">
+      <Pill className="h-3.5 w-3.5 text-primary shrink-0" />
+      <span className="text-muted-foreground">Medicine spend this month:</span>
+      <span className="font-semibold text-foreground tabular-nums">{formatCurrency(total)}</span>
+    </div>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export function HealthTracker() {
-  const [data, setData]     = useState(loadStore);
+  // Live Dexie query
+  const row = useLiveQuery(() => db.appSettings.get(HEALTH_KEY), []);
+  const data: HealthStore = React.useMemo(() => {
+    if (!row) return EMPTY_STORE;
+    try { return JSON.parse(row.value as string) as HealthStore; }
+    catch { return EMPTY_STORE; }
+  }, [row]);
+
   const [activePerson, setActivePerson] = useState<'Mother' | 'Grandma'>('Mother');
   const [rxModal, setRxModal]   = useState(false);
   const [vtModal, setVtModal]   = useState(false);
   const [recModal, setRecModal] = useState(false);
 
-  // Blank forms
+  // Migrate localStorage on first load
+  React.useEffect(() => {
+    if (!row) loadHealthStore(); // triggers migration + persists
+  }, [row]);
+
   const blankRx  = { person: activePerson, date: today(), doctor: '', medicines: '', nextRefillDays: '30', amount: '', note: '' };
   const blankVt  = { person: activePerson, date: today(), bpSystolic: '', bpDiastolic: '', heartRate: '', temperature: '', spO2: '', weight: '', note: '' };
   const blankRec = { person: activePerson, date: today(), title: '', doctor: '', hospital: '', diagnosis: '', cost: '', notes: '' };
 
-  const [rxForm, setRxForm]   = useState(blankRx);
-  const [vtForm, setVtForm]   = useState(blankVt);
+  const [rxForm,  setRxForm]  = useState(blankRx);
+  const [vtForm,  setVtForm]  = useState(blankVt);
   const [recForm, setRecForm] = useState(blankRec);
 
-  function today() { return new Date().toISOString().split('T')[0]; }
+  const save = useCallback(async (next: HealthStore) => {
+    await persistHealthStore(next);
+  }, []);
 
-  const persist = (next: ReturnType<typeof loadStore>) => {
-    setData(next);
-    saveStore(next);
-  };
-
-  // ── CRUD ──────────────────────────────────────────────────────────────────
-  const addRx = (e: React.FormEvent) => {
+  // ── CRUD ────────────────────────────────────────────────────────────────────
+  const addRx = async (e: React.FormEvent) => {
     e.preventDefault();
     const rx: Prescription = {
       id: crypto.randomUUID(),
@@ -116,33 +178,33 @@ export function HealthTracker() {
       amount: parseFloat(rxForm.amount) || 0,
       note: rxForm.note || undefined,
     };
-    persist({ ...data, prescriptions: [rx, ...data.prescriptions] });
+    await save({ ...data, prescriptions: [rx, ...data.prescriptions] });
     toast.success('Prescription added');
     setRxModal(false);
     setRxForm({ ...blankRx, person: activePerson });
   };
 
-  const addVital = (e: React.FormEvent) => {
+  const addVital = async (e: React.FormEvent) => {
     e.preventDefault();
     const vt: Vital = {
       id: crypto.randomUUID(),
       person: vtForm.person as 'Mother' | 'Grandma',
       date: vtForm.date,
-      bpSystolic:  vtForm.bpSystolic  ? parseInt(vtForm.bpSystolic)  : undefined,
-      bpDiastolic: vtForm.bpDiastolic ? parseInt(vtForm.bpDiastolic) : undefined,
-      heartRate:   vtForm.heartRate   ? parseInt(vtForm.heartRate)   : undefined,
+      bpSystolic:  vtForm.bpSystolic  ? parseInt(vtForm.bpSystolic)   : undefined,
+      bpDiastolic: vtForm.bpDiastolic ? parseInt(vtForm.bpDiastolic)  : undefined,
+      heartRate:   vtForm.heartRate   ? parseInt(vtForm.heartRate)    : undefined,
       temperature: vtForm.temperature ? parseFloat(vtForm.temperature): undefined,
-      spO2:        vtForm.spO2        ? parseInt(vtForm.spO2)        : undefined,
-      weight:      vtForm.weight      ? parseFloat(vtForm.weight)    : undefined,
+      spO2:        vtForm.spO2        ? parseInt(vtForm.spO2)         : undefined,
+      weight:      vtForm.weight      ? parseFloat(vtForm.weight)     : undefined,
       note: vtForm.note || undefined,
     };
-    persist({ ...data, vitals: [vt, ...data.vitals] });
+    await save({ ...data, vitals: [vt, ...data.vitals] });
     toast.success('Vitals recorded');
     setVtModal(false);
     setVtForm({ ...blankVt, person: activePerson });
   };
 
-  const addRecord = (e: React.FormEvent) => {
+  const addRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     const rec: MedRecord = {
       id: crypto.randomUUID(),
@@ -155,15 +217,15 @@ export function HealthTracker() {
       cost: recForm.cost ? parseFloat(recForm.cost) : undefined,
       notes: recForm.notes || undefined,
     };
-    persist({ ...data, records: [rec, ...data.records] });
+    await save({ ...data, records: [rec, ...data.records] });
     toast.success('Record added');
     setRecModal(false);
     setRecForm({ ...blankRec, person: activePerson });
   };
 
-  const deleteRx  = (id: string) => { persist({ ...data, prescriptions: data.prescriptions.filter(r => r.id !== id) }); toast.success('Deleted'); };
-  const deleteVt  = (id: string) => { persist({ ...data, vitals: data.vitals.filter(v => v.id !== id) }); toast.success('Deleted'); };
-  const deleteRec = (id: string) => { persist({ ...data, records: data.records.filter(r => r.id !== id) }); toast.success('Deleted'); };
+  const deleteRx  = async (id: string) => { await save({ ...data, prescriptions: data.prescriptions.filter(r => r.id !== id) }); toast.success('Deleted'); };
+  const deleteVt  = async (id: string) => { await save({ ...data, vitals: data.vitals.filter(v => v.id !== id) }); toast.success('Deleted'); };
+  const deleteRec = async (id: string) => { await save({ ...data, records: data.records.filter(r => r.id !== id) }); toast.success('Deleted'); };
 
   // Filtered by active person
   const rxs  = data.prescriptions.filter(r => r.person === activePerson);
@@ -172,6 +234,11 @@ export function HealthTracker() {
 
   // Refill alerts (all persons)
   const refillAlerts = data.prescriptions.filter(rx => daysUntilRefill(rx) <= 7);
+
+  // Monthly medicine cost (all persons)
+  const allRxCost = data.prescriptions
+    .filter(rx => rx.date.startsWith(new Date().toISOString().slice(0, 7)))
+    .reduce((s, rx) => s + rx.amount, 0);
 
   return (
     <div className="space-y-4">
@@ -193,6 +260,15 @@ export function HealthTracker() {
           </div>
         }
       />
+
+      {/* Monthly medicine spend summary */}
+      {allRxCost > 0 && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted/40 border border-border/30 text-xs">
+          <Pill className="h-3.5 w-3.5 text-primary shrink-0" />
+          <span className="text-muted-foreground">Medicine spend this month:</span>
+          <span className="font-semibold text-foreground tabular-nums ml-auto">{formatCurrency(allRxCost)}</span>
+        </div>
+      )}
 
       {/* Refill alerts */}
       {refillAlerts.length > 0 && (
@@ -259,6 +335,7 @@ export function HealthTracker() {
                         </div>
                         <p className="text-xs text-muted-foreground">{rx.medicines.join(' · ')}</p>
                         {rx.amount > 0 && <p className="text-[11px] text-foreground mt-0.5">{formatCurrency(rx.amount)}</p>}
+                        {rx.note && <p className="text-[10px] text-muted-foreground italic mt-0.5">{rx.note}</p>}
                       </div>
                       <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteRx(rx.id)}>
                         <Trash2 className="h-3 w-3" />
@@ -274,6 +351,7 @@ export function HealthTracker() {
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Activity className="h-4 w-4 text-accent" /> Vital Signs
+                  <BpTrend vitals={data.vitals} person={person} />
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
@@ -346,6 +424,7 @@ export function HealthTracker() {
                       {rec.hospital  && <p className="text-xs text-muted-foreground">{rec.hospital}</p>}
                       {rec.diagnosis && <p className="text-xs text-foreground/70 italic">{rec.diagnosis}</p>}
                       {rec.cost      && <p className="text-[11px] font-medium mt-0.5">{formatCurrency(rec.cost)}</p>}
+                      {rec.notes     && <p className="text-[10px] text-muted-foreground mt-1 italic">{rec.notes}</p>}
                     </div>
                     <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 shrink-0" onClick={() => deleteRec(rec.id)}>
                       <Trash2 className="h-3 w-3" />
@@ -373,44 +452,43 @@ export function HealthTracker() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Date</Label>
-                <Input type="date" value={rxForm.date} onChange={e => setRxForm({ ...rxForm, date: e.target.value })} required />
+                <Input type="date" value={rxForm.date} onChange={e => setRxForm({ ...rxForm, date: e.target.value })} className="h-10" />
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs">Doctor Name *</Label>
-              <Input value={rxForm.doctor} onChange={e => setRxForm({ ...rxForm, doctor: e.target.value })} required />
+              <Label className="text-xs">Doctor *</Label>
+              <Input placeholder="Dr. Name" value={rxForm.doctor} onChange={e => setRxForm({ ...rxForm, doctor: e.target.value })} required className="h-10" />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Medicines (comma-separated) *</Label>
-              <Textarea value={rxForm.medicines} onChange={e => setRxForm({ ...rxForm, medicines: e.target.value })}
-                placeholder="Metformin, Amlodipine, Aspirin" className="text-xs rounded-xl" rows={2} required />
+              <Input placeholder="Metformin 500mg, Atorvastatin 10mg" value={rxForm.medicines} onChange={e => setRxForm({ ...rxForm, medicines: e.target.value })} required className="h-10" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs">Next Refill (days)</Label>
-                <Input type="number" value={rxForm.nextRefillDays} onChange={e => setRxForm({ ...rxForm, nextRefillDays: e.target.value })} />
+                <Label className="text-xs">Refill in (days)</Label>
+                <Input type="number" value={rxForm.nextRefillDays} onChange={e => setRxForm({ ...rxForm, nextRefillDays: e.target.value })} className="h-10" />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Cost (₹)</Label>
-                <Input type="number" value={rxForm.amount} onChange={e => setRxForm({ ...rxForm, amount: e.target.value })} />
+                <Input type="number" placeholder="0" value={rxForm.amount} onChange={e => setRxForm({ ...rxForm, amount: e.target.value })} className="h-10" />
               </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Note</Label>
-              <Input value={rxForm.note} onChange={e => setRxForm({ ...rxForm, note: e.target.value })} />
+              <Textarea placeholder="Any notes…" value={rxForm.note} onChange={e => setRxForm({ ...rxForm, note: e.target.value })} rows={2} className="text-sm resize-none" />
             </div>
             <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setRxModal(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 rounded-xl">Save</Button>
+              <Button type="button" variant="outline" className="flex-1 h-10 text-xs" onClick={() => setRxModal(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 h-10 text-xs">Save</Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* ── Add Vital Modal ── */}
+      {/* ── Add Vitals Modal ── */}
       <Dialog open={vtModal} onOpenChange={setVtModal}>
         <DialogContent className="sm:max-w-sm max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Record Vital Signs</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Record Vitals</DialogTitle></DialogHeader>
           <form onSubmit={addVital} className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
@@ -422,21 +500,42 @@ export function HealthTracker() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Date</Label>
-                <Input type="date" value={vtForm.date} onChange={e => setVtForm({ ...vtForm, date: e.target.value })} required />
+                <Input type="date" value={vtForm.date} onChange={e => setVtForm({ ...vtForm, date: e.target.value })} className="h-10" />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label className="text-xs">BP Systolic</Label><Input type="number" placeholder="120" value={vtForm.bpSystolic} onChange={e => setVtForm({ ...vtForm, bpSystolic: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">BP Diastolic</Label><Input type="number" placeholder="80" value={vtForm.bpDiastolic} onChange={e => setVtForm({ ...vtForm, bpDiastolic: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Heart Rate</Label><Input type="number" placeholder="72" value={vtForm.heartRate} onChange={e => setVtForm({ ...vtForm, heartRate: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Temp (°F)</Label><Input type="number" step="0.1" placeholder="98.6" value={vtForm.temperature} onChange={e => setVtForm({ ...vtForm, temperature: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">SpO₂ (%)</Label><Input type="number" placeholder="98" value={vtForm.spO2} onChange={e => setVtForm({ ...vtForm, spO2: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Weight (kg)</Label><Input type="number" step="0.1" placeholder="60" value={vtForm.weight} onChange={e => setVtForm({ ...vtForm, weight: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">BP Systolic</Label>
+                <Input type="number" placeholder="120" value={vtForm.bpSystolic} onChange={e => setVtForm({ ...vtForm, bpSystolic: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">BP Diastolic</Label>
+                <Input type="number" placeholder="80" value={vtForm.bpDiastolic} onChange={e => setVtForm({ ...vtForm, bpDiastolic: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Heart Rate (bpm)</Label>
+                <Input type="number" placeholder="72" value={vtForm.heartRate} onChange={e => setVtForm({ ...vtForm, heartRate: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Temperature (°F)</Label>
+                <Input type="number" step="0.1" placeholder="98.6" value={vtForm.temperature} onChange={e => setVtForm({ ...vtForm, temperature: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">SpO₂ (%)</Label>
+                <Input type="number" placeholder="98" value={vtForm.spO2} onChange={e => setVtForm({ ...vtForm, spO2: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Weight (kg)</Label>
+                <Input type="number" step="0.1" placeholder="65" value={vtForm.weight} onChange={e => setVtForm({ ...vtForm, weight: e.target.value })} className="h-10" />
+              </div>
             </div>
-            <div className="space-y-1.5"><Label className="text-xs">Note</Label><Input value={vtForm.note} onChange={e => setVtForm({ ...vtForm, note: e.target.value })} /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Note</Label>
+              <Textarea placeholder="Any observations…" value={vtForm.note} onChange={e => setVtForm({ ...vtForm, note: e.target.value })} rows={2} className="text-sm resize-none" />
+            </div>
             <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setVtModal(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 rounded-xl">Save</Button>
+              <Button type="button" variant="outline" className="flex-1 h-10 text-xs" onClick={() => setVtModal(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 h-10 text-xs">Save</Button>
             </div>
           </form>
         </DialogContent>
@@ -455,19 +554,40 @@ export function HealthTracker() {
                   {PERSONS.map(p => <option key={p} value={p}>{p}</option>)}
                 </select>
               </div>
-              <div className="space-y-1.5"><Label className="text-xs">Date</Label><Input type="date" value={recForm.date} onChange={e => setRecForm({ ...recForm, date: e.target.value })} required /></div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Date</Label>
+                <Input type="date" value={recForm.date} onChange={e => setRecForm({ ...recForm, date: e.target.value })} className="h-10" />
+              </div>
             </div>
-            <div className="space-y-1.5"><Label className="text-xs">Title / Event *</Label><Input value={recForm.title} onChange={e => setRecForm({ ...recForm, title: e.target.value })} placeholder="Annual Checkup, Surgery, Scan..." required /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Title / Event *</Label>
+              <Input placeholder="e.g. Cardiology Visit" value={recForm.title} onChange={e => setRecForm({ ...recForm, title: e.target.value })} required className="h-10" />
+            </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label className="text-xs">Doctor</Label><Input value={recForm.doctor} onChange={e => setRecForm({ ...recForm, doctor: e.target.value })} /></div>
-              <div className="space-y-1.5"><Label className="text-xs">Hospital</Label><Input value={recForm.hospital} onChange={e => setRecForm({ ...recForm, hospital: e.target.value })} /></div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Doctor</Label>
+                <Input placeholder="Dr. Name" value={recForm.doctor} onChange={e => setRecForm({ ...recForm, doctor: e.target.value })} className="h-10" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Hospital</Label>
+                <Input placeholder="Hospital name" value={recForm.hospital} onChange={e => setRecForm({ ...recForm, hospital: e.target.value })} className="h-10" />
+              </div>
             </div>
-            <div className="space-y-1.5"><Label className="text-xs">Diagnosis</Label><Input value={recForm.diagnosis} onChange={e => setRecForm({ ...recForm, diagnosis: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Cost (₹)</Label><Input type="number" value={recForm.cost} onChange={e => setRecForm({ ...recForm, cost: e.target.value })} /></div>
-            <div className="space-y-1.5"><Label className="text-xs">Notes</Label><Textarea value={recForm.notes} onChange={e => setRecForm({ ...recForm, notes: e.target.value })} className="text-xs rounded-xl" rows={2} /></div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Diagnosis</Label>
+              <Input placeholder="Primary diagnosis" value={recForm.diagnosis} onChange={e => setRecForm({ ...recForm, diagnosis: e.target.value })} className="h-10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Cost (₹)</Label>
+              <Input type="number" placeholder="0" value={recForm.cost} onChange={e => setRecForm({ ...recForm, cost: e.target.value })} className="h-10" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Notes</Label>
+              <Textarea placeholder="Additional notes…" value={recForm.notes} onChange={e => setRecForm({ ...recForm, notes: e.target.value })} rows={2} className="text-sm resize-none" />
+            </div>
             <div className="flex gap-2 pt-1">
-              <Button type="button" variant="outline" className="flex-1 rounded-xl" onClick={() => setRecModal(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 rounded-xl">Save</Button>
+              <Button type="button" variant="outline" className="flex-1 h-10 text-xs" onClick={() => setRecModal(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 h-10 text-xs">Save</Button>
             </div>
           </form>
         </DialogContent>
