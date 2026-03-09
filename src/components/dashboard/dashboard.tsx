@@ -28,6 +28,7 @@ import { GunturWaterfallCard } from './guntur-waterfall-card';
 import { DebtFreedomCountdown } from './debt-freedom-countdown';
 import { DataHealthWidget } from './data-health-widget';
 import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
+import { YTDSummaryCard } from './ytd-summary-card';
 
 
 
@@ -269,6 +270,27 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first(), []) ?? null;
   const incomeCount = useLiveQuery(() => db.incomes.count().catch(() => 0), []) ?? 0;
 
+  // Salary credit day — count this-month salary entries
+  const now = new Date();
+  const thisMonthSalaryCount = useLiveQuery(() =>
+    db.incomes
+      .where('date').between(
+        new Date(now.getFullYear(), now.getMonth(), 1),
+        new Date(now.getFullYear(), now.getMonth() + 1, 1),
+        true, false
+      )
+      .and(i => (i.category === 'Salary' || (i.description ?? '').toLowerCase().includes('salary')))
+      .count().catch(() => 0),
+  []) ?? 0;
+  const salaryCreditDay = settings?.salaryCreditDay ?? 0;
+  const todayDate = now.getDate();
+  const showSalaryNudge = role !== 'BROTHER' && role !== 'GUEST'
+    && incomeCount > 0
+    && salaryCreditDay > 0
+    && todayDate >= salaryCreditDay
+    && todayDate <= salaryCreditDay + 5
+    && thisMonthSalaryCount === 0;
+
   // ── Show Setup Wizard on first launch (no income + no globalSettings userName) ──
   useEffect(() => {
     if (incomeCount === 0 && settings !== undefined && !settings?.userName) {
@@ -399,6 +421,27 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </button>
       )}
 
+      {/* ── Salary credit day nudge ── */}
+      {showSalaryNudge && (
+        <button
+          onClick={() => setShowIncomeDialog(true)}
+          className="w-full flex items-center gap-3 p-3.5 rounded-2xl border border-success/40 bg-success/5 hover:bg-success/10 active:scale-[0.98] transition-all text-left"
+        >
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-success/15">
+            <Banknote className="h-4 w-4 text-success" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground">Salary credited? 💰</p>
+            <p className="text-xs text-muted-foreground">
+              Your salary credit day was the {salaryCreditDay}{salaryCreditDay === 1 ? 'st' : salaryCreditDay === 2 ? 'nd' : salaryCreditDay === 3 ? 'rd' : 'th'}. Confirm it was received →
+            </p>
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+        </button>
+      )}
+
+
+
       {/* ── Salary nudge (show only when no income recorded yet) ── */}
       {role !== 'BROTHER' && role !== 'GUEST' && incomeCount === 0 && (
         <button
@@ -501,6 +544,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         onAddIncome={() => setShowIncomeDialog(true)}
         onPrepay={() => onMoreNavigation('loans')}
       />
+
+      {/* ── YTD Summary Card ── */}
+      <YTDSummaryCard onNavigate={onMoreNavigation} />
 
       {/* ── Monthly Summary — tappable for drill-down ── */}
       <MonthlySummaryCard onDrilldown={() => setShowMonthDrilldown(true)} />

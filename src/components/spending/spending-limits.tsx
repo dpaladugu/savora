@@ -1,6 +1,7 @@
 /**
  * SpendingLimits — per-category monthly caps.
  * Auto-sums from expenses in current month and fires toast alert at configurable threshold.
+ * Auto-suggest: reads last 3-month average per category and sets caps at 110%.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
-import { Gauge, Plus, Edit, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Gauge, Plus, Edit, Trash2, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { SpendingLimit } from '@/lib/db';
@@ -112,6 +113,53 @@ export function SpendingLimits() {
     toast.success('Limit deleted');
   };
 
+  // ── Auto-suggest from last 3 months history ──────────────────────────────────
+  const handleAutoSuggest = async () => {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+    const allExp   = await (db.expenses?.toArray().catch(() => []) ?? Promise.resolve([]));
+    const allTxns2 = await (db.txns?.toArray().catch(() => []) ?? Promise.resolve([]));
+
+    // Union of expenses and negative txns in last 3 months
+    type SimpleExp = { category: string; amount: number };
+    const rows: SimpleExp[] = [
+      ...allExp
+        .filter(e => { const d = e.date instanceof Date ? e.date : new Date(e.date as any); return d >= threeMonthsAgo; })
+        .map(e => ({ category: e.category, amount: Math.abs(e.amount) })),
+      ...allTxns2
+        .filter(t => { const d = t.date instanceof Date ? t.date : new Date(t.date as any); return t.amount < 0 && d >= threeMonthsAgo; })
+        .map(t => ({ category: t.category, amount: Math.abs(t.amount) })),
+    ];
+
+    // Average per category over 3 months, cap at 110%
+    const totals: Record<string, number> = {};
+    rows.forEach(r => { totals[r.category] = (totals[r.category] || 0) + r.amount; });
+
+    const suggestions = Object.entries(totals)
+      .filter(([, t]) => t > 0)
+      .map(([cat, t]) => ({ category: cat, cap: Math.ceil((t / 3) * 1.1 / 100) * 100 }));
+
+    if (!suggestions.length) { toast.info('No spending history found in last 3 months'); return; }
+
+    const existing = await (db.spendingLimits?.toArray().catch(() => []) ?? Promise.resolve([]));
+    const existingCats = new Set(existing.map((l: SpendingLimit) => l.category));
+    const toAdd = suggestions.filter(s => !existingCats.has(s.category));
+
+    if (!toAdd.length) { toast.info('All suggested categories already have limits'); return; }
+
+    await Promise.all(toAdd.map(s =>
+      db.spendingLimits?.add({
+        id: crypto.randomUUID(),
+        category: s.category,
+        monthlyCap: s.cap,
+        alertAt: 80,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    ));
+    toast.success(`✨ ${toAdd.length} budget cap${toAdd.length > 1 ? 's' : ''} auto-suggested at 110% of 3-month avg`);
+  };
+
   return (
     <div className="space-y-4">
       <PageHeader
@@ -119,9 +167,14 @@ export function SpendingLimits() {
         subtitle="Monthly category caps with 80% alerts"
         icon={Gauge}
         action={
-          <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Add Limit
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={handleAutoSuggest} className="h-9 text-xs gap-1 rounded-xl">
+              <Sparkles className="h-3.5 w-3.5" /> Auto-Suggest
+            </Button>
+            <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> Add Limit
+            </Button>
+          </div>
         }
       />
 

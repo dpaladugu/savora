@@ -2,7 +2,7 @@
  * InvestmentHub — tabbed instrument-aware investment tracker
  * Tabs: Overview | SIP/MF | EPF | PPF | NPS | SGB | FD/RD
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Investment } from '@/lib/db';
@@ -92,6 +92,19 @@ function InvestmentCard({ inv, onEdit, onDelete }: {
   const ret  = (inv.currentValue || 0) - (inv.investedValue || 0);
   const retP = (inv.investedValue || 0) > 0 ? (ret / (inv.investedValue || 0)) * 100 : 0;
 
+  // ── XIRR calculation ──────────────────────────────────────────────────────
+  // Simple: two cash-flows: -investedValue at purchaseDate, +currentValue today
+  const xirrPct = useMemo(() => {
+    const invested = inv.investedValue || 0;
+    const current  = inv.currentValue  || 0;
+    if (invested <= 0 || current <= 0) return null;
+    const purchaseDate = inv.purchaseDate instanceof Date ? inv.purchaseDate : new Date(inv.purchaseDate);
+    const yearsHeld = Math.max(0.01, (Date.now() - purchaseDate.getTime()) / (365.25 * 24 * 3600 * 1000));
+    // Simple CAGR formula: (currentValue / investedValue)^(1/years) - 1
+    const cagr = Math.pow(current / invested, 1 / yearsHeld) - 1;
+    return isFinite(cagr) ? cagr * 100 : null;
+  }, [inv.investedValue, inv.currentValue, inv.purchaseDate]);
+
   // Extra info chips based on type
   const chips: string[] = [];
   if (inv.isSIP && inv.sipAmount) chips.push(`SIP ₹${inv.sipAmount.toLocaleString('en-IN')}/mo`);
@@ -138,6 +151,14 @@ function InvestmentCard({ inv, onEdit, onDelete }: {
               <span className={cn('font-medium tabular-nums', cls)}>{val}</span>
             </div>
           ))}
+          {xirrPct !== null && (
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">CAGR</span>
+              <span className={cn('font-semibold tabular-nums', xirrPct >= 0 ? 'text-success' : 'text-destructive')}>
+                {xirrPct >= 0 ? '+' : ''}{xirrPct.toFixed(1)}% p.a.
+              </span>
+            </div>
+          )}
         </div>
 
         {chips.length > 0 && (

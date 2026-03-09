@@ -206,8 +206,14 @@ function GoalCard({
   const monthsLeft = daysLeft != null ? Math.max(1, Math.ceil(daysLeft / 30)) : null;
   const sipNeeded  = monthsLeft && remaining > 0 ? Math.ceil(remaining / monthsLeft) : null;
 
+  // ── Archive completed goal ────────────────────────────────────────────────
+  const handleArchive = async () => {
+    await db.goals.update(goal.id, { category: 'archived' as any });
+    toast.success(`🎉 ${goal.name} archived — congratulations!`);
+  };
+
   return (
-    <Card className="glass">
+    <Card className={`glass ${done ? 'border-success/40 bg-success/3' : ''}`}>
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -219,7 +225,7 @@ function GoalCard({
             <p className="text-xs text-muted-foreground mt-0.5">Target: {fmt(goal.targetAmount ?? 0)}</p>
             {goal.deadline && (
               <p className="text-[10px] text-muted-foreground">
-                {done ? 'Completed' : `${daysLeft}d left · ${goal.deadline}`}
+                {done ? 'Completed 🎉' : `${daysLeft}d left · ${goal.deadline}`}
               </p>
             )}
           </div>
@@ -233,15 +239,33 @@ function GoalCard({
           </div>
         </div>
 
+        {/* Celebration banner for 100% completed goals */}
+        {done && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center gap-2 p-2.5 rounded-xl bg-success/10 border border-success/30 text-xs text-success"
+          >
+            <span className="text-base">🎉</span>
+            <div className="flex-1">
+              <p className="font-semibold">Goal Achieved!</p>
+              <p className="text-success/70 text-[10px]">Congratulations — {fmt(goal.targetAmount ?? 0)} saved.</p>
+            </div>
+            <Button size="sm" variant="outline" className="h-6 text-[10px] border-success/40 text-success hover:bg-success/10 px-2" onClick={handleArchive}>
+              Archive
+            </Button>
+          </motion.div>
+        )}
+
         <div className="space-y-1.5">
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Progress</span>
-            <span className="font-semibold tabular-nums text-foreground">{progress.toFixed(1)}%</span>
+            <span className={`font-semibold tabular-nums ${done ? 'text-success' : 'text-foreground'}`}>{progress.toFixed(1)}%</span>
           </div>
-          <Progress value={progress} className="h-2" />
+          <Progress value={progress} className={`h-2 ${done ? '[&>div]:bg-success' : ''}`} />
           <div className="flex justify-between text-xs text-muted-foreground tabular-nums">
             <span>{fmt(goal.currentAmount ?? 0)}</span>
-            <span>{fmt(remaining)} to go</span>
+            <span>{done ? 'Complete!' : `${fmt(remaining)} to go`}</span>
           </div>
         </div>
 

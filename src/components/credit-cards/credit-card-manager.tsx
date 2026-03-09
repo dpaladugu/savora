@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import {
   Trash2, Plus, Edit, CreditCard as CreditCardIcon,
   Gift, ShieldAlert, Calendar, Zap, TrendingUp, Star,
-  AlertTriangle, CheckCircle2, Info,
+  AlertTriangle, CheckCircle2, Info, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
@@ -141,6 +141,43 @@ export function CreditCardManager() {
     toast.success('Card deleted');
   };
 
+  // ── Sync balance from expenses in current billing cycle ──────────────────────
+  const [syncing, setSyncing] = useState(false);
+  const handleSyncBalances = async () => {
+    setSyncing(true);
+    try {
+      const now = new Date();
+      let updated = 0;
+      for (const card of cards) {
+        const stmtDay = card.stmtDay ?? 28;
+        // Billing cycle: from last statement day to next statement day
+        let cycleStart = new Date(now.getFullYear(), now.getMonth(), stmtDay);
+        if (cycleStart > now) cycleStart = new Date(now.getFullYear(), now.getMonth() - 1, stmtDay);
+
+        const allExp   = await db.expenses.toArray().catch(() => []);
+        const allTxns2 = await db.txns.toArray().catch(() => []);
+
+        const cycleSpend = [
+          ...allExp.filter(e => {
+            const d = e.date instanceof Date ? e.date : new Date(e.date as any);
+            return d >= cycleStart && d <= now && (e.account === card.name || e.account === card.last4 || e.account?.includes(card.bankName ?? ''));
+          }).map(e => Math.abs(e.amount)),
+          ...allTxns2.filter(t => {
+            const d = t.date instanceof Date ? t.date : new Date(t.date as any);
+            return t.amount < 0 && d >= cycleStart && d <= now && (t.account === card.name || t.account === card.last4);
+          }).map(t => Math.abs(t.amount)),
+        ].reduce((s, a) => s + a, 0);
+
+        if (cycleSpend > 0) {
+          await db.creditCards.update(card.id, { currentBalance: cycleSpend, updatedAt: new Date() });
+          updated++;
+        }
+      }
+      toast.success(updated > 0 ? `✓ Synced ${updated} card balance${updated > 1 ? 's' : ''} from expenses` : 'No matching expense entries found for billing cycles');
+    } catch (e: any) { toast.error(`Sync failed: ${e.message}`); }
+    finally { setSyncing(false); }
+  };
+
   // ── Aggregates ──────────────────────────────────────────────────────────────
   const totalBalance     = cards.reduce((s, c) => s + (c.currentBalance ?? 0), 0);
   const totalLimit       = cards.reduce((s, c) => s + (c.creditLimit ?? c.limit ?? 0), 0);
@@ -170,9 +207,14 @@ export function CreditCardManager() {
         subtitle={`${activeCards.length} cards · ${formatCurrency(totalLimit)} total limit`}
         icon={CreditCardIcon}
         action={
-          <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
-            <Plus className="h-3.5 w-3.5" /> Add Card
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button size="sm" variant="outline" onClick={handleSyncBalances} disabled={syncing} className="h-9 text-xs gap-1 rounded-xl">
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} /> Sync
+            </Button>
+            <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
+              <Plus className="h-3.5 w-3.5" /> Add Card
+            </Button>
+          </div>
         }
       />
 
