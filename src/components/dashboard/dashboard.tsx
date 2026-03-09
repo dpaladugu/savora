@@ -522,8 +522,21 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         </div>
       )}
 
+      {/* ── Quick Actions — always visible, prominent placement ── */}
+      <QuickActions
+        onTabChange={onTabChange}
+        onMoreNavigation={onMoreNavigation}
+        onAddIncome={() => setShowIncomeDialog(true)}
+        onPrepay={() => onMoreNavigation('loans')}
+      />
+
       {/* ── Data Health Widget (disappears once all buckets filled) ── */}
-      <DataHealthWidget onNavigate={onMoreNavigation} />
+      <DataHealthWidget onNavigate={(target) => {
+        // income/expenses/credit-cards/goals are tabs; others are More modules
+        const tabs = ['expenses', 'income', 'credit-cards', 'goals', 'investments'];
+        if (tabs.includes(target)) onTabChange(target);
+        else onMoreNavigation(target);
+      }} />
 
       {/* ── Guntur Waterfall Card ── */}
       <GunturWaterfallCard onNavigate={onMoreNavigation} />
@@ -544,14 +557,6 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         onTabChange={onTabChange}
         onMoreNavigation={onMoreNavigation}
         ef={ef}
-      />
-
-      {/* ── Quick Actions ── */}
-      <QuickActions
-        onTabChange={onTabChange}
-        onMoreNavigation={onMoreNavigation}
-        onAddIncome={() => setShowIncomeDialog(true)}
-        onPrepay={() => onMoreNavigation('loans')}
       />
 
       {/* ── YTD Summary Card ── */}
