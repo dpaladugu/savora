@@ -29,19 +29,23 @@ export function ComprehensiveSettingsScreen() {
   const { logout } = useAuth();
 
   // Profile fields backed by db.globalSettings
-  const [userName, setUserName] = useState('');
-  const [userMission, setUserMission] = useState('');
-  const [annualIncome, setAnnualIncome] = useState('');
-  const [dateOfBirth, setDateOfBirth] = useState('');
+  const [userName, setUserName]           = useState('');
+  const [userMission, setUserMission]     = useState('');
+  const [annualIncome, setAnnualIncome]   = useState('');
+  const [dateOfBirth, setDateOfBirth]     = useState('');
+  const [salaryCreditDay, setSalaryCreditDay] = useState('15');
+  const [annualBonus, setAnnualBonus]     = useState('');
   const [profileSaving, setProfileSaving] = useState(false);
 
   useEffect(() => {
     loadSettings();
     db.globalSettings.limit(1).first().then(s => {
-      if (s?.userName)    setUserName(s.userName);
-      if (s?.userMission) setUserMission(s.userMission);
-      if (s?.annualIncome) setAnnualIncome(String(s.annualIncome));
-      if (s?.dateOfBirth)  setDateOfBirth(s.dateOfBirth);
+      if (s?.userName)       setUserName(s.userName);
+      if (s?.userMission)    setUserMission(s.userMission);
+      if (s?.annualIncome)   setAnnualIncome(String(s.annualIncome));
+      if (s?.dateOfBirth)    setDateOfBirth(s.dateOfBirth);
+      if (s?.salaryCreditDay) setSalaryCreditDay(String(s.salaryCreditDay));
+      if (s?.annualBonus)    setAnnualBonus(String(s.annualBonus));
     }).catch(() => {});
   }, []);
 
@@ -54,6 +58,8 @@ export function ComprehensiveSettingsScreen() {
         userMission: userMission.trim(),
         annualIncome: annualIncome ? parseFloat(annualIncome) : 0,
         dateOfBirth: dateOfBirth || '',
+        salaryCreditDay: parseInt(salaryCreditDay) || 15,
+        annualBonus: annualBonus ? parseFloat(annualBonus) : 0,
       };
       if (existing) {
         await db.globalSettings.update(existing.id, profilePatch);
@@ -242,6 +248,30 @@ export function ComprehensiveSettingsScreen() {
                 type="date"
                 value={dateOfBirth}
                 onChange={e => setDateOfBirth(e.target.value)}
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="salaryCreditDay" className="text-xs text-muted-foreground">Salary Credit Day</Label>
+              <Select value={salaryCreditDay} onValueChange={setSalaryCreditDay}>
+                <SelectTrigger id="salaryCreditDay" className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                    <SelectItem key={d} value={String(d)} className="text-xs">{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="annualBonus" className="text-xs text-muted-foreground">Annual Bonus (₹)</Label>
+              <Input
+                id="annualBonus"
+                type="number"
+                value={annualBonus}
+                onChange={e => setAnnualBonus(e.target.value)}
+                placeholder="0"
                 className="h-9 text-sm"
               />
             </div>

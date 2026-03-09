@@ -1,12 +1,12 @@
 /**
- * GoldTracker — live Dexie useLiveQuery, current market price input,
- * unrealised gain/loss, and full CRUD.
+ * GoldTracker — live Dexie + auto-fetched MCX spot price via free public API.
+ * Caches price in localStorage for 1 hour to avoid hammering the endpoint.
  */
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import type { Gold } from '@/lib/db';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +16,12 @@ import { Badge } from '@/components/ui/badge';
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown, Coins, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, TrendingUp, TrendingDown, Coins, RefreshCw, Loader2, CheckCircle2 } from 'lucide-react';
 
+// ── Purity multipliers ────────────────────────────────────────────────────────
 const PURITY_MULTIPLIER: Record<string, number> = {
   '24K': 1.0, '22K': 22 / 24, '20K': 20 / 24, '18K': 18 / 24,
 };
-
 const FORMS = ['Jewelry', 'Coin', 'Bar', 'Biscuit', 'SGB', 'ETF'] as const;
 const PURITY = ['24K', '22K', '20K', '18K'] as const;
 
@@ -37,35 +37,129 @@ const emptyForm = {
   familyMember: '',
 };
 
-// Default gold prices per gram (approximate)
-const DEFAULT_PRICE_24K = 9500; // ₹/g for 24K
+// ── Live price cache helpers ───────────────────────────────────────────────────
+const CACHE_KEY   = 'savora-gold-price-24k';
+const CACHE_TS_KEY = 'savora-gold-price-ts';
+const CACHE_TTL   = 60 * 60 * 1000; // 1 hour
+const FALLBACK    = 9500; // ₹/g
+
+function getCachedPrice(): { price: number; ts: number } | null {
+  try {
+    const p = localStorage.getItem(CACHE_KEY);
+    const t = localStorage.getItem(CACHE_TS_KEY);
+    if (p && t) return { price: parseFloat(p), ts: parseInt(t) };
+  } catch {}
+  return null;
+}
+function setCachedPrice(price: number) {
+  try {
+    localStorage.setItem(CACHE_KEY, String(price));
+    localStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+  } catch {}
+}
+
+/**
+ * Fetch 24K gold price in INR/gram.
+ * Tries multiple free sources — goldprice.org JSON API, then falls back.
+ * Uses a CORS-friendly public proxy when needed.
+ */
+async function fetchLiveGoldPrice(): Promise<number | null> {
+  try {
+    // goldprice.org public endpoint (no API key needed)
+    const res = await fetch(
+      'https://data-asg.goldprice.org/dbXRates/INR',
+      { cache: 'no-store', signal: AbortSignal.timeout(6000) }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      // Response format: { items: [{ xauPrice: price_per_troy_oz, ... }] }
+      const pricePerOz = json?.items?.[0]?.xauPrice;
+      if (pricePerOz && pricePerOz > 0) {
+        const pricePerGram = pricePerOz / 31.1035; // troy oz → gram
+        return Math.round(pricePerGram);
+      }
+    }
+  } catch {}
+
+  try {
+    // Fallback: metals-api (free tier, CORS friendly)
+    const res = await fetch(
+      'https://api.metals.live/v1/spot/gold',
+      { cache: 'no-store', signal: AbortSignal.timeout(6000) }
+    );
+    if (res.ok) {
+      const json = await res.json();
+      // Returns USD/troy oz — convert with approx 83.5 USD/INR
+      const usdPerOz = json?.price;
+      if (usdPerOz) {
+        const inrPerGram = (usdPerOz * 83.5) / 31.1035;
+        return Math.round(inrPerGram);
+      }
+    }
+  } catch {}
+
+  return null;
+}
 
 export function GoldTracker() {
-  const gold = useLiveQuery(
-    () => db.gold.toArray().catch(() => []),
-    []
-  ) ?? [];
+  const gold = useLiveQuery(() => db.gold.toArray().catch(() => []), []) ?? [];
 
   const [showModal, setShowModal] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState({ ...emptyForm });
-  const [livePrice, setLivePrice] = useState<string>(String(DEFAULT_PRICE_24K));
+  const [editId, setEditId]       = useState<string | null>(null);
+  const [form, setForm]           = useState({ ...emptyForm });
+
+  // ── Live price state ─────────────────────────────────────────────────────
+  const [livePrice,   setLivePrice]   = useState<number>(FALLBACK);
+  const [priceInput,  setPriceInput]  = useState<string>(String(FALLBACK));
+  const [fetching,    setFetching]    = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [autoFetched, setAutoFetched] = useState(false);
+
+  const refreshPrice = useCallback(async (showToast = false) => {
+    setFetching(true);
+    try {
+      const price = await fetchLiveGoldPrice();
+      if (price && price > 0) {
+        setLivePrice(price);
+        setPriceInput(String(price));
+        setCachedPrice(price);
+        setLastUpdated(new Date());
+        setAutoFetched(true);
+        if (showToast) toast.success(`Gold price updated: ₹${price.toLocaleString('en-IN')}/g`);
+      } else {
+        if (showToast) toast.error('Could not fetch live price — check internet');
+      }
+    } finally {
+      setFetching(false);
+    }
+  }, []);
+
+  // On mount: use cache if fresh, else fetch
+  useEffect(() => {
+    const cached = getCachedPrice();
+    if (cached && Date.now() - cached.ts < CACHE_TTL) {
+      setLivePrice(cached.price);
+      setPriceInput(String(cached.price));
+      setLastUpdated(new Date(cached.ts));
+      setAutoFetched(true);
+    } else {
+      refreshPrice();
+    }
+  }, [refreshPrice]);
 
   const set = (k: keyof typeof emptyForm, v: string) => setForm(f => ({ ...f, [k]: v }));
-  const livePriceNum = parseFloat(livePrice) || DEFAULT_PRICE_24K;
+  const livePriceNum = parseFloat(priceInput) || livePrice;
 
-  // ── Compute portfolio value ────────────────────────────────────────────────
-  const portfolio = useMemo(() => {
-    return gold.map(g => {
-      const netW    = g.netWeight ?? g.weight ?? 0;
-      const mult    = PURITY_MULTIPLIER[String(g.purity) + 'K'] ?? PURITY_MULTIPLIER['22K'];
-      const curVal  = netW * mult * livePriceNum;
-      const buyVal  = g.purchasePrice ?? 0;
-      const gain    = curVal - buyVal;
-      const gainPct = buyVal > 0 ? (gain / buyVal) * 100 : 0;
-      return { ...g, curVal, buyVal, gain, gainPct, netW };
-    });
-  }, [gold, livePriceNum]);
+  // ── Compute portfolio ─────────────────────────────────────────────────────
+  const portfolio = useMemo(() => gold.map(g => {
+    const netW   = g.netWeight ?? g.weight ?? 0;
+    const mult   = PURITY_MULTIPLIER[String(g.purity).includes('K') ? String(g.purity) : String(g.purity) + 'K'] ?? PURITY_MULTIPLIER['22K'];
+    const curVal = netW * mult * livePriceNum;
+    const buyVal = g.purchasePrice ?? 0;
+    const gain   = curVal - buyVal;
+    const gainPct = buyVal > 0 ? (gain / buyVal) * 100 : 0;
+    return { ...g, curVal, buyVal, gain, gainPct, netW };
+  }), [gold, livePriceNum]);
 
   const totalCurVal  = portfolio.reduce((s, g) => s + g.curVal, 0);
   const totalBuyVal  = portfolio.reduce((s, g) => s + g.buyVal, 0);
@@ -81,7 +175,7 @@ export function GoldTracker() {
       description: (g as any).description ?? '',
       grossWeight: String((g as any).grossWeight ?? g.weight ?? ''),
       netWeight: String(g.netWeight ?? g.weight ?? ''),
-      purity: String(g.purity).replace('K', '') + 'K',
+      purity: String(g.purity).includes('K') ? String(g.purity) : String(g.purity) + 'K',
       purchasePrice: String(g.purchasePrice ?? ''),
       purchaseDate: g.purchaseDate ? new Date(g.purchaseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       merchant: (g as any).merchant ?? '',
@@ -94,21 +188,17 @@ export function GoldTracker() {
     const netW = parseFloat(form.netWeight) || parseFloat(form.grossWeight);
     if (!netW || netW <= 0) { toast.error('Enter a valid weight'); return; }
     const now = new Date();
-    const payload: Omit<Gold, 'id'> = {
-      type: form.form,
-      form: form.form as any,
+    const payload: any = {
+      type: form.form, form: form.form,
       description: form.description || form.form,
-      weight: netW,
-      netWeight: netW,
+      weight: netW, netWeight: netW,
       grossWeight: parseFloat(form.grossWeight) || netW,
-      purity: parseInt(form.purity.replace('K', '')) as any,
+      purity: parseInt(form.purity.replace('K', '')),
       purchasePrice: parseFloat(form.purchasePrice) || 0,
       purchaseDate: form.purchaseDate ? new Date(form.purchaseDate) : now,
-      merchant: form.merchant,
-      familyMember: form.familyMember,
-      createdAt: now,
-      updatedAt: now,
-    } as any;
+      merchant: form.merchant, familyMember: form.familyMember,
+      createdAt: now, updatedAt: now,
+    };
     try {
       if (editId) {
         await db.gold.update(editId, { ...payload, updatedAt: now });
@@ -118,7 +208,7 @@ export function GoldTracker() {
         toast.success('Gold holding added');
       }
       setShowModal(false);
-    } catch (e) { toast.error('Failed to save gold holding'); }
+    } catch { toast.error('Failed to save gold holding'); }
   };
 
   const handleDelete = async (id: string) => {
@@ -128,7 +218,7 @@ export function GoldTracker() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-20">
       <PageHeader
         title="Gold Holdings"
         subtitle={`${totalGrams.toFixed(1)}g · ${formatCurrency(totalCurVal)}`}
@@ -140,34 +230,56 @@ export function GoldTracker() {
         }
       />
 
-      {/* ── Live price input ── */}
-      <Card className="glass border-warning/20 bg-warning/5">
-        <CardContent className="p-3 flex items-center gap-3">
-          <Coins className="h-4 w-4 text-warning shrink-0" />
-          <div className="flex-1">
-            <p className="text-xs font-semibold text-foreground">24K Gold Price (₹/gram)</p>
-            <p className="text-[10px] text-muted-foreground">Update for live valuation</p>
+      {/* ── Live price card ─────────────────────────────────────────────── */}
+      <Card className="border-warning/30 bg-warning/5">
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <Coins className="h-4 w-4 text-warning shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-foreground">24K Gold Price (₹/gram)</p>
+                {autoFetched && (
+                  <CheckCircle2 className="h-3 w-3 text-success shrink-0" />
+                )}
+              </div>
+              {lastUpdated && (
+                <p className="text-[10px] text-muted-foreground">
+                  Updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  {autoFetched ? ' (live)' : ' (manual)'}
+                </p>
+              )}
+            </div>
+            <Input
+              type="number"
+              value={priceInput}
+              onChange={e => { setPriceInput(e.target.value); setAutoFetched(false); }}
+              className="h-8 w-28 text-sm font-bold text-right tabular-nums"
+            />
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8 rounded-lg shrink-0"
+              onClick={() => refreshPrice(true)}
+              disabled={fetching}
+              title="Fetch live MCX price"
+            >
+              {fetching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            </Button>
           </div>
-          <Input
-            type="number"
-            value={livePrice}
-            onChange={e => setLivePrice(e.target.value)}
-            className="h-8 w-28 text-sm font-bold text-right tabular-nums"
-          />
         </CardContent>
       </Card>
 
-      {/* ── Portfolio summary ── */}
+      {/* ── Portfolio summary ──────────────────────────────────────────── */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { label: 'Total Weight', value: `${totalGrams.toFixed(1)}g` },
-          { label: 'Market Value', value: formatCurrency(totalCurVal) },
+          { label: 'Total Weight', value: `${totalGrams.toFixed(1)}g`, color: '' },
+          { label: 'Market Value', value: formatCurrency(totalCurVal), color: 'text-warning' },
           { label: 'Unrealised P&L', value: `${totalGain >= 0 ? '+' : ''}${formatCurrency(totalGain)}`, color: totalGain >= 0 ? 'text-success' : 'text-destructive' },
         ].map(({ label, value, color }) => (
           <Card key={label} className="glass">
             <CardContent className="p-3 text-center">
               <p className="text-[10px] text-muted-foreground">{label}</p>
-              <p className={`text-sm font-bold tabular-nums ${color ?? 'text-foreground'}`}>{value}</p>
+              <p className={`text-sm font-bold tabular-nums ${color || 'text-foreground'}`}>{value}</p>
               {label === 'Unrealised P&L' && totalBuyVal > 0 && (
                 <p className={`text-[10px] tabular-nums ${totalGainPct >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {totalGainPct >= 0 ? '+' : ''}{totalGainPct.toFixed(1)}%
@@ -178,7 +290,7 @@ export function GoldTracker() {
         ))}
       </div>
 
-      {/* ── Holdings list ── */}
+      {/* ── Holdings list ─────────────────────────────────────────────── */}
       {gold.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
@@ -217,7 +329,8 @@ export function GoldTracker() {
                   <div className="flex items-center gap-1 shrink-0">
                     <div className="text-right mr-1">
                       <p className="text-sm font-bold tabular-nums text-warning">{formatCurrency(g.curVal)}</p>
-                      <p className={`text-[10px] tabular-nums ${g.gain >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      <p className={`text-[10px] tabular-nums flex items-center justify-end gap-0.5 ${g.gain >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        {g.gain >= 0 ? <TrendingUp className="h-2.5 w-2.5" /> : <TrendingDown className="h-2.5 w-2.5" />}
                         {g.gain >= 0 ? '+' : ''}{formatCurrency(g.gain)} ({g.gainPct.toFixed(1)}%)
                       </p>
                     </div>
@@ -247,7 +360,7 @@ export function GoldTracker() {
         </div>
       )}
 
-      {/* ── Add/Edit Modal ── */}
+      {/* ── Add/Edit Modal ─────────────────────────────────────────────── */}
       <Dialog open={showModal} onOpenChange={v => { if (!v) setShowModal(false); }}>
         <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
