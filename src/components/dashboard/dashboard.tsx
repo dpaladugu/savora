@@ -534,6 +534,9 @@ export function Dashboard({ onTabChange, onMoreNavigation }: DashboardProps) {
         onPrepay={() => onMoreNavigation('loans')}
       />
 
+      {/* ── YTD Summary Card ── */}
+      <YTDSummaryCard onNavigate={onMoreNavigation} />
+
       {/* ── Monthly Summary — tappable for drill-down ── */}
       <MonthlySummaryCard onDrilldown={() => setShowMonthDrilldown(true)} />
 
