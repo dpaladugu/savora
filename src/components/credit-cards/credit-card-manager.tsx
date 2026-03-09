@@ -14,7 +14,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import {
   Trash2, Plus, Edit, CreditCard as CreditCardIcon,
   Gift, ShieldAlert, Calendar, Zap, TrendingUp, Star,
-  AlertTriangle, CheckCircle2, Info,
+  AlertTriangle, CheckCircle2, Info, RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { db } from "@/lib/db";
