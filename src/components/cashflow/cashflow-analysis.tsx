@@ -1,7 +1,7 @@
-/**
- * CashflowAnalysis — 6-month waterfall + monthly income vs expense bar chart
- * Uses useLiveQuery for real-time reactivity
- */
+// Add 12-month cashflow projection to the 6M Summary tab
+// ── Projected Year-End Card (appended to 6M Summary tab) ──────────────────────
+
+
 import React, { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
