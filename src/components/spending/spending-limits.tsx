@@ -1,6 +1,7 @@
 /**
  * SpendingLimits — per-category monthly caps.
  * Auto-sums from expenses in current month and fires toast alert at configurable threshold.
+ * Auto-suggest: reads last 3-month average per category and sets caps at 110%.
  */
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
 import { toast } from 'sonner';
-import { Gauge, Plus, Edit, Trash2, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Gauge, Plus, Edit, Trash2, AlertTriangle, CheckCircle2, Sparkles } from 'lucide-react';
 import { db } from '@/lib/db';
 import { useLiveQuery } from 'dexie-react-hooks';
 import type { SpendingLimit } from '@/lib/db';
