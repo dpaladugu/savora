@@ -179,14 +179,14 @@ export function SIPMFForm({ initial, onDone }: Props) {
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1">
                 Current NAV (₹)
-                <Sparkles className="h-3 w-3 text-primary" title="Auto-computes Current Value" />
+                <Sparkles className="h-3 w-3 text-primary" aria-label="Auto-computes Current Value" />
               </Label>
               <Input type="number" step="0.0001" placeholder="e.g. 58.42" {...register('currentNav')} />
             </div>
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1">
                 Purchase NAV (₹)
-                <Sparkles className="h-3 w-3 text-primary" title="Auto-computes Invested Value" />
+                <Sparkles className="h-3 w-3 text-primary" aria-label="Auto-computes Invested Value" />
               </Label>
               <Input type="number" step="0.0001" placeholder="e.g. 42.10" {...register('purchaseNav')} />
             </div>
