@@ -125,18 +125,20 @@ export function FinancialSetupWizard({ onComplete }: Props) {
       }
 
       if (stepDef.id === 'emergency') {
-        const corpus   = parseFloat(form.efCurrentCorpus);
-        const expenses = parseFloat(form.efMonthlyExpenses);
+        const corpus   = parseFloat(form.efCurrentCorpus) || 0;
+        const expenses = parseFloat(form.efMonthlyExpenses) || 0;
         const months   = parseInt(form.efTargetMonths) || 12;
         if (corpus > 0 || expenses > 0) {
-          const target = expenses * months;
+          // Use corpus as proxy for expenses if expenses not entered (target = corpus / months * months = corpus)
+          const effectiveExpenses = expenses > 0 ? expenses : corpus / months;
+          const target = Math.round(effectiveExpenses * months) || corpus;
           // Upsert: remove any existing EF and create fresh
           const existing = await db.emergencyFunds.toArray();
           if (existing.length > 0) {
             await db.emergencyFunds.update(existing[0].id, {
-              currentAmount: corpus || existing[0].currentAmount,
-              targetAmount:  target || existing[0].targetAmount,
-              monthlyExpenses: expenses || existing[0].monthlyExpenses,
+              currentAmount: corpus > 0 ? corpus : existing[0].currentAmount,
+              targetAmount:  target > 0 ? target : existing[0].targetAmount,
+              monthlyExpenses: effectiveExpenses > 0 ? effectiveExpenses : existing[0].monthlyExpenses,
               targetMonths: months,
               updatedAt: now,
             });
@@ -147,7 +149,7 @@ export function FinancialSetupWizard({ onComplete }: Props) {
               currentAmount: corpus,
               targetAmount: target,
               targetMonths: months,
-              monthlyExpenses: expenses,
+              monthlyExpenses: effectiveExpenses,
               lastReviewDate: now,
               status: corpus >= target ? 'Achieved' : corpus >= target * 0.5 ? 'OnTrack' : 'Under-Target',
               medicalSubBucket: 0,
