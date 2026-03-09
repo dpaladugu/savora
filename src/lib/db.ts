@@ -239,6 +239,9 @@ export interface GlobalSettings {
   // Phase 2: data-safety
   lastBackupAt?: number;       // epoch ms
   lastAutoRunAt?: string;      // ISO date string YYYY-MM-DD
+  // Phase 3: downstream CFA modules
+  annualIncome?: number;       // manual override for income (₹ p.a.) used by tax & insurance gap calc
+  dateOfBirth?: string;        // ISO date YYYY-MM-DD — drives age-based glide paths
 }
 
 export interface Expense {
