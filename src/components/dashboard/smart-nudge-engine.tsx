@@ -79,14 +79,17 @@ export function SmartNudgeEngine({ onMoreNavigation, onTabChange }: Props) {
   const setPrefill = useSIPPrefillStore(s => s.setPrefill);
   const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
-    // ── 6. Insurance renewal within 30 days ─────────────────────────────────
-    const insurance = useLiveQuery(() => db.insurance.toArray().catch(() => []), []) ?? [];
+  const goals       = useLiveQuery(() => db.goals.toArray().catch(() => []), []) ?? [];
+  const recurring   = useLiveQuery(() => db.recurringTransactions.toArray().catch(() => []), []) ?? [];
+  const loans       = useLiveQuery(() => db.loans.toArray().catch(() => []), []) ?? [];
   const investments = useLiveQuery(() => db.investments.toArray().catch(() => []), []) ?? [];
   const creditCards = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
   const ef          = useLiveQuery(() => db.emergencyFunds.limit(1).first().catch(() => undefined), []);
   const settings    = useLiveQuery(() => db.globalSettings.limit(1).first().catch(() => undefined), []);
   const shops       = useLiveQuery(() => db.gunturShops.toArray().catch(() => []), []) ?? [];
   const rooms       = useLiveQuery(() => db.gorantlaRooms.toArray().catch(() => []), []) ?? [];
+  const insurance   = useLiveQuery(() => db.insurance.toArray().catch(() => []), []) ?? [];
+  const incomes     = useLiveQuery(() => db.incomes.toArray().catch(() => []), []) ?? [];
 
   const activeGoals = goals.filter(g => (g.targetAmount ?? 0) > (g.currentAmount ?? 0));
 
