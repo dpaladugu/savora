@@ -80,10 +80,9 @@ function LogPaymentButton({ card }: { card: CreditCard }) {
         date: new Date() as any,
         paymentMethod: card.paymentMethod ?? 'Bank Transfer',
         tags: [],
-        account: card.name,
         createdAt: new Date(),
         updatedAt: new Date(),
-      });
+      } as any);
       toast.success(`₹${amt.toLocaleString('en-IN')} payment logged for ${card.name}`);
       setAmount('');
       setOpen(false);
