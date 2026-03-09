@@ -28,6 +28,7 @@ import { GunturWaterfallCard } from './guntur-waterfall-card';
 import { DebtFreedomCountdown } from './debt-freedom-countdown';
 import { DataHealthWidget } from './data-health-widget';
 import { FinancialSetupWizard } from '@/components/setup/financial-setup-wizard';
+import { YTDSummaryCard } from './ytd-summary-card';
 
 
 
