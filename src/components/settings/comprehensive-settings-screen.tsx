@@ -252,6 +252,30 @@ export function ComprehensiveSettingsScreen() {
               />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label htmlFor="salaryCreditDay" className="text-xs text-muted-foreground">Salary Credit Day</Label>
+              <Select value={salaryCreditDay} onValueChange={setSalaryCreditDay}>
+                <SelectTrigger id="salaryCreditDay" className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent className="max-h-48">
+                  {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                    <SelectItem key={d} value={String(d)} className="text-xs">{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="annualBonus" className="text-xs text-muted-foreground">Annual Bonus (₹)</Label>
+              <Input
+                id="annualBonus"
+                type="number"
+                value={annualBonus}
+                onChange={e => setAnnualBonus(e.target.value)}
+                placeholder="0"
+                className="h-9 text-sm"
+              />
+            </div>
+          </div>
           <Button
             size="sm"
             onClick={handleSaveProfile}
