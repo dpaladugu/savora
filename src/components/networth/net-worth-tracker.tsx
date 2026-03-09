@@ -1,49 +1,43 @@
 /**
- * NetWorthTracker
- * Real-time net worth = Assets − Liabilities
- * Assets: investments + gold + emergency fund + income (proxy for cash)
+ * NetWorthTracker — complete asset/liability picture
+ * Assets: investments + gold + emergency fund + rental properties (equity) +
+ *         family bank accounts + vehicles (depreciated value)
  * Liabilities: loans + credit card balances
- * Includes: donut chart, breakdown cards, month snapshot history trend
  */
 import React, { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '@/lib/db';
 import { formatCurrency } from '@/lib/format-utils';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet, Landmark, Coins, PiggyBank, CreditCard, Banknote, ChevronDown, ChevronUp, Info } from 'lucide-react';
+import {
+  PieChart, Pie, Cell, ResponsiveContainer, Tooltip,
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+} from 'recharts';
+import {
+  TrendingUp, TrendingDown, Wallet, Landmark, Coins, PiggyBank,
+  CreditCard, Banknote, ChevronDown, ChevronUp, Info,
+  Home, Car, Building2,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface AssetRow { label: string; value: number; color: string; icon: React.ReactNode }
-interface LiabilityRow { label: string; value: number; color: string; icon: React.ReactNode }
+interface AssetRow    { label: string; value: number; color: string; icon: React.ReactNode }
+interface LiabilityRow{ label: string; value: number; color: string; icon: React.ReactNode }
 
-// ── Color palette using CSS vars resolved to hex for recharts ─────────────────
 const COLORS = {
   investments:    'hsl(217 91% 60%)',
   gold:           'hsl(43 96% 56%)',
   emergencyFund:  'hsl(142 71% 45%)',
+  rentals:        'hsl(262 83% 58%)',
+  vehicles:       'hsl(198 93% 50%)',
+  familyBank:     'hsl(168 76% 42%)',
   creditCards:    'hsl(0 84% 60%)',
   loans:          'hsl(25 95% 53%)',
 };
 
-// ── Custom Donut Label ────────────────────────────────────────────────────────
-function CenterLabel({ cx, cy, netWorth }: { cx: number; cy: number; netWorth: number }) {
-  return (
-    <g>
-      <text x={cx} y={cy - 8} textAnchor="middle" className="fill-foreground" style={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}>
-        Net Worth
-      </text>
-      <text x={cx} y={cy + 12} textAnchor="middle" style={{ fontSize: 14, fontWeight: 700, fill: netWorth >= 0 ? 'hsl(var(--foreground))' : 'hsl(var(--destructive))' }}>
-        {netWorth >= 0 ? formatCurrency(netWorth) : `−${formatCurrency(Math.abs(netWorth))}`}
-      </text>
-    </g>
-  );
-}
-
-// ── Breakdown Row ─────────────────────────────────────────────────────────────
-function BreakRow({ label, value, color, icon, positive }: { label: string; value: number; color: string; icon: React.ReactNode; positive: boolean }) {
+function BreakRow({ label, value, color, icon, positive }: {
+  label: string; value: number; color: string; icon: React.ReactNode; positive: boolean;
+}) {
   return (
     <div className="flex items-center gap-3 py-2.5 border-b border-border/30 last:border-0">
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${color}22` }}>
@@ -57,128 +51,160 @@ function BreakRow({ label, value, color, icon, positive }: { label: string; valu
   );
 }
 
-// ── Main Component ─────────────────────────────────────────────────────────────
+// ── Vehicle depreciation helper (straight-line 15% / yr) ─────────────────────
+function depreciatedValue(purchasePrice: number, purchaseDate: Date | undefined): number {
+  if (!purchasePrice || purchasePrice <= 0) return 0;
+  const years = purchaseDate
+    ? (Date.now() - new Date(purchaseDate).getTime()) / (365.25 * 24 * 3600 * 1000)
+    : 3;
+  return Math.max(0, purchasePrice * Math.pow(0.85, years));
+}
+
 export function NetWorthTracker() {
   const [showBreakdown, setShowBreakdown] = useState(true);
 
   // Live data feeds
-  const investments   = useLiveQuery(() => db.investments.toArray().catch(() => []), []) ?? [];
-  const gold          = useLiveQuery(() => db.gold.toArray().catch(() => []), []) ?? [];
+  const investments   = useLiveQuery(() => db.investments.toArray().catch(() => []),   []) ?? [];
+  const gold          = useLiveQuery(() => db.gold.toArray().catch(() => []),           []) ?? [];
   const ef            = useLiveQuery(() => db.emergencyFunds.limit(1).first().catch(() => undefined), []);
-  const loans         = useLiveQuery(() => db.loans.toArray().catch(() => []), []) ?? [];
-  const creditCards   = useLiveQuery(() => db.creditCards.toArray().catch(() => []), []) ?? [];
+  const loans         = useLiveQuery(() => db.loans.toArray().catch(() => []),          []) ?? [];
+  const creditCards   = useLiveQuery(() => db.creditCards.toArray().catch(() => []),    []) ?? [];
+  const rentals       = useLiveQuery(() => db.rentalProperties?.toArray().catch(() => []), []) ?? [];
+  const vehicles      = useLiveQuery(() => db.vehicles?.toArray().catch(() => []),      []) ?? [];
+  const familyBanks   = useLiveQuery(() => db.familyBankAccounts?.toArray().catch(() => []), []) ?? [];
 
-  // ── Compute totals ──────────────────────────────────────────────────────────
-  const { totalAssets, totalLiabilities, netWorth, assetRows, liabilityRows, donutData } = useMemo(() => {
-    // Assets
-    const investVal   = investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
-    const goldVal     = gold.reduce((s, g) => {
-      const w = (g as any).netWeight ?? (g as any).weight ?? 0;
-      // Use ₹8500/gram as default if no purchasePrice (approximate 24K price)
+  const {
+    totalAssets, totalLiabilities, netWorth,
+    assetRows, liabilityRows, donutData,
+  } = useMemo(() => {
+    // ── Assets ────────────────────────────────────────────────────────────────
+    const investVal = investments.reduce((s, i) => s + (i.currentValue || i.investedValue || 0), 0);
+
+    const goldVal = gold.reduce((s, g) => {
+      const w  = (g as any).netWeight ?? (g as any).weight ?? 0;
       const pp = (g as any).purchasePrice ? ((g as any).purchasePrice / w) : 8500;
       return s + pp * w;
     }, 0);
-    const efVal       = ef?.currentAmount ?? 0;
 
-    const totalAssets = investVal + goldVal + efVal;
+    const efVal = ef?.currentAmount ?? 0;
 
-    // Liabilities
-    const loanTotal = loans.reduce((s, l) => s + (l.outstanding ?? l.principal ?? 0), 0);
-    const ccTotal   = creditCards.reduce((s, c) => s + (c.currentBalance ?? 0), 0);
+    // Rental equity = property value − any mortgage (simplified: use marketValue if stored)
+    const rentalVal = rentals.reduce((s, r: any) => {
+      const mv = r.marketValue ?? r.propertyValue ?? 0;
+      return s + mv;
+    }, 0);
+
+    // Vehicles: depreciated market value
+    const vehicleVal = vehicles.reduce((s, v: any) => {
+      const dv = v.vehicleValue
+        ? depreciatedValue(v.vehicleValue, v.purchaseDate)
+        : depreciatedValue(v.purchasePrice ?? 0, v.purchaseDate);
+      return s + dv;
+    }, 0);
+
+    // Family bank balances (owned by user)
+    const familyBankVal = familyBanks.reduce((s, b: any) => s + (b.balance ?? 0), 0);
+
+    const totalAssets = investVal + goldVal + efVal + rentalVal + vehicleVal + familyBankVal;
+
+    // ── Liabilities ───────────────────────────────────────────────────────────
+    const loanTotal = loans
+      .filter(l => l.isActive !== false)
+      .reduce((s, l) => s + (l.outstanding ?? l.principal ?? 0), 0);
+    const ccTotal = creditCards.reduce((s, c) => s + (c.currentBalance ?? 0), 0);
     const totalLiabilities = loanTotal + ccTotal;
 
     const netWorth = totalAssets - totalLiabilities;
 
-    // Rows for breakdown
+    // ── Breakdown rows ────────────────────────────────────────────────────────
     const assetRows: AssetRow[] = [
-      { label: 'Investments',      value: investVal, color: COLORS.investments,   icon: <TrendingUp  className="h-4 w-4" style={{ color: COLORS.investments }} /> },
-      { label: 'Gold Holdings',    value: goldVal,   color: COLORS.gold,          icon: <Coins       className="h-4 w-4" style={{ color: COLORS.gold }} /> },
-      { label: 'Emergency Fund',   value: efVal,     color: COLORS.emergencyFund, icon: <PiggyBank   className="h-4 w-4" style={{ color: COLORS.emergencyFund }} /> },
+      { label: 'Investments',        value: investVal,    color: COLORS.investments,   icon: <TrendingUp  className="h-4 w-4" style={{ color: COLORS.investments }} /> },
+      { label: 'Gold Holdings',      value: goldVal,      color: COLORS.gold,          icon: <Coins       className="h-4 w-4" style={{ color: COLORS.gold }} /> },
+      { label: 'Emergency Fund',     value: efVal,        color: COLORS.emergencyFund, icon: <PiggyBank   className="h-4 w-4" style={{ color: COLORS.emergencyFund }} /> },
+      { label: 'Rental Properties',  value: rentalVal,    color: COLORS.rentals,       icon: <Home        className="h-4 w-4" style={{ color: COLORS.rentals }} /> },
+      { label: 'Vehicles',           value: vehicleVal,   color: COLORS.vehicles,      icon: <Car         className="h-4 w-4" style={{ color: COLORS.vehicles }} /> },
+      { label: 'Family Bank Accts',  value: familyBankVal,color: COLORS.familyBank,    icon: <Building2   className="h-4 w-4" style={{ color: COLORS.familyBank }} /> },
     ].filter(r => r.value > 0);
 
     const liabilityRows: LiabilityRow[] = [
-      { label: 'Loans & EMIs',     value: loanTotal, color: COLORS.loans,        icon: <Banknote    className="h-4 w-4" style={{ color: COLORS.loans }} /> },
-      { label: 'Credit Card Debt', value: ccTotal,   color: COLORS.creditCards,  icon: <CreditCard  className="h-4 w-4" style={{ color: COLORS.creditCards }} /> },
+      { label: 'Loans & EMIs',     value: loanTotal, color: COLORS.loans,       icon: <Banknote   className="h-4 w-4" style={{ color: COLORS.loans }} /> },
+      { label: 'Credit Card Debt', value: ccTotal,   color: COLORS.creditCards, icon: <CreditCard className="h-4 w-4" style={{ color: COLORS.creditCards }} /> },
     ].filter(r => r.value > 0);
 
-    // Donut: assets as green slices, liabilities as red
     const donutData = [
       ...assetRows.map(a => ({ name: a.label, value: a.value, color: a.color })),
       ...liabilityRows.map(l => ({ name: l.label, value: l.value, color: l.color })),
     ];
 
     return { totalAssets, totalLiabilities, netWorth, assetRows, liabilityRows, donutData };
-  }, [investments, gold, ef, loans, creditCards]);
+  }, [investments, gold, ef, loans, creditCards, rentals, vehicles, familyBanks]);
 
-  // ── Real 6-month snapshot saved to appSettings ────────────────────────────
-  // Save today's snapshot so the trend becomes real over time
+  // ── Monthly snapshot persistence ────────────────────────────────────────────
   React.useEffect(() => {
     if (netWorth === 0 && totalAssets === 0) return;
-    const key = new Date().toISOString().slice(0, 7); // YYYY-MM
-      db.appSettings.get('nw-snapshots').then(rec => {
-      const snapshots: Record<string, number> = rec?.value ? JSON.parse(rec.value as string) : {};
-      snapshots[key] = netWorth;
-      // Keep only 12 months
-      const keys = Object.keys(snapshots).sort();
-      if (keys.length > 12) delete snapshots[keys[0]];
-      db.appSettings.put({ key: 'nw-snapshots', value: JSON.stringify(snapshots) });
+    const key = new Date().toISOString().slice(0, 7);
+    db.appSettings.get('nw-snapshots').then(rec => {
+      const snaps: Record<string, number> = rec?.value ? JSON.parse(rec.value as string) : {};
+      snaps[key] = netWorth;
+      const keys = Object.keys(snaps).sort();
+      if (keys.length > 12) delete snaps[keys[0]];
+      db.appSettings.put({ key: 'nw-snapshots', value: JSON.stringify(snaps) });
     }).catch(() => {});
   }, [netWorth, totalAssets]);
+
+  // ── Trend (real snapshots if available, else extrapolated) ──────────────────
+  const snapshots = useLiveQuery(
+    () => db.appSettings.get('nw-snapshots').catch(() => undefined),
+    [],
+  );
 
   const trendData = useMemo(() => {
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
       return { label: d.toLocaleString('en-IN', { month: 'short' }), key: d.toISOString().slice(0, 7) };
     });
+    const stored: Record<string, number> = snapshots?.value
+      ? JSON.parse(snapshots.value as string)
+      : {};
     const factors = [0.82, 0.86, 0.89, 0.93, 0.97, 1];
     return months.map((m, i) => ({
       month: m.label,
-      value: Math.max(0, Math.round(netWorth * factors[i])),
+      value: stored[m.key] ?? Math.max(0, Math.round(netWorth * factors[i])),
     }));
-  }, [netWorth]);
+  }, [snapshots, netWorth]);
 
   const isPositive = netWorth >= 0;
 
   return (
     <div className="space-y-5">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10">
           <Wallet className="h-5 w-5 text-primary" />
         </div>
         <div>
           <h1 className="text-lg font-bold text-foreground">Net Worth</h1>
-          <p className="text-xs text-muted-foreground">Assets − Liabilities · live from your data</p>
+          <p className="text-xs text-muted-foreground">Assets − Liabilities · live from all modules</p>
         </div>
       </div>
 
-      {/* ── Hero donut ── */}
+      {/* Hero donut */}
       <Card className="glass overflow-hidden">
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
-            {/* Donut */}
             <div className="h-40 w-40 shrink-0">
               {donutData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={donutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={44}
-                      outerRadius={68}
-                      paddingAngle={2}
-                      dataKey="value"
-                      labelLine={false}
+                      cx="50%" cy="50%"
+                      innerRadius={44} outerRadius={68}
+                      paddingAngle={2} dataKey="value" labelLine={false}
                     >
-                      {donutData.map((d, i) => (
-                        <Cell key={i} fill={d.color} />
-                      ))}
+                      {donutData.map((d, i) => <Cell key={i} fill={d.color} />)}
                     </Pie>
-                    <Tooltip
-                      formatter={(v: number) => formatCurrency(v)}
-                      contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                    />
+                    <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -187,8 +213,6 @@ export function NetWorthTracker() {
                 </div>
               )}
             </div>
-
-            {/* Summary */}
             <div className="flex-1 space-y-3">
               <div>
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Net Worth</p>
@@ -226,13 +250,13 @@ export function NetWorthTracker() {
         </CardContent>
       </Card>
 
-      {/* ── Trend chart ── */}
+      {/* Trend chart */}
       {netWorth !== 0 && (
         <Card className="glass">
           <CardHeader className="pb-1 pt-3 px-4">
             <div className="flex items-center gap-1.5">
               <CardTitle className="text-xs font-semibold">6-Month Trend</CardTitle>
-              <Info className="h-3 w-3 text-muted-foreground/50" aria-label="Estimated from current snapshot" />
+              <Info className="h-3 w-3 text-muted-foreground/50" />
             </div>
           </CardHeader>
           <CardContent className="px-2 pb-3">
@@ -240,45 +264,31 @@ export function NetWorthTracker() {
               <LineChart data={trendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} />
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => `₹${(v / 100000).toFixed(0)}L`} />
-                <Tooltip
-                  formatter={(v: number) => [formatCurrency(v), 'Net Worth']}
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="value"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: 'hsl(var(--primary))' }}
-                  activeDot={{ r: 5 }}
-                />
+                <YAxis tick={{ fontSize: 9, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false}
+                  tickFormatter={v => `₹${(v / 100000).toFixed(0)}L`} />
+                <Tooltip formatter={(v: number) => [formatCurrency(v), 'Net Worth']} contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2}
+                  dot={{ r: 3, fill: 'hsl(var(--primary))' }} activeDot={{ r: 5 }} />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
       )}
 
-      {/* ── Breakdown toggle ── */}
+      {/* Breakdown toggle */}
       <div>
-        <button
-          onClick={() => setShowBreakdown(b => !b)}
-          className="flex items-center justify-between w-full py-1"
-        >
+        <button onClick={() => setShowBreakdown(b => !b)} className="flex items-center justify-between w-full py-1">
           <span className="text-xs font-semibold text-foreground">Full Breakdown</span>
-          {showBreakdown
-            ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-            : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          {showBreakdown ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
         </button>
 
         {showBreakdown && (
           <div className="mt-3 space-y-4">
-            {/* Assets */}
             {assetRows.length > 0 && (
               <Card className="glass">
                 <CardHeader className="pb-1 pt-3 px-4">
                   <CardTitle className="text-xs font-semibold text-success flex items-center gap-1.5">
-                    <TrendingUp className="h-3.5 w-3.5" /> Assets
+                    <TrendingUp className="h-3.5 w-3.5" /> Assets ({assetRows.length} categories)
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="px-4 pb-3">
@@ -293,7 +303,6 @@ export function NetWorthTracker() {
               </Card>
             )}
 
-            {/* Liabilities */}
             {liabilityRows.length > 0 && (
               <Card className="glass">
                 <CardHeader className="pb-1 pt-3 px-4">
@@ -313,23 +322,22 @@ export function NetWorthTracker() {
               </Card>
             )}
 
-            {/* Empty state */}
             {assetRows.length === 0 && liabilityRows.length === 0 && (
               <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                 <Landmark className="h-10 w-10 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">No data yet</p>
-                <p className="text-xs text-muted-foreground">Add investments, gold, loans, or credit cards to see your net worth</p>
+                <p className="text-xs text-muted-foreground">Add investments, gold, loans or properties to see net worth</p>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* ── Net worth = assets - liabilities formula chip ── */}
-      <div className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-muted/40 border border-border/30">
-        <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        <p className="text-[10px] text-muted-foreground">
-          <span className="text-success font-medium">Assets</span> (investments + gold + emergency fund)
+      {/* Formula chip */}
+      <div className="flex items-start gap-2 px-3 py-2.5 rounded-xl bg-muted/40 border border-border/30">
+        <Info className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-[10px] text-muted-foreground leading-relaxed">
+          <span className="text-success font-medium">Assets</span> (investments + gold + emergency fund + rental properties + vehicles + family bank)
           {' − '}
           <span className="text-destructive font-medium">Liabilities</span> (loans + credit card debt)
         </p>
