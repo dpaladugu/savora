@@ -355,6 +355,8 @@ export function InvestmentHub() {
 
         {/* ── Overview ─────────────────────────────────────────────────────── */}
         <TabsContent value="overview" className="space-y-3 mt-3">
+          {/* Allocation donut */}
+          {totalPortfolio.current > 0 && <AllocationDonut groups={groups} total={totalPortfolio.current} />}
           <div className="grid grid-cols-2 gap-3">
             <SummaryTile label="SIP / MF" icon={TrendingUp} color="bg-primary/10 text-primary"
               current={totalOf(groups['sip-mf']).current} invested={totalOf(groups['sip-mf']).invested}
