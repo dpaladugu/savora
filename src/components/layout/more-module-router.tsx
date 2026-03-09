@@ -154,6 +154,8 @@ export function MoreModuleRouter({ activeModule, onMoreNavigation }: MoreModuleR
         return <NetWorthTracker />;
       case 'sip-planner':
         return <SIPPlanner />;
+      case 'cashflow':
+        return React.createElement(React.lazy(() => import('@/components/cashflow/cashflow-analysis').then(m => ({ default: m.CashflowAnalysis }))));
       case 'telegram-pending':
         if (role !== 'ADMIN') return <AccessDenied reason="Only ADMIN can review pending Telegram transactions." />;
         return <TelegramPendingTxns />;
