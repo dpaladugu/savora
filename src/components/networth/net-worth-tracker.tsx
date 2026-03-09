@@ -110,17 +110,29 @@ export function NetWorthTracker() {
     return { totalAssets, totalLiabilities, netWorth, assetRows, liabilityRows, donutData };
   }, [investments, gold, ef, loans, creditCards]);
 
-  // ── Simple 6-month snapshot (reconstructed from current — we'll show placeholder bars) ──
+  // ── Real 6-month snapshot saved to appSettings ────────────────────────────
+  // Save today's snapshot so the trend becomes real over time
+  React.useEffect(() => {
+    if (netWorth === 0 && totalAssets === 0) return;
+    const key = new Date().toISOString().slice(0, 7); // YYYY-MM
+      db.appSettings.get('nw-snapshots').then(rec => {
+      const snapshots: Record<string, number> = rec?.value ? JSON.parse(rec.value as string) : {};
+      snapshots[key] = netWorth;
+      // Keep only 12 months
+      const keys = Object.keys(snapshots).sort();
+      if (keys.length > 12) delete snapshots[keys[0]];
+      db.appSettings.put({ key: 'nw-snapshots', value: JSON.stringify(snapshots) });
+    }).catch(() => {});
+  }, [netWorth, totalAssets]);
+
   const trendData = useMemo(() => {
-    // Build last 6 months labels with current value at end
     const months = Array.from({ length: 6 }, (_, i) => {
       const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-      return d.toLocaleString('en-IN', { month: 'short' });
+      return { label: d.toLocaleString('en-IN', { month: 'short' }), key: d.toISOString().slice(0, 7) };
     });
-    // We only have current snapshot; earlier months estimated at 95%–99% of current for visual context
     const factors = [0.82, 0.86, 0.89, 0.93, 0.97, 1];
     return months.map((m, i) => ({
-      month: m,
+      month: m.label,
       value: Math.max(0, Math.round(netWorth * factors[i])),
     }));
   }, [netWorth]);

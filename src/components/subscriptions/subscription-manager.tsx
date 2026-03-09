@@ -1,4 +1,10 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * SubscriptionManager — migrated to main db, added category icons,
+ * monthly cost normalisation, and useLiveQuery reactivity.
+ */
+import React, { useState, useMemo } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,355 +12,310 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Edit, Trash2, Calendar, AlertTriangle } from 'lucide-react';
-import { toast } from 'sonner';
+import { PageHeader } from '@/components/layout/page-header';
 import { formatCurrency } from '@/lib/format-utils';
-import { extendedDb } from '@/lib/db-schema-extended';
-import type { Subscription } from '@/lib/db-schema-extended';
+import {
+  Plus, Edit, Trash2, Calendar, AlertTriangle,
+  Tv, Music, Cloud, Smartphone, BookOpen, Gamepad2,
+  BarChart3, RefreshCw, Rss,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { addMonths, addQuarters, addYears, differenceInDays, format } from 'date-fns';
+import type { Subscription } from '@/lib/db';
+
+// ── Category icons ─────────────────────────────────────────────────────────────
+const CATEGORY_ICONS: Record<string, React.ElementType> = {
+  Streaming:  Tv,
+  Music:      Music,
+  Cloud:      Cloud,
+  Mobile:     Smartphone,
+  Education:  BookOpen,
+  Gaming:     Gamepad2,
+  News:       Rss,
+  Software:   BarChart3,
+  Other:      RefreshCw,
+};
+
+const CATEGORIES = Object.keys(CATEGORY_ICONS);
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function toMonthly(amount: number, cycle: string) {
+  if (cycle === 'Quarterly') return amount / 3;
+  if (cycle === 'Yearly')    return amount / 12;
+  return amount;
+}
+
+function nextDueDate(start: Date, cycle: string): Date {
+  const d = new Date(start);
+  const now = new Date();
+  let next = d;
+  while (next <= now) {
+    if (cycle === 'Monthly')   next = addMonths(next, 1);
+    else if (cycle === 'Quarterly') next = addQuarters(next, 1);
+    else next = addYears(next, 1);
+  }
+  return next;
+}
+
+const emptyForm = {
+  name: '',
+  amount: '',
+  cycle: 'Monthly' as 'Monthly' | 'Quarterly' | 'Yearly',
+  category: 'Streaming',
+  startDate: new Date().toISOString().split('T')[0],
+  reminderDays: '3',
+};
 
 export function SubscriptionManager() {
-  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [formData, setFormData] = useState({
-    name: '',
-    amount: '',
-    cycle: 'Monthly' as 'Monthly' | 'Quarterly' | 'Yearly',
-    startDate: new Date().toISOString().split('T')[0],
-    reminderDays: '3'
-  });
+  const subs = useLiveQuery(
+    () => db.subscriptions?.filter(s => s.isActive !== false).toArray() ?? Promise.resolve([]),
+  ) ?? [];
 
-  useEffect(() => {
-    loadSubscriptions();
-  }, []);
+  const [showModal, setShowModal] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState({ ...emptyForm });
 
-  const loadSubscriptions = async () => {
-    try {
-      setLoading(true);
-      const allSubscriptions = await extendedDb.subscriptions.where('isActive').equals(1).toArray();
-      setSubscriptions(allSubscriptions);
-    } catch (error) {
-      toast.error('Failed to load subscriptions');
-      console.error('Error loading subscriptions:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const totalMonthly = useMemo(
+    () => subs.reduce((s, sub) => s + toMonthly(sub.amount, sub.cycle), 0),
+    [subs],
+  );
 
-  const calculateNextDue = (startDate: Date, cycle: string): Date => {
-    const nextDue = new Date(startDate);
-    switch (cycle) {
-      case 'Monthly':
-        nextDue.setMonth(nextDue.getMonth() + 1);
-        break;
-      case 'Quarterly':
-        nextDue.setMonth(nextDue.getMonth() + 3);
-        break;
-      case 'Yearly':
-        nextDue.setFullYear(nextDue.getFullYear() + 1);
-        break;
-    }
-    return nextDue;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const startDate = new Date(formData.startDate);
-      const nextDue = calculateNextDue(startDate, formData.cycle);
-      
-      const subscriptionData = {
-        name: formData.name,
-        amount: parseFloat(formData.amount),
-        cycle: formData.cycle,
-        startDate,
-        nextDue,
-        reminderDays: parseInt(formData.reminderDays),
-        isActive: true
-      };
-
-      if (editingSubscription) {
-        await extendedDb.subscriptions.update(editingSubscription.id, subscriptionData);
-        toast.success('Subscription updated successfully');
-      } else {
-        const id = crypto.randomUUID();
-        await extendedDb.subscriptions.add({
-          ...subscriptionData,
-          id
-        });
-        toast.success('Subscription added successfully');
-      }
-
-      resetForm();
-      setShowAddModal(false);
-      setEditingSubscription(null);
-      loadSubscriptions();
-    } catch (error) {
-      toast.error('Failed to save subscription');
-      console.error('Error saving subscription:', error);
-    }
-  };
-
-  const handleEdit = (subscription: Subscription) => {
-    setEditingSubscription(subscription);
-    setFormData({
-      name: subscription.name,
-      amount: subscription.amount.toString(),
-      cycle: subscription.cycle,
-      startDate: subscription.startDate.toISOString().split('T')[0],
-      reminderDays: subscription.reminderDays.toString()
+  const upcoming = useMemo(() => {
+    const cutoff = new Date(); cutoff.setDate(cutoff.getDate() + 7);
+    return subs.filter(s => {
+      const due = nextDueDate(new Date(s.startDate), s.cycle);
+      return due <= cutoff;
     });
-    setShowAddModal(true);
+  }, [subs]);
+
+  const openAdd = () => { setEditId(null); setForm({ ...emptyForm }); setShowModal(true); };
+  const openEdit = (s: Subscription) => {
+    setEditId(s.id);
+    setForm({
+      name: s.name,
+      amount: s.amount.toString(),
+      cycle: s.cycle,
+      category: (s as any).category || 'Other',
+      startDate: new Date(s.startDate).toISOString().split('T')[0],
+      reminderDays: s.reminderDays.toString(),
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const startDate = new Date(form.startDate);
+    const amt = parseFloat(form.amount);
+    const nd = nextDueDate(startDate, form.cycle);
+    const now = new Date();
+    const data = {
+      name: form.name,
+      cost: amt,
+      billingCycle: form.cycle,
+      nextBilling: nd,
+      amount: amt,
+      cycle: form.cycle,
+      category: form.category,
+      startDate,
+      nextDue: nd,
+      reminderDays: parseInt(form.reminderDays) || 3,
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    };
+    try {
+      if (editId) {
+        await db.subscriptions?.update(editId, { ...data, updatedAt: now });
+        toast.success('Subscription updated');
+      } else {
+        await db.subscriptions?.add({ id: crypto.randomUUID(), ...data });
+        toast.success('Subscription added');
+      }
+      setShowModal(false);
+    } catch { toast.error('Failed to save subscription'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this subscription?')) {
-      try {
-        await extendedDb.subscriptions.update(id, { isActive: false });
-        toast.success('Subscription deleted successfully');
-        loadSubscriptions();
-      } catch (error) {
-        toast.error('Failed to delete subscription');
-        console.error('Error deleting subscription:', error);
-      }
-    }
+    if (!confirm('Delete this subscription?')) return;
+    await db.subscriptions?.update(id, { isActive: false });
+    toast.success('Subscription removed');
   };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      amount: '',
-      cycle: 'Monthly',
-      startDate: new Date().toISOString().split('T')[0],
-      reminderDays: '3'
-    });
-  };
-
-  const getTotalMonthlyAmount = () => {
-    return subscriptions.reduce((total, sub) => {
-      switch (sub.cycle) {
-        case 'Monthly':
-          return total + sub.amount;
-        case 'Quarterly':
-          return total + (sub.amount / 3);
-        case 'Yearly':
-          return total + (sub.amount / 12);
-        default:
-          return total;
-      }
-    }, 0);
-  };
-
-  const getUpcomingSubscriptions = () => {
-    const today = new Date();
-    const upcoming = new Date(today);
-    upcoming.setDate(today.getDate() + 7); // Next 7 days
-    
-    return subscriptions.filter(sub => sub.nextDue <= upcoming);
-  };
-
-  const upcomingSubscriptions = getUpcomingSubscriptions();
-
-  if (loading) {
-    return <div className="flex justify-center items-center h-32">Loading subscriptions...</div>;
-  }
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold">Subscription Manager</h1>
-          <p className="text-muted-foreground">Track and manage your recurring subscriptions</p>
-        </div>
-        <Button onClick={() => setShowAddModal(true)} className="flex items-center gap-2">
-          <Plus className="w-4 h-4" />
-          Add Subscription
-        </Button>
-      </div>
+      <PageHeader
+        title="Subscriptions"
+        subtitle="Track recurring digital & service costs"
+        icon={RefreshCw}
+        action={
+          <Button size="sm" onClick={openAdd} className="h-9 text-xs gap-1 rounded-xl">
+            <Plus className="h-3.5 w-3.5" /> Add
+          </Button>
+        }
+      />
 
-      {/* Upcoming Renewals Alert */}
-      {upcomingSubscriptions.length > 0 && (
-        <Card className="border-warning/40 bg-warning/5">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2 text-warning">
-              <AlertTriangle className="w-4 h-4" />
-              Upcoming Renewals
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-warning">
-              {upcomingSubscriptions.length} subscription(s) due for renewal in the next 7 days.
-            </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Active Subscriptions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{subscriptions.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Monthly Total</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrency(getTotalMonthlyAmount())}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Upcoming Renewals</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">{upcomingSubscriptions.length}</div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Subscriptions List */}
-      <div className="grid gap-4">
-        {subscriptions.length === 0 ? (
-          <Card>
-            <CardContent className="text-center py-8">
-              <p className="text-muted-foreground">No subscriptions recorded yet. Add your first subscription to get started!</p>
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Active',          value: subs.length,                  color: 'text-foreground' },
+          { label: 'Monthly Cost',    value: formatCurrency(totalMonthly), color: 'text-destructive' },
+          { label: 'Due This Week',   value: upcoming.length,              color: upcoming.length > 0 ? 'text-warning' : 'text-muted-foreground' },
+        ].map(({ label, value, color }) => (
+          <Card key={label} className="glass">
+            <CardContent className="p-3 text-center">
+              <p className={`text-base font-black tabular-nums ${color}`}>{value}</p>
+              <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
             </CardContent>
           </Card>
-        ) : (
-          subscriptions.map((subscription) => {
-            const isUpcoming = upcomingSubscriptions.some(s => s.id === subscription.id);
+        ))}
+      </div>
+
+      {/* Upcoming alert */}
+      {upcoming.length > 0 && (
+        <div className="flex items-center gap-2 p-3 rounded-xl bg-warning/8 border border-warning/25 text-xs text-warning">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          <span><strong>{upcoming.length}</strong> renewal{upcoming.length > 1 ? 's' : ''} due within 7 days: {upcoming.map(s => s.name).join(', ')}</span>
+        </div>
+      )}
+
+      {/* List */}
+      {subs.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center space-y-3">
+            <RefreshCw className="h-10 w-10 mx-auto text-muted-foreground/25" />
+            <p className="text-sm text-muted-foreground">No subscriptions yet</p>
+            <Button size="sm" variant="outline" className="h-9 text-xs rounded-xl gap-1.5" onClick={openAdd}>
+              <Plus className="h-3.5 w-3.5" /> Add first subscription
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {subs.map(sub => {
+            const Icon = CATEGORY_ICONS[(sub as any).category ?? 'Other'] ?? RefreshCw;
+            const due  = nextDueDate(new Date(sub.startDate), sub.cycle);
+            const daysLeft = differenceInDays(due, new Date());
+            const isUrgent = daysLeft <= 7;
+            const monthly  = toMonthly(sub.amount, sub.cycle);
             return (
-              <Card key={subscription.id} className={isUpcoming ? 'border-warning/40' : ''}>
+              <Card key={sub.id} className={`glass ${isUrgent ? 'border-warning/40' : 'border-border/40'}`}>
                 <CardContent className="p-4">
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-lg">{subscription.name}</h3>
-                        <Badge variant="outline">{subscription.cycle}</Badge>
-                        {isUpcoming && (
-                          <Badge variant="destructive">Due Soon</Badge>
-                        )}
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <p className="text-sm font-semibold truncate">{sub.name}</p>
+                        <Badge variant="outline" className="text-[10px] shrink-0">{sub.cycle}</Badge>
+                        {isUrgent && <Badge className="text-[10px] bg-warning/15 text-warning border-warning/30 shrink-0">Due in {daysLeft}d</Badge>}
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div className="grid grid-cols-3 gap-x-3 gap-y-0.5 text-[11px]">
                         <div>
-                          <span className="text-muted-foreground">Amount:</span>
-                          <p className="font-medium">{formatCurrency(subscription.amount)}</p>
+                          <span className="text-muted-foreground">Amount </span>
+                          <span className="font-medium">{formatCurrency(sub.amount)}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Next Due:</span>
-                          <p className="font-medium">{subscription.nextDue.toLocaleDateString()}</p>
+                          <span className="text-muted-foreground">≈/mo </span>
+                          <span className="font-medium text-destructive">{formatCurrency(monthly)}</span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Started:</span>
-                          <p className="font-medium">{subscription.startDate.toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Reminder:</span>
-                          <p className="font-medium">{subscription.reminderDays} days before</p>
+                          <span className="text-muted-foreground">Next </span>
+                          <span className="font-medium">{format(due, 'd MMM')}</span>
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2 ml-4">
-                      <Button size="sm" variant="outline" onClick={() => handleEdit(subscription)}>
-                        <Edit className="w-4 h-4" />
+                    <div className="flex gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg" onClick={() => openEdit(sub)}>
+                        <Edit className="h-3.5 w-3.5 text-muted-foreground" />
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleDelete(subscription.id)}>
-                        <Trash2 className="w-4 h-4" />
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(sub.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
                 </CardContent>
               </Card>
             );
-          })
-        )}
-      </div>
+          })}
+        </div>
+      )}
 
       {/* Add/Edit Modal */}
-      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
-        <DialogContent className="max-w-md">
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="max-w-sm mx-4">
           <DialogHeader>
-            <DialogTitle>{editingSubscription ? 'Edit Subscription' : 'Add Subscription'}</DialogTitle>
+            <DialogTitle>{editId ? 'Edit Subscription' : 'Add Subscription'}</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="name">Subscription Name</Label>
+          <form onSubmit={handleSave} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-xs">Name *</Label>
               <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="Netflix, Spotify, etc."
+                value={form.name}
+                onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                placeholder="Netflix, Spotify…"
+                className="h-9 text-sm"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="amount">Amount (₹)</Label>
-                <Input
-                  id="amount"
-                  type="number"
-                  step="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                  required
-                />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Category</Label>
+                <Select value={form.category} onValueChange={v => setForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c} className="text-xs">{c}</SelectItem>)}</SelectContent>
+                </Select>
               </div>
-              <div>
-                <Label htmlFor="cycle">Billing Cycle</Label>
-                <Select value={formData.cycle} onValueChange={(value: any) => setFormData({...formData, cycle: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+              <div className="space-y-1">
+                <Label className="text-xs">Billing Cycle</Label>
+                <Select value={form.cycle} onValueChange={v => setForm(f => ({ ...f, cycle: v as any }))}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Monthly">Monthly</SelectItem>
-                    <SelectItem value="Quarterly">Quarterly</SelectItem>
-                    <SelectItem value="Yearly">Yearly</SelectItem>
+                    <SelectItem value="Monthly"   className="text-xs">Monthly</SelectItem>
+                    <SelectItem value="Quarterly" className="text-xs">Quarterly</SelectItem>
+                    <SelectItem value="Yearly"    className="text-xs">Yearly</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="startDate">Start Date</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Amount (₹) *</Label>
                 <Input
-                  id="startDate"
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({...formData, startDate: e.target.value})}
+                  type="number"
+                  value={form.amount}
+                  onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
+                  className="h-9 text-sm"
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="reminderDays">Reminder (days before)</Label>
+              <div className="space-y-1">
+                <Label className="text-xs">Start Date</Label>
                 <Input
-                  id="reminderDays"
-                  type="number"
-                  value={formData.reminderDays}
-                  onChange={(e) => setFormData({...formData, reminderDays: e.target.value})}
-                  required
+                  type="date"
+                  value={form.startDate}
+                  onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                  className="h-9 text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end space-x-2">
-              <Button type="button" variant="outline" onClick={() => {
-                setShowAddModal(false);
-                setEditingSubscription(null);
-                resetForm();
-              }}>
-                Cancel
-              </Button>
-              <Button type="submit">
-                {editingSubscription ? 'Update' : 'Add'} Subscription
-              </Button>
+            <div className="space-y-1">
+              <Label className="text-xs">Reminder (days before due)</Label>
+              <Input
+                type="number"
+                value={form.reminderDays}
+                onChange={e => setForm(f => ({ ...f, reminderDays: e.target.value }))}
+                className="h-9 text-sm"
+                min="1" max="30"
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button type="button" variant="outline" className="flex-1 h-9 rounded-xl" onClick={() => setShowModal(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 h-9 rounded-xl">{editId ? 'Update' : 'Add'}</Button>
             </div>
           </form>
         </DialogContent>
