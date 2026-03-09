@@ -194,6 +194,16 @@ export function MoreScreen({
           </div>
         );
       })}
+
+      {/* No-results state when searching */}
+      {q && cats.every(cat => modules.filter(m => m.category === cat && isVisible(m, role) && (
+        m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q) || cat.toLowerCase().includes(q)
+      )).length === 0) && (
+        <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
+          <p className="text-sm font-medium text-foreground">No modules found</p>
+          <p className="text-xs text-muted-foreground">Try a different keyword</p>
+        </div>
+      )}
     </div>
   );
 }
